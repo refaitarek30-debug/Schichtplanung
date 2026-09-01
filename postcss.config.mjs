@@ -1,5 +1,3 @@
-JavaScirpt
-
 const config = {
   plugins: {
     tailwindcss: {},
