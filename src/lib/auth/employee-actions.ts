@@ -79,3 +79,82 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   revalidatePath("/mitarbeiter");
   return { success: `${firstName} ${lastName} wurde angelegt.` };
 }
+
+/**
+ * Ändert einen bestehenden Personalstammsatz. Spiegelt `createEmployee()`
+ * bewusst 1:1 in Feldern und Prüfungen – nur `.update()` statt `.insert()`,
+ * zusätzlich `employee_id` zum Identifizieren der Zeile. RLS
+ * ("Personaldaten verwaltet Admin") erzwingt Admin-only zusätzlich
+ * serverseitig, unabhängig von der Rollenprüfung hier.
+ */
+export async function updateEmployee(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+
+  const employeeId = String(formData.get("employee_id") ?? "").trim();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const personnelNumber = String(formData.get("personnel_number") ?? "").trim();
+  const department = String(formData.get("department") ?? "").trim();
+  const shiftId = String(formData.get("shift_id") ?? "").trim();
+  const role = String(formData.get("role") ?? "employee") as Role;
+  const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
+  const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
+  const active = formData.get("active") !== "false";
+
+  if (!employeeId) {
+    return { error: "Kein Mitarbeiter ausgewählt." };
+  }
+  if (!firstName || !lastName) {
+    return { error: "Vor- und Nachname dürfen nicht leer sein." };
+  }
+  if (!Number.isFinite(vacationDays) || vacationDays < 0) {
+    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", user.id)
+    .returns<{ role: Role; company_id: string }[]>()
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return { error: "Dein Profil konnte nicht geladen werden." };
+  }
+  if (profile.role !== "admin") {
+    return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  }
+
+  const { error } = await supabase
+    .from("employees")
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+      email: email || null,
+      personnel_number: personnelNumber || null,
+      department: department || null,
+      shift_id: shiftId || null,
+      role,
+      vacation_days: vacationDays,
+      active,
+    })
+    .eq("id", employeeId)
+    .eq("company_id", profile.company_id);
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "Diese Personalnummer ist in deinem Unternehmen bereits vergeben." };
+    }
+    return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht geändert werden." };
+  }
+
+  revalidatePath("/mitarbeiter");
+  return { success: `${firstName} ${lastName} wurde aktualisiert.` };
+}
