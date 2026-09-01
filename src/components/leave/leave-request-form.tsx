@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { countLeaveDays, formatDays } from "@/lib/dates";
+import { DateRangeCalendar } from "./date-range-calendar";
+import { countLeaveDays, formatDE, formatDays } from "@/lib/dates";
 import { holidays, staffingContext } from "@/lib/demo-data";
 import { checkLeaveImpact } from "@/lib/staffing";
 import type { Employee, StaffingStatus } from "@/lib/types";
@@ -55,31 +56,26 @@ export function LeaveRequestForm({
         hint="Die Besetzung deiner Schicht wird direkt bei der Eingabe geprüft."
       />
       <CardBody className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Von">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                if (e.target.value > endDate) setEndDate(e.target.value);
-                setSubmitted(false);
-              }}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
-            />
-          </Field>
-          <Field label="Bis">
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setSubmitted(false);
-              }}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
-            />
-          </Field>
+        <div>
+          <span className="mb-2 block text-[13px] font-medium text-ink-muted">
+            Zeitraum auswählen
+          </span>
+          <DateRangeCalendar
+            startDate={startDate}
+            endDate={endDate}
+            minDate={today}
+            holidays={holidays}
+            onChange={(newStart, newEnd) => {
+              setStartDate(newStart);
+              setEndDate(newEnd);
+              setSubmitted(false);
+            }}
+          />
+          <p className="tnum mt-2 text-[13px] text-ink-muted">
+            {startDate === endDate
+              ? formatDE(startDate)
+              : `${formatDE(startDate)} – ${formatDE(endDate)}`}
+          </p>
         </div>
 
         <label className="flex items-center gap-2.5 text-sm text-ink-muted">

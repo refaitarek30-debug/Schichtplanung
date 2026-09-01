@@ -1,18 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { useFormStatus } from "react-dom";
-import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Field, Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
-import { employees as demoEmployees } from "@/lib/demo-data";
+import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
-import { updateCompanyName } from "@/lib/auth/company-actions";
-import type { FormState } from "@/lib/auth/actions";
-import { DataError, fetchEmployees } from "@/lib/data/employees";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -32,7 +24,6 @@ const permissions: { role: Role; items: string[] }[] = [
       "Urlaubsanträge genehmigen oder ablehnen",
       "Besetzung und Engpässe der eigenen Schicht prüfen",
       "Abwesenheiten erfassen und verwalten",
-      "Urlaubsanspruch von Mitarbeitenden festlegen",
     ],
   },
   {
@@ -46,28 +37,8 @@ const permissions: { role: Role; items: string[] }[] = [
   },
 ];
 
-const initialState: FormState = {};
-
 export default function SettingsPage() {
-  const { company, mode, role } = useSession();
-  const [activeCount, setActiveCount] = useState<number | null>(
-    mode === "demo" ? demoEmployees.filter((e) => e.active).length : null,
-  );
-
-  useEffect(() => {
-    if (mode !== "live") return;
-    let cancelled = false;
-    fetchEmployees()
-      .then((rows) => {
-        if (!cancelled) setActiveCount(rows.filter((r) => r.active).length);
-      })
-      .catch(() => {
-        if (!cancelled) setActiveCount(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode]);
+  const { company, mode } = useSession();
 
   return (
     <div className="space-y-5">
@@ -79,23 +50,20 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader title="Unternehmen" />
-        <CardBody className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Detail label="Name" value={company.name} />
-            <Detail label="Feiertagsregion" value="Nordrhein-Westfalen" />
-            <Detail
-              label="Aktive Mitarbeiter"
-              value={activeCount === null ? "wird geladen …" : String(activeCount)}
-            />
-          </div>
-          {role === "admin" ? <CompanyNameForm currentName={company.name} disabled={mode === "demo"} /> : null}
+        <CardBody className="grid gap-3 sm:grid-cols-3">
+          <Detail label="Name" value={company.name} />
+          <Detail label="Feiertagsregion" value="Nordrhein-Westfalen" />
+          <Detail
+            label="Aktive Mitarbeiter"
+            value={String(employees.filter((e) => e.active).length)}
+          />
         </CardBody>
       </Card>
 
       <Card>
         <CardHeader
           title="Rollen und Berechtigungen"
-          hint="Wird zusätzlich über Supabase Row Level Security erzwungen."
+          hint="Wird in Phase 2 zusätzlich über Supabase Row Level Security erzwungen."
         />
         <CardBody className="space-y-3">
           {permissions.map((group) => (
@@ -132,48 +100,6 @@ export default function SettingsPage() {
         </CardBody>
       </Card>
     </div>
-  );
-}
-
-function CompanyNameForm({ currentName, disabled }: { currentName: string; disabled: boolean }) {
-  const [editing, setEditing] = useState(false);
-  const [state, formAction] = useActionState(updateCompanyName, initialState);
-
-  useEffect(() => {
-    if (state.success) setEditing(false);
-  }, [state.success]);
-
-  if (!editing) {
-    return (
-      <Button variant="secondary" disabled={disabled} onClick={() => setEditing(true)}>
-        Firmenname ändern
-      </Button>
-    );
-  }
-
-  return (
-    <form action={formAction} className="max-w-sm space-y-3">
-      <Field label="Firmenname">
-        <Input name="name" defaultValue={currentName} required />
-      </Field>
-      {state.error ? <Alert tone="error">{state.error}</Alert> : null}
-      {state.success ? <Alert tone="success">{state.success}</Alert> : null}
-      <div className="flex gap-2">
-        <SubmitButton />
-        <Button type="button" variant="secondary" onClick={() => setEditing(false)}>
-          Abbrechen
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Wird gespeichert …" : "Speichern"}
-    </Button>
   );
 }
 

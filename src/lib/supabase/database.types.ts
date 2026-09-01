@@ -196,6 +196,10 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      register_company: {
+        Args: { p_company_name: string; p_first_name: string; p_last_name: string; p_email: string };
+        Returns: { company_id: string; employee_id: string }[];
+      };
       decide_leave_request: {
         Args: { p_request_id: string; p_decision: LeaveStatusDb; p_rejection_reason: string | null };
         Returns: LeaveRequestRow;

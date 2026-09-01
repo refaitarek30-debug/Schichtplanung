@@ -8,7 +8,8 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { formatDays } from "@/lib/dates";
+import { DateRangeCalendar } from "./date-range-calendar";
+import { formatDE, formatDays } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
@@ -111,27 +112,28 @@ export function LiveLeaveRequestForm({
       />
       <CardBody className="space-y-4">
         <form action={formAction} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Von">
-              <Input
-                type="date"
-                name="start_date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  if (e.target.value > endDate) setEndDate(e.target.value);
-                }}
-              />
-            </Field>
-            <Field label="Bis">
-              <Input
-                type="date"
-                name="end_date"
-                value={endDate}
-                min={startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </Field>
+          <input type="hidden" name="start_date" value={startDate} />
+          <input type="hidden" name="end_date" value={endDate} />
+
+          <div>
+            <span className="mb-2 block text-[13px] font-medium text-ink-muted">
+              Zeitraum auswählen
+            </span>
+            <DateRangeCalendar
+              startDate={startDate}
+              endDate={endDate}
+              minDate={today}
+              holidays={holidays ?? []}
+              onChange={(newStart, newEnd) => {
+                setStartDate(newStart);
+                setEndDate(newEnd);
+              }}
+            />
+            <p className="tnum mt-2 text-[13px] text-ink-muted">
+              {startDate === endDate
+                ? formatDE(startDate)
+                : `${formatDE(startDate)} – ${formatDE(endDate)}`}
+            </p>
           </div>
 
           <Field label="Tageszeit" hint="Nur bei einem einzelnen Tag wählbar.">

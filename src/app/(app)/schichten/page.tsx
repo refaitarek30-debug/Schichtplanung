@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { RotationEditor } from "@/components/leave/rotation-editor";
@@ -14,18 +13,9 @@ import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { fetchEmployees, DataError } from "@/lib/data/employees";
 import type { EmployeeRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ShiftFormPanel } from "./shift-form-panel";
 
 export default function ShiftsPage() {
   const { mode, company } = useSession();
-  const [showCreate, setShowCreate] = useState(false);
-  const [editingShift, setEditingShift] = useState<ShiftDetail | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  function closePanels() {
-    setShowCreate(false);
-    setEditingShift(null);
-  }
 
   return (
     <div className="space-y-5">
@@ -34,65 +24,20 @@ export default function ShiftsPage() {
         title="Schichten"
         description="Schichtmodelle, Zeiten und Besetzungsvorgaben. Änderungen wirken sich sofort auf alle Prüfungen aus."
         action={
-          <Button
-            variant="secondary"
-            disabled={mode === "demo"}
-            onClick={() => {
-              setEditingShift(null);
-              setShowCreate((v) => !v);
-            }}
-          >
-            {showCreate ? "Abbrechen" : "Schicht anlegen"}
+          <Button variant="secondary" disabled={mode === "demo"}>
+            Schicht anlegen
           </Button>
         }
       />
 
-      {showCreate ? (
-        <ShiftFormPanel
-          onDone={() => {
-            closePanels();
-            setReloadKey((k) => k + 1);
-          }}
-          onCancel={closePanels}
-        />
-      ) : null}
-
-      {editingShift ? (
-        <ShiftFormPanel
-          key={editingShift.id}
-          shift={editingShift}
-          onDone={() => {
-            closePanels();
-            setReloadKey((k) => k + 1);
-          }}
-          onCancel={closePanels}
-        />
-      ) : null}
-
-      {mode === "live" ? (
-        <LiveShiftCards
-          reloadKey={reloadKey}
-          onEdit={(shift) => {
-            setShowCreate(false);
-            setEditingShift(shift);
-          }}
-        />
-      ) : (
-        <DemoShiftCards />
-      )}
+      {mode === "live" ? <LiveShiftCards /> : <DemoShiftCards />}
 
       {mode === "live" ? <RotationEditor companyId={company.id} /> : null}
     </div>
   );
 }
 
-function LiveShiftCards({
-  reloadKey,
-  onEdit,
-}: {
-  reloadKey: number;
-  onEdit: (shift: ShiftDetail) => void;
-}) {
+function LiveShiftCards() {
   const [details, setDetails] = useState<ShiftDetail[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +61,7 @@ function LiveShiftCards({
 
   useEffect(() => {
     void load();
-  }, [load, reloadKey]);
+  }, [load]);
 
   if (error) return <Alert tone="error">{error}</Alert>;
   if (details === null) return <p className="text-sm text-ink-muted">wird geladen …</p>;
@@ -127,18 +72,7 @@ function LiveShiftCards({
         const assigned = employees.filter((e) => e.shiftName === shift.name).length;
         return (
           <Card key={shift.id}>
-            <CardHeader
-              title={shift.name}
-              hint={`${shift.startTime}–${shift.endTime} Uhr`}
-              action={
-                <div className="flex items-center gap-2">
-                  {!shift.active ? <Badge tone="neutral">Inaktiv</Badge> : null}
-                  <Button variant="secondary" onClick={() => onEdit(shift)}>
-                    Bearbeiten
-                  </Button>
-                </div>
-              }
-            />
+            <CardHeader title={shift.name} hint={`${shift.startTime}–${shift.endTime} Uhr`} />
             <CardBody className="space-y-4">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <Metric label="Zugeordnet" value={assigned} />

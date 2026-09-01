@@ -41,6 +41,14 @@ export default async function LoginPage({
         Noch kein Zugang? Zugänge werden von der Administration angelegt – melde dich
         bei deiner Schichtleitung.
       </p>
+      <p className="mt-2 text-center">
+        <Link
+          href="/registrieren"
+          className="text-[13px] font-medium text-brand-600 hover:underline"
+        >
+          Neues Unternehmen registrieren
+        </Link>
+      </p>
     </div>
   );
 }

@@ -18,7 +18,7 @@ const PROTECTED_PREFIXES = [
   "/profil",
 ];
 
-const AUTH_PATHS = ["/login", "/passwort-vergessen"];
+const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
