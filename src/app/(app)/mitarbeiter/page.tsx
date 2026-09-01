@@ -17,6 +17,8 @@ import { inviteEmployee } from "@/lib/auth/actions";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord } from "@/lib/types";
 import { CreateEmployeePanel } from "./create-employee-panel";
+import { EditEmployeePanel } from "./edit-employee-panel";
+import { EntitlementEditor } from "./entitlement-editor";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -29,8 +31,11 @@ export default function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeRecord | null>(null);
   const [invited, setInvited] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
+
+  const canEditEntitlement = role === "admin" || role === "shift_leader";
 
   const load = useCallback(async () => {
     setError(null);
@@ -104,6 +109,12 @@ export default function EmployeesPage() {
     });
   }
 
+  function updateEntitlementLocally(employeeId: string, next: number) {
+    setRows((current) =>
+      (current ?? []).map((r) => (r.id === employeeId ? { ...r, currentEntitlement: next } : r)),
+    );
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -115,7 +126,10 @@ export default function EmployeesPage() {
             <Button
               variant="secondary"
               disabled={mode === "demo"}
-              onClick={() => setShowCreate((v) => !v)}
+              onClick={() => {
+                setEditingEmployee(null);
+                setShowCreate((v) => !v);
+              }}
             >
               {showCreate ? "Abbrechen" : "Mitarbeiter anlegen"}
             </Button>
@@ -131,6 +145,17 @@ export default function EmployeesPage() {
             setShowCreate(false);
             void load();
           }}
+        />
+      ) : null}
+
+      {editingEmployee && role === "admin" ? (
+        <EditEmployeePanel
+          employee={editingEmployee}
+          onSaved={() => {
+            setEditingEmployee(null);
+            void load();
+          }}
+          onCancel={() => setEditingEmployee(null)}
         />
       ) : null}
 
@@ -224,8 +249,27 @@ export default function EmployeesPage() {
                       {row.hasAccount ? "Hat Zugang" : "Ohne Zugang"}
                     </Badge>
                   ) : null}
+                  {canEditEntitlement ? (
+                    <EntitlementEditor
+                      employeeId={row.id}
+                      year={row.entitlementYear}
+                      value={row.currentEntitlement}
+                      disabled={mode === "demo"}
+                      onSaved={(next) => updateEntitlementLocally(row.id, next)}
+                    />
+                  ) : null}
                   {role === "admin" ? (
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        disabled={mode === "demo"}
+                        onClick={() => {
+                          setShowCreate(false);
+                          setEditingEmployee(row);
+                        }}
+                      >
+                        Bearbeiten
+                      </Button>
                       {mode === "live" && !row.hasAccount ? (
                         <Button
                           variant="secondary"

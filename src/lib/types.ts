@@ -53,6 +53,13 @@ export interface EmployeeRecord {
   active: boolean;
   /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
   hasAccount: boolean;
+  /**
+   * Tatsaechlicher Urlaubsanspruch des laufenden Jahres aus `leave_balances`
+   * (nicht zu verwechseln mit `vacationDays`, das nur als Startwert beim
+   * Anlegen dient). `null`, wenn noch kein Konto fuer das Jahr existiert.
+   */
+  currentEntitlement: number | null;
+  entitlementYear: number;
 }
 
 export interface ShiftAssignment {

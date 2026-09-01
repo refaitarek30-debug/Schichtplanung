@@ -24,6 +24,8 @@ function demoRecords(): EmployeeRecord[] {
     vacationDays: person.entitlement,
     active: person.active,
     hasAccount: true,
+    currentEntitlement: person.entitlement,
+    entitlementYear: new Date().getFullYear(),
   }));
 }
 
@@ -35,8 +37,9 @@ function demoRecords(): EmployeeRecord[] {
 export async function fetchEmployees(): Promise<EmployeeRecord[]> {
   if (!isSupabaseConfigured) return demoRecords();
 
+  const currentYear = new Date().getFullYear();
   const supabase = createClient();
-  const [employeesResult, profilesResult] = await Promise.all([
+  const [employeesResult, profilesResult, balancesResult] = await Promise.all([
     supabase
       .from("employees")
       .select(
@@ -48,6 +51,11 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       .from("profiles")
       .select("employee_id")
       .returns<{ employee_id: string | null }[]>(),
+    supabase
+      .from("leave_balances")
+      .select("employee_id, entitlement")
+      .eq("year", currentYear)
+      .returns<{ employee_id: string; entitlement: number }[]>(),
   ]);
 
   if (employeesResult.error) {
@@ -57,6 +65,11 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
   // zeigt sie eben vorsichtshalber "keine Einladung" für alle an.
   const linkedEmployeeIds = new Set(
     (profilesResult.data ?? []).map((row) => row.employee_id).filter(Boolean),
+  );
+  // Genauso beim Urlaubskonto: fehlt es (z. B. RLS für einfache Mitarbeiter),
+  // bleibt die Spalte einfach leer statt die ganze Liste zu blockieren.
+  const entitlementByEmployee = new Map(
+    (balancesResult.data ?? []).map((row) => [row.employee_id, row.entitlement]),
   );
 
   return (employeesResult.data ?? []).map((row) => {
@@ -76,6 +89,8 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       vacationDays: row.vacation_days,
       active: row.active,
       hasAccount: linkedEmployeeIds.has(row.id),
+      currentEntitlement: entitlementByEmployee.get(row.id) ?? null,
+      entitlementYear: currentYear,
     };
   });
 }
