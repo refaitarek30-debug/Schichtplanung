@@ -5,7 +5,12 @@ import type {
   StaffingMonthRow,
   StaffingSnapshotRow,
 } from "@/lib/supabase/database.types";
-import type { LiveLeaveImpact, LiveStaffingSnapshot, StaffingStatus } from "@/lib/types";
+import type {
+  LiveAbsentToday,
+  LiveLeaveImpact,
+  LiveStaffingSnapshot,
+  StaffingStatus,
+} from "@/lib/types";
 
 export class DataError extends Error {}
 
@@ -118,4 +123,25 @@ export async function fetchLeaveImpact(
     criticalDays: row?.critical_days ?? 0,
     worstStatus: row?.worst_status ?? "ok",
   };
+}
+
+interface AbsentTodayRow {
+  employee_id: string;
+  employee_name: string;
+  shift_name: string | null;
+  reason: string;
+}
+
+/** Wer an einem Tag fehlt – mit Namen und Grund. Nur Führung/Admin. */
+export async function fetchWhoIsAbsent(dateISO: string): Promise<LiveAbsentToday[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("who_is_absent", { p_date: dateISO });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as AbsentTodayRow[]).map((row) => ({
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    shiftName: row.shift_name,
+    reason: row.reason,
+  }));
 }
