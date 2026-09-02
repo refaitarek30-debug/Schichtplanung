@@ -24,6 +24,7 @@ function demoRecords(): EmployeeRecord[] {
     vacationDays: person.entitlement,
     active: person.active,
     hasAccount: true,
+    qualifications: [],
   }));
 }
 
@@ -40,7 +41,7 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
     supabase
       .from("employees")
       .select(
-        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, shifts ( name )",
+        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, qualifications, shifts ( name )",
       )
       .order("last_name", { ascending: true })
       .returns<EmployeeWithShift[]>(),
@@ -76,6 +77,7 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       vacationDays: row.vacation_days,
       active: row.active,
       hasAccount: linkedEmployeeIds.has(row.id),
+      qualifications: row.qualifications ?? [],
     };
   });
 }

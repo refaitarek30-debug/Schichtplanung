@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { LiveMonthCalendar } from "@/components/calendar/live-month-calendar";
+import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -40,6 +41,7 @@ export default function CalendarPage() {
       {mode === "live" ? (
         <>
           <LiveMonthCalendar today={TODAY} role={role} companyId={company.id} />
+          <ShiftLeaveList from={TODAY} />
           <LiveLeaveOverview role={role} />
         </>
       ) : (

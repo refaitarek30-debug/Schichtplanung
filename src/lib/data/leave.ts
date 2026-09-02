@@ -5,7 +5,7 @@ import type {
   LeaveBalanceViewRow,
   LeaveRequestWithEmployee,
 } from "@/lib/supabase/database.types";
-import type { LiveLeaveBalance, LiveLeaveRequest } from "@/lib/types";
+import type { LiveLeaveBalance, LiveLeaveRequest, LiveShiftLeaveEntry } from "@/lib/types";
 
 export class DataError extends Error {}
 
@@ -124,3 +124,39 @@ export async function fetchMyLeaveBalance(
  * durch `fetchLeaveImpact()` in `src/lib/data/staffing.ts`, das seit
  * Phase 4 auch den kritischen Status zurückgibt, nicht nur die Anzahl.
  */
+
+interface ShiftLeaveRow {
+  employee_id: string;
+  employee_name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  is_me: boolean;
+}
+
+/**
+ * Wer aus der eigenen Schicht (feste Zuordnung oder gleiches Rotationsmuster)
+ * hat im angegebenen Zeitraum Urlaub – genehmigt oder offen, mit Namen.
+ * Absichtlich nur Urlaub (`leave_requests`), keine Abwesenheiten: der Grund
+ * einer krankheitsbedingten Abwesenheit bleibt Sache der Führung.
+ */
+export async function fetchMyShiftLeave(
+  fromISO: string,
+  toISO: string,
+): Promise<LiveShiftLeaveEntry[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_shift_leave", {
+    p_from: fromISO,
+    p_to: toISO,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as ShiftLeaveRow[]).map((row) => ({
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+    status: row.status as LiveShiftLeaveEntry["status"],
+    isMe: row.is_me,
+  }));
+}

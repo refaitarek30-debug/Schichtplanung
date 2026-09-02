@@ -131,7 +131,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
-          {greeting()}, {user.firstName} 👋
+          {greeting()}, {profile.firstName} 👋
         </h1>
         <p className="mt-1 text-sm text-ink-muted">
           {isToday

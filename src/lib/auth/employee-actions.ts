@@ -6,10 +6,21 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./actions";
 import type { Role } from "@/lib/types";
+import type { Qualification } from "@/lib/qualifications";
+import { QUALIFICATIONS } from "@/lib/qualifications";
 
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
 };
+
+/** Nur bekannte Werte übernehmen – schützt vor beliebigen Strings aus dem FormData. */
+function parseQualifications(formData: FormData): Qualification[] {
+  const known = new Set<string>(QUALIFICATIONS);
+  return formData
+    .getAll("qualifications")
+    .map((v) => String(v))
+    .filter((v) => known.has(v)) as Qualification[];
+}
 
 /**
  * Legt einen Personalstammsatz an – noch ohne Login. Die Einladung
@@ -67,6 +78,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
     shift_id: shiftId || null,
     role,
     vacation_days: vacationDays,
+    qualifications: parseQualifications(formData),
   });
 
   if (error) {
@@ -144,6 +156,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       role,
       vacation_days: vacationDays,
       active,
+      qualifications: parseQualifications(formData),
     })
     .eq("id", employeeId)
     .eq("company_id", profile.company_id);

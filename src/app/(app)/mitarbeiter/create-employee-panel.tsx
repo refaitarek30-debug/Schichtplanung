@@ -10,6 +10,7 @@ import { createEmployee } from "@/lib/auth/employee-actions";
 import type { FormState } from "@/lib/auth/actions";
 import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
 import { roleLabels } from "@/lib/nav";
+import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
 import type { Role } from "@/lib/types";
 
 const initialState: FormState = {};
@@ -91,6 +92,8 @@ export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
           <Field label="Urlaubsanspruch (Tage/Jahr)">
             <Input name="vacation_days" type="number" step="0.5" min="0" defaultValue="30" />
           </Field>
+
+          <QualificationCheckboxes />
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}

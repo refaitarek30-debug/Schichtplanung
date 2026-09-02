@@ -14,6 +14,7 @@ import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { fetchMyLeaveRequests } from "@/lib/data/leave";
 import { fetchMyShiftPlan } from "@/lib/data/rotation";
+import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchAbsences } from "@/lib/data/absences";
 import { DataError, fetchShiftStaffing } from "@/lib/data/staffing";
 import { fetchEmployees } from "@/lib/data/employees";
@@ -338,6 +339,8 @@ function LiveView({
               )}
             </CardBody>
           </Card>
+
+          <ShiftLeaveList from={TODAY} days={45} />
         </div>
 
         <Card className="h-fit">

@@ -15,6 +15,7 @@ import { useSession } from "@/context/session";
 import { DataError, fetchEmployees, setEmployeeActive } from "@/lib/data/employees";
 import { inviteEmployee } from "@/lib/auth/actions";
 import { roleLabels } from "@/lib/nav";
+import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type { EmployeeRecord } from "@/lib/types";
 import { CreateEmployeePanel } from "./create-employee-panel";
 
@@ -211,6 +212,18 @@ export default function EmployeesPage() {
                     </p>
                     {invited[row.id] ? (
                       <p className="mt-0.5 text-[12px] text-ok-fg">{invited[row.id]}</p>
+                    ) : null}
+                    {row.qualifications.length > 0 ? (
+                      <p className="mt-1 flex flex-wrap gap-1">
+                        {row.qualifications.map((q) => (
+                          <span
+                            key={q}
+                            className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] text-ink-muted"
+                          >
+                            {qualificationLabels[q as Qualification] ?? q}
+                          </span>
+                        ))}
+                      </p>
                     ) : null}
                   </div>
                   <Badge tone={row.role === "employee" ? "neutral" : "info"}>

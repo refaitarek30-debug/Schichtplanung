@@ -53,6 +53,7 @@ export interface EmployeeRecord {
   active: boolean;
   /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
   hasAccount: boolean;
+  qualifications: string[];
 }
 
 export interface ShiftAssignment {
@@ -133,7 +134,15 @@ export interface LiveLeaveBlock {
   reason: string;
 }
 
-/** Ein Tag im persönlichen Schichtplan – `isFree` unterscheidet frei von nicht eingeplant. */
+/** Ein Eintrag aus `my_shift_leave()` – wer aus der eigenen Schicht hat wann Urlaub. */
+export interface LiveShiftLeaveEntry {
+  employeeId: string;
+  employeeName: string;
+  startDate: string;
+  endDate: string;
+  status: LeaveStatus;
+  isMe: boolean;
+}
 export interface LiveShiftPlanDay {
   date: string;
   shiftId: string | null;
