@@ -1,10 +1,15 @@
-export type Qualification = "labor" | "lager" | "messwarte" | "labor_b_schein" | "anlagenfahrer";
+export type Qualification =
+  | "labor"
+  | "lager"
+  | "messwarte"
+  | "b_schein_verantwortlich"
+  | "anlagenfahrer";
 
 export const QUALIFICATIONS: Qualification[] = [
   "labor",
   "lager",
   "messwarte",
-  "labor_b_schein",
+  "b_schein_verantwortlich",
   "anlagenfahrer",
 ];
 
@@ -12,6 +17,10 @@ export const qualificationLabels: Record<Qualification, string> = {
   labor: "Labor",
   lager: "Lager",
   messwarte: "Messwarte",
-  labor_b_schein: "Labor mit B-Schein",
+  b_schein_verantwortlich: "B-Schein",
   anlagenfahrer: "Anlagenfahrer",
 };
+
+/** Schichtgruppen im Rotationsbetrieb. */
+export type RotationTeam = "A" | "B" | "C" | "D";
+export const ROTATION_TEAMS: RotationTeam[] = ["A", "B", "C", "D"];

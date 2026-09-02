@@ -87,6 +87,7 @@ export interface EmployeeRow {
   vacation_days: number;
   active: boolean;
   qualifications?: string[];
+  rotation_team?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -197,6 +198,15 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      who_is_absent: {
+        Args: { p_date: string };
+        Returns: {
+          employee_id: string;
+          employee_name: string;
+          shift_name: string | null;
+          reason: string;
+        }[];
+      };
       my_shift_leave: {
         Args: { p_from: string; p_to: string };
         Returns: {

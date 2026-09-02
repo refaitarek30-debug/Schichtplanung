@@ -8,9 +8,9 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { createEmployee } from "@/lib/auth/employee-actions";
 import type { FormState } from "@/lib/auth/actions";
-import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
 import { roleLabels } from "@/lib/nav";
 import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
+import { ROTATION_TEAMS } from "@/lib/qualifications";
 import type { Role } from "@/lib/types";
 
 const initialState: FormState = {};
@@ -18,13 +18,6 @@ const roles: Role[] = ["employee", "shift_leader", "admin"];
 
 export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
   const [state, formAction] = useActionState(createEmployee, initialState);
-  const [shifts, setShifts] = useState<ShiftOption[]>([]);
-
-  useEffect(() => {
-    fetchShiftOptions()
-      .then(setShifts)
-      .catch(() => setShifts([]));
-  }, []);
 
   useEffect(() => {
     if (state.success) onCreated();
@@ -61,15 +54,15 @@ export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
             <Field label="Abteilung">
               <Input name="department" placeholder="z. B. Produktion" />
             </Field>
-            <Field label="Schicht">
+            <Field label="Schichtgruppe" hint="Leer = kein Rotationsbetrieb.">
               <select
-                name="shift_id"
+                name="rotation_team"
                 className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
               >
-                <option value="">keine Zuordnung</option>
-                {shifts.map((shift) => (
-                  <option key={shift.id} value={shift.id}>
-                    {shift.name}
+                <option value="">keine Rotation</option>
+                {ROTATION_TEAMS.map((team) => (
+                  <option key={team} value={team}>
+                    Schicht {team}
                   </option>
                 ))}
               </select>

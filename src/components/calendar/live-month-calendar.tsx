@@ -21,10 +21,18 @@ import {
   DataError,
   fetchStaffingForDay,
   fetchStaffingMonthOverview,
+  fetchWhoIsAbsent,
 } from "@/lib/data/staffing";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchMyLeaveRequests } from "@/lib/data/leave";
-import type { Holiday, LiveLeaveRequest, LiveStaffingSnapshot, Role, StaffingStatus } from "@/lib/types";
+import type {
+  Holiday,
+  LiveAbsentToday,
+  LiveLeaveRequest,
+  LiveStaffingSnapshot,
+  Role,
+  StaffingStatus,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const dotTone: Record<StaffingStatus, string> = {
@@ -247,7 +255,11 @@ export function LiveMonthCalendar({
                 ))}
               </div>
             )
-          ) : (
+          ) : null}
+
+          {showStaffing ? <WhoIsAbsent date={selected} /> : null}
+
+          {!showStaffing ? (
             <div>
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
                 Mein Urlaub an diesem Tag
@@ -265,9 +277,51 @@ export function LiveMonthCalendar({
                 </ul>
               )}
             </div>
-          )}
+          ) : null}
         </CardBody>
       </Card>
+    </div>
+  );
+}
+
+/** Wer an diesem Tag fehlt – mit Namen und Grund. Nur für Führung sichtbar. */
+function WhoIsAbsent({ date }: { date: string }) {
+  const [entries, setEntries] = useState<LiveAbsentToday[] | null>(null);
+
+  useEffect(() => {
+    setEntries(null);
+    fetchWhoIsAbsent(date)
+      .then(setEntries)
+      .catch(() => setEntries([]));
+  }, [date]);
+
+  return (
+    <div className="border-t border-line pt-4">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+        Wer fehlt
+      </p>
+      {entries === null ? (
+        <p className="text-sm text-ink-muted">wird geladen …</p>
+      ) : entries.length === 0 ? (
+        <p className="text-sm text-ink-muted">Niemand fehlt an diesem Tag.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {entries.map((entry, index) => (
+            <li
+              key={`${entry.employeeId}-${index}`}
+              className="flex items-center justify-between text-sm"
+            >
+              <span className="min-w-0 truncate">
+                {entry.employeeName}
+                {entry.shiftName ? (
+                  <span className="text-ink-faint"> · {entry.shiftName}</span>
+                ) : null}
+              </span>
+              <Badge tone={entry.reason === "Urlaub" ? "plan" : "warn"}>{entry.reason}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

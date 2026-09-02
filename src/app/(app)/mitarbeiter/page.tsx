@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { Search } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Alert } from "@/components/ui/alert";
@@ -14,10 +15,12 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/context/session";
 import { DataError, fetchEmployees, setEmployeeActive } from "@/lib/data/employees";
 import { inviteEmployee } from "@/lib/auth/actions";
+import { deleteEmployee } from "@/lib/auth/employee-actions";
 import { roleLabels } from "@/lib/nav";
 import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type { EmployeeRecord } from "@/lib/types";
 import { CreateEmployeePanel } from "./create-employee-panel";
+import { EditEmployeePanel } from "./edit-employee-panel";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -29,6 +32,8 @@ export default function EmployeesPage() {
   const [shiftFilter, setShiftFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<EmployeeRecord | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [invited, setInvited] = useState<Record<string, string>>({});
   const [pending, startTransition] = useTransition();
@@ -51,8 +56,17 @@ export default function EmployeesPage() {
     void load();
   }, [load]);
 
+  // Nach Schichtgruppe filtern; wer keine Rotation hat, faellt unter den
+  // Namen seiner festen Schicht (z. B. Tagdienst).
   const shiftNames = useMemo(
-    () => [...new Set((rows ?? []).map((r) => r.shiftName).filter(Boolean))] as string[],
+    () =>
+      [
+        ...new Set(
+          (rows ?? [])
+            .map((r) => (r.rotationTeam ? `Schicht ${r.rotationTeam}` : r.shiftName))
+            .filter(Boolean),
+        ),
+      ].sort() as string[],
     [rows],
   );
 
@@ -64,7 +78,8 @@ export default function EmployeesPage() {
         `${row.firstName} ${row.lastName}`.toLowerCase().includes(term) ||
         (row.personnelNumber ?? "").toLowerCase().includes(term) ||
         (row.department ?? "").toLowerCase().includes(term);
-      const matchesShift = shiftFilter === "all" || row.shiftName === shiftFilter;
+      const rowShiftLabel = row.rotationTeam ? `Schicht ${row.rotationTeam}` : row.shiftName;
+      const matchesShift = shiftFilter === "all" || rowShiftLabel === shiftFilter;
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "active" ? row.active : !row.active);
@@ -105,6 +120,21 @@ export default function EmployeesPage() {
     });
   }
 
+  function remove(row: EmployeeRecord) {
+    setBusyId(row.id);
+    setError(null);
+    startTransition(async () => {
+      const result = await deleteEmployee(row.id);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setRows((current) => (current ?? []).filter((r) => r.id !== row.id));
+      }
+      setBusyId(null);
+      setConfirmDeleteId(null);
+    });
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -132,6 +162,18 @@ export default function EmployeesPage() {
             setShowCreate(false);
             void load();
           }}
+        />
+      ) : null}
+
+      {editing ? (
+        <EditEmployeePanel
+          employee={editing}
+          canEditRole={role === "admin"}
+          onSaved={() => {
+            setEditing(null);
+            void load();
+          }}
+          onCancel={() => setEditing(null)}
         />
       ) : null}
 
@@ -208,7 +250,9 @@ export default function EmployeesPage() {
                     <p className="tnum truncate text-[12px] text-ink-muted">
                       {row.personnelNumber ?? "ohne Nummer"} ·{" "}
                       {row.department ?? "keine Abteilung"} ·{" "}
-                      {row.shiftName ?? "keine Schicht"}
+                      {row.rotationTeam
+                        ? `Schicht ${row.rotationTeam}`
+                        : (row.shiftName ?? "keine Schicht")}
                     </p>
                     {invited[row.id] ? (
                       <p className="mt-0.5 text-[12px] text-ok-fg">{invited[row.id]}</p>
@@ -237,6 +281,15 @@ export default function EmployeesPage() {
                       {row.hasAccount ? "Hat Zugang" : "Ohne Zugang"}
                     </Badge>
                   ) : null}
+                  {role === "admin" || role === "shift_leader" ? (
+                    <Button
+                      variant="secondary"
+                      disabled={mode === "demo"}
+                      onClick={() => setEditing(row)}
+                    >
+                      Bearbeiten
+                    </Button>
+                  ) : null}
                   {role === "admin" ? (
                     <div className="flex items-center gap-2">
                       {mode === "live" && !row.hasAccount ? (
@@ -260,6 +313,30 @@ export default function EmployeesPage() {
                             ? "Deaktivieren"
                             : "Aktivieren"}
                       </Button>
+                      {confirmDeleteId === row.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="danger"
+                            disabled={busyId === row.id}
+                            onClick={() => remove(row)}
+                          >
+                            Wirklich löschen
+                          </Button>
+                          <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>
+                            Abbrechen
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmDeleteId(row.id)}
+                          disabled={mode === "demo"}
+                          className="rounded-lg p-2 text-ink-faint hover:bg-crit-bg hover:text-crit-fg disabled:opacity-50"
+                          aria-label={`${row.firstName} ${row.lastName} löschen`}
+                          title="Mitarbeiter endgültig löschen"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   ) : null}
                 </li>

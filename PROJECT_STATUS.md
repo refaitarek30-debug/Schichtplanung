@@ -15,7 +15,7 @@ auf echte Daten um, sobald `NEXT_PUBLIC_SUPABASE_URL` und
 sich durch die ganze App – siehe „Architekturprinzip" unten, unbedingt
 beibehalten.
 
-## Stand nach Phase 1–7 (abgeschlossen, funktioniert, getestet)
+## Stand nach Phase 1–9 (abgeschlossen, funktioniert, getestet)
 
 - **Phase 1:** Designsystem, Rollenmodell, Navigation, Dashboard, Kalender,
   Urlaubsantrag mit Live-Besetzungsprüfung – alles auf Demo-Daten.
@@ -57,9 +57,42 @@ beibehalten.
   Kalender (`date-range-calendar.tsx`) ersetzt die kleinen nativen
   Datumsfelder im Urlaubsantrag, in Demo- und Live-Formular.
 
-Alle sieben Phasen sind im README unter „Sicherheitsprüfung" und
+- **Phase 8:** Urlaubstage werden nach dem TATSÄCHLICHEN Schichtplan
+  gezählt (`calculate_leave_days_for_employee()`) statt stur Mo–Fr – wichtig,
+  weil Schichtarbeiter am Wochenende arbeiten und dafür Urlaub nehmen müssen.
+  Qualifikationen je Mitarbeiter als Enum-Array (Labor, Lager, Messwarte,
+  Labor mit B-Schein, Anlagenfahrer), Mehrfachauswahl. `my_shift_leave()`
+  zeigt jedem, wer aus der eigenen Schicht Urlaub hat (mit Namen, nur
+  `leave_requests`, keine Krankheitsgründe). Dashboard-Begrüßung nutzt jetzt
+  `profile.firstName` statt der Demo-Persona.
+
+- **Phase 9:** Schichtgruppen A/B/C/D (`employees.rotation_team`) statt
+  fester Schicht – im Rotationsbetrieb hat niemand eine feste Schicht.
+  `rotation_offset_days` wird per Trigger automatisch aus der Gruppe
+  abgeleitet und ist nicht mehr von Hand verstellbar. Mitarbeiter
+  nachträglich bearbeitbar (`EditEmployeePanel`), erlaubt für Schichtleitung
+  UND Admin – aber die Rollenvergabe bleibt Admin-only, erzwungen durch
+  Trigger `employees_guard_role_change()`, nicht nur durch ausgegraute
+  Felder. Mitarbeiter auch endgültig löschbar (`deleteEmployee()`, nur
+  Admin, blockiert wenn noch ein Login existiert). `who_is_absent()` zeigt
+  Admin/Schichtleitung im Kalender-Tagesdetail namentlich, wer fehlt.
+  Qualifikation umbenannt zu `b_schein_verantwortlich`, Label gekürzt auf
+  „B-Schein".
+
+Alle neun Phasen sind im README unter „Sicherheitsprüfung" und
 „Testanleitung" je Phase dokumentiert. Migrationen liegen unter
-`supabase/migrations/`, Reihenfolge ist die Dateinummer (0001 → 0013).
+`supabase/migrations/`, Reihenfolge ist die Dateinummer (0001 → 0014).
+
+## FALLE: `user` vs. `profile` im Session-Context
+
+`useSession()` liefert BEIDES, und das ist eine echte Stolperfalle:
+- `profile` = die echte angemeldete Person aus `profiles` (Live-Modus)
+- `user` = eine **Demo-Persona** aus `demo-data.ts`, an der noch die
+  Phase-1-Planungsansichten hängen
+
+Für alles, was den angemeldeten Menschen betrifft (Name, Anrede, E-Mail,
+Rolle), IMMER `profile` verwenden. `user.firstName` im Live-Modus zeigt den
+falschen Namen – genau dieser Fehler steckte bis Phase 8 auf dem Dashboard.
 
 ## WICHTIG: Vercel/GitHub-Chaos dieser Session – bitte lesen
 
