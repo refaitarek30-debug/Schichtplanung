@@ -201,7 +201,11 @@ export interface Employee {
   /** Aus dem Vorjahr übertragene Tage. */
   carryOver: number;
   active: boolean;
-  entryDate: string;
+  /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
+  hasAccount: boolean;
+  qualifications: string[];
+  /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
+  rotationTeam: string | null;
 }
 
 export interface LeaveRequest {
