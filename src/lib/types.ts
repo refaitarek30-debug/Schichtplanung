@@ -54,6 +54,8 @@ export interface EmployeeRecord {
   /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
   hasAccount: boolean;
   qualifications: string[];
+  /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
+  rotationTeam: string | null;
 }
 
 export interface ShiftAssignment {
@@ -86,7 +88,6 @@ export interface LiveLeaveRequest {
   reviewedAt: string | null;
   createdAt: string;
 }
-
 export interface LiveLeaveBalance {
   year: number;
   entitlement: number;
@@ -134,7 +135,13 @@ export interface LiveLeaveBlock {
   reason: string;
 }
 
-/** Ein Eintrag aus `my_shift_leave()` – wer aus der eigenen Schicht hat wann Urlaub. */
+/** Ein Eintrag aus `who_is_absent()` – wer heute fehlt, mit Grund und Schicht. */
+export interface LiveAbsentToday {
+  employeeId: string;
+  employeeName: string;
+  shiftName: string | null;
+  reason: string;
+}
 export interface LiveShiftLeaveEntry {
   employeeId: string;
   employeeName: string;
@@ -165,7 +172,7 @@ export interface LiveRotationPattern {
 export interface LiveShiftAssignment {
   id: string;
   employeeId: string;
-  employeeName: string;
+    employeeName: string;
   defaultShiftId: string | null;
   shiftId: string;
   shiftName: string;
@@ -201,11 +208,7 @@ export interface Employee {
   /** Aus dem Vorjahr übertragene Tage. */
   carryOver: number;
   active: boolean;
-  /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
-  hasAccount: boolean;
-  qualifications: string[];
-  /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
-  rotationTeam: string | null;
+  entryDate: string;
 }
 
 export interface LeaveRequest {
