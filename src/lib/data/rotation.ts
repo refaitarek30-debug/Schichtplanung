@@ -4,6 +4,7 @@ import { dataErrorMessage } from "@/lib/errors";
 import type {
   LiveRotationPattern,
   LiveShiftAssignment,
+  LiveShiftPlanCell,
   LiveShiftPlanDay,
 } from "@/lib/types";
 
@@ -113,4 +114,46 @@ export async function fetchRotationPatterns(): Promise<LiveRotationPattern[]> {
       steps,
     };
   });
+}
+
+interface ShiftPlanGridRow {
+  employee_id: string;
+  employee_name: string;
+  rotation_team: string | null;
+  personnel_number: string | null;
+  day: string;
+  shift_name: string | null;
+  shift_code: string | null;
+  absence_code: string | null;
+  is_me: boolean;
+}
+
+/**
+ * Komplette Schichtplan-Matrix (alle Mitarbeiter × Zeitraum) in einem
+ * Aufruf – die Grundlage für die Excel-artige Übersichtsansicht.
+ */
+export async function fetchShiftPlanGrid(
+  companyId: string,
+  fromISO: string,
+  days: number,
+): Promise<LiveShiftPlanCell[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("shift_plan_grid", {
+    p_company_id: companyId,
+    p_from: fromISO,
+    p_days: days,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as ShiftPlanGridRow[]).map((row) => ({
+    employeeId: row.employee_id,
+    employeeName: row.employee_name,
+    rotationTeam: row.rotation_team,
+    personnelNumber: row.personnel_number,
+    day: row.day,
+    shiftName: row.shift_name,
+    shiftCode: row.shift_code,
+    absenceCode: row.absence_code,
+    isMe: row.is_me,
+  }));
 }
