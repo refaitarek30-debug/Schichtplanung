@@ -704,3 +704,29 @@ den 5./6.9.2026 sind alle drei Schichten korrekt besetzt (Teams B/C/D
 arbeiten Früh/Spät/Nacht, Team A hat laut Rotation frei). Der ursprüngliche
 Eindruck „keine Mitarbeiter hinterlegt" kam vermutlich von einer veralteten,
 nicht vollständig hochgeladenen Version des Codes.
+
+## Phase 10 – Schichtplan-Matrix
+
+Neue Seite `/schichtplan`: die gewohnte Excel-artige Übersicht.
+Zeilen = Mitarbeiter, gruppiert nach Schichtgruppe A–D. Spalten = Tage.
+Zellen zeigen das Kürzel (F/S/N), Freitage bleiben leer, Abwesenheiten
+überlagern die Schicht.
+
+| Kürzel | Bedeutung |
+| --- | --- |
+| F / S / N | Früh- / Spät- / Nachtschicht |
+| U | Urlaub (genehmigt) |
+| u | Urlaub beantragt, noch offen |
+| K | Krank |
+| FB | Schulung |
+| (leer) | frei laut Rotationsmuster |
+
+`shift_plan_grid(company_id, von, tage)` liefert die komplette Matrix in
+**einem** Aufruf – bei 50 Personen × 28 Tagen wären es sonst 1400
+Einzelabfragen.
+
+**Bearbeiten nur für Schichtleitung und Admin:** Ein Klick auf eine Zelle
+öffnet die Auswahl (Schicht zuweisen, auf Frei setzen, Krank, Schulung).
+Mitarbeitende sehen dieselbe Matrix, können aber nichts anklicken – und die
+Datenbank lässt Änderungen ohnehin nur mit Führungsrolle zu, das Ausblenden
+der Klickfläche ist nur die freundliche Variante davon.

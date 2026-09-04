@@ -32,12 +32,19 @@ export const navItems: NavItem[] = [
     primary: true,
   },
   {
+    href: "/schichtplan",
+    label: "Schichtplan",
+    short: "Plan",
+    icon: CalendarDays,
+    roles: ["employee", "shift_leader", "admin"],
+    primary: true,
+  },
+  {
     href: "/kalender",
     label: "Kalender",
     short: "Kalender",
     icon: CalendarDays,
     roles: ["employee", "shift_leader", "admin"],
-    primary: true,
   },
   {
     href: "/urlaub",

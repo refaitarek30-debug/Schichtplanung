@@ -6,6 +6,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/kalender",
+  "/schichtplan",
   "/urlaub",
   "/meine-schichten",
   "/besetzung",
