@@ -77,8 +77,7 @@ export interface EmployeeRow {
   id: string;
   company_id: string;
   personnel_number: string | null;
-  first_name: string;
-  last_name: string;
+  first_name: string;  last_name: string;
   email: string | null;
   phone: string | null;
   role: Role;
@@ -157,8 +156,7 @@ export interface LeaveRequestWithEmployee extends LeaveRequestRow {
     last_name: string;
     shift_id: string | null;
     shifts: { name: string } | null;
-  } | null;
-}
+  } | null;}
 
 export interface NotificationRow {
   id: string;
@@ -198,6 +196,20 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      shift_plan_grid: {
+        Args: { p_company_id: string; p_from: string; p_days: number };
+        Returns: {
+          employee_id: string;
+          employee_name: string;
+          rotation_team: string | null;
+          personnel_number: string | null;
+          day: string;
+          shift_name: string | null;
+          shift_code: string | null;
+          absence_code: string | null;
+          is_me: boolean;
+        }[];
+      };
       who_is_absent: {
         Args: { p_date: string };
         Returns: {
@@ -223,8 +235,7 @@ export interface Database {
         Returns: { company_id: string; employee_id: string }[];
       };
       decide_leave_request: {
-        Args: { p_request_id: string; p_decision: LeaveStatusDb; p_rejection_reason: string | null };
-        Returns: LeaveRequestRow;
+        Args: { p_request_id: string; p_decision: LeaveStatusDb; p_rejection_reason: string | null };        Returns: LeaveRequestRow;
       };
       withdraw_leave_request: {
         Args: { p_request_id: string };
