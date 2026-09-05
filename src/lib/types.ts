@@ -135,6 +135,19 @@ export interface LiveLeaveBlock {
   reason: string;
 }
 
+/** Eine Zelle der Schichtplan-Matrix (Mitarbeiter × Tag). */
+export interface LiveShiftPlanCell {
+  employeeId: string;
+  employeeName: string;
+  rotationTeam: string | null;
+  personnelNumber: string | null;
+  day: string;
+  shiftName: string | null;
+  shiftCode: string | null;
+  absenceCode: string | null;
+  isMe: boolean;
+}
+
 /** Ein Eintrag aus `who_is_absent()` – wer heute fehlt, mit Grund und Schicht. */
 export interface LiveAbsentToday {
   employeeId: string;
@@ -157,9 +170,7 @@ export interface LiveShiftPlanDay {
   startTime: string | null;
   endTime: string | null;
   isFree: boolean;
-}
-
-/** Rotationsmuster: Kette von Blöcken, die sich nach der Summe der Tage wiederholt. */
+}/** Rotationsmuster: Kette von Blöcken, die sich nach der Summe der Tage wiederholt. */
 export interface LiveRotationPattern {
   id: string;
   name: string;
@@ -172,7 +183,7 @@ export interface LiveRotationPattern {
 export interface LiveShiftAssignment {
   id: string;
   employeeId: string;
-    employeeName: string;
+  employeeName: string;
   defaultShiftId: string | null;
   shiftId: string;
   shiftName: string;
@@ -213,8 +224,7 @@ export interface Employee {
 
 export interface LeaveRequest {
   id: string;
-  employeeId: string;
-  startDate: string; // ISO "YYYY-MM-DD"
+  employeeId: string;  startDate: string; // ISO "YYYY-MM-DD"
   endDate: string;
   halfDay: boolean;
   days: number;
