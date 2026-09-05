@@ -23,6 +23,29 @@ function parseQualifications(formData: FormData): Qualification[] {
 }
 
 /**
+ * Findet das aktive Rotationsmuster des Unternehmens. Eine Schichtgruppe
+ * (A–D) ohne verknüpftes Muster bewirkt nichts – der Versatz bleibt dann 0
+ * und die Rotation greift nicht (das war der eigentliche Fehler, den diese
+ * Funktion behebt: das Formular setzte bisher nur `rotation_team`, nie
+ * `rotation_pattern_id`). Geht davon aus, dass ein Unternehmen ein aktives
+ * Muster pflegt; bei mehreren wird das zuerst angelegte verwendet.
+ */
+async function findActiveRotationPatternId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("rotation_patterns")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .returns<{ id: string }[]>();
+  return data?.[0]?.id ?? null;
+}
+
+/**
  * Legt einen Personalstammsatz an – noch ohne Login. Die Einladung
  * verschickt `inviteEmployee()` in einem zweiten Schritt, sobald der Datensatz
  * existiert (entspricht dem in Phase 2 vorgesehenen Ablauf: Administrator
@@ -44,8 +67,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   if (!firstName || !lastName) {
     return { error: "Vor- und Nachname dürfen nicht leer sein." };
   }
-  if (!Number.isFinite(vacationDays) || vacationDays < 0) {
-    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
+  if (!Number.isFinite(vacationDays) || vacationDays < 0) {    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
   }
 
   const supabase = await createClient();
@@ -69,6 +91,9 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   }
 
   const rotationTeam = String(formData.get("rotation_team") ?? "").trim();
+  const rotationPatternId = rotationTeam
+    ? await findActiveRotationPatternId(supabase, profile.company_id)
+    : null;
 
   const { error } = await supabase.from("employees").insert({
     company_id: profile.company_id,
@@ -82,6 +107,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
     vacation_days: vacationDays,
     qualifications: parseQualifications(formData),
     rotation_team: rotationTeam || null,
+    rotation_pattern_id: rotationPatternId,
   });
 
   if (error) {
@@ -102,8 +128,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
  * ("Personaldaten verwaltet Admin") erzwingt Admin-only zusätzlich
  * serverseitig, unabhängig von der Rollenprüfung hier.
  */
-export async function updateEmployee(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+export async function updateEmployee(_prev: FormState, formData: FormData): Promise<FormState> {  if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const employeeId = String(formData.get("employee_id") ?? "").trim();
   const firstName = String(formData.get("first_name") ?? "").trim();
@@ -149,6 +174,11 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
     return { error: "Du hast keine Berechtigung für diesen Bereich." };
   }
 
+  const rotationTeam = String(formData.get("rotation_team") ?? "").trim();
+  const rotationPatternId = rotationTeam
+    ? await findActiveRotationPatternId(supabase, profile.company_id)
+    : null;
+
   const { error } = await supabase
     .from("employees")
     .update({
@@ -162,7 +192,8 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       vacation_days: vacationDays,
       active,
       qualifications: parseQualifications(formData),
-      rotation_team: String(formData.get("rotation_team") ?? "").trim() || null,
+      rotation_team: rotationTeam || null,
+      rotation_pattern_id: rotationPatternId,
     })
     .eq("id", employeeId)
     .eq("company_id", profile.company_id);
@@ -184,8 +215,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
  * `setEmployeeActive()` in `data/employees.ts`). Nur Admin.
  *
  * Sicherheitsbremse: hat die Person bereits einen Login (eine Zeile in
- * `profiles`), wird das Löschen verweigert. Grund: `profiles.employee_id`
- * verweist per `ON DELETE SET NULL` auf diese Zeile – ein Hard-Delete
+ * `profiles`), wird das Löschen verweigert. Grund: `profiles.employee_id` * verweist per `ON DELETE SET NULL` auf diese Zeile – ein Hard-Delete
  * würde den Zugang als „Karteileiche" ohne Personalstammsatz zurücklassen,
  * statt sauber aufzuräumen. Erst deaktivieren bzw. den Zugang entfernen,
  * dann löschen.
