@@ -26,12 +26,16 @@ export interface ShiftPlanCsvOptions {
   cells: LiveShiftPlanCell[];
 }
 
+interface CsvEmployee {
+  name: string;
+  team: string | null;
+  number: string | null;
+  days: Map<string, string>;
+}
+
 export function buildShiftPlanCsv({ title, dates, cells }: ShiftPlanCsvOptions): string {
   // Zellen nach Mitarbeiter bündeln, Reihenfolge: Schichtgruppe, dann Name.
-  const byEmployee = new Map
-    string,
-    { name: string; team: string | null; number: string | null; days: Map<string, string> }
-  >();
+  const byEmployee = new Map<string, CsvEmployee>();
 
   for (const cell of cells) {
     if (!byEmployee.has(cell.employeeId)) {
