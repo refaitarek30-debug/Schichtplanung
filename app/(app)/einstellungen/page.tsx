@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
+import { NotificationSettings } from "@/components/settings/notification-settings";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -47,6 +48,8 @@ export default function SettingsPage() {
         title="Einstellungen"
         description="Unternehmensdaten, Rollen und der Stand der technischen Anbindung."
       />
+
+      {mode === "live" ? <NotificationSettings /> : null}
 
       <Card>
         <CardHeader title="Unternehmen" />
