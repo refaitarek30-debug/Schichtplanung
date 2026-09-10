@@ -179,3 +179,24 @@ export async function fetchCurrentPattern(): Promise<{
   if (!row) return null;
   return { id: row.id, name: row.name, anchorDate: row.anchor_date, blocks: row.blocks };
 }
+
+interface BlockedDayRow {
+  day: string;
+  reason: string;
+}
+
+/** Tage mit Urlaubssperre im Zeitraum – für die Markierung im Schichtplan. */
+export async function fetchBlockedDays(
+  fromISO: string,
+  toISO: string,
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  if (!isSupabaseConfigured) return result;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("blocked_days", { p_from: fromISO, p_to: toISO });
+  if (error) return result;
+  for (const row of (data ?? []) as BlockedDayRow[]) {
+    result.set(row.day, row.reason);
+  }
+  return result;
+}
