@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, ClipboardList, Palmtree, Users } from "lucide-react";
+import { CalendarCheck, ClipboardList, Palmtree } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -217,17 +217,6 @@ export default function DashboardPage() {
           }
           accent="neutral"
           icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
-        />
-        <KpiCard
-          label={isToday ? "Besetzung heute" : "Besetzung nächster Tag"}
-          value={ownStaffing ? `${ownStaffing.present} / ${ownStaffing.target}` : "–"}
-          hint={
-            ownStaffing
-              ? `${shift?.name}, Mindestbesetzung ${ownStaffing.min}`
-              : "keine Schicht zugeordnet"
-          }
-          accent={ownStaffing ? ownStaffing.status : "neutral"}
-          icon={<Users className="h-4 w-4" strokeWidth={1.8} />}
         />
         <KpiCard
           label={role === "employee" ? "Schichten diese Woche" : "Kritische Tage (14 T.)"}

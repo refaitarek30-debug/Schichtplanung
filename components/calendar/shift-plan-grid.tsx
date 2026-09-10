@@ -1,15 +1,15 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { addDays, formatDE, fromISO, isWeekend, WEEKDAY_SHORT } from "@/lib/dates";
-import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
-import { assignShift } from "@/lib/auth/rotation-actions";
+import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
+import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
 import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
 import type { LiveShiftPlanCell } from "@/lib/types";
@@ -60,6 +60,7 @@ export function ShiftPlanGrid({
   const [start, setStart] = useState(from);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shifts, setShifts] = useState<ShiftOption[]>([]);
+  const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
   const [pending, startTransition] = useTransition();
@@ -67,12 +68,14 @@ export function ShiftPlanGrid({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [grid, shiftOptions] = await Promise.all([
+      const [grid, shiftOptions, blockedDays] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, days),
         fetchShiftOptions(),
+        fetchBlockedDays(start, addDays(start, days - 1)),
       ]);
       setCells(grid);
       setShifts(shiftOptions);
+      setBlocked(blockedDays);
     } catch (caught) {
       setCells([]);
       setError(
@@ -117,7 +120,7 @@ export function ShiftPlanGrid({
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
 
-  function applyChange(action: "shift" | "absence" | "free", value: string) {
+  function applyChange(action: "shift" | "absence" | "free" | "urlaub", value: string) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
@@ -134,6 +137,9 @@ export function ShiftPlanGrid({
         fd.set("shift_id", "");
         fd.set("date", selected.day);
         result = await assignShift({}, fd);
+      } else if (action === "urlaub") {
+        // Sofort genehmigter Urlaub – wird automatisch vom Konto abgezogen.
+        result = await setLeaveForDay(selected.employeeId, selected.day, "urlaub");
       } else {
         const fd = new FormData();
         fd.set("employee_id", selected.employeeId);
@@ -205,6 +211,14 @@ export function ShiftPlanGrid({
             <Button variant="secondary" disabled={pending} onClick={() => applyChange("free", "")}>
               Frei
             </Button>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => applyChange("urlaub", "")}
+              className="bg-[#FCE96A] text-[#6B5900] hover:bg-[#FBE24A]"
+            >
+              Urlaub
+            </Button>
             <Button variant="danger" disabled={pending} onClick={() => applyChange("absence", "krank")}>
               Krank
             </Button>
@@ -234,22 +248,30 @@ export function ShiftPlanGrid({
                 <th className="sticky left-0 z-20 min-w-[180px] bg-surface px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
                   Mitarbeiter
                 </th>
-                {dates.map((iso) => (
-                  <th
-                    key={iso}
-                    className={cn(
-                      "min-w-[42px] px-1 py-2 text-center",
-                      isWeekend(iso) && "bg-surface-sunken/60",
-                    )}
-                  >
-                    <span className="block text-[10px] font-medium text-ink-faint">
-                      {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
-                    </span>
-                    <span className="tnum block text-[11px] text-ink-muted">
-                      {iso.slice(8, 10)}.{iso.slice(5, 7)}.
-                    </span>
-                  </th>
-                ))}
+                {dates.map((iso) => {
+                  const blockReason = blocked.get(iso);
+                  return (
+                    <th
+                      key={iso}
+                      title={blockReason ? `Urlaubssperre: ${blockReason}` : undefined}
+                      className={cn(
+                        "min-w-[42px] px-1 py-2 text-center",
+                        isWeekend(iso) && "bg-surface-sunken/60",
+                        blockReason && "bg-crit-bg",
+                      )}
+                    >
+                      <span className="block text-[10px] font-medium text-ink-faint">
+                        {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
+                      </span>
+                      <span className="tnum block text-[11px] text-ink-muted">
+                        {iso.slice(8, 10)}.{iso.slice(5, 7)}.
+                      </span>
+                      {blockReason ? (
+                        <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
+                      ) : null}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
