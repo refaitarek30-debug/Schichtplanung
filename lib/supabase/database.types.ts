@@ -198,6 +198,8 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      set_leave_for_day: { Args: { p_employee_id: string; p_date: string; p_mode: string }; Returns: undefined };
+      blocked_days: { Args: { p_from: string; p_to: string }; Returns: { day: string; reason: string }[] };
       get_notification_settings: { Args: Record<string, never>; Returns: { notify_leave_email: boolean }[] };
       set_notification_settings: { Args: { p_notify_leave_email: boolean }; Returns: undefined };
       save_rotation_pattern: {
