@@ -96,26 +96,45 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
     ? await findActiveRotationPatternId(supabase, profile.company_id)
     : null;
 
-  const { error } = await supabase.from("employees").insert({
-    company_id: profile.company_id,
-    first_name: firstName,
-    last_name: lastName,
-    email: email || null,
-    personnel_number: personnelNumber || null,
-    department: department || null,
-    shift_id: shiftId || null,
-    role,
-    vacation_days: vacationDays,
-    qualifications: parseQualifications(formData),
-    rotation_team: rotationTeam || null,
-    rotation_pattern_id: rotationPatternId,
-  });
+  const { data: inserted, error } = await supabase
+    .from("employees")
+    .insert({
+      company_id: profile.company_id,
+      first_name: firstName,
+      last_name: lastName,
+      email: email || null,
+      personnel_number: personnelNumber || null,
+      department: department || null,
+      shift_id: shiftId || null,
+      role,
+      vacation_days: vacationDays,
+      qualifications: parseQualifications(formData),
+      rotation_team: rotationTeam || null,
+      rotation_pattern_id: rotationPatternId,
+    })
+    .select("id")
+    .returns<{ id: string }[]>();
 
   if (error) {
     if (error.code === "23505") {
       return { error: "Diese Personalnummer ist in deinem Unternehmen bereits vergeben." };
     }
     return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht angelegt werden." };
+  }
+
+  // Resturlaub aus dem Vorjahr (die "V"-Tage aus dem gewohnten Plan) direkt
+  // ins Urlaubskonto übernehmen, falls angegeben. Der Trigger legt beim
+  // Anlegen bereits eine Kontozeile für das laufende Jahr an – die
+  // ergänzen wir hier um den Übertrag.
+  const carryOverRaw = String(formData.get("carry_over") ?? "").trim();
+  const carryOver = carryOverRaw ? Number.parseFloat(carryOverRaw.replace(",", ".")) : 0;
+  const newId = inserted?.[0]?.id;
+  if (newId && Number.isFinite(carryOver) && carryOver > 0) {
+    await supabase
+      .from("leave_balances")
+      .update({ carried_over: carryOver })
+      .eq("employee_id", newId)
+      .eq("year", new Date().getFullYear());
   }
 
   revalidatePath("/mitarbeiter");

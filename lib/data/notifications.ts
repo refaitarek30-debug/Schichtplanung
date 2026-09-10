@@ -52,3 +52,13 @@ export async function markAllNotificationsRead(ids: string[]): Promise<void> {
     .in("id", ids);
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
 }
+
+/** Firmenweite Benachrichtigungs-Einstellung lesen. */
+export async function fetchNotifyLeaveEmail(): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("get_notification_settings");
+  if (error) return true;
+  const row = (data ?? [])[0] as { notify_leave_email: boolean } | undefined;
+  return row?.notify_leave_email ?? true;
+}

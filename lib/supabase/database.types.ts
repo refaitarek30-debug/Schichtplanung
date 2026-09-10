@@ -198,6 +198,8 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      get_notification_settings: { Args: Record<string, never>; Returns: { notify_leave_email: boolean }[] };
+      set_notification_settings: { Args: { p_notify_leave_email: boolean }; Returns: undefined };
       save_rotation_pattern: {
         Args: { p_name: string; p_anchor_date: string; p_blocks: unknown };
         Returns: string;

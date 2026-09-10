@@ -25,7 +25,15 @@ const cellStyles: Record<string, string> = {
   K: "bg-[#F5A3A3] text-[#7A1010]",
   FB: "bg-[#D6C4F0] text-[#42227A]",
   A: "bg-surface-sunken text-ink-muted",
+  // Freier Tag laut Rotationsmuster – bewusst mit rotem Haus wie in der
+  // gewohnten Vorlage, damit "frei" nie mit einer Schicht verwechselt wird.
+  FREI: "bg-[#F5A3A3] text-[#7A1010]",
 };
+
+/** Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe. */
+function cellLabel(code: string): string {
+  return code === "FREI" ? "⌂" : code;
+}
 
 const legend = [
   { code: "F", label: "Frühschicht" },
@@ -35,6 +43,7 @@ const legend = [
   { code: "u", label: "Urlaub beantragt" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
+  { code: "FREI", label: "frei" },
 ];
 
 export function ShiftPlanGrid({
@@ -266,7 +275,11 @@ export function ShiftPlanGrid({
                       </th>
                       {dates.map((iso) => {
                         const cell = member.cells.get(iso);
-                        const code = cell?.absenceCode ?? cell?.shiftCode ?? null;
+                        // Rangfolge: Abwesenheit > Schicht > (Zelle da, aber
+                        // ohne Schicht = frei laut Muster). Kein cell = kein Tag.
+                        const code = cell
+                          ? (cell.absenceCode ?? cell.shiftCode ?? "FREI")
+                          : null;
                         return (
                           <td key={iso} className="p-0.5 text-center">
                             <button
@@ -278,13 +291,12 @@ export function ShiftPlanGrid({
                                   : undefined
                               }
                               className={cn(
-                                "flex h-8 w-full items-center justify-center rounded text-[12px] font-semibold",
+                                "flex h-8 w-full items-center justify-center rounded text-[13px] font-semibold",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                                 canEdit && cell && "hover:ring-2 hover:ring-brand-500",
-                                isWeekend(iso) && !code && "bg-surface-sunken/60",
                               )}
                             >
-                              {code ?? ""}
+                              {code ? cellLabel(code) : ""}
                             </button>
                           </td>
                         );
@@ -307,7 +319,7 @@ export function ShiftPlanGrid({
                 cellStyles[item.code],
               )}
             >
-              {item.code}
+              {cellLabel(item.code)}
             </span>
             {item.label}
           </span>

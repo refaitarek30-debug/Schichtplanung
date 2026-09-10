@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CircleHelp,
   ClipboardCheck,
   Cog,
   Layers,
@@ -97,6 +98,13 @@ export const navItems: NavItem[] = [
     label: "Einstellungen",
     icon: Cog,
     roles: ["admin"],
+  },
+  {
+    href: "/hilfe",
+    label: "Hilfe",
+    short: "Hilfe",
+    icon: CircleHelp,
+    roles: ["employee", "shift_leader", "admin"],
   },
 ];
 
