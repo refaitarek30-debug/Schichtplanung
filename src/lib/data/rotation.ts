@@ -92,8 +92,7 @@ interface RotationPatternRow {
   steps: { shift: string | null; days: number }[];
 }
 
-/** Rotationsmuster des eigenen Unternehmens. */
-export async function fetchRotationPatterns(): Promise<LiveRotationPattern[]> {
+/** Rotationsmuster des eigenen Unternehmens. */export async function fetchRotationPatterns(): Promise<LiveRotationPattern[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
   const { data, error } = await supabase
@@ -156,4 +155,27 @@ export async function fetchShiftPlanGrid(
     absenceCode: row.absence_code,
     isMe: row.is_me,
   }));
+}
+
+interface CurrentPatternRow {
+  id: string;
+  name: string;
+  anchor_date: string;
+  blocks: { code: string; days: number }[];
+}
+
+/** Aktuelles Schichtmuster des Unternehmens – zum Vorbelegen des Editors. */
+export async function fetchCurrentPattern(): Promise<{
+  id: string;
+  name: string;
+  anchorDate: string;
+  blocks: { code: string; days: number }[];
+} | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("current_rotation_pattern");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const row = ((data ?? []) as CurrentPatternRow[])[0];
+  if (!row) return null;
+  return { id: row.id, name: row.name, anchorDate: row.anchor_date, blocks: row.blocks };
 }
