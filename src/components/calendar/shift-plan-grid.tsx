@@ -46,6 +46,18 @@ const legend = [
   { code: "FREI", label: "frei" },
 ];
 
+/** Eine Mitarbeiterzeile in der Matrix, Tag für Tag. */
+interface GridEmployee {
+  name: string;
+  team: string | null;
+  number: string | null;
+  cells: Map<string, LiveShiftPlanCell>;
+}
+
+interface GridRow extends GridEmployee {
+  employeeId: string;
+}
+
 export function ShiftPlanGrid({
   companyId,
   from,
@@ -86,17 +98,16 @@ export function ShiftPlanGrid({
 
   useEffect(() => {
     void load();
-  }, [load]);  const dates = useMemo(
+  }, [load]);
+
+  const dates = useMemo(
     () => Array.from({ length: days }, (_, i) => addDays(start, i)),
     [start, days],
   );
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
   const groups = useMemo(() => {
-    const byEmployee = new Map
-      string,
-      { name: string; team: string | null; number: string | null; cells: Map<string, LiveShiftPlanCell> }
-    >();
+    const byEmployee = new Map<string, GridEmployee>();
     for (const cell of cells ?? []) {
       if (!byEmployee.has(cell.employeeId)) {
         byEmployee.set(cell.employeeId, {
@@ -109,11 +120,11 @@ export function ShiftPlanGrid({
       byEmployee.get(cell.employeeId)!.cells.set(cell.day, cell);
     }
 
-    const teams = new Map<string, { employeeId: string; name: string; number: string | null; cells: Map<string, LiveShiftPlanCell> }[]>();
+    const teams = new Map<string, GridRow[]>();
     for (const [employeeId, value] of byEmployee) {
       const key = value.team ? `Schicht ${value.team}` : "Ohne Schichtgruppe";
       if (!teams.has(key)) teams.set(key, []);
-      teams.get(key)!.push({ employeeId, name: value.name, number: value.number, cells: value.cells });
+      teams.get(key)!.push({ employeeId, ...value });
     }
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
@@ -171,8 +182,7 @@ export function ShiftPlanGrid({
           <button
             onClick={() => setStart(from)}
             className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
-          >
-            Heute
+          >            Heute
           </button>
           <button
             onClick={() => setStart(addDays(start, days))}
@@ -180,7 +190,8 @@ export function ShiftPlanGrid({
             aria-label="Nächster Zeitraum"
           >
             <ChevronRight className="h-4 w-4" />
-          </button>        </div>
+          </button>
+        </div>
       </div>
 
       {error ? (
@@ -269,7 +280,8 @@ export function ShiftPlanGrid({
                     </th>
                   );
                 })}
-              </tr>            </thead>
+              </tr>
+            </thead>
             <tbody>
               {groups.map(([teamName, members]) => (
                 <Fragment key={teamName}>
