@@ -1,0 +1,989 @@
+diff --git a/app/(app)/dashboard/page.tsx b/app/(app)/dashboard/page.tsx
+index 87862c0..6f896e1 100644
+--- a/app/(app)/dashboard/page.tsx
++++ b/app/(app)/dashboard/page.tsx
+@@ -1,10 +1,15 @@
+ "use client";
+ 
+ import { useCallback, useEffect, useState } from "react";
+-import { CalendarCheck, ClipboardList, Palmtree } from "lucide-react";
++import {
++  CalendarCheck,
++  CalendarClock,
++  ClipboardList,
++  Palmtree,
++  Thermometer,
++} from "lucide-react";
+ import { Card, CardBody, CardHeader } from "@/components/ui/card";
+-import { Badge } from "@/components/ui/badge";
+ import { KpiCard } from "@/components/dashboard/kpi-card";
+ import { CoverageStrip } from "@/components/dashboard/coverage-strip";
+ import { NextShifts } from "@/components/dashboard/next-shifts";
+ import { RequestList } from "@/components/dashboard/request-list";
+@@ -14,34 +19,24 @@ import {
+   fetchMyLeaveRequests,
+   fetchReviewLeaveRequests,
+ } from "@/lib/data/leave";
+ import { fetchMyShiftPlan } from "@/lib/data/rotation";
+-import { fetchStaffingForDay, fetchStaffingRange } from "@/lib/data/staffing";
+-import type {
+-  LiveLeaveBalance,
+-  LiveLeaveRequest,
+-  LiveShiftPlanDay,
+-  LiveStaffingSnapshot,
+-} from "@/lib/types";
++import { fetchMySickDays } from "@/lib/data/absences";
++import { fetchStaffingRange } from "@/lib/data/staffing";
++import type { LiveLeaveBalance, LiveLeaveRequest, LiveShiftPlanDay } from "@/lib/types";
+ import { useSession } from "@/context/session";
+ import {
+   TODAY,
++  absences as demoAbsences,
+   announcements,
+   allPendingRequests,
+-  employeesOfShift,
+   holidays,
+   pendingRequestsForShift,
+   requestsOfEmployee,
+   shifts,
+   staffingContext,
+ } from "@/lib/demo-data";
+-import {
+-  absentOn,
+-  dayStatus,
+-  leaveBalance,
+-  shiftRunsOn,
+-  staffingFor,
+-} from "@/lib/staffing";
++import { absentOn, dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
+ import { addDays, formatDE, formatDays, fromISO, weekdayLong } from "@/lib/dates";
+ import { cn } from "@/lib/utils";
+ 
+ /** Nächster Tag, an dem überhaupt produziert wird – für Wochenenden und Feiertage. */
+@@ -74,35 +69,36 @@ export default function DashboardPage() {
+   // Echte Besetzung statt Demo-Zahlen: der eigene Plan (für "Schichten diese
+   // Woche") und – für Führungskräfte – die Besetzung des Referenztages sowie
+   // die kritischen Tage der nächsten zwei Wochen.
+   const [livePlan, setLivePlan] = useState<LiveShiftPlanDay[] | null>(null);
+-  const [liveDayStaffing, setLiveDayStaffing] = useState<LiveStaffingSnapshot[] | null>(null);
+   const [liveCriticalDays, setLiveCriticalDays] = useState<string[] | null>(null);
++  /** Eigene Kranktage im laufenden Jahr – für die Kachel "Krank gesamt". */
++  const [liveSickDays, setLiveSickDays] = useState<number | null>(null);
+ 
+   const loadLive = useCallback(async () => {
+     if (mode !== "live") return;
+-    const [balanceResult, myRequests, planResult] = await Promise.all([
++    const [balanceResult, myRequests, planResult, sickDays] = await Promise.all([
+       fetchMyLeaveBalance(),
+       fetchMyLeaveRequests(),
+       fetchMyShiftPlan(TODAY, 14),
++      fetchMySickDays(),
+     ]);
+     setLiveBalance(balanceResult);
+     setLiveMyRequests(myRequests);
+     setLivePlan(planResult);
++    setLiveSickDays(sickDays);
+ 
+     if (role !== "employee") {
+-      const [review, dayStaffing, range] = await Promise.all([
++      const [review, range] = await Promise.all([
+         fetchReviewLeaveRequests(),
+-        fetchStaffingForDay(company.id, reference),
+         fetchStaffingRange(company.id, TODAY, 14),
+       ]);
+       setLivePendingCount(review.filter((r) => r.status === "pending").length);
+-      setLiveDayStaffing(dayStaffing);
+       setLiveCriticalDays(
+         [...new Set(range.filter((s) => s.status === "critical").map((s) => s.date))].sort(),
+       );
+     }
+-  }, [mode, role, company.id, reference]);
++  }, [mode, role, company.id]);
+ 
+   useEffect(() => {
+     void loadLive();
+   }, [loadLive]);
+@@ -121,34 +117,8 @@ export default function DashboardPage() {
+     mode === "live"
+       ? (liveMyRequests ?? []).filter((r) => r.status === "pending")
+       : ownRequests.filter((r) => r.status === "pending");
+ 
+-  // Besetzung der eigenen Schicht am Referenztag. Im Live-Modus aus der
+-  // Datenbank, im Demo-Modus wie bisher aus dem Beispieldatensatz.
+-  const demoOwnStaffing =
+-    shift && shift.code !== "FREI" && shiftRunsOn(shift, reference, holidays)
+-      ? staffingFor(reference, shift, staffingContext)
+-      : null;
+-
+-  const liveOwnStaffing = (() => {
+-    if (mode !== "live" || !livePlan) return null;
+-    const today = livePlan.find((d) => d.date === reference);
+-    if (!today?.shiftId) return null;
+-    return (liveDayStaffing ?? []).find((s) => s.shiftId === today.shiftId) ?? null;
+-  })();
+-
+-  const ownStaffing =
+-    mode === "live"
+-      ? liveOwnStaffing
+-        ? {
+-            present: liveOwnStaffing.present,
+-            target: liveOwnStaffing.target,
+-            min: liveOwnStaffing.minimum,
+-            status: liveOwnStaffing.status,
+-          }
+-        : null
+-      : demoOwnStaffing;
+-
+   const demoPending =
+     role === "admin" ? allPendingRequests() : pendingRequestsForShift(user.shiftId);
+   const pendingCount = mode === "live" ? (livePendingCount ?? 0) : demoPending.length;
+ 
+@@ -176,13 +146,21 @@ export default function DashboardPage() {
+     (iso) => dayStatus(iso, staffingContext) === "critical",
+   );
+   const criticalDays = mode === "live" ? (liveCriticalDays ?? []) : demoCriticalDays;
+ 
+-  const demoAbsentToday = absentOn(reference, staffingContext).length;
+-  const absentToday =
+-    mode === "live"
+-      ? (liveDayStaffing ?? []).reduce((sum, s) => sum + s.absent, 0)
+-      : demoAbsentToday;
++  // Eigene Kranktage im laufenden Jahr. Im Demo-Modus aus dem Beispieldatensatz,
++  // im Live-Modus aus `absences` – in beiden Fällen nur die eigene Person.
++  const year = fromISO(TODAY).getFullYear();
++  const demoSickDays = demoAbsences.filter(
++    (a) => a.employeeId === user.id && a.type === "krank" && a.date.startsWith(`${year}`),
++  ).length;
++  const sickDays = mode === "live" ? (liveSickDays ?? 0) : demoSickDays;
++
++  // Zweites Konto neben dem Urlaub: V-Tage (Freischichten). Der Demo-Datensatz
++  // aus Phase 1 kennt noch keine V-Tage – dort steht der Regelanspruch.
++  const DEMO_V_DAYS = 27;
++  const vRemaining = mode === "live" ? (liveBalance?.vRemainingDays ?? 0) : DEMO_V_DAYS;
++  const vEntitlement = mode === "live" ? (liveBalance?.vEntitlement ?? 0) : DEMO_V_DAYS;
+ 
+   return (
+     <div className="space-y-6">
+       <header>
+@@ -195,9 +173,9 @@ export default function DashboardPage() {
+             : `Heute wird nicht produziert. Der Überblick zeigt den nächsten Produktionstag, ${weekdayLong(reference)}, den ${formatDE(reference)}.`}
+         </p>
+       </header>
+ 
+-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
++      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+         <KpiCard
+           label="Urlaubstage verfügbar"
+           value={formatDays(balance.available)}
+           unit="Tage"
+@@ -232,8 +210,24 @@ export default function DashboardPage() {
+             role === "employee" ? "neutral" : criticalDays.length > 0 ? "critical" : "ok"
+           }
+           icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
+         />
++        <KpiCard
++          label="Krank gesamt"
++          value={sickDays}
++          unit={sickDays === 1 ? "Tag" : "Tage"}
++          hint={`im Jahr ${year}`}
++          accent={sickDays > 0 ? "warn" : "ok"}
++          icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
++        />
++        <KpiCard
++          label="V-Tage gesamt"
++          value={formatDays(vRemaining)}
++          unit="Tage"
++          hint={`von ${formatDays(vEntitlement)} übrig`}
++          accent="plan"
++          icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
++        />
+       </div>
+ 
+       {role === "employee" ? (
+         <div className="grid gap-4 lg:grid-cols-2">
+@@ -256,9 +250,9 @@ export default function DashboardPage() {
+         </div>
+       ) : (
+         <>
+           <CoverageStrip from={TODAY} />
+-          <div className="grid gap-4 lg:grid-cols-2">
++          <div className="grid gap-4">
+             {mode === "live" ? (
+               <Card>
+                 <CardHeader
+                   title="Anträge zur Entscheidung"
+@@ -287,14 +281,8 @@ export default function DashboardPage() {
+                 emptyMessage="Keine offenen Anträge."
+                 href="/urlaubsantraege"
+               />
+             )}
+-            <TodayShifts
+-              reference={reference}
+-              isToday={isToday}
+-              absentToday={absentToday}
+-              liveStaffing={mode === "live" ? (liveDayStaffing ?? []) : null}
+-            />
+           </div>
+         </>
+       )}
+ 
+@@ -319,84 +307,4 @@ export default function DashboardPage() {
+       </Card>
+     </div>
+   );
+ }
+-
+-function TodayShifts({
+-  reference,
+-  isToday,
+-  absentToday,
+-  liveStaffing,
+-}: {
+-  reference: string;
+-  isToday: boolean;
+-  absentToday: number;
+-  /** Echte Besetzung aus Supabase; null = Demo-Modus, dann Beispieldaten. */
+-  liveStaffing: LiveStaffingSnapshot[] | null;
+-}) {
+-  const rows =
+-    liveStaffing !== null
+-      ? liveStaffing.map((snap) => ({
+-          key: snap.shiftId,
+-          name: snap.shiftName ?? "Schicht",
+-          times: null as string | null,
+-          headcount: snap.planned,
+-          present: snap.present,
+-          target: snap.target,
+-          status: snap.status,
+-        }))
+-      : shifts
+-          .filter((s) => s.code !== "FREI" && shiftRunsOn(s, reference, holidays))
+-          .map((s) => {
+-            const snapshot = staffingFor(reference, s, staffingContext);
+-            return {
+-              key: s.id,
+-              name: s.name,
+-              times: `${s.startTime}–${s.endTime}`,
+-              headcount: employeesOfShift(s.id).length,
+-              present: snapshot.present,
+-              target: snapshot.target,
+-              status: snapshot.status,
+-            };
+-          });
+-
+-  return (
+-    <Card>
+-      <CardHeader
+-        title={isToday ? "Besetzung heute" : `Besetzung am ${formatDE(reference)}`}
+-        hint={`${absentToday} Personen abwesend`}
+-      />
+-      <CardBody className="space-y-2">
+-        {rows.length === 0 ? (
+-          <p className="py-4 text-center text-sm text-ink-muted">
+-            An diesem Tag wird nicht produziert.
+-          </p>
+-        ) : (
+-          rows.map((row) => (
+-            <div
+-              key={row.key}
+-              className="flex items-center justify-between rounded-xl border border-line px-3 py-3"
+-            >
+-              <div>
+-                <p className="text-sm font-medium">{row.name}</p>
+-                <p className="tnum text-[12px] text-ink-muted">
+-                  {row.times ? `${row.times} · ` : ""}
+-                  {row.headcount} zugeordnet
+-                </p>
+-              </div>
+-              <div className="flex items-center gap-3">
+-                <span className="tnum text-sm font-semibold">
+-                  {row.present} / {row.target}
+-                </span>
+-                <Badge
+-                  tone={row.status === "ok" ? "ok" : row.status === "warn" ? "warn" : "critical"}
+-                >
+-                  {row.status === "ok" ? "OK" : row.status === "warn" ? "knapp" : "kritisch"}
+-                </Badge>
+-              </div>
+-            </div>
+-          ))
+-        )}
+-      </CardBody>
+-    </Card>
+-  );
+-}
+diff --git a/package.json b/package.json
+index 942d405..cdbed6a 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "schichtplan",
+-  "version": "0.16.0",
++  "version": "0.17.0",
+   "private": true,
+   "scripts": {
+     "dev": "next dev",
+     "build": "next build",
+diff --git a/src/components/calendar/shift-plan-grid.tsx b/src/components/calendar/shift-plan-grid.tsx
+index 3b36226..ba891e9 100644
+--- a/src/components/calendar/shift-plan-grid.tsx
++++ b/src/components/calendar/shift-plan-grid.tsx
+@@ -10,9 +10,14 @@ import { EmptyState } from "@/components/ui/empty-state";
+ import { addDays, formatDE, fromISO, isWeekend, WEEKDAY_SHORT } from "@/lib/dates";
+ import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
+ import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
+ import { createAbsence } from "@/lib/auth/absence-actions";
+-import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
++import {
++  fetchShiftDetails,
++  fetchShiftOptions,
++  type ShiftDetail,
++  type ShiftOption,
++} from "@/lib/data/shifts";
+ import type { LiveShiftPlanCell } from "@/lib/types";
+ import { cn } from "@/lib/utils";
+ 
+ /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
+@@ -21,16 +26,25 @@ const cellStyles: Record<string, string> = {
+   S: "bg-[#D7EFB0] text-[#3F5D12]",
+   N: "bg-[#BBD9F7] text-[#123E68]",
+   U: "bg-[#FCE96A] text-[#6B5900]",
+   u: "bg-[#FCE96A]/50 text-[#6B5900] ring-1 ring-inset ring-[#C7A800]",
++  V: "bg-[#C7B3F0] text-[#3A2270]",
++  v: "bg-[#C7B3F0]/50 text-[#3A2270] ring-1 ring-inset ring-[#8E6FD8]",
+   K: "bg-[#F5A3A3] text-[#7A1010]",
+   FB: "bg-[#D6C4F0] text-[#42227A]",
+   A: "bg-surface-sunken text-ink-muted",
+   // Freier Tag laut Rotationsmuster – bewusst mit rotem Haus wie in der
+   // gewohnten Vorlage, damit "frei" nie mit einer Schicht verwechselt wird.
+   FREI: "bg-[#F5A3A3] text-[#7A1010]",
+ };
+ 
++/**
++ * Kürzel, bei denen die Person an diesem Tag tatsächlich ausfällt.
++ * Beantragt (kleines "u"/"v") zählt bewusst NICHT dazu – solange nichts
++ * genehmigt ist, steht die Person im Plan und in der Besetzung.
++ */
++const ABSENT_CODES = new Set(["U", "V", "K", "FB", "A"]);
++
+ /** Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe. */
+ function cellLabel(code: string): string {
+   return code === "FREI" ? "⌂" : code;
+ }
+@@ -40,8 +54,10 @@ const legend = [
+   { code: "S", label: "Spätschicht" },
+   { code: "N", label: "Nachtschicht" },
+   { code: "U", label: "Urlaub" },
+   { code: "u", label: "Urlaub beantragt" },
++  { code: "V", label: "V-Tag" },
++  { code: "v", label: "V-Tag beantragt" },
+   { code: "K", label: "Krank" },
+   { code: "FB", label: "Schulung" },
+   { code: "FREI", label: "frei" },
+ ];
+@@ -71,23 +87,26 @@ export function ShiftPlanGrid({
+ }) {
+   const [start, setStart] = useState(from);
+   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
+   const [shifts, setShifts] = useState<ShiftOption[]>([]);
++  const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
+   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
+   const [error, setError] = useState<string | null>(null);
+   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
+   const [pending, startTransition] = useTransition();
+ 
+   const load = useCallback(async () => {
+     setError(null);
+     try {
+-      const [grid, shiftOptions, blockedDays] = await Promise.all([
++      const [grid, shiftOptions, details, blockedDays] = await Promise.all([
+         fetchShiftPlanGrid(companyId, start, days),
+         fetchShiftOptions(),
++        fetchShiftDetails(),
+         fetchBlockedDays(start, addDays(start, days - 1)),
+       ]);
+       setCells(grid);
+       setShifts(shiftOptions);
++      setShiftDetails(details);
+       setBlocked(blockedDays);
+     } catch (caught) {
+       setCells([]);
+       setError(
+@@ -128,8 +147,60 @@ export function ShiftPlanGrid({
+     }
+     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+   }, [cells]);
+ 
++  /** Mindestbesetzung je Schicht, nachschlagbar über den Schichtnamen. */
++  const minimumByShift = useMemo(() => {
++    const map = new Map<string, number>();
++    for (const detail of shiftDetails) map.set(detail.name, detail.minimumStaff);
++    return map;
++  }, [shiftDetails]);
++
++  /**
++   * Ist- und Mindestbesetzung je Schichtgruppe und Tag.
++   *
++   * Welche Schicht eine Gruppe an einem Tag fährt, steht nicht in einer
++   * Spalte – im Rotationsbetrieb ergibt sie sich aus dem Muster. Deshalb wird
++   * sie aus den Zellen der Gruppe abgeleitet (die Schicht, auf der die meisten
++   * Mitglieder stehen). Gezählt werden nur Mitglieder genau dieser Schicht,
++   * die nicht ausfallen. Gruppe hat frei = keine Mindestbesetzung.
++   */
++  const coverage = useMemo(() => {
++    const result = new Map<string, Map<string, { present: number; minimum: number | null }>>();
++    for (const [teamName, members] of groups) {
++      const perDay = new Map<string, { present: number; minimum: number | null }>();
++      for (const iso of dates) {
++        const counts = new Map<string, number>();
++        for (const member of members) {
++          const shiftName = member.cells.get(iso)?.shiftName;
++          if (shiftName) counts.set(shiftName, (counts.get(shiftName) ?? 0) + 1);
++        }
++        let dominant: string | null = null;
++        let best = 0;
++        for (const [shiftName, count] of counts) {
++          if (count > best) {
++            best = count;
++            dominant = shiftName;
++          }
++        }
++        if (!dominant) {
++          perDay.set(iso, { present: 0, minimum: null });
++          continue;
++        }
++        let present = 0;
++        for (const member of members) {
++          const cell = member.cells.get(iso);
++          if (!cell || cell.shiftName !== dominant) continue;
++          if (cell.absenceCode && ABSENT_CODES.has(cell.absenceCode)) continue;
++          present += 1;
++        }
++        perDay.set(iso, { present, minimum: minimumByShift.get(dominant) ?? null });
++      }
++      result.set(teamName, perDay);
++    }
++    return result;
++  }, [groups, dates, minimumByShift]);
++
+   function applyChange(action: "shift" | "absence" | "free" | "urlaub" | "v_tag", value: string) {
+     if (!selected) return;
+     setError(null);
+     startTransition(async () => {
+@@ -341,8 +412,39 @@ export function ShiftPlanGrid({
+                         );
+                       })}
+                     </tr>
+                   ))}
++                  <tr>
++                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-4 py-1 text-left text-[11px] font-medium uppercase tracking-[0.06em] text-ink-faint">
++                      Besetzung Ist/Min
++                    </th>
++                    {dates.map((iso) => {
++                      const day = coverage.get(teamName)?.get(iso);
++                      const below =
++                        day != null && day.minimum !== null && day.present < day.minimum;
++                      return (
++                        <td key={iso} className="bg-surface-sunken/60 p-0.5 text-center">
++                          {day == null || day.minimum === null ? (
++                            <span className="text-[11px] text-ink-faint">–</span>
++                          ) : (
++                            <span
++                              title={
++                                below
++                                  ? `Mindestbesetzung unterschritten: ${day.present} von ${day.minimum}`
++                                  : `${day.present} von mindestens ${day.minimum}`
++                              }
++                              className={cn(
++                                "tnum flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold",
++                                below ? "bg-crit-bg text-crit-fg" : "text-ink-muted",
++                              )}
++                            >
++                              {day.present}/{day.minimum}
++                            </span>
++                          )}
++                        </td>
++                      );
++                    })}
++                  </tr>
+                 </Fragment>
+               ))}
+             </tbody>
+           </table>
+diff --git a/src/components/leave/live-leave-request-form.tsx b/src/components/leave/live-leave-request-form.tsx
+index 9a104f7..f927b88 100644
+--- a/src/components/leave/live-leave-request-form.tsx
++++ b/src/components/leave/live-leave-request-form.tsx
+@@ -12,14 +12,27 @@ import { DateRangeCalendar } from "./date-range-calendar";
+ import { formatDE, formatDays } from "@/lib/dates";
+ import { previewLeaveDays } from "@/lib/leave-days";
+ import { fetchHolidays } from "@/lib/data/holidays";
+ import { fetchLeaveImpact } from "@/lib/data/staffing";
++import { fetchLeaveKindSuggestion } from "@/lib/data/leave";
+ import { submitLeaveRequest, type FormState } from "@/lib/auth/leave-actions";
+-import type { Holiday, LiveLeaveBalance, LiveLeaveImpact } from "@/lib/types";
++import type {
++  Holiday,
++  LiveLeaveBalance,
++  LiveLeaveImpact,
++  LiveLeaveKindSuggestion,
++} from "@/lib/types";
+ import { cn } from "@/lib/utils";
+ 
+ const initialState: FormState = {};
+ 
++type LeaveKind = "urlaub" | "v_tag";
++
++const kindLabels: Record<LeaveKind, { singular: string; plural: string; action: string }> = {
++  urlaub: { singular: "Urlaubstag", plural: "Urlaubstage", action: "Urlaub beantragen" },
++  v_tag: { singular: "V-Tag", plural: "V-Tage", action: "V-Tag beantragen" },
++};
++
+ export function LiveLeaveRequestForm({
+   employeeId,
+   balance,
+   today,
+@@ -34,8 +47,12 @@ export function LiveLeaveRequestForm({
+   const [endDate, setEndDate] = useState(today);
+   const [period, setPeriod] = useState<"" | "vormittag" | "nachmittag">("");
+   const [reason, setReason] = useState("");
+   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
++  const [kind, setKind] = useState<LeaveKind>("urlaub");
++  /** Sobald selbst umgestellt wurde, überschreibt die Empfehlung nichts mehr. */
++  const [kindTouched, setKindTouched] = useState(false);
++  const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
+   const [holidays, setHolidays] = useState<Holiday[] | null>(null);
+   const [state, formAction] = useActionState(submitLeaveRequest, initialState);
+ 
+   // Echte Feiertage des Unternehmens statt der Demo-Feiertage aus Phase 1 –
+@@ -79,18 +96,59 @@ export function LiveLeaveRequestForm({
+       cancelled = true;
+     };
+   }, [employeeId, startDate, endDate, valid]);
+ 
++  // Empfehlung Urlaub vs. V-Tag – hängt am Starttag, weil sich Zuschläge
++  // (Sonntag, Feiertag, Nachtschicht) genau daran entscheiden.
++  useEffect(() => {
++    if (!employeeId || !valid) {
++      setSuggestion(null);
++      return;
++    }
++    let cancelled = false;
++    fetchLeaveKindSuggestion(employeeId, startDate)
++      .then((result) => {
++        if (cancelled) return;
++        setSuggestion(result);
++        // Nur vorbelegen, solange nichts von Hand gewählt wurde.
++        if (result && !kindTouched && (result.kind === "urlaub" || result.kind === "v_tag")) {
++          setKind(result.kind);
++        }
++      })
++      .catch(() => {
++        if (!cancelled) setSuggestion(null);
++      });
++    return () => {
++      cancelled = true;
++    };
++    // kindTouched bewusst nicht in den Abhängigkeiten: das Umstellen von Hand
++    // soll die Empfehlung nicht neu laden, nur ihre Übernahme verhindern.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [employeeId, startDate, valid]);
++
+   useEffect(() => {
+     if (state.success) {
+       onSubmitted();
+       setReason("");
++      setKindTouched(false);
+     }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [state.success]);
+ 
+-  const remainingAfter = balance ? balance.remainingDays - days : null;
++  const labels = kindLabels[kind];
++  // Zwei getrennte Konten: Urlaub und V-Tage. Geprüft wird immer das Konto,
++  // das zur gewählten Art gehört.
++  const accountRemaining = balance
++    ? kind === "v_tag"
++      ? balance.vRemainingDays
++      : balance.remainingDays
++    : null;
++  const remainingAfter = accountRemaining !== null ? accountRemaining - days : null;
+   const insufficientBalance = remainingAfter !== null && remainingAfter < 0;
++  const suggestionDiffers =
++    suggestion !== null &&
++    (suggestion.kind === "urlaub" || suggestion.kind === "v_tag") &&
++    suggestion.kind !== kind;
+   const staffingCritical = impact !== null && impact.worstStatus === "critical";
+   const staffingWarn = impact !== null && impact.worstStatus === "warn";
+ 
+   let tone: "ok" | "warn" | "critical" = "ok";
+@@ -107,14 +165,15 @@ export function LiveLeaveRequestForm({
+   return (
+     <Card>
+       <CardHeader
+         title="Urlaub beantragen"
+-        hint="Die Anzahl Urlaubstage wird verbindlich vom Server berechnet."
++        hint="Die Anzahl Tage wird verbindlich vom Server berechnet."
+       />
+       <CardBody className="space-y-4">
+         <form action={formAction} className="space-y-4">
+           <input type="hidden" name="start_date" value={startDate} />
+           <input type="hidden" name="end_date" value={endDate} />
++          <input type="hidden" name="kind" value={kind} />
+ 
+           <div>
+             <span className="mb-2 block text-[13px] font-medium text-ink-muted">
+               Zeitraum auswählen
+@@ -135,8 +194,59 @@ export function LiveLeaveRequestForm({
+                 : `${formatDE(startDate)} – ${formatDE(endDate)}`}
+             </p>
+           </div>
+ 
++          <Field
++            label="Art"
++            hint="Vorschlag der Schichtplanung – lässt sich jederzeit umstellen."
++          >
++            <select
++              value={kind}
++              onChange={(e) => {
++                setKind(e.target.value as LeaveKind);
++                setKindTouched(true);
++              }}
++              className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
++            >
++              <option value="urlaub">
++                Urlaubstag{balance ? ` · ${formatDays(balance.remainingDays)} übrig` : ""}
++              </option>
++              <option value="v_tag">
++                V-Tag{balance ? ` · ${formatDays(balance.vRemainingDays)} übrig` : ""}
++              </option>
++            </select>
++          </Field>
++
++          {suggestion ? (
++            <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted">
++              <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
++              <div>
++                <p>
++                  <span className="font-medium text-ink">
++                    {suggestion.kind === "urlaub"
++                      ? "Empfehlung: Urlaubstag"
++                      : suggestion.kind === "v_tag"
++                        ? "Empfehlung: V-Tag"
++                        : "Keine Empfehlung"}
++                  </span>{" "}
++                  – {suggestion.reason}
++                </p>
++                {suggestionDiffers ? (
++                  <button
++                    type="button"
++                    onClick={() => {
++                      setKind(suggestion.kind as LeaveKind);
++                      setKindTouched(true);
++                    }}
++                    className="mt-1 font-medium text-brand-600 hover:underline"
++                  >
++                    Empfehlung übernehmen
++                  </button>
++                ) : null}
++              </div>
++            </div>
++          ) : null}
++
+           <Field label="Tageszeit" hint="Nur bei einem einzelnen Tag wählbar.">
+             <select
+               name="half_day_period"
+               value={period}
+@@ -161,9 +271,9 @@ export function LiveLeaveRequestForm({
+             />
+           </Field>
+ 
+           <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
+-            <span className="text-sm text-ink-muted">Benötigte Urlaubstage</span>
++            <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
+             <span className="tnum text-lg font-semibold">
+               {holidays ? formatDays(days) : "…"}
+             </span>
+           </div>
+@@ -172,16 +282,18 @@ export function LiveLeaveRequestForm({
+             <div className={cn("rounded-xl border px-4 py-3", panelTone)}>
+               <p className="flex items-center gap-2 text-sm font-semibold">
+                 <PanelIcon className="h-4 w-4" strokeWidth={2} />
+                 {insufficientBalance
+-                  ? `Für diesen Zeitraum stehen nur noch ${formatDays(Math.max(balance?.remainingDays ?? 0, 0))} Urlaubstage zur Verfügung.`
++                  ? `Für diesen Zeitraum stehen nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${labels.plural} zur Verfügung.`
+                   : staffingCritical
+                     ? "Mindestbesetzung wird unterschritten."
+-                    : `${formatDays(balance?.remainingDays ?? 0)} Urlaubstage verfügbar.`}
++                    : `${formatDays(accountRemaining ?? 0)} ${labels.plural} verfügbar.`}
+               </p>
+               <ul className="mt-2 space-y-1 text-[13px] leading-snug">
+                 {remainingAfter !== null && !insufficientBalance ? (
+-                  <li>{formatDays(remainingAfter)} Tage verbleiben nach diesem Antrag.</li>
++                  <li>
++                    {formatDays(remainingAfter)} {labels.plural} verbleiben nach diesem Antrag.
++                  </li>
+                 ) : null}
+                 {staffingCritical ? (
+                   <li>
+                     An {impact!.criticalDays === 1 ? "einem Tag" : `${impact!.criticalDays} Tagen`}{" "}
+@@ -206,19 +318,22 @@ export function LiveLeaveRequestForm({
+ 
+           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
+           {state.success ? <Alert tone="success">{state.success}</Alert> : null}
+ 
+-          <SubmitButton disabled={!valid || !holidays || days === 0 || insufficientBalance} />
++          <SubmitButton
++            label={labels.action}
++            disabled={!valid || !holidays || days === 0 || insufficientBalance}
++          />
+         </form>
+       </CardBody>
+     </Card>
+   );
+ }
+ 
+-function SubmitButton({ disabled }: { disabled?: boolean }) {
++function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }) {
+   const { pending } = useFormStatus();
+   return (
+     <Button type="submit" disabled={pending || disabled}>
+-      {pending ? "Wird gesendet …" : "Urlaub beantragen"}
++      {pending ? "Wird gesendet …" : label}
+     </Button>
+   );
+ }
+diff --git a/src/lib/auth/leave-actions.ts b/src/lib/auth/leave-actions.ts
+index 90544ed..495c262 100644
+--- a/src/lib/auth/leave-actions.ts
++++ b/src/lib/auth/leave-actions.ts
+@@ -28,8 +28,12 @@ export async function submitLeaveRequest(
+   const startDate = String(formData.get("start_date") ?? "");
+   const endDate = String(formData.get("end_date") ?? "");
+   const halfDayPeriod = String(formData.get("half_day_period") ?? "") || null;
+   const reason = String(formData.get("reason") ?? "").trim();
++  // Zwei getrennte Konten: "urlaub" und "v_tag". Unbekannte Werte fallen
++  // bewusst auf Urlaub zurück, statt den Antrag scheitern zu lassen.
++  const kindRaw = String(formData.get("kind") ?? "urlaub");
++  const kind = kindRaw === "v_tag" ? "v_tag" : "urlaub";
+ 
+   if (!startDate || !endDate) {
+     return { error: "Bitte Start- und Enddatum auswählen." };
+   }
+@@ -62,8 +66,9 @@ export async function submitLeaveRequest(
+     employee_id: profile.employee_id,
+     start_date: startDate,
+     end_date: endDate,
+     half_day_period: halfDayPeriod,
++    kind,
+     // Platzhalter – der Trigger überschreibt diesen Wert serverseitig.
+     requested_days: 0,
+     reason: reason || null,
+   });
+@@ -78,9 +83,14 @@ export async function submitLeaveRequest(
+ 
+   revalidatePath("/urlaub");
+   revalidatePath("/dashboard");
+   revalidatePath("/urlaubsantraege");
+-  return { success: "Antrag eingereicht – Status: Ausstehend." };
++  return {
++    success:
++      kind === "v_tag"
++        ? "V-Tag beantragt – Status: Ausstehend."
++        : "Antrag eingereicht – Status: Ausstehend.",
++  };
+ }
+ 
+ export async function withdrawMyLeaveRequest(requestId: string): Promise<FormState> {
+   if (!isSupabaseConfigured) return NOT_CONFIGURED;
+diff --git a/src/lib/data/absences.ts b/src/lib/data/absences.ts
+index 41c743a..e6a1ef8 100644
+--- a/src/lib/data/absences.ts
++++ b/src/lib/data/absences.ts
+@@ -40,4 +40,40 @@ export async function fetchAbsences(
+ 
+   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+   return (data ?? []).map(mapAbsence);
+ }
++
++/**
++ * Eigene Kranktage im angegebenen Jahr – für die Dashboard-Kachel.
++ * Bewusst nur die eigenen: RLS gibt Führungskräften zwar alle Abwesenheiten
++ * frei, gezählt wird hier trotzdem ausdrücklich nur der eigene Datensatz.
++ */
++export async function fetchMySickDays(
++  year = new Date().getFullYear(),
++): Promise<number> {
++  if (!isSupabaseConfigured) return 0;
++  const supabase = createClient();
++  const {
++    data: { user },
++  } = await supabase.auth.getUser();
++  if (!user) return 0;
++
++  const { data: profile } = await supabase
++    .from("profiles")
++    .select("employee_id")
++    .eq("id", user.id)
++    .returns<{ employee_id: string | null }[]>()
++    .maybeSingle();
++
++  if (!profile?.employee_id) return 0;
++
++  const { count, error } = await supabase
++    .from("absences")
++    .select("id", { count: "exact", head: true })
++    .eq("employee_id", profile.employee_id)
++    .eq("type", "krank")
++    .gte("date", `${year}-01-01`)
++    .lte("date", `${year}-12-31`);
++
++  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
++  return count ?? 0;
++}
+diff --git a/src/lib/data/leave.ts b/src/lib/data/leave.ts
+index 4688f6d..8e6ed2b 100644
+--- a/src/lib/data/leave.ts
++++ b/src/lib/data/leave.ts
+@@ -4,9 +4,14 @@ import { dataErrorMessage } from "@/lib/errors";
+ import type {
+   LeaveBalanceViewRow,
+   LeaveRequestWithEmployee,
+ } from "@/lib/supabase/database.types";
+-import type { LiveLeaveBalance, LiveLeaveRequest, LiveShiftLeaveEntry } from "@/lib/types";
++import type {
++  LiveLeaveBalance,
++  LiveLeaveKindSuggestion,
++  LiveLeaveRequest,
++  LiveShiftLeaveEntry,
++} from "@/lib/types";
+ 
+ export class DataError extends Error {}
+ 
+ function mapRequest(row: LeaveRequestWithEmployee): LiveLeaveRequest {
+@@ -98,9 +103,11 @@ export async function fetchMyLeaveBalance(
+   if (!profile?.employee_id) return null;
+ 
+   const { data, error } = await supabase
+     .from("leave_balances_view")
+-    .select("year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days")
++    .select(
++      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_used_days, v_pending_days, v_remaining_days",
++    )
+     .eq("employee_id", profile.employee_id)
+     .eq("year", year)
+     .returns<LeaveBalanceViewRow[]>()
+     .maybeSingle();
+@@ -122,8 +129,44 @@ export async function fetchMyLeaveBalance(
+     vRemainingDays: data.v_remaining_days ?? 0,
+   };
+ }
+ 
++interface SuggestLeaveKindRow {
++  kind: string;
++  grund: string;
++  u_rest: number;
++  v_rest: number;
++}
++
++/**
++ * Empfehlung der Datenbank, ob für einen Tag Urlaub oder ein V-Tag genommen
++ * werden sollte (`suggest_leave_kind()`). An Sonn-/Feiertagen und in der
++ * Nachtschicht lohnt sich Urlaub, weil die Zuschläge mitbezahlt werden – an
++ * normalen Tagen ist der V-Tag günstiger. Nur ein Vorschlag: die Entscheidung
++ * trifft weiterhin die antragstellende Person im Formular.
++ */
++export async function fetchLeaveKindSuggestion(
++  employeeId: string,
++  dateISO: string,
++): Promise<LiveLeaveKindSuggestion | null> {
++  if (!isSupabaseConfigured) return null;
++  const supabase = createClient();
++  const { data, error } = await supabase.rpc("suggest_leave_kind", {
++    p_employee_id: employeeId,
++    p_date: dateISO,
++  });
++  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
++
++  const row = ((data ?? []) as SuggestLeaveKindRow[])[0];
++  if (!row) return null;
++  return {
++    kind: row.kind === "urlaub" || row.kind === "v_tag" ? row.kind : "keins",
++    reason: row.grund,
++    remainingLeave: Number(row.u_rest ?? 0),
++    remainingV: Number(row.v_rest ?? 0),
++  };
++}
++
+ /**
+  * Überschneidung mit Kolleginnen/Kollegen und Mindestbesetzung – ersetzt
+  * durch `fetchLeaveImpact()` in `src/lib/data/staffing.ts`, das seit
+  * Phase 4 auch den kritischen Status zurückgibt, nicht nur die Anzahl.
+diff --git a/src/lib/supabase/database.types.ts b/src/lib/supabase/database.types.ts
+index 6f44e2d..de93de2 100644
+--- a/src/lib/supabase/database.types.ts
++++ b/src/lib/supabase/database.types.ts
+@@ -6,8 +6,10 @@
+ import type { Role } from "@/lib/types";
+ 
+ export type LeaveStatusDb = "pending" | "approved" | "rejected" | "withdrawn";
+ export type HalfDayPeriod = "vormittag" | "nachmittag";
++/** Zweites Konto neben dem Urlaub: V-Tage (Freischichten). */
++export type LeaveKindDb = "urlaub" | "v_tag";
+ export type StaffingStatusDb = "ok" | "warn" | "critical";
+ 
+ export interface StaffingSnapshotRow {
+   shift_id: string;
+@@ -144,8 +146,9 @@ export interface LeaveRequestRow {
+   start_date: string;
+   end_date: string;
+   half_day: boolean;
+   half_day_period: HalfDayPeriod | null;
++  kind?: LeaveKindDb;
+   requested_days: number;
+   reason: string | null;
+   status: LeaveStatusDb;
+   rejection_reason: string | null;
+diff --git a/src/lib/types.ts b/src/lib/types.ts
+index e6c2f08..96d44d7 100644
+--- a/src/lib/types.ts
++++ b/src/lib/types.ts
+@@ -105,8 +105,20 @@ export interface LiveLeaveBalance {
+   vPendingDays: number;
+   vRemainingDays: number;
+ }
+ 
++/**
++ * Empfehlung aus `suggest_leave_kind()`: soll für diesen Tag Urlaub oder ein
++ * V-Tag genommen werden? "keins" = freier Tag bzw. beide Konten leer.
++ */
++export interface LiveLeaveKindSuggestion {
++  kind: "urlaub" | "v_tag" | "keins";
++  /** Begründung im Klartext, direkt anzeigbar. */
++  reason: string;
++  remainingLeave: number;
++  remainingV: number;
++}
++
+ /** Besetzung einer Schicht an einem Tag, aus `staffing_for_day`/`staffing_snapshot`. */
+ export interface LiveStaffingSnapshot {
+   shiftId: string;
+   shiftName?: string;
+diff --git a/tailwind.config.ts b/tailwind.config.ts
+index a749b29..ac97f99 100644
+--- a/tailwind.config.ts
++++ b/tailwind.config.ts
+@@ -1,8 +1,11 @@
+ import type { Config } from "tailwindcss";
+ 
+ const config: Config = {
+-  content: ["./src/**/*.{ts,tsx}"],
++  // Beide Bäume: die Seiten liegen unter ./app, Komponenten und Bibliothek
++  // unter ./src. Fehlt ./app hier, werden Klassen, die es NUR dort gibt,
++  // aus dem CSS entfernt und die Seite sieht kaputt aus.
++  content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+   theme: {
+     extend: {
+       colors: {
+         surface: {
