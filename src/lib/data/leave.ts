@@ -116,6 +116,10 @@ export async function fetchMyLeaveBalance(
     plannedDays: data.planned_days,
     pendingDays: data.pending_days,
     remainingDays: data.remaining_days,
+    vEntitlement: data.v_entitlement ?? 0,
+    vUsedDays: data.v_used_days ?? 0,
+    vPendingDays: data.v_pending_days ?? 0,
+    vRemainingDays: data.v_remaining_days ?? 0,
   };
 }
 

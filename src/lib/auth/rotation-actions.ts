@@ -66,6 +66,7 @@ export async function removeShiftAssignment(id: string): Promise<FormState> {
   revalidatePath("/meine-schichten");
   return { success: "Zuordnung entfernt." };
 }
+
 /**
  * Urlaub direkt aus dem Schichtplan setzen oder entfernen (Führung/Admin).
  * "urlaub" legt einen sofort genehmigten Urlaubstag an, der automatisch
@@ -74,7 +75,7 @@ export async function removeShiftAssignment(id: string): Promise<FormState> {
 export async function setLeaveForDay(
   employeeId: string,
   date: string,
-  mode: "urlaub" | "clear",
+  mode: "urlaub" | "v_tag" | "clear",
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
   const supabase = await createClient();
@@ -86,5 +87,12 @@ export async function setLeaveForDay(
   if (error) {
     return { error: dataErrorMessage(error) ?? "Der Urlaub konnte nicht gesetzt werden." };
   }
-  return { success: mode === "urlaub" ? "Urlaub eingetragen." : "Urlaub entfernt." };
+  return {
+    success:
+      mode === "clear"
+        ? "Eintrag entfernt."
+        : mode === "v_tag"
+          ? "V-Tag eingetragen."
+          : "Urlaub eingetragen.",
+  };
 }

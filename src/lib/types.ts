@@ -56,6 +56,8 @@ export interface EmployeeRecord {
   qualifications: string[];
   /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
   rotationTeam: string | null;
+  /** Jahresanspruch V-Tage (Freischichten). */
+  vDays: number;
 }
 
 export interface ShiftAssignment {
@@ -88,6 +90,7 @@ export interface LiveLeaveRequest {
   reviewedAt: string | null;
   createdAt: string;
 }
+
 export interface LiveLeaveBalance {
   year: number;
   entitlement: number;
@@ -96,6 +99,11 @@ export interface LiveLeaveBalance {
   plannedDays: number;
   pendingDays: number;
   remainingDays: number;
+  /** Zweites Konto: V-Tage (Freischichten), getrennt vom Urlaub. */
+  vEntitlement: number;
+  vUsedDays: number;
+  vPendingDays: number;
+  vRemainingDays: number;
 }
 
 /** Besetzung einer Schicht an einem Tag, aus `staffing_for_day`/`staffing_snapshot`. */
@@ -170,7 +178,9 @@ export interface LiveShiftPlanDay {
   startTime: string | null;
   endTime: string | null;
   isFree: boolean;
-}/** Rotationsmuster: Kette von Blöcken, die sich nach der Summe der Tage wiederholt. */
+}
+
+/** Rotationsmuster: Kette von Blöcken, die sich nach der Summe der Tage wiederholt. */
 export interface LiveRotationPattern {
   id: string;
   name: string;
@@ -224,7 +234,8 @@ export interface Employee {
 
 export interface LeaveRequest {
   id: string;
-  employeeId: string;  startDate: string; // ISO "YYYY-MM-DD"
+  employeeId: string;
+  startDate: string; // ISO "YYYY-MM-DD"
   endDate: string;
   halfDay: boolean;
   days: number;

@@ -81,12 +81,13 @@ export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
               </select>
             </Field>
           </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Urlaubsanspruch (Tage/Jahr)">
               <Input name="vacation_days" type="number" step="0.5" min="0" defaultValue="30" />
             </Field>
-            <Field label="Resturlaub / V-Tage aus Vorjahr" hint="Optional – wird dem Konto gutgeschrieben.">
-              <Input name="carry_over" type="number" step="0.5" min="0" defaultValue="0" />
+            <Field label="V-Tage (Freischichten/Jahr)" hint="Eigenes Konto neben dem Urlaub.">
+              <Input name="v_days" type="number" step="0.5" min="0" defaultValue="27" />
             </Field>
           </div>
 

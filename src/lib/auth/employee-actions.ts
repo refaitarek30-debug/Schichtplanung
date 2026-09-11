@@ -63,11 +63,14 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   const role = String(formData.get("role") ?? "employee") as Role;
   const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
   const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
+  const vDaysRaw = String(formData.get("v_days") ?? "27");
+  const vDays = Number.parseFloat(vDaysRaw.replace(",", "."));
 
   if (!firstName || !lastName) {
     return { error: "Vor- und Nachname dürfen nicht leer sein." };
   }
-  if (!Number.isFinite(vacationDays) || vacationDays < 0) {    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
+  if (!Number.isFinite(vacationDays) || vacationDays < 0) {
+    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
   }
 
   const supabase = await createClient();
@@ -95,26 +98,46 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
     ? await findActiveRotationPatternId(supabase, profile.company_id)
     : null;
 
-  const { error } = await supabase.from("employees").insert({
-    company_id: profile.company_id,
-    first_name: firstName,
-    last_name: lastName,
-    email: email || null,
-    personnel_number: personnelNumber || null,
-    department: department || null,
-    shift_id: shiftId || null,
-    role,
-    vacation_days: vacationDays,
-    qualifications: parseQualifications(formData),
-    rotation_team: rotationTeam || null,
-    rotation_pattern_id: rotationPatternId,
-  });
+  const { data: inserted, error } = await supabase
+    .from("employees")
+    .insert({
+      company_id: profile.company_id,
+      first_name: firstName,
+      last_name: lastName,
+      email: email || null,
+      personnel_number: personnelNumber || null,
+      department: department || null,
+      shift_id: shiftId || null,
+      role,
+      vacation_days: vacationDays,
+      v_days: Number.isFinite(vDays) ? vDays : 27,
+      qualifications: parseQualifications(formData),
+      rotation_team: rotationTeam || null,
+      rotation_pattern_id: rotationPatternId,
+    })
+    .select("id")
+    .returns<{ id: string }[]>();
 
   if (error) {
     if (error.code === "23505") {
       return { error: "Diese Personalnummer ist in deinem Unternehmen bereits vergeben." };
     }
     return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht angelegt werden." };
+  }
+
+  // Resturlaub aus dem Vorjahr (die "V"-Tage aus dem gewohnten Plan) direkt
+  // ins Urlaubskonto übernehmen, falls angegeben. Der Trigger legt beim
+  // Anlegen bereits eine Kontozeile für das laufende Jahr an – die
+  // ergänzen wir hier um den Übertrag.
+  const carryOverRaw = String(formData.get("carry_over") ?? "").trim();
+  const carryOver = carryOverRaw ? Number.parseFloat(carryOverRaw.replace(",", ".")) : 0;
+  const newId = inserted?.[0]?.id;
+  if (newId && Number.isFinite(carryOver) && carryOver > 0) {
+    await supabase
+      .from("leave_balances")
+      .update({ carried_over: carryOver })
+      .eq("employee_id", newId)
+      .eq("year", new Date().getFullYear());
   }
 
   revalidatePath("/mitarbeiter");
@@ -128,7 +151,8 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
  * ("Personaldaten verwaltet Admin") erzwingt Admin-only zusätzlich
  * serverseitig, unabhängig von der Rollenprüfung hier.
  */
-export async function updateEmployee(_prev: FormState, formData: FormData): Promise<FormState> {  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+export async function updateEmployee(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const employeeId = String(formData.get("employee_id") ?? "").trim();
   const firstName = String(formData.get("first_name") ?? "").trim();
@@ -190,6 +214,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       shift_id: shiftId || null,
       role,
       vacation_days: vacationDays,
+      v_days: Number.parseFloat(String(formData.get("v_days") ?? "27").replace(",", ".")) || 27,
       active,
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
@@ -215,7 +240,8 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
  * `setEmployeeActive()` in `data/employees.ts`). Nur Admin.
  *
  * Sicherheitsbremse: hat die Person bereits einen Login (eine Zeile in
- * `profiles`), wird das Löschen verweigert. Grund: `profiles.employee_id` * verweist per `ON DELETE SET NULL` auf diese Zeile – ein Hard-Delete
+ * `profiles`), wird das Löschen verweigert. Grund: `profiles.employee_id`
+ * verweist per `ON DELETE SET NULL` auf diese Zeile – ein Hard-Delete
  * würde den Zugang als „Karteileiche" ohne Personalstammsatz zurücklassen,
  * statt sauber aufzuräumen. Erst deaktivieren bzw. den Zugang entfernen,
  * dann löschen.

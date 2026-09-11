@@ -77,7 +77,8 @@ export interface EmployeeRow {
   id: string;
   company_id: string;
   personnel_number: string | null;
-  first_name: string;  last_name: string;
+  first_name: string;
+  last_name: string;
   email: string | null;
   phone: string | null;
   role: Role;
@@ -87,6 +88,7 @@ export interface EmployeeRow {
   active: boolean;
   qualifications?: string[];
   rotation_team?: string | null;
+  v_days?: number;
   created_at: string;
   updated_at: string;
 }
@@ -127,6 +129,10 @@ export interface LeaveBalanceViewRow {
   planned_days: number;
   pending_days: number;
   remaining_days: number;
+  v_entitlement: number;
+  v_used_days: number;
+  v_pending_days: number;
+  v_remaining_days: number;
   created_at: string;
   updated_at: string;
 }
@@ -156,7 +162,8 @@ export interface LeaveRequestWithEmployee extends LeaveRequestRow {
     last_name: string;
     shift_id: string | null;
     shifts: { name: string } | null;
-  } | null;}
+  } | null;
+}
 
 export interface NotificationRow {
   id: string;
@@ -196,6 +203,19 @@ export interface Database {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };
     };
     Functions: {
+      set_leave_for_day: { Args: { p_employee_id: string; p_date: string; p_mode: string }; Returns: undefined };
+      blocked_days: { Args: { p_from: string; p_to: string }; Returns: { day: string; reason: string }[] };
+      get_notification_settings: { Args: Record<string, never>; Returns: { notify_leave_email: boolean }[] };
+      set_notification_settings: { Args: { p_notify_leave_email: boolean }; Returns: undefined };
+      save_rotation_pattern: {
+        Args: { p_name: string; p_anchor_date: string; p_blocks: unknown };
+        Returns: string;
+      };
+      apply_rotation_to_all: { Args: Record<string, never>; Returns: number };
+      current_rotation_pattern: {
+        Args: Record<string, never>;
+        Returns: { id: string; name: string; anchor_date: string; blocks: { code: string; days: number }[] }[];
+      };
       shift_plan_grid: {
         Args: { p_company_id: string; p_from: string; p_days: number };
         Returns: {
@@ -235,7 +255,8 @@ export interface Database {
         Returns: { company_id: string; employee_id: string }[];
       };
       decide_leave_request: {
-        Args: { p_request_id: string; p_decision: LeaveStatusDb; p_rejection_reason: string | null };        Returns: LeaveRequestRow;
+        Args: { p_request_id: string; p_decision: LeaveStatusDb; p_rejection_reason: string | null };
+        Returns: LeaveRequestRow;
       };
       withdraw_leave_request: {
         Args: { p_request_id: string };

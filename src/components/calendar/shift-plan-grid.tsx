@@ -129,7 +129,7 @@ export function ShiftPlanGrid({
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
 
-  function applyChange(action: "shift" | "absence" | "free" | "urlaub", value: string) {
+  function applyChange(action: "shift" | "absence" | "free" | "urlaub" | "v_tag", value: string) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
@@ -146,9 +146,9 @@ export function ShiftPlanGrid({
         fd.set("shift_id", "");
         fd.set("date", selected.day);
         result = await assignShift({}, fd);
-      } else if (action === "urlaub") {
-        // Sofort genehmigter Urlaub – wird automatisch vom Konto abgezogen.
-        result = await setLeaveForDay(selected.employeeId, selected.day, "urlaub");
+      } else if (action === "urlaub" || action === "v_tag") {
+        // Sofort genehmigt – wird automatisch vom jeweiligen Konto abgezogen.
+        result = await setLeaveForDay(selected.employeeId, selected.day, action);
       } else {
         const fd = new FormData();
         fd.set("employee_id", selected.employeeId);
@@ -182,7 +182,8 @@ export function ShiftPlanGrid({
           <button
             onClick={() => setStart(from)}
             className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
-          >            Heute
+          >
+            Heute
           </button>
           <button
             onClick={() => setStart(addDays(start, days))}
@@ -226,6 +227,14 @@ export function ShiftPlanGrid({
               className="bg-[#FCE96A] text-[#6B5900] hover:bg-[#FBE24A]"
             >
               Urlaub
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => applyChange("v_tag", "")}
+              className="bg-[#C7B3F0] text-[#3A2270] hover:bg-[#B9A2E9]"
+            >
+              V-Tag
             </Button>
             <Button variant="danger" disabled={pending} onClick={() => applyChange("absence", "krank")}>
               Krank
