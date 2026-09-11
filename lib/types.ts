@@ -56,6 +56,8 @@ export interface EmployeeRecord {
   qualifications: string[];
   /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
   rotationTeam: string | null;
+  /** Jahresanspruch V-Tage (Freischichten). */
+  vDays: number;
 }
 
 export interface ShiftAssignment {
@@ -97,6 +99,11 @@ export interface LiveLeaveBalance {
   plannedDays: number;
   pendingDays: number;
   remainingDays: number;
+  /** Zweites Konto: V-Tage (Freischichten), getrennt vom Urlaub. */
+  vEntitlement: number;
+  vUsedDays: number;
+  vPendingDays: number;
+  vRemainingDays: number;
 }
 
 /** Besetzung einer Schicht an einem Tag, aus `staffing_for_day`/`staffing_snapshot`. */

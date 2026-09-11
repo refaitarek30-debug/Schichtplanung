@@ -88,6 +88,7 @@ export interface EmployeeRow {
   active: boolean;
   qualifications?: string[];
   rotation_team?: string | null;
+  v_days?: number;
   created_at: string;
   updated_at: string;
 }
@@ -128,6 +129,10 @@ export interface LeaveBalanceViewRow {
   planned_days: number;
   pending_days: number;
   remaining_days: number;
+  v_entitlement: number;
+  v_used_days: number;
+  v_pending_days: number;
+  v_remaining_days: number;
   created_at: string;
   updated_at: string;
 }

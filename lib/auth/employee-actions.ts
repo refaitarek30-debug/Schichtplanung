@@ -63,6 +63,8 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   const role = String(formData.get("role") ?? "employee") as Role;
   const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
   const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
+  const vDaysRaw = String(formData.get("v_days") ?? "27");
+  const vDays = Number.parseFloat(vDaysRaw.replace(",", "."));
 
   if (!firstName || !lastName) {
     return { error: "Vor- und Nachname dürfen nicht leer sein." };
@@ -108,6 +110,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       shift_id: shiftId || null,
       role,
       vacation_days: vacationDays,
+      v_days: Number.isFinite(vDays) ? vDays : 27,
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
       rotation_pattern_id: rotationPatternId,
@@ -211,6 +214,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       shift_id: shiftId || null,
       role,
       vacation_days: vacationDays,
+      v_days: Number.parseFloat(String(formData.get("v_days") ?? "27").replace(",", ".")) || 27,
       active,
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
