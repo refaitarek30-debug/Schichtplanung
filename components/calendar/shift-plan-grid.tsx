@@ -46,6 +46,18 @@ const legend = [
   { code: "FREI", label: "frei" },
 ];
 
+/** Eine Mitarbeiterzeile in der Matrix, Tag für Tag. */
+interface GridEmployee {
+  name: string;
+  team: string | null;
+  number: string | null;
+  cells: Map<string, LiveShiftPlanCell>;
+}
+
+interface GridRow extends GridEmployee {
+  employeeId: string;
+}
+
 export function ShiftPlanGrid({
   companyId,
   from,
@@ -95,10 +107,7 @@ export function ShiftPlanGrid({
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
   const groups = useMemo(() => {
-    const byEmployee = new Map<
-      string,
-      { name: string; team: string | null; number: string | null; cells: Map<string, LiveShiftPlanCell> }
-    >();
+    const byEmployee = new Map<string, GridEmployee>();
     for (const cell of cells ?? []) {
       if (!byEmployee.has(cell.employeeId)) {
         byEmployee.set(cell.employeeId, {
@@ -111,16 +120,16 @@ export function ShiftPlanGrid({
       byEmployee.get(cell.employeeId)!.cells.set(cell.day, cell);
     }
 
-    const teams = new Map<string, { employeeId: string; name: string; number: string | null; cells: Map<string, LiveShiftPlanCell> }[]>();
+    const teams = new Map<string, GridRow[]>();
     for (const [employeeId, value] of byEmployee) {
       const key = value.team ? `Schicht ${value.team}` : "Ohne Schichtgruppe";
       if (!teams.has(key)) teams.set(key, []);
-      teams.get(key)!.push({ employeeId, name: value.name, number: value.number, cells: value.cells });
+      teams.get(key)!.push({ employeeId, ...value });
     }
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
 
-  function applyChange(action: "shift" | "absence" | "free" | "urlaub", value: string) {
+  function applyChange(action: "shift" | "absence" | "free" | "urlaub" | "v_tag", value: string) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
@@ -137,9 +146,9 @@ export function ShiftPlanGrid({
         fd.set("shift_id", "");
         fd.set("date", selected.day);
         result = await assignShift({}, fd);
-      } else if (action === "urlaub") {
-        // Sofort genehmigter Urlaub – wird automatisch vom Konto abgezogen.
-        result = await setLeaveForDay(selected.employeeId, selected.day, "urlaub");
+      } else if (action === "urlaub" || action === "v_tag") {
+        // Sofort genehmigt – wird automatisch vom jeweiligen Konto abgezogen.
+        result = await setLeaveForDay(selected.employeeId, selected.day, action);
       } else {
         const fd = new FormData();
         fd.set("employee_id", selected.employeeId);
@@ -218,6 +227,14 @@ export function ShiftPlanGrid({
               className="bg-[#FCE96A] text-[#6B5900] hover:bg-[#FBE24A]"
             >
               Urlaub
+            </Button>
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() => applyChange("v_tag", "")}
+              className="bg-[#C7B3F0] text-[#3A2270] hover:bg-[#B9A2E9]"
+            >
+              V-Tag
             </Button>
             <Button variant="danger" disabled={pending} onClick={() => applyChange("absence", "krank")}>
               Krank

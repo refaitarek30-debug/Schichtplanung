@@ -120,6 +120,15 @@ export function EditEmployeePanel({
                 defaultValue={String(employee.vacationDays)}
               />
             </Field>
+            <Field label="V-Tage (Freischichten/Jahr)">
+              <Input
+                name="v_days"
+                type="number"
+                step="0.5"
+                min="0"
+                defaultValue={String(employee.vDays)}
+              />
+            </Field>
             <Field label="Status">
               <select
                 name="active"

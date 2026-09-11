@@ -62,6 +62,20 @@ export function LiveBalanceCard({ balance }: { balance: LiveLeaveBalance | null 
             </div>
           ))}
         </dl>
+
+        {/* Zweites Konto: V-Tage (Freischichten), getrennt vom Urlaub. */}
+        <div className="rounded-xl border border-line px-4 py-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[13px] font-medium text-ink-muted">V-Tage (Freischichten)</span>
+            <span className="tnum text-xl font-semibold">
+              {formatDays(Math.max(balance.vRemainingDays, 0))}
+            </span>
+          </div>
+          <p className="tnum mt-1 text-[12px] text-ink-faint">
+            von {formatDays(balance.vEntitlement)} · {formatDays(balance.vUsedDays)} genommen
+            {balance.vPendingDays > 0 ? `, ${formatDays(balance.vPendingDays)} beantragt` : ""}
+          </p>
+        </div>
       </CardBody>
     </Card>
   );
