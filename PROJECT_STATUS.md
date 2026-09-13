@@ -335,7 +335,65 @@ eingecheckten ZIP-Dateien sind entfernt – 123 Dateien.
 - Export: Monat oder Jahr, auf dem Handy über das Teilen-Menü.
 - Schichtplan: Monat direkt anspringbar.
 
+**0.22.0** – Aufräumen der Beispieldaten, automatische Verteilung auf
+Urlaubs- und V-Tage vorbereitet (Migration 0031: `employees.shift_worker`,
+`is_premium_day()`).
+
+**0.23.0** – Migration 0032: `submit_leave_auto()` / `preview_leave_auto()`.
+Der Mitarbeiter wählt nur den Zeitraum, das System verteilt: Sonn-, Feiertage
+und Nächte auf Urlaub (dort hängen die Zuschläge), alles andere auf V-Tage.
+Ist ein Konto leer, wandert der Rest auf das andere. Dazu: Schichten im
+Urlaubskalender, dichtere Handy-Ansicht im Schichtplan, Dunkelmodus als
+Schalter in den Einstellungen.
+
+**0.24.0** – Migration 0033/0034: Jahreswechsel. Nicht genutzte Tage werden
+übertragen und gelten bis zum 31.03., die Konten für das Folgejahr entstehen
+automatisch, sobald jemand dorthin plant. `team_leave_balances()` zeigt der
+Führung Rest-Urlaub und Rest-V-Tage je Mitarbeiter unter „Mein Team".
+Kleinere Legende im Schichtplan.
+
+**0.25.0** – Einladungen, die ankommen. Der Auslöser: „Mitarbeiter einladen"
+endete in „Deine Sitzung ist abgelaufen", und es kam nie eine Mail an. Zwei
+unabhängige Ursachen, beide behoben.
+
+1. *Die Sitzung starb im Betrieb.* `createClient()` legte bei jedem Aufruf
+   einen neuen Browser-Client an – 67 Stellen, jede mit eigenem Zeitgeber zum
+   Erneuern des Tokens. Supabase dreht beim Erneuern das Token weiter und
+   erklärt das alte für ungültig; die parallelen Zeitgeber haben sich
+   gegenseitig abgeschossen („Refresh Token Not Found" im Auth-Protokoll,
+   danach jedes Mal eine neue Anmeldung von Hand). Jetzt gibt es genau einen
+   Client je Browser-Tab (`src/lib/supabase/client.ts`) und eine gemerkte
+   Identität (`src/lib/supabase/identity.ts`) statt `getUser()` + Profil-
+   Abfrage in jeder Datenfunktion. Das waren über 500 `/user`-Aufrufe je
+   Stunde.
+2. *Der Mailversand war nie eine verlässliche Zustellung.* Der eingebaute
+   Versand von Supabase ist zum Ausprobieren gedacht: wenige Mails pro
+   Stunde, je nach Projekt nur an Adressen des Projektteams. Deshalb hängt
+   das Einrichten eines Zugangs nicht mehr daran. `grantAccess()` in
+   `src/lib/auth/invite.ts` versucht die Mail **und** erzeugt immer einen
+   Link, der über `generateLink` den rohen `hashed_token` nimmt und direkt
+   auf `/auth/callback` zeigt. Der Link steht kopierbar über der
+   Mitarbeiterliste (`InviteLinkCard`).
+
+Dazu:
+
+- `app/auth/callback/route.ts` kann jetzt alle drei Link-Sorten einlösen:
+  `?code=` (im Browser begonnen), `?token_hash=` (auf dem Server erzeugt) und
+  – über die neue Zwischenseite `app/auth/weiter` – die Angaben hinter dem
+  Rautezeichen, die Supabase in seinen eigenen Mails mitschickt. Vorher
+  konnte die Stelle nur die erste Sorte; jeder Klick in einer Einladungsmail
+  wäre bei „Der Link ist ungültig" gelandet.
+- Mitarbeiter anlegen richtet den Zugang gleich mit ein, wenn eine
+  E-Mail-Adresse dabeisteht. Das „Einladen" hinterher war zu leicht zu
+  übersehen.
+- Für bestehende Zugänge gibt es „Neuer Zugangslink" – hilft, wenn jemand
+  nicht mehr hereinkommt.
+- `grantAccess()` steht bewusst in einer Datei **ohne** `"use server"`.
+  Als Server-Aktion wäre sie aus dem Browser mit beliebigen Angaben
+  aufrufbar gewesen und hätte Zugänge zu fremden Firmen erzeugt.
+
 **Weiter offen:** Bestätigungsmail und eigener Mailversand in Supabase
-einschalten (Anleitung liegt bei), E-Mail bei Urlaubsanträgen,
+einschalten (Anleitung liegt bei – jetzt Komfort, nicht mehr Voraussetzung),
+E-Mail bei Urlaubsanträgen,
 Einrichtungsweg für neue Firmen, Navigation zusammenlegen (Kalender in
 Schichtplan, drei Verwaltungsseiten in eine), Demo-Modus ausbauen.
