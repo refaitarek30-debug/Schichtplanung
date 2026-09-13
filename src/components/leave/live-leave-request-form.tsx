@@ -13,11 +13,24 @@ import { formatDE, formatDays } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
+import { fetchLeaveKindSuggestion } from "@/lib/data/leave";
 import { submitLeaveRequest, type FormState } from "@/lib/auth/leave-actions";
-import type { Holiday, LiveLeaveBalance, LiveLeaveImpact } from "@/lib/types";
+import type {
+  Holiday,
+  LiveLeaveBalance,
+  LiveLeaveImpact,
+  LiveLeaveKindSuggestion,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const initialState: FormState = {};
+
+type LeaveKind = "urlaub" | "v_tag";
+
+const kindLabels: Record<LeaveKind, { singular: string; plural: string; action: string }> = {
+  urlaub: { singular: "Urlaubstag", plural: "Urlaubstage", action: "Urlaub beantragen" },
+  v_tag: { singular: "V-Tag", plural: "V-Tage", action: "V-Tag beantragen" },
+};
 
 export function LiveLeaveRequestForm({
   employeeId,
@@ -35,6 +48,10 @@ export function LiveLeaveRequestForm({
   const [period, setPeriod] = useState<"" | "vormittag" | "nachmittag">("");
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
+  const [kind, setKind] = useState<LeaveKind>("urlaub");
+  /** Sobald selbst umgestellt wurde, überschreibt die Empfehlung nichts mehr. */
+  const [kindTouched, setKindTouched] = useState(false);
+  const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
   const [holidays, setHolidays] = useState<Holiday[] | null>(null);
   const [state, formAction] = useActionState(submitLeaveRequest, initialState);
 
@@ -80,16 +97,57 @@ export function LiveLeaveRequestForm({
     };
   }, [employeeId, startDate, endDate, valid]);
 
+  // Empfehlung Urlaub vs. V-Tag – hängt am Starttag, weil sich Zuschläge
+  // (Sonntag, Feiertag, Nachtschicht) genau daran entscheiden.
+  useEffect(() => {
+    if (!employeeId || !valid) {
+      setSuggestion(null);
+      return;
+    }
+    let cancelled = false;
+    fetchLeaveKindSuggestion(employeeId, startDate)
+      .then((result) => {
+        if (cancelled) return;
+        setSuggestion(result);
+        // Nur vorbelegen, solange nichts von Hand gewählt wurde.
+        if (result && !kindTouched && (result.kind === "urlaub" || result.kind === "v_tag")) {
+          setKind(result.kind);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestion(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // kindTouched bewusst nicht in den Abhängigkeiten: das Umstellen von Hand
+    // soll die Empfehlung nicht neu laden, nur ihre Übernahme verhindern.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeId, startDate, valid]);
+
   useEffect(() => {
     if (state.success) {
       onSubmitted();
       setReason("");
+      setKindTouched(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 
-  const remainingAfter = balance ? balance.remainingDays - days : null;
+  const labels = kindLabels[kind];
+  // Zwei getrennte Konten: Urlaub und V-Tage. Geprüft wird immer das Konto,
+  // das zur gewählten Art gehört.
+  const accountRemaining = balance
+    ? kind === "v_tag"
+      ? balance.vRemainingDays
+      : balance.remainingDays
+    : null;
+  const remainingAfter = accountRemaining !== null ? accountRemaining - days : null;
   const insufficientBalance = remainingAfter !== null && remainingAfter < 0;
+  const suggestionDiffers =
+    suggestion !== null &&
+    (suggestion.kind === "urlaub" || suggestion.kind === "v_tag") &&
+    suggestion.kind !== kind;
   const staffingCritical = impact !== null && impact.worstStatus === "critical";
   const staffingWarn = impact !== null && impact.worstStatus === "warn";
 
@@ -108,12 +166,13 @@ export function LiveLeaveRequestForm({
     <Card>
       <CardHeader
         title="Urlaub beantragen"
-        hint="Die Anzahl Urlaubstage wird verbindlich vom Server berechnet."
+        hint="Die Anzahl Tage wird verbindlich vom Server berechnet."
       />
       <CardBody className="space-y-4">
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="start_date" value={startDate} />
           <input type="hidden" name="end_date" value={endDate} />
+          <input type="hidden" name="kind" value={kind} />
 
           <div>
             <span className="mb-2 block text-[13px] font-medium text-ink-muted">
@@ -135,6 +194,57 @@ export function LiveLeaveRequestForm({
                 : `${formatDE(startDate)} – ${formatDE(endDate)}`}
             </p>
           </div>
+
+          <Field
+            label="Art"
+            hint="Vorschlag der Schichtplanung – lässt sich jederzeit umstellen."
+          >
+            <select
+              value={kind}
+              onChange={(e) => {
+                setKind(e.target.value as LeaveKind);
+                setKindTouched(true);
+              }}
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
+            >
+              <option value="urlaub">
+                Urlaubstag{balance ? ` · ${formatDays(balance.remainingDays)} übrig` : ""}
+              </option>
+              <option value="v_tag">
+                V-Tag{balance ? ` · ${formatDays(balance.vRemainingDays)} übrig` : ""}
+              </option>
+            </select>
+          </Field>
+
+          {suggestion ? (
+            <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
+              <div>
+                <p>
+                  <span className="font-medium text-ink">
+                    {suggestion.kind === "urlaub"
+                      ? "Empfehlung: Urlaubstag"
+                      : suggestion.kind === "v_tag"
+                        ? "Empfehlung: V-Tag"
+                        : "Keine Empfehlung"}
+                  </span>{" "}
+                  – {suggestion.reason}
+                </p>
+                {suggestionDiffers ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKind(suggestion.kind as LeaveKind);
+                      setKindTouched(true);
+                    }}
+                    className="mt-1 font-medium text-brand-600 hover:underline"
+                  >
+                    Empfehlung übernehmen
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <Field label="Tageszeit" hint="Nur bei einem einzelnen Tag wählbar.">
             <select
@@ -162,7 +272,7 @@ export function LiveLeaveRequestForm({
           </Field>
 
           <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
-            <span className="text-sm text-ink-muted">Benötigte Urlaubstage</span>
+            <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
             <span className="tnum text-lg font-semibold">
               {holidays ? formatDays(days) : "…"}
             </span>
@@ -173,14 +283,16 @@ export function LiveLeaveRequestForm({
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <PanelIcon className="h-4 w-4" strokeWidth={2} />
                 {insufficientBalance
-                  ? `Für diesen Zeitraum stehen nur noch ${formatDays(Math.max(balance?.remainingDays ?? 0, 0))} Urlaubstage zur Verfügung.`
+                  ? `Für diesen Zeitraum stehen nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${labels.plural} zur Verfügung.`
                   : staffingCritical
                     ? "Mindestbesetzung wird unterschritten."
-                    : `${formatDays(balance?.remainingDays ?? 0)} Urlaubstage verfügbar.`}
+                    : `${formatDays(accountRemaining ?? 0)} ${labels.plural} verfügbar.`}
               </p>
               <ul className="mt-2 space-y-1 text-[13px] leading-snug">
                 {remainingAfter !== null && !insufficientBalance ? (
-                  <li>{formatDays(remainingAfter)} Tage verbleiben nach diesem Antrag.</li>
+                  <li>
+                    {formatDays(remainingAfter)} {labels.plural} verbleiben nach diesem Antrag.
+                  </li>
                 ) : null}
                 {staffingCritical ? (
                   <li>
@@ -207,18 +319,21 @@ export function LiveLeaveRequestForm({
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
-          <SubmitButton disabled={!valid || !holidays || days === 0 || insufficientBalance} />
+          <SubmitButton
+            label={labels.action}
+            disabled={!valid || !holidays || days === 0 || insufficientBalance}
+          />
         </form>
       </CardBody>
     </Card>
   );
 }
 
-function SubmitButton({ disabled }: { disabled?: boolean }) {
+function SubmitButton({ label, disabled }: { label: string; disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending || disabled}>
-      {pending ? "Wird gesendet …" : "Urlaub beantragen"}
+      {pending ? "Wird gesendet …" : label}
     </Button>
   );
 }

@@ -72,9 +72,18 @@ export function LiveBalanceCard({ balance }: { balance: LiveLeaveBalance | null 
             </span>
           </div>
           <p className="tnum mt-1 text-[12px] text-ink-faint">
-            von {formatDays(balance.vEntitlement)} · {formatDays(balance.vUsedDays)} genommen
+            von {formatDays(balance.vEntitlement)}
+            {balance.vCarriedOver > 0
+              ? ` + ${formatDays(balance.vCarriedOver)} Übertrag`
+              : ""}{" "}
+            · {formatDays(balance.vUsedDays)} genommen
             {balance.vPendingDays > 0 ? `, ${formatDays(balance.vPendingDays)} beantragt` : ""}
           </p>
+          {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? (
+            <p className="mt-2 text-[12px] text-ink-muted">
+              Übertragene Tage aus {balance.year - 1} verfallen am 31.03.{balance.year}.
+            </p>
+          ) : null}
         </div>
       </CardBody>
     </Card>

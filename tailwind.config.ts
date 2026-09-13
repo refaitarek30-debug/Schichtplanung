@@ -1,7 +1,10 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
+  // Beide Bäume: die Seiten liegen unter ./app, Komponenten und Bibliothek
+  // unter ./src. Fehlt ./app hier, werden Klassen, die es NUR dort gibt,
+  // aus dem CSS entfernt und die Seite sieht kaputt aus.
+  content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {

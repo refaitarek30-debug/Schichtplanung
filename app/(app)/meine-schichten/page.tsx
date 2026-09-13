@@ -18,6 +18,7 @@ import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchAbsences } from "@/lib/data/absences";
 import { DataError, fetchShiftStaffing } from "@/lib/data/staffing";
 import { fetchEmployees } from "@/lib/data/employees";
+import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type {
   EmployeeRecord,
   Holiday,
@@ -243,6 +244,23 @@ function LiveView({
     [plan],
   );
 
+  // Gesamte Belegschaft nach Schichtgruppe. Eine feste Schicht hat im
+  // Rotationsbetrieb niemand – deshalb wird nach A–D gruppiert, nicht danach
+  // gefiltert. Die Qualifikationen stehen direkt an der Person, damit die
+  // Schichtleitung sieht, wer Messwarte, Labor oder B-Schein abdecken kann.
+  const teamGroups = useMemo(() => {
+    const groups = new Map<string, EmployeeRecord[]>();
+    for (const person of colleagues ?? []) {
+      const key = person.rotationTeam ? `Schicht ${person.rotationTeam}` : "Ohne Schichtgruppe";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(person);
+    }
+    for (const members of groups.values()) {
+      members.sort((a, b) => a.lastName.localeCompare(b.lastName));
+    }
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [colleagues]);
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -362,8 +380,17 @@ function LiveView({
         </div>
 
         <Card className="h-fit">
-          <CardHeader title="Mein Team" />
-          <CardBody className="space-y-2">
+          <CardHeader
+            title="Mein Team"
+            hint={
+              role === "employee"
+                ? undefined
+                : colleagues
+                  ? `${colleagues.length} Personen, nach Schichtgruppe`
+                  : undefined
+            }
+          />
+          <CardBody className="max-h-[640px] space-y-4 overflow-y-auto">
             {role === "employee" ? (
               <p className="text-sm text-ink-muted">
                 Die Teamübersicht mit allen Kolleginnen und Kollegen ist der Schichtleitung und
@@ -371,17 +398,46 @@ function LiveView({
               </p>
             ) : colleagues === null ? (
               <p className="text-sm text-ink-muted">wird geladen …</p>
+            ) : colleagues.length === 0 ? (
+              <p className="text-sm text-ink-muted">Keine Mitarbeiter gefunden.</p>
             ) : (
-              colleagues
-                .filter((c) => c.shiftName === profileShiftName)
-                .map((person) => (
-                  <div key={person.id} className="flex items-center justify-between">
-                    <span className="text-sm">
-                      {person.firstName} {person.lastName}
-                    </span>
-                    <span className="text-[12px] text-ink-faint">{person.department}</span>
-                  </div>
-                ))
+              teamGroups.map(([groupName, members]) => (
+                <div key={groupName} className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+                    {groupName} · {members.length}
+                  </p>
+                  {members.map((person) => (
+                    <div key={person.id} className="rounded-xl border border-line px-3 py-2">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="truncate text-sm font-medium">
+                          {person.firstName} {person.lastName}
+                        </span>
+                        {person.personnelNumber ? (
+                          <span className="tnum shrink-0 text-[11px] text-ink-faint">
+                            {person.personnelNumber}
+                          </span>
+                        ) : null}
+                      </div>
+                      {person.qualifications.length > 0 ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {person.qualifications.map((q) => (
+                            <span
+                              key={q}
+                              className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] text-ink-muted"
+                            >
+                              {qualificationLabels[q as Qualification] ?? q}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-ink-faint">
+                          Keine Qualifikation hinterlegt
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))
             )}
           </CardBody>
         </Card>

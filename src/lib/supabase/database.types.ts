@@ -7,6 +7,8 @@ import type { Role } from "@/lib/types";
 
 export type LeaveStatusDb = "pending" | "approved" | "rejected" | "withdrawn";
 export type HalfDayPeriod = "vormittag" | "nachmittag";
+/** Zweites Konto neben dem Urlaub: V-Tage (Freischichten). */
+export type LeaveKindDb = "urlaub" | "v_tag";
 export type StaffingStatusDb = "ok" | "warn" | "critical";
 
 export interface StaffingSnapshotRow {
@@ -38,6 +40,19 @@ export interface AbsenceRow {
 
 export interface AbsenceWithEmployee extends AbsenceRow {
   employees: { first_name: string; last_name: string } | null;
+}
+
+/** Mitteilung aus der Betriebsleitung (Tabelle `announcements`). */
+export interface AnnouncementRow {
+  id: string;
+  company_id: string;
+  title: string;
+  body: string;
+  level: "info" | "warn";
+  created_by: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StaffingRuleRow {
@@ -130,6 +145,7 @@ export interface LeaveBalanceViewRow {
   pending_days: number;
   remaining_days: number;
   v_entitlement: number;
+  v_carried_over: number;
   v_used_days: number;
   v_pending_days: number;
   v_remaining_days: number;
@@ -145,6 +161,7 @@ export interface LeaveRequestRow {
   end_date: string;
   half_day: boolean;
   half_day_period: HalfDayPeriod | null;
+  kind?: LeaveKindDb;
   requested_days: number;
   reason: string | null;
   status: LeaveStatusDb;
@@ -198,6 +215,7 @@ export interface Database {
       notifications: Table<NotificationRow>;
       absences: Table<AbsenceRow>;
       staffing_rules: Table<StaffingRuleRow>;
+      announcements: Table<AnnouncementRow>;
     };
     Views: {
       leave_balances_view: { Row: LeaveBalanceViewRow; Relationships: [] };

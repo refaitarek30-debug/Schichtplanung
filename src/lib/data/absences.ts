@@ -41,3 +41,39 @@ export async function fetchAbsences(
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   return (data ?? []).map(mapAbsence);
 }
+
+/**
+ * Eigene Kranktage im angegebenen Jahr – für die Dashboard-Kachel.
+ * Bewusst nur die eigenen: RLS gibt Führungskräften zwar alle Abwesenheiten
+ * frei, gezählt wird hier trotzdem ausdrücklich nur der eigene Datensatz.
+ */
+export async function fetchMySickDays(
+  year = new Date().getFullYear(),
+): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("employee_id")
+    .eq("id", user.id)
+    .returns<{ employee_id: string | null }[]>()
+    .maybeSingle();
+
+  if (!profile?.employee_id) return 0;
+
+  const { count, error } = await supabase
+    .from("absences")
+    .select("id", { count: "exact", head: true })
+    .eq("employee_id", profile.employee_id)
+    .eq("type", "krank")
+    .gte("date", `${year}-01-01`)
+    .lte("date", `${year}-12-31`);
+
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return count ?? 0;
+}

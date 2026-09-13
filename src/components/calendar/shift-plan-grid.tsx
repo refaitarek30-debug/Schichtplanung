@@ -11,7 +11,12 @@ import { addDays, formatDE, fromISO, isWeekend, WEEKDAY_SHORT } from "@/lib/date
 import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
 import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
-import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
+import {
+  fetchShiftDetails,
+  fetchShiftOptions,
+  type ShiftDetail,
+  type ShiftOption,
+} from "@/lib/data/shifts";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -22,13 +27,27 @@ const cellStyles: Record<string, string> = {
   N: "bg-[#BBD9F7] text-[#123E68]",
   U: "bg-[#FCE96A] text-[#6B5900]",
   u: "bg-[#FCE96A]/50 text-[#6B5900] ring-1 ring-inset ring-[#C7A800]",
+  V: "bg-[#C7B3F0] text-[#3A2270]",
+  v: "bg-[#C7B3F0]/50 text-[#3A2270] ring-1 ring-inset ring-[#8E6FD8]",
   K: "bg-[#F5A3A3] text-[#7A1010]",
   FB: "bg-[#D6C4F0] text-[#42227A]",
   A: "bg-surface-sunken text-ink-muted",
-  // Freier Tag laut Rotationsmuster – bewusst mit rotem Haus wie in der
-  // gewohnten Vorlage, damit "frei" nie mit einer Schicht verwechselt wird.
-  FREI: "bg-[#F5A3A3] text-[#7A1010]",
+  // Freier Tag laut Rotationsmuster – bleibt weiß. Ein freier Tag ist nichts
+  // Kritisches; die Farbe war irreführend und hat wie "Krank" ausgesehen.
+  FREI: "bg-surface text-ink-faint",
 };
+
+/** In der Legende braucht Weiß eine Kontur, sonst ist das Feld unsichtbar. */
+const legendExtra: Record<string, string> = {
+  FREI: "ring-1 ring-inset ring-line",
+};
+
+/**
+ * Kürzel, bei denen die Person an diesem Tag tatsächlich ausfällt.
+ * Beantragt (kleines "u"/"v") zählt bewusst NICHT dazu – solange nichts
+ * genehmigt ist, steht die Person im Plan und in der Besetzung.
+ */
+const ABSENT_CODES = new Set(["U", "V", "K", "FB", "A"]);
 
 /** Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe. */
 function cellLabel(code: string): string {
@@ -41,6 +60,8 @@ const legend = [
   { code: "N", label: "Nachtschicht" },
   { code: "U", label: "Urlaub" },
   { code: "u", label: "Urlaub beantragt" },
+  { code: "V", label: "V-Tag" },
+  { code: "v", label: "V-Tag beantragt" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
   { code: "FREI", label: "frei" },
@@ -72,6 +93,7 @@ export function ShiftPlanGrid({
   const [start, setStart] = useState(from);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shifts, setShifts] = useState<ShiftOption[]>([]);
+  const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
@@ -80,13 +102,15 @@ export function ShiftPlanGrid({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [grid, shiftOptions, blockedDays] = await Promise.all([
+      const [grid, shiftOptions, details, blockedDays] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, days),
         fetchShiftOptions(),
+        fetchShiftDetails(),
         fetchBlockedDays(start, addDays(start, days - 1)),
       ]);
       setCells(grid);
       setShifts(shiftOptions);
+      setShiftDetails(details);
       setBlocked(blockedDays);
     } catch (caught) {
       setCells([]);
@@ -129,7 +153,62 @@ export function ShiftPlanGrid({
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
 
-  function applyChange(action: "shift" | "absence" | "free" | "urlaub" | "v_tag", value: string) {
+  /** Mindestbesetzung je Schicht, nachschlagbar über den Schichtnamen. */
+  const minimumByShift = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const detail of shiftDetails) map.set(detail.name, detail.minimumStaff);
+    return map;
+  }, [shiftDetails]);
+
+  /**
+   * Ist- und Mindestbesetzung je Schichtgruppe und Tag.
+   *
+   * Welche Schicht eine Gruppe an einem Tag fährt, steht nicht in einer
+   * Spalte – im Rotationsbetrieb ergibt sie sich aus dem Muster. Deshalb wird
+   * sie aus den Zellen der Gruppe abgeleitet (die Schicht, auf der die meisten
+   * Mitglieder stehen). Gezählt werden nur Mitglieder genau dieser Schicht,
+   * die nicht ausfallen. Gruppe hat frei = keine Mindestbesetzung.
+   */
+  const coverage = useMemo(() => {
+    const result = new Map<string, Map<string, { present: number; minimum: number | null }>>();
+    for (const [teamName, members] of groups) {
+      const perDay = new Map<string, { present: number; minimum: number | null }>();
+      for (const iso of dates) {
+        const counts = new Map<string, number>();
+        for (const member of members) {
+          const shiftName = member.cells.get(iso)?.shiftName;
+          if (shiftName) counts.set(shiftName, (counts.get(shiftName) ?? 0) + 1);
+        }
+        let dominant: string | null = null;
+        let best = 0;
+        for (const [shiftName, count] of counts) {
+          if (count > best) {
+            best = count;
+            dominant = shiftName;
+          }
+        }
+        if (!dominant) {
+          perDay.set(iso, { present: 0, minimum: null });
+          continue;
+        }
+        let present = 0;
+        for (const member of members) {
+          const cell = member.cells.get(iso);
+          if (!cell || cell.shiftName !== dominant) continue;
+          if (cell.absenceCode && ABSENT_CODES.has(cell.absenceCode)) continue;
+          present += 1;
+        }
+        perDay.set(iso, { present, minimum: minimumByShift.get(dominant) ?? null });
+      }
+      result.set(teamName, perDay);
+    }
+    return result;
+  }, [groups, dates, minimumByShift]);
+
+  function applyChange(
+    action: "shift" | "absence" | "free" | "urlaub" | "v_tag" | "clear",
+    value: string,
+  ) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
@@ -146,8 +225,10 @@ export function ShiftPlanGrid({
         fd.set("shift_id", "");
         fd.set("date", selected.day);
         result = await assignShift({}, fd);
-      } else if (action === "urlaub" || action === "v_tag") {
+      } else if (action === "urlaub" || action === "v_tag" || action === "clear") {
         // Sofort genehmigt – wird automatisch vom jeweiligen Konto abgezogen.
+        // "clear" löst genau diesen einen Tag wieder heraus, ein mehrtägiger
+        // Antrag drumherum bleibt bestehen.
         result = await setLeaveForDay(selected.employeeId, selected.day, action);
       } else {
         const fd = new FormData();
@@ -246,6 +327,11 @@ export function ShiftPlanGrid({
             >
               Schulung
             </Button>
+            {selected.absenceCode && "UuVv".includes(selected.absenceCode) ? (
+              <Button variant="ghost" disabled={pending} onClick={() => applyChange("clear", "")}>
+                Eintrag entfernen
+              </Button>
+            ) : null}
             <Button variant="ghost" onClick={() => setSelected(null)}>
               Abbrechen
             </Button>
@@ -342,6 +428,37 @@ export function ShiftPlanGrid({
                       })}
                     </tr>
                   ))}
+                  <tr>
+                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-4 py-1 text-left text-[11px] font-medium uppercase tracking-[0.06em] text-ink-faint">
+                      Besetzung Ist/Min
+                    </th>
+                    {dates.map((iso) => {
+                      const day = coverage.get(teamName)?.get(iso);
+                      const below =
+                        day != null && day.minimum !== null && day.present < day.minimum;
+                      return (
+                        <td key={iso} className="bg-surface-sunken/60 p-0.5 text-center">
+                          {day == null || day.minimum === null ? (
+                            <span className="text-[11px] text-ink-faint">–</span>
+                          ) : (
+                            <span
+                              title={
+                                below
+                                  ? `Mindestbesetzung unterschritten: ${day.present} von ${day.minimum}`
+                                  : `${day.present} von mindestens ${day.minimum}`
+                              }
+                              className={cn(
+                                "tnum flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold",
+                                below ? "bg-crit-bg text-crit-fg" : "text-ink-muted",
+                              )}
+                            >
+                              {day.present}/{day.minimum}
+                            </span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
                 </Fragment>
               ))}
             </tbody>
@@ -356,6 +473,7 @@ export function ShiftPlanGrid({
               className={cn(
                 "flex h-5 w-6 items-center justify-center rounded text-[11px] font-semibold",
                 cellStyles[item.code],
+                legendExtra[item.code],
               )}
             >
               {cellLabel(item.code)}

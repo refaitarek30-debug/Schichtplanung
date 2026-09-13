@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
+import { AnnouncementsCard } from "@/components/settings/announcements-card";
 import { useSession } from "@/context/session";
 import { holidays as demoHolidays } from "@/lib/demo-data";
 import { fetchHolidays } from "@/lib/data/holidays";
@@ -35,7 +36,7 @@ const rules = [
   {
     title: "Übertrag ins Folgejahr",
     value: "Bis 31.03.",
-    body: "Nicht genommene Tage verfallen nach dem Übertragungszeitraum.",
+    body: "Zum 1.1. steht der volle Jahresanspruch wieder zur Verfügung. Was im alten Jahr übrig war, wird zusätzlich übertragen – Urlaubstage wie V-Tage. Der Übertrag verfällt, wenn er bis zum 31.03. nicht genommen wurde.",
   },
 ];
 
@@ -76,7 +77,12 @@ export default function RulesPage() {
         </CardBody>
       </Card>
 
-      {mode === "live" ? <LeaveBlocksCard canManage={role === "admin"} /> : null}
+      {mode === "live" ? (
+        <>
+          <AnnouncementsCard canManage={role !== "employee"} />
+          <LeaveBlocksCard canManage={role === "admin"} />
+        </>
+      ) : null}
 
       <Card>
         <CardHeader

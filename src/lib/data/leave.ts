@@ -5,7 +5,12 @@ import type {
   LeaveBalanceViewRow,
   LeaveRequestWithEmployee,
 } from "@/lib/supabase/database.types";
-import type { LiveLeaveBalance, LiveLeaveRequest, LiveShiftLeaveEntry } from "@/lib/types";
+import type {
+  LiveLeaveBalance,
+  LiveLeaveKindSuggestion,
+  LiveLeaveRequest,
+  LiveShiftLeaveEntry,
+} from "@/lib/types";
 
 export class DataError extends Error {}
 
@@ -97,9 +102,20 @@ export async function fetchMyLeaveBalance(
 
   if (!profile?.employee_id) return null;
 
+  // Legt das Konto des Jahres an, falls es noch fehlt, und überträgt dabei
+  // den Rest des Vorjahres. Beim ersten Zugriff im neuen Jahr passiert das
+  // also automatisch – ohne Hintergrundjob. Schlägt es fehl (z. B. weil die
+  // Zeile längst existiert), wird trotzdem weitergelesen.
+  await supabase.rpc("ensure_leave_balance", {
+    p_employee_id: profile.employee_id,
+    p_year: year,
+  });
+
   const { data, error } = await supabase
     .from("leave_balances_view")
-    .select("year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days")
+    .select(
+      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_used_days, v_pending_days, v_remaining_days",
+    )
     .eq("employee_id", profile.employee_id)
     .eq("year", year)
     .returns<LeaveBalanceViewRow[]>()
@@ -117,9 +133,46 @@ export async function fetchMyLeaveBalance(
     pendingDays: data.pending_days,
     remainingDays: data.remaining_days,
     vEntitlement: data.v_entitlement ?? 0,
+    vCarriedOver: data.v_carried_over ?? 0,
     vUsedDays: data.v_used_days ?? 0,
     vPendingDays: data.v_pending_days ?? 0,
     vRemainingDays: data.v_remaining_days ?? 0,
+  };
+}
+
+interface SuggestLeaveKindRow {
+  kind: string;
+  grund: string;
+  u_rest: number;
+  v_rest: number;
+}
+
+/**
+ * Empfehlung der Datenbank, ob für einen Tag Urlaub oder ein V-Tag genommen
+ * werden sollte (`suggest_leave_kind()`). An Sonn-/Feiertagen und in der
+ * Nachtschicht lohnt sich Urlaub, weil die Zuschläge mitbezahlt werden – an
+ * normalen Tagen ist der V-Tag günstiger. Nur ein Vorschlag: die Entscheidung
+ * trifft weiterhin die antragstellende Person im Formular.
+ */
+export async function fetchLeaveKindSuggestion(
+  employeeId: string,
+  dateISO: string,
+): Promise<LiveLeaveKindSuggestion | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("suggest_leave_kind", {
+    p_employee_id: employeeId,
+    p_date: dateISO,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+
+  const row = ((data ?? []) as SuggestLeaveKindRow[])[0];
+  if (!row) return null;
+  return {
+    kind: row.kind === "urlaub" || row.kind === "v_tag" ? row.kind : "keins",
+    reason: row.grund,
+    remainingLeave: Number(row.u_rest ?? 0),
+    remainingV: Number(row.v_rest ?? 0),
   };
 }
 

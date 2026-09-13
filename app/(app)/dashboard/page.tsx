@@ -1,9 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { CalendarCheck, ClipboardList, Palmtree } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CalendarCheck,
+  CalendarClock,
+  ClipboardList,
+  Palmtree,
+  Thermometer,
+} from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { CoverageStrip } from "@/components/dashboard/coverage-strip";
 import { NextShifts } from "@/components/dashboard/next-shifts";
@@ -15,32 +20,31 @@ import {
   fetchReviewLeaveRequests,
 } from "@/lib/data/leave";
 import { fetchMyShiftPlan } from "@/lib/data/rotation";
-import { fetchStaffingForDay, fetchStaffingRange } from "@/lib/data/staffing";
+import { fetchMySickDays } from "@/lib/data/absences";
+import { fetchAnnouncements } from "@/lib/data/announcements";
+import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
+import { fetchShiftOptions } from "@/lib/data/shifts";
+import { fetchStaffingRange } from "@/lib/data/staffing";
 import type {
+  LiveAnnouncement,
   LiveLeaveBalance,
+  LiveLeaveBlock,
   LiveLeaveRequest,
   LiveShiftPlanDay,
-  LiveStaffingSnapshot,
 } from "@/lib/types";
 import { useSession } from "@/context/session";
 import {
   TODAY,
-  announcements,
+  absences as demoAbsences,
+  announcements as demoAnnouncements,
   allPendingRequests,
-  employeesOfShift,
   holidays,
   pendingRequestsForShift,
   requestsOfEmployee,
   shifts,
   staffingContext,
 } from "@/lib/demo-data";
-import {
-  absentOn,
-  dayStatus,
-  leaveBalance,
-  shiftRunsOn,
-  staffingFor,
-} from "@/lib/staffing";
+import { absentOn, dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
 import { addDays, formatDE, formatDays, fromISO, weekdayLong } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -75,33 +79,52 @@ export default function DashboardPage() {
   // Woche") und – für Führungskräfte – die Besetzung des Referenztages sowie
   // die kritischen Tage der nächsten zwei Wochen.
   const [livePlan, setLivePlan] = useState<LiveShiftPlanDay[] | null>(null);
-  const [liveDayStaffing, setLiveDayStaffing] = useState<LiveStaffingSnapshot[] | null>(null);
   const [liveCriticalDays, setLiveCriticalDays] = useState<string[] | null>(null);
+  /** Eigene Kranktage im laufenden Jahr – für die Kachel "Krank gesamt". */
+  const [liveSickDays, setLiveSickDays] = useState<number | null>(null);
+  // Mitteilungen der Betriebsleitung und aktive Urlaubssperren. Beides wird
+  // auf der Regeln-Seite gepflegt und erscheint hier zusammen.
+  const [liveAnnouncements, setLiveAnnouncements] = useState<LiveAnnouncement[] | null>(null);
+  const [liveBlocks, setLiveBlocks] = useState<LiveLeaveBlock[]>([]);
+  const [shiftNames, setShiftNames] = useState<Map<string, string>>(new Map());
 
   const loadLive = useCallback(async () => {
     if (mode !== "live") return;
-    const [balanceResult, myRequests, planResult] = await Promise.all([
-      fetchMyLeaveBalance(),
-      fetchMyLeaveRequests(),
-      fetchMyShiftPlan(TODAY, 14),
-    ]);
-    setLiveBalance(balanceResult);
-    setLiveMyRequests(myRequests);
-    setLivePlan(planResult);
+    try {
+      const [balanceResult, myRequests, planResult, sickDays, notices, blocks, shiftOptions] =
+        await Promise.all([
+          fetchMyLeaveBalance(),
+          fetchMyLeaveRequests(),
+          fetchMyShiftPlan(TODAY, 14),
+          fetchMySickDays(),
+          fetchAnnouncements(10),
+          fetchLeaveBlocks(),
+          fetchShiftOptions(),
+        ]);
+      setLiveBalance(balanceResult);
+      setLiveMyRequests(myRequests);
+      setLivePlan(planResult);
+      setLiveSickDays(sickDays);
+      setLiveAnnouncements(notices);
+      setLiveBlocks(blocks);
+      setShiftNames(new Map(shiftOptions.map((o) => [o.id, o.name])));
 
-    if (role !== "employee") {
-      const [review, dayStaffing, range] = await Promise.all([
-        fetchReviewLeaveRequests(),
-        fetchStaffingForDay(company.id, reference),
-        fetchStaffingRange(company.id, TODAY, 14),
-      ]);
-      setLivePendingCount(review.filter((r) => r.status === "pending").length);
-      setLiveDayStaffing(dayStaffing);
-      setLiveCriticalDays(
-        [...new Set(range.filter((s) => s.status === "critical").map((s) => s.date))].sort(),
-      );
+      if (role !== "employee") {
+        const [review, range] = await Promise.all([
+          fetchReviewLeaveRequests(),
+          fetchStaffingRange(company.id, TODAY, 14),
+        ]);
+        setLivePendingCount(review.filter((r) => r.status === "pending").length);
+        setLiveCriticalDays(
+          [...new Set(range.filter((s) => s.status === "critical").map((s) => s.date))].sort(),
+        );
+      }
+    } catch {
+      // Eine fehlgeschlagene Abfrage darf das Dashboard nicht leer lassen –
+      // was geladen werden konnte, steht bereits im State.
+      setLiveAnnouncements((current) => current ?? []);
     }
-  }, [mode, role, company.id, reference]);
+  }, [mode, role, company.id]);
 
   useEffect(() => {
     void loadLive();
@@ -121,32 +144,6 @@ export default function DashboardPage() {
     mode === "live"
       ? (liveMyRequests ?? []).filter((r) => r.status === "pending")
       : ownRequests.filter((r) => r.status === "pending");
-
-  // Besetzung der eigenen Schicht am Referenztag. Im Live-Modus aus der
-  // Datenbank, im Demo-Modus wie bisher aus dem Beispieldatensatz.
-  const demoOwnStaffing =
-    shift && shift.code !== "FREI" && shiftRunsOn(shift, reference, holidays)
-      ? staffingFor(reference, shift, staffingContext)
-      : null;
-
-  const liveOwnStaffing = (() => {
-    if (mode !== "live" || !livePlan) return null;
-    const today = livePlan.find((d) => d.date === reference);
-    if (!today?.shiftId) return null;
-    return (liveDayStaffing ?? []).find((s) => s.shiftId === today.shiftId) ?? null;
-  })();
-
-  const ownStaffing =
-    mode === "live"
-      ? liveOwnStaffing
-        ? {
-            present: liveOwnStaffing.present,
-            target: liveOwnStaffing.target,
-            min: liveOwnStaffing.minimum,
-            status: liveOwnStaffing.status,
-          }
-        : null
-      : demoOwnStaffing;
 
   const demoPending =
     role === "admin" ? allPendingRequests() : pendingRequestsForShift(user.shiftId);
@@ -177,11 +174,50 @@ export default function DashboardPage() {
   );
   const criticalDays = mode === "live" ? (liveCriticalDays ?? []) : demoCriticalDays;
 
-  const demoAbsentToday = absentOn(reference, staffingContext).length;
-  const absentToday =
-    mode === "live"
-      ? (liveDayStaffing ?? []).reduce((sum, s) => sum + s.absent, 0)
-      : demoAbsentToday;
+  // Eigene Kranktage im laufenden Jahr. Im Demo-Modus aus dem Beispieldatensatz,
+  // im Live-Modus aus `absences` – in beiden Fällen nur die eigene Person.
+  const year = fromISO(TODAY).getFullYear();
+  const demoSickDays = demoAbsences.filter(
+    (a) => a.employeeId === user.id && a.type === "krank" && a.date.startsWith(`${year}`),
+  ).length;
+  const sickDays = mode === "live" ? (liveSickDays ?? 0) : demoSickDays;
+
+  // Zweites Konto neben dem Urlaub: V-Tage (Freischichten). Der Demo-Datensatz
+  // aus Phase 1 kennt noch keine V-Tage – dort steht der Regelanspruch.
+  const DEMO_V_DAYS = 27;
+  const vRemaining = mode === "live" ? (liveBalance?.vRemainingDays ?? 0) : DEMO_V_DAYS;
+  const vEntitlement = mode === "live" ? (liveBalance?.vEntitlement ?? 0) : DEMO_V_DAYS;
+
+  // Mitteilungen: im Live-Modus das, was die Führung auf der Regeln-Seite
+  // geschrieben hat, plus jede aktive Urlaubssperre als eigener Eintrag.
+  // Gesperrte Zeiträume, die schon vorbei sind, fallen raus.
+  const notices = useMemo(() => {
+    if (mode !== "live") {
+      return demoAnnouncements.map((item) => ({
+        id: item.id,
+        title: item.title,
+        body: item.body,
+        level: item.level === "warn" ? ("warn" as const) : ("info" as const),
+      }));
+    }
+    const fromBlocks = liveBlocks
+      .filter((block) => block.endDate >= TODAY)
+      .map((block) => ({
+        id: `block-${block.id}`,
+        title: `Urlaubssperre: ${block.reason}`,
+        body: `${formatDE(block.startDate)} – ${formatDE(block.endDate)} · ${
+          block.shiftId ? (shiftNames.get(block.shiftId) ?? "eine Schicht") : "alle Schichten"
+        }`,
+        level: "warn" as const,
+      }));
+    const fromNotices = (liveAnnouncements ?? []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      body: item.body,
+      level: item.level,
+    }));
+    return [...fromBlocks, ...fromNotices];
+  }, [mode, liveAnnouncements, liveBlocks, shiftNames]);
 
   return (
     <div className="space-y-6">
@@ -196,7 +232,7 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard
           label="Urlaubstage verfügbar"
           value={formatDays(balance.available)}
@@ -233,6 +269,22 @@ export default function DashboardPage() {
           }
           icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
         />
+        <KpiCard
+          label="Krank gesamt"
+          value={sickDays}
+          unit={sickDays === 1 ? "Tag" : "Tage"}
+          hint={`im Jahr ${year}`}
+          accent={sickDays > 0 ? "warn" : "ok"}
+          icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
+        />
+        <KpiCard
+          label="V-Tage gesamt"
+          value={formatDays(vRemaining)}
+          unit="Tage"
+          hint={`von ${formatDays(vEntitlement)} übrig`}
+          accent="plan"
+          icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
+        />
       </div>
 
       {role === "employee" ? (
@@ -257,7 +309,7 @@ export default function DashboardPage() {
       ) : (
         <>
           <CoverageStrip from={TODAY} />
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
             {mode === "live" ? (
               <Card>
                 <CardHeader
@@ -288,115 +340,42 @@ export default function DashboardPage() {
                 href="/urlaubsantraege"
               />
             )}
-            <TodayShifts
-              reference={reference}
-              isToday={isToday}
-              absentToday={absentToday}
-              liveStaffing={mode === "live" ? (liveDayStaffing ?? []) : null}
-            />
           </div>
         </>
       )}
 
       <Card>
-        <CardHeader title="Mitteilungen" hint="aus der Betriebsleitung" />
+        <CardHeader
+          title="Mitteilungen"
+          hint="aus der Betriebsleitung · inklusive aktiver Urlaubssperren"
+        />
         <CardBody className="space-y-3">
-          {announcements.map((item) => (
-            <article key={item.id} className="flex gap-3">
-              <span
-                className={cn(
-                  "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                  item.level === "warn" ? "bg-warn-dot" : "bg-info-dot",
-                )}
-              />
-              <div>
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-[13px] leading-snug text-ink-muted">{item.body}</p>
-              </div>
-            </article>
-          ))}
+          {mode === "live" && liveAnnouncements === null ? (
+            <p className="py-2 text-sm text-ink-muted">wird geladen …</p>
+          ) : notices.length === 0 ? (
+            <p className="py-2 text-sm text-ink-muted">
+              Zurzeit gibt es keine Mitteilungen und keine Urlaubssperren.
+            </p>
+          ) : (
+            notices.map((item) => (
+              <article key={item.id} className="flex gap-3">
+                <span
+                  className={cn(
+                    "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                    item.level === "warn" ? "bg-warn-dot" : "bg-info-dot",
+                  )}
+                />
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  {item.body ? (
+                    <p className="text-[13px] leading-snug text-ink-muted">{item.body}</p>
+                  ) : null}
+                </div>
+              </article>
+            ))
+          )}
         </CardBody>
       </Card>
     </div>
-  );
-}
-
-function TodayShifts({
-  reference,
-  isToday,
-  absentToday,
-  liveStaffing,
-}: {
-  reference: string;
-  isToday: boolean;
-  absentToday: number;
-  /** Echte Besetzung aus Supabase; null = Demo-Modus, dann Beispieldaten. */
-  liveStaffing: LiveStaffingSnapshot[] | null;
-}) {
-  const rows =
-    liveStaffing !== null
-      ? liveStaffing.map((snap) => ({
-          key: snap.shiftId,
-          name: snap.shiftName ?? "Schicht",
-          times: null as string | null,
-          headcount: snap.planned,
-          present: snap.present,
-          target: snap.target,
-          status: snap.status,
-        }))
-      : shifts
-          .filter((s) => s.code !== "FREI" && shiftRunsOn(s, reference, holidays))
-          .map((s) => {
-            const snapshot = staffingFor(reference, s, staffingContext);
-            return {
-              key: s.id,
-              name: s.name,
-              times: `${s.startTime}–${s.endTime}`,
-              headcount: employeesOfShift(s.id).length,
-              present: snapshot.present,
-              target: snapshot.target,
-              status: snapshot.status,
-            };
-          });
-
-  return (
-    <Card>
-      <CardHeader
-        title={isToday ? "Besetzung heute" : `Besetzung am ${formatDE(reference)}`}
-        hint={`${absentToday} Personen abwesend`}
-      />
-      <CardBody className="space-y-2">
-        {rows.length === 0 ? (
-          <p className="py-4 text-center text-sm text-ink-muted">
-            An diesem Tag wird nicht produziert.
-          </p>
-        ) : (
-          rows.map((row) => (
-            <div
-              key={row.key}
-              className="flex items-center justify-between rounded-xl border border-line px-3 py-3"
-            >
-              <div>
-                <p className="text-sm font-medium">{row.name}</p>
-                <p className="tnum text-[12px] text-ink-muted">
-                  {row.times ? `${row.times} · ` : ""}
-                  {row.headcount} zugeordnet
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="tnum text-sm font-semibold">
-                  {row.present} / {row.target}
-                </span>
-                <Badge
-                  tone={row.status === "ok" ? "ok" : row.status === "warn" ? "warn" : "critical"}
-                >
-                  {row.status === "ok" ? "OK" : row.status === "warn" ? "knapp" : "kritisch"}
-                </Badge>
-              </div>
-            </div>
-          ))
-        )}
-      </CardBody>
-    </Card>
   );
 }

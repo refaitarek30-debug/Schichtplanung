@@ -101,9 +101,32 @@ export interface LiveLeaveBalance {
   remainingDays: number;
   /** Zweites Konto: V-Tage (Freischichten), getrennt vom Urlaub. */
   vEntitlement: number;
+  /** Übertrag aus dem Vorjahr, verfällt am 31.03. */
+  vCarriedOver: number;
   vUsedDays: number;
   vPendingDays: number;
   vRemainingDays: number;
+}
+
+/** Mitteilung aus der Betriebsleitung, wie sie auf dem Dashboard erscheint. */
+export interface LiveAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  level: "info" | "warn";
+  createdAt: string;
+}
+
+/**
+ * Empfehlung aus `suggest_leave_kind()`: soll für diesen Tag Urlaub oder ein
+ * V-Tag genommen werden? "keins" = freier Tag bzw. beide Konten leer.
+ */
+export interface LiveLeaveKindSuggestion {
+  kind: "urlaub" | "v_tag" | "keins";
+  /** Begründung im Klartext, direkt anzeigbar. */
+  reason: string;
+  remainingLeave: number;
+  remainingV: number;
 }
 
 /** Besetzung einer Schicht an einem Tag, aus `staffing_for_day`/`staffing_snapshot`. */

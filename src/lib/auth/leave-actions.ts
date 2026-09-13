@@ -29,6 +29,10 @@ export async function submitLeaveRequest(
   const endDate = String(formData.get("end_date") ?? "");
   const halfDayPeriod = String(formData.get("half_day_period") ?? "") || null;
   const reason = String(formData.get("reason") ?? "").trim();
+  // Zwei getrennte Konten: "urlaub" und "v_tag". Unbekannte Werte fallen
+  // bewusst auf Urlaub zurück, statt den Antrag scheitern zu lassen.
+  const kindRaw = String(formData.get("kind") ?? "urlaub");
+  const kind = kindRaw === "v_tag" ? "v_tag" : "urlaub";
 
   if (!startDate || !endDate) {
     return { error: "Bitte Start- und Enddatum auswählen." };
@@ -63,6 +67,7 @@ export async function submitLeaveRequest(
     start_date: startDate,
     end_date: endDate,
     half_day_period: halfDayPeriod,
+    kind,
     // Platzhalter – der Trigger überschreibt diesen Wert serverseitig.
     requested_days: 0,
     reason: reason || null,
@@ -79,7 +84,12 @@ export async function submitLeaveRequest(
   revalidatePath("/urlaub");
   revalidatePath("/dashboard");
   revalidatePath("/urlaubsantraege");
-  return { success: "Antrag eingereicht – Status: Ausstehend." };
+  return {
+    success:
+      kind === "v_tag"
+        ? "V-Tag beantragt – Status: Ausstehend."
+        : "Antrag eingereicht – Status: Ausstehend.",
+  };
 }
 
 export async function withdrawMyLeaveRequest(requestId: string): Promise<FormState> {
