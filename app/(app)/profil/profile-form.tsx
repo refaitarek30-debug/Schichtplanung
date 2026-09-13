@@ -6,7 +6,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
-import { updateOwnProfile, type FormState } from "@/lib/auth/actions";
+import { updateOwnProfile } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type { SessionProfile } from "@/lib/types";
 
 export function ProfileForm({
