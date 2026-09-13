@@ -15,7 +15,8 @@ import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
 import { fetchAutoPreview, fetchLeaveKindSuggestion } from "@/lib/data/leave";
 import { fetchMyShiftPlan } from "@/lib/data/rotation";
-import { submitLeaveRequest, type FormState } from "@/lib/auth/leave-actions";
+import { submitLeaveRequest } from "@/lib/auth/leave-actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type {
   Holiday,
   LiveAutoDay,

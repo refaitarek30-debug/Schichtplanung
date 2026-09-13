@@ -15,7 +15,7 @@ import { fetchShiftAssignments, DataError } from "@/lib/data/rotation";
 import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
 import { fetchEmployees } from "@/lib/data/employees";
 import { assignShift, removeShiftAssignment } from "@/lib/auth/rotation-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type { EmployeeRecord, LiveShiftAssignment } from "@/lib/types";
 
 const initialState: FormState = {};

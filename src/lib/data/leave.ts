@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { currentIdentity } from "@/lib/supabase/identity";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import type {
@@ -42,24 +43,14 @@ const SELECT_WITH_EMPLOYEE =
 export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("employee_id")
-    .eq("id", user.id)
-    .returns<{ employee_id: string | null }[]>()
-    .maybeSingle();
-
-  if (!profile?.employee_id) return [];
+  const ich = await currentIdentity();
+  if (!ich) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
+  if (!ich.employeeId) return [];
 
   const { data, error } = await supabase
     .from("leave_requests")
     .select(SELECT_WITH_EMPLOYEE)
-    .eq("employee_id", profile.employee_id)
+    .eq("employee_id", ich.employeeId)
     .order("start_date", { ascending: false })
     .returns<LeaveRequestWithEmployee[]>();
 
@@ -90,25 +81,15 @@ export async function fetchMyLeaveBalance(
 ): Promise<LiveLeaveBalance | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("employee_id")
-    .eq("id", user.id)
-    .returns<{ employee_id: string | null }[]>()
-    .maybeSingle();
-
-  if (!profile?.employee_id) return null;
+  const ich = await currentIdentity();
+  if (!ich) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
+  if (!ich.employeeId) return null;
 
   // Legt das Konto des Jahres an, falls es noch fehlt, und zieht den
   // Übertrag nach, solange das Vorjahr noch läuft. Damit stimmt die Zahl
   // auch dann, wenn jemand im Herbst schon das kommende Jahr plant.
   await supabase.rpc("ensure_leave_balance", {
-    p_employee_id: profile.employee_id,
+    p_employee_id: ich.employeeId,
     p_year: year,
   });
 
@@ -117,7 +98,7 @@ export async function fetchMyLeaveBalance(
     .select(
       "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_used_days, v_pending_days, v_remaining_days",
     )
-    .eq("employee_id", profile.employee_id)
+    .eq("employee_id", ich.employeeId)
     .eq("year", year)
     .returns<LeaveBalanceViewRow[]>()
     .maybeSingle();

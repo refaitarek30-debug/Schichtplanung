@@ -2,16 +2,14 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import type { EmployeeRow, ProfileRow } from "@/lib/supabase/database.types";
+import type { FormState } from "./form-state";
+import { grantAccess, siteOrigin } from "./invite";
 
-export interface FormState {
-  error?: string;
-  success?: string;
-}
+export type { FormState } from "./form-state";
 
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
@@ -21,12 +19,6 @@ function isSafePath(path: string | null): path is string {
   return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
 }
 
-async function siteOrigin() {
-  const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`;
-}
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
@@ -150,10 +142,17 @@ export async function inviteEmployee(
   const employeeId = String(formData.get("employee_id") ?? "");
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, company_id")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+    .eq("id", user.id)
     .returns<Pick<ProfileRow, "role" | "company_id">[]>()
     .maybeSingle();
 
@@ -173,34 +172,9 @@ export async function inviteEmployee(
   if (employeeError || !employee) {
     return { error: "Der Mitarbeiter wurde nicht gefunden." };
   }
-  if (!employee.email) {
-    return { error: "Für diesen Mitarbeiter ist keine E-Mail-Adresse hinterlegt." };
-  }
   if (employee.company_id !== profile.company_id) {
     return { error: "Du hast keine Berechtigung für diesen Bereich." };
   }
 
-  try {
-    const admin = createAdminClient();
-    const origin = await siteOrigin();
-    const { error } = await admin.auth.admin.inviteUserByEmail(employee.email, {
-      redirectTo: `${origin}/auth/callback?weiter=/passwort-neu`,
-      data: {
-        company_id: employee.company_id,
-        employee_id: employee.id,
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        role: employee.role,
-      },
-    });
-    if (error) return { error: authErrorMessage(error) ?? "Einladung fehlgeschlagen." };
-  } catch {
-    return {
-      error:
-        "Für Einladungen fehlt der Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY) auf dem Server.",
-    };
-  }
-
-  revalidatePath("/mitarbeiter");
-  return { success: `Einladung an ${employee.email} verschickt.` };
+  return grantAccess(employee, await siteOrigin());
 }

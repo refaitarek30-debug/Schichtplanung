@@ -12,7 +12,7 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { formatDE } from "@/lib/dates";
 import { fetchAnnouncements, DataError } from "@/lib/data/announcements";
 import { createAnnouncement, retireAnnouncement } from "@/lib/auth/announcement-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type { LiveAnnouncement } from "@/lib/types";
 import { cn } from "@/lib/utils";
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import type { FormState } from "./actions";
+import type { FormState } from "./form-state";
 
 export type { FormState };
 import type { LeaveRequestRow } from "@/lib/supabase/database.types";
