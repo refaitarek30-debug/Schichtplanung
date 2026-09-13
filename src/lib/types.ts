@@ -58,6 +58,8 @@ export interface EmployeeRecord {
   rotationTeam: string | null;
   /** Jahresanspruch V-Tage (Freischichten). */
   vDays: number;
+  /** Arbeitet im Schichtsystem – Grundlage für die automatische Verteilung. */
+  shiftWorker: boolean;
 }
 
 export interface ShiftAssignment {
@@ -115,6 +117,16 @@ export interface LiveAnnouncement {
   body: string;
   level: "info" | "warn";
   createdAt: string;
+}
+
+/**
+ * Ein Tag aus der Vorschau der automatischen Verteilung
+ * (`preview_leave_auto()`): auf welches Konto er ginge und warum.
+ */
+export interface LiveAutoDay {
+  date: string;
+  kind: "urlaub" | "v_tag" | "keins";
+  reason: string;
 }
 
 /**

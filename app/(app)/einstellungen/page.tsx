@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { ThemeToggle } from "@/components/layout/theme";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -49,13 +50,22 @@ export default function SettingsPage() {
         description="Unternehmensdaten, Rollen und der Stand der technischen Anbindung."
       />
 
+      <Card>
+        <CardHeader
+          title="Darstellung"
+          hint="gilt nur auf diesem Gerät – für die Nachtschicht meist dunkel"
+        />
+        <CardBody>
+          <ThemeToggle />
+        </CardBody>
+      </Card>
+
       {mode === "live" ? <NotificationSettings /> : null}
 
       <Card>
         <CardHeader title="Unternehmen" />
         <CardBody className="grid gap-3 sm:grid-cols-3">
           <Detail label="Name" value={company.name} />
-          <Detail label="Feiertagsregion" value="Nordrhein-Westfalen" />
           <Detail
             label="Aktive Mitarbeiter"
             value={String(employees.filter((e) => e.active).length)}

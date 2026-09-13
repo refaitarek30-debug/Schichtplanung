@@ -104,6 +104,7 @@ export interface EmployeeRow {
   qualifications?: string[];
   rotation_team?: string | null;
   v_days?: number;
+  shift_worker?: boolean;
   created_at: string;
   updated_at: string;
 }

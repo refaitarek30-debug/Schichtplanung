@@ -6,6 +6,7 @@ import type {
   LeaveRequestWithEmployee,
 } from "@/lib/supabase/database.types";
 import type {
+  LiveAutoDay,
   LiveLeaveBalance,
   LiveLeaveKindSuggestion,
   LiveLeaveRequest,
@@ -215,5 +216,33 @@ export async function fetchMyShiftLeave(
     endDate: row.end_date,
     status: row.status as LiveShiftLeaveEntry["status"],
     isMe: row.is_me,
+  }));
+}
+
+interface AutoPreviewRow {
+  tag: string;
+  art: string;
+  grund: string;
+}
+
+/**
+ * Vorschau: welcher Tag im Zeitraum würde auf welches Konto gehen?
+ * Rechnet dieselbe Logik wie `submit_leave_auto()`, schreibt aber nichts.
+ */
+export async function fetchAutoPreview(
+  startISO: string,
+  endISO: string,
+): Promise<LiveAutoDay[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("preview_leave_auto", {
+    p_start_date: startISO,
+    p_end_date: endISO,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as AutoPreviewRow[]).map((row) => ({
+    date: row.tag,
+    kind: row.art === "urlaub" ? "urlaub" : row.art === "v_tag" ? "v_tag" : "keins",
+    reason: row.grund,
   }));
 }

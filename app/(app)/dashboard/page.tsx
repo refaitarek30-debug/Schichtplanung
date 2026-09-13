@@ -90,39 +90,48 @@ export default function DashboardPage() {
 
   const loadLive = useCallback(async () => {
     if (mode !== "live") return;
-    try {
-      const [balanceResult, myRequests, planResult, sickDays, notices, blocks, shiftOptions] =
-        await Promise.all([
-          fetchMyLeaveBalance(),
-          fetchMyLeaveRequests(),
-          fetchMyShiftPlan(TODAY, 14),
-          fetchMySickDays(),
-          fetchAnnouncements(10),
-          fetchLeaveBlocks(),
-          fetchShiftOptions(),
-        ]);
-      setLiveBalance(balanceResult);
-      setLiveMyRequests(myRequests);
-      setLivePlan(planResult);
-      setLiveSickDays(sickDays);
-      setLiveAnnouncements(notices);
-      setLiveBlocks(blocks);
-      setShiftNames(new Map(shiftOptions.map((o) => [o.id, o.name])));
 
-      if (role !== "employee") {
-        const [review, range] = await Promise.all([
-          fetchReviewLeaveRequests(),
-          fetchStaffingRange(company.id, TODAY, 14),
-        ]);
-        setLivePendingCount(review.filter((r) => r.status === "pending").length);
+    /**
+     * Jede Abfrage einzeln auswerten. Vorher hingen alle in einem
+     * Promise.all: eine einzige fehlgeschlagene Abfrage hat dann sämtliche
+     * Kacheln auf null gelassen – die Urlaubstage standen auf 0, obwohl das
+     * Konto voll war.
+     */
+    const [balance, requests, plan, sick, notices, blocks, shifts] = await Promise.allSettled([
+      fetchMyLeaveBalance(),
+      fetchMyLeaveRequests(),
+      fetchMyShiftPlan(TODAY, 14),
+      fetchMySickDays(),
+      fetchAnnouncements(10),
+      fetchLeaveBlocks(),
+      fetchShiftOptions(),
+    ]);
+
+    if (balance.status === "fulfilled") setLiveBalance(balance.value);
+    if (requests.status === "fulfilled") setLiveMyRequests(requests.value);
+    if (plan.status === "fulfilled") setLivePlan(plan.value);
+    if (sick.status === "fulfilled") setLiveSickDays(sick.value);
+    setLiveAnnouncements(notices.status === "fulfilled" ? notices.value : []);
+    if (blocks.status === "fulfilled") setLiveBlocks(blocks.value);
+    if (shifts.status === "fulfilled") {
+      setShiftNames(new Map(shifts.value.map((o) => [o.id, o.name])));
+    }
+
+    if (role !== "employee") {
+      const [review, range] = await Promise.allSettled([
+        fetchReviewLeaveRequests(),
+        fetchStaffingRange(company.id, TODAY, 14),
+      ]);
+      if (review.status === "fulfilled") {
+        setLivePendingCount(review.value.filter((r) => r.status === "pending").length);
+      }
+      if (range.status === "fulfilled") {
         setLiveCriticalDays(
-          [...new Set(range.filter((s) => s.status === "critical").map((s) => s.date))].sort(),
+          [
+            ...new Set(range.value.filter((s) => s.status === "critical").map((s) => s.date)),
+          ].sort(),
         );
       }
-    } catch {
-      // Eine fehlgeschlagene Abfrage darf das Dashboard nicht leer lassen –
-      // was geladen werden konnte, steht bereits im State.
-      setLiveAnnouncements((current) => current ?? []);
     }
   }, [mode, role, company.id]);
 
@@ -237,7 +246,11 @@ export default function DashboardPage() {
           label="Urlaubstage verfügbar"
           value={formatDays(balance.available)}
           unit="Tage"
-          hint={`${formatDays(balance.planned)} bereits verplant`}
+          hint={
+            mode === "live" && liveBalance === null
+              ? "wird geladen …"
+              : `${formatDays(balance.planned)} verplant · ${formatDays(vRemaining)} V-Tage übrig`
+          }
           accent="plan"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />

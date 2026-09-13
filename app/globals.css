@@ -68,9 +68,12 @@
  * weißes Display im Leitstand unangenehm hell. Die Schichtfarben werden
  * abgedunkelt statt invertiert, damit Früh/Spät/Nacht wiedererkennbar
  * bleiben.
+ *
+ * Drei Zustände: ohne eigene Wahl entscheidet das Betriebssystem, mit
+ * eigener Wahl steht sie als data-theme am <html>-Element und gewinnt.
  */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
 
     --c-surface: 28 31 39;
@@ -124,6 +127,61 @@
     --c-schulung: 79 55 122;
     --c-schulung-ink: 224 210 248;
   }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --c-surface: 28 31 39;
+    --c-surface-muted: 20 22 28;
+    --c-surface-sunken: 34 38 47;
+
+    --c-ink: 236 238 243;
+    --c-ink-muted: 167 174 188;
+    --c-ink-faint: 121 129 143;
+
+    --c-line: 44 49 60;
+
+    --c-brand-50: 30 39 64;
+    --c-brand-100: 38 50 82;
+    --c-brand-500: 123 155 255;
+    --c-brand-600: 148 175 255;
+    --c-brand-700: 176 196 255;
+
+    --c-ok-bg: 22 48 31;
+    --c-ok-fg: 91 215 155;
+    --c-ok-dot: 52 190 118;
+
+    --c-warn-bg: 49 40 20;
+    --c-warn-fg: 229 181 98;
+    --c-warn-dot: 214 152 46;
+
+    --c-crit-bg: 51 25 27;
+    --c-crit-fg: 255 138 138;
+    --c-crit-dot: 226 84 84;
+
+    --c-info-bg: 27 36 58;
+    --c-info-fg: 148 175 255;
+    --c-info-dot: 123 155 255;
+
+    --c-plan-bg: 38 31 60;
+    --c-plan-fg: 189 165 255;
+    --c-plan-dot: 156 122 240;
+
+    --c-frueh: 122 84 30;
+    --c-frueh-ink: 252 224 183;
+    --c-spaet: 74 100 33;
+    --c-spaet-ink: 226 244 195;
+    --c-nacht: 35 76 122;
+    --c-nacht-ink: 202 226 250;
+    --c-urlaub: 116 98 16;
+    --c-urlaub-ink: 253 240 160;
+    --c-vtag: 71 51 122;
+    --c-vtag-ink: 216 203 250;
+    --c-krank: 120 43 43;
+    --c-krank-ink: 250 200 200;
+    --c-schulung: 79 55 122;
+    --c-schulung-ink: 224 210 248;
 }
 
 html,

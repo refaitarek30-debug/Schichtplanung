@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistration } from "@/components/layout/service-worker";
+import { ThemeScript } from "@/components/layout/theme";
 
 /**
  * IBM Plex: nüchtern, gut lesbar in kleinen Größen, und die Mono-Variante
@@ -58,6 +59,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de" className={`${sans.variable} ${mono.variable}`}>
+      <head>
+        <ThemeScript />
+      </head>
       <body className="font-sans">
         {children}
         <ServiceWorkerRegistration />

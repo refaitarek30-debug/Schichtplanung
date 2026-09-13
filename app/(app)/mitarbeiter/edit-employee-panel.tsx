@@ -141,6 +141,23 @@ export function EditEmployeePanel({
             </Field>
           </div>
 
+          <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">
+            <input
+              type="checkbox"
+              name="shift_worker"
+              defaultChecked={employee.shiftWorker}
+              className="mt-0.5 h-4 w-4 rounded border-line"
+            />
+            <span className="text-[13px] leading-snug">
+              <span className="block font-medium text-ink">Arbeitet im Schichtsystem</span>
+              <span className="text-ink-muted">
+                Urlaub wird dann automatisch verteilt: an Sonn- und Feiertagen sowie in der
+                Nachtschicht ein Urlaubstag, weil der Zuschlag mitbezahlt wird – an allen
+                anderen Tagen ein V-Tag.
+              </span>
+            </span>
+          </label>
+
           <QualificationCheckboxes defaultValues={employee.qualifications} />
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
@@ -152,6 +169,7 @@ export function EditEmployeePanel({
               Abbrechen
             </Button>
           </div>
+
         </form>
       </CardBody>
     </Card>

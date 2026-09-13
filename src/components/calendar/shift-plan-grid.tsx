@@ -49,6 +49,13 @@ const legendExtra: Record<string, string> = {
  */
 const ABSENT_CODES = new Set(["U", "V", "K", "FB", "A"]);
 
+/** "Tarek Refai" -> "T. Refai". Spart auf dem Handy die halbe Namensspalte. */
+function shortName(name: string): string {
+  const teile = name.trim().split(/\s+/);
+  if (teile.length < 2) return name;
+  return `${teile[0]!.slice(0, 1)}. ${teile[teile.length - 1]}`;
+}
+
 /** Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe. */
 function cellLabel(code: string): string {
   return code === "FREI" ? "⌂" : code;
@@ -400,8 +407,9 @@ export function ShiftPlanGrid({
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
-                <th className="sticky left-0 z-20 min-w-[180px] bg-surface px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                  Mitarbeiter
+                <th className="sticky left-0 z-20 min-w-[84px] bg-surface px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint sm:min-w-[180px] sm:px-4">
+                  <span className="sm:hidden">Name</span>
+                  <span className="hidden sm:inline">Mitarbeiter</span>
                 </th>
                 {dates.map((iso) => {
                   const blockReason = blocked.get(iso);
@@ -410,16 +418,26 @@ export function ShiftPlanGrid({
                       key={iso}
                       title={blockReason ? `Urlaubssperre: ${blockReason}` : undefined}
                       className={cn(
-                        "min-w-[42px] px-1 py-2 text-center",
+                        "min-w-[24px] px-0.5 py-2 text-center sm:min-w-[42px] sm:px-1",
                         isWeekend(iso) && "bg-surface-sunken/60",
                         blockReason && "bg-crit-bg",
                       )}
                     >
                       <span className="block text-[10px] font-medium text-ink-faint">
-                        {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
+                        {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
+                            passen keine zwei Wochen nebeneinander. */}
+                        <span className="sm:hidden">
+                          {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7].slice(0, 1)}
+                        </span>
+                        <span className="hidden sm:inline">
+                          {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
+                        </span>
                       </span>
                       <span className="tnum block text-[11px] text-ink-muted">
-                        {iso.slice(8, 10)}.{iso.slice(5, 7)}.
+                        <span className="sm:hidden">{Number(iso.slice(8, 10))}</span>
+                        <span className="hidden sm:inline">
+                          {iso.slice(8, 10)}.{iso.slice(5, 7)}.
+                        </span>
                       </span>
                       {blockReason ? (
                         <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
@@ -442,10 +460,12 @@ export function ShiftPlanGrid({
                   </tr>
                   {members.map((member) => (
                     <tr key={member.employeeId} className="hover:bg-surface-muted/50">
-                      <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-4 py-1 text-left font-normal">
-                        <span className="block truncate">{member.name}</span>
+                      <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-1 text-left text-[12px] font-normal sm:px-4 sm:text-[13px]">
+                        {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
+                        <span className="block truncate sm:hidden">{shortName(member.name)}</span>
+                        <span className="hidden truncate sm:block">{member.name}</span>
                         {member.number ? (
-                          <span className="tnum block text-[10px] text-ink-faint">
+                          <span className="tnum hidden text-[10px] text-ink-faint sm:block">
                             {member.number}
                           </span>
                         ) : null}
@@ -458,7 +478,7 @@ export function ShiftPlanGrid({
                           ? (cell.absenceCode ?? cell.shiftCode ?? "FREI")
                           : null;
                         return (
-                          <td key={iso} className="p-0.5 text-center">
+                          <td key={iso} className="p-px text-center sm:p-0.5">
                             <button
                               disabled={!canEdit || !cell}
                               onClick={() => cell && setSelected(cell)}
@@ -468,7 +488,7 @@ export function ShiftPlanGrid({
                                   : undefined
                               }
                               className={cn(
-                                "flex h-8 w-full items-center justify-center rounded text-[13px] font-semibold",
+                                "flex h-7 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-8 sm:text-[13px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                                 canEdit && cell && "hover:ring-2 hover:ring-brand-500",
                               )}
@@ -481,15 +501,16 @@ export function ShiftPlanGrid({
                     </tr>
                   ))}
                   <tr>
-                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-4 py-1 text-left text-[11px] font-medium uppercase tracking-[0.06em] text-ink-faint">
-                      Besetzung Ist/Min
+                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-4 sm:text-[11px]">
+                      <span className="sm:hidden">Ist/Min</span>
+                      <span className="hidden sm:inline">Besetzung Ist/Min</span>
                     </th>
                     {dates.map((iso) => {
                       const day = coverage.get(teamName)?.get(iso);
                       const below =
                         day != null && day.minimum !== null && day.present < day.minimum;
                       return (
-                        <td key={iso} className="bg-surface-sunken/60 p-0.5 text-center">
+                        <td key={iso} className="bg-surface-sunken/60 p-px text-center sm:p-0.5">
                           {day == null || day.minimum === null ? (
                             <span className="text-[11px] text-ink-faint">–</span>
                           ) : (
@@ -500,7 +521,7 @@ export function ShiftPlanGrid({
                                   : `${day.present} von mindestens ${day.minimum}`
                               }
                               className={cn(
-                                "tnum flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold",
+                                "tnum flex h-6 w-full items-center justify-center rounded text-[9px] font-semibold sm:text-[11px]",
                                 below ? "bg-crit-bg text-crit-fg" : "text-ink-muted",
                               )}
                             >

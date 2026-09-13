@@ -114,6 +114,10 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
       rotation_pattern_id: rotationPatternId,
+      // Steuert, ob Urlaub automatisch auf Urlaubstage und V-Tage verteilt
+      // wird. Ohne Schichtsystem gibt es keine Zuschläge und damit nichts
+      // zu optimieren – dann kostet jeder Tag einen Urlaubstag.
+      shift_worker: formData.get("shift_worker") === "on",
     })
     .select("id")
     .returns<{ id: string }[]>();
@@ -215,6 +219,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       role,
       vacation_days: vacationDays,
       v_days: Number.parseFloat(String(formData.get("v_days") ?? "27").replace(",", ".")) || 27,
+      shift_worker: formData.get("shift_worker") === "on",
       active,
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,

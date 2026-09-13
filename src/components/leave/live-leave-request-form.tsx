@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
@@ -9,14 +9,16 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { DateRangeCalendar } from "./date-range-calendar";
-import { formatDE, formatDays } from "@/lib/dates";
+import { addDays as addDaysISO, formatDE, formatDays, fromISO as fromISOLocal } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
-import { fetchLeaveKindSuggestion } from "@/lib/data/leave";
+import { fetchAutoPreview, fetchLeaveKindSuggestion } from "@/lib/data/leave";
+import { fetchMyShiftPlan } from "@/lib/data/rotation";
 import { submitLeaveRequest, type FormState } from "@/lib/auth/leave-actions";
 import type {
   Holiday,
+  LiveAutoDay,
   LiveLeaveBalance,
   LiveLeaveImpact,
   LiveLeaveKindSuggestion,
@@ -25,12 +27,22 @@ import { cn } from "@/lib/utils";
 
 const initialState: FormState = {};
 
-type LeaveKind = "urlaub" | "v_tag";
+type LeaveKind = "auto" | "urlaub" | "v_tag";
 
-const kindLabels: Record<LeaveKind, { singular: string; plural: string; action: string }> = {
-  urlaub: { singular: "Urlaubstag", plural: "Urlaubstage", action: "Urlaub beantragen" },
-  v_tag: { singular: "V-Tag", plural: "V-Tage", action: "V-Tag beantragen" },
+const kindLabels: Record<LeaveKind, { plural: string; action: string }> = {
+  auto: { plural: "Tage", action: "Zeitraum einreichen" },
+  urlaub: { plural: "Urlaubstage", action: "Urlaub beantragen" },
+  v_tag: { plural: "V-Tage", action: "V-Tag beantragen" },
 };
+
+/** Schichtname auf das Kürzel bringen, wie im Schichtplan. */
+function shiftCode(name: string | null): string | null {
+  if (!name) return null;
+  if (/^Früh/i.test(name)) return "F";
+  if (/^Spät/i.test(name)) return "S";
+  if (/^Nacht/i.test(name)) return "N";
+  return name.slice(0, 1).toUpperCase();
+}
 
 export function LiveLeaveRequestForm({
   employeeId,
@@ -48,10 +60,14 @@ export function LiveLeaveRequestForm({
   const [period, setPeriod] = useState<"" | "vormittag" | "nachmittag">("");
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
-  const [kind, setKind] = useState<LeaveKind>("urlaub");
+  const [kind, setKind] = useState<LeaveKind>("auto");
   /** Sobald selbst umgestellt wurde, überschreibt die Empfehlung nichts mehr. */
   const [kindTouched, setKindTouched] = useState(false);
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
+  /** Eigene Schicht je Tag für den Kalender – F, S, N oder null (frei). */
+  const [shiftDays, setShiftDays] = useState<Map<string, string | null>>(new Map());
+  /** Vorschau der automatischen Verteilung. */
+  const [autoDays, setAutoDays] = useState<LiveAutoDay[] | null>(null);
   const [holidays, setHolidays] = useState<Holiday[] | null>(null);
   const [state, formAction] = useActionState(submitLeaveRequest, initialState);
 
@@ -97,6 +113,54 @@ export function LiveLeaveRequestForm({
     };
   }, [employeeId, startDate, endDate, valid]);
 
+  // Eigene Schichten für den Kalender. Geladen wird großzügig um den
+  // angezeigten Monat herum, damit das Blättern nicht ruckelt.
+  const loadShifts = useCallback((year: number, month: number) => {
+    const von = new Date(year, month - 1, 1);
+    const bis = new Date(year, month + 2, 0);
+    const tage = Math.round((bis.getTime() - von.getTime()) / 86400000) + 1;
+    const vonISO = `${von.getFullYear()}-${String(von.getMonth() + 1).padStart(2, "0")}-01`;
+
+    // my_shift_plan gibt höchstens 62 Tage je Aufruf – in zwei Schritten holen.
+    Promise.all([
+      fetchMyShiftPlan(vonISO, Math.min(tage, 60)),
+      tage > 60 ? fetchMyShiftPlan(addDaysISO(vonISO, 60), tage - 60) : Promise.resolve([]),
+    ])
+      .then(([a, b]) => {
+        const map = new Map<string, string | null>();
+        for (const day of [...a, ...b]) {
+          map.set(day.date, day.isFree ? null : shiftCode(day.shiftName));
+        }
+        setShiftDays(map);
+      })
+      .catch(() => setShiftDays(new Map()));
+  }, []);
+
+  useEffect(() => {
+    const heute = fromISOLocal(today);
+    loadShifts(heute.getFullYear(), heute.getMonth());
+  }, [today, loadShifts]);
+
+  // Vorschau der Automatik – zeigt vor dem Absenden, welcher Tag auf
+  // welches Konto geht.
+  useEffect(() => {
+    if (kind !== "auto" || !employeeId || !valid) {
+      setAutoDays(null);
+      return;
+    }
+    let cancelled = false;
+    fetchAutoPreview(startDate, endDate)
+      .then((result) => {
+        if (!cancelled) setAutoDays(result);
+      })
+      .catch(() => {
+        if (!cancelled) setAutoDays(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, employeeId, startDate, endDate, valid]);
+
   // Empfehlung Urlaub vs. V-Tag – hängt am Starttag, weil sich Zuschläge
   // (Sonntag, Feiertag, Nachtschicht) genau daran entscheiden.
   useEffect(() => {
@@ -135,6 +199,9 @@ export function LiveLeaveRequestForm({
   }, [state.success]);
 
   const labels = kindLabels[kind];
+  const autoUrlaub = (autoDays ?? []).filter((d) => d.kind === "urlaub").length;
+  const autoVTage = (autoDays ?? []).filter((d) => d.kind === "v_tag").length;
+  const autoOffen = (autoDays ?? []).filter((d) => d.kind === "keins").length;
   // Zwei getrennte Konten: Urlaub und V-Tage. Geprüft wird immer das Konto,
   // das zur gewählten Art gehört.
   const accountRemaining = balance
@@ -142,6 +209,7 @@ export function LiveLeaveRequestForm({
       ? balance.vRemainingDays
       : balance.remainingDays
     : null;
+
   const remainingAfter = accountRemaining !== null ? accountRemaining - days : null;
   const insufficientBalance = remainingAfter !== null && remainingAfter < 0;
   const suggestionDiffers =
@@ -183,6 +251,8 @@ export function LiveLeaveRequestForm({
               endDate={endDate}
               minDate={today}
               holidays={holidays ?? []}
+              shifts={shiftDays}
+              onMonthChange={loadShifts}
               onChange={(newStart, newEnd) => {
                 setStartDate(newStart);
                 setEndDate(newEnd);
@@ -197,7 +267,7 @@ export function LiveLeaveRequestForm({
 
           <Field
             label="Art"
-            hint="Vorschlag der Schichtplanung – lässt sich jederzeit umstellen."
+            hint="Automatisch heißt: Zuschlagstage kosten Urlaub, der Rest V-Tage."
           >
             <select
               value={kind}
@@ -207,6 +277,7 @@ export function LiveLeaveRequestForm({
               }}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
             >
+              <option value="auto">Automatisch verteilen</option>
               <option value="urlaub">
                 Urlaubstag{balance ? ` · ${formatDays(balance.remainingDays)} übrig` : ""}
               </option>
@@ -216,7 +287,7 @@ export function LiveLeaveRequestForm({
             </select>
           </Field>
 
-          {suggestion ? (
+          {suggestion && kind !== "auto" ? (
             <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted">
               <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
               <div>
@@ -271,14 +342,65 @@ export function LiveLeaveRequestForm({
             />
           </Field>
 
-          <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
-            <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
-            <span className="tnum text-lg font-semibold">
-              {holidays ? formatDays(days) : "…"}
-            </span>
-          </div>
+          {kind === "auto" ? (
+            <div className="rounded-xl border border-line bg-surface-muted px-4 py-3">
+              {autoDays === null ? (
+                <p className="text-sm text-ink-muted">wird berechnet …</p>
+              ) : autoDays.length === 0 ? (
+                <p className="text-sm text-ink-muted">
+                  In diesem Zeitraum hast du keinen eingeplanten Arbeitstag – es wird nichts
+                  abgezogen.
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                    <span className="text-sm font-semibold">
+                      {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}
+                    </span>
+                    <span className="text-sm font-semibold">
+                      {autoVTage} V-Tag{autoVTage === 1 ? "" : "e"}
+                    </span>
+                    {autoOffen > 0 ? (
+                      <span className="text-sm font-semibold text-crit-fg">
+                        {autoOffen} Tag(e) nicht gedeckt
+                      </span>
+                    ) : null}
+                  </div>
+                  <ul className="mt-2 max-h-40 space-y-0.5 overflow-y-auto text-[12px] text-ink-muted">
+                    {autoDays.map((day) => (
+                      <li key={day.date} className="flex items-baseline justify-between gap-3">
+                        <span className="tnum">{formatDE(day.date)}</span>
+                        <span className="flex items-baseline gap-2">
+                          <span className="text-ink-faint">{day.reason}</span>
+                          <span
+                            className={cn(
+                              "rounded px-1.5 py-0.5 text-[11px] font-semibold",
+                              day.kind === "urlaub"
+                                ? "bg-shift-urlaub text-shift-urlaub-ink"
+                                : day.kind === "v_tag"
+                                  ? "bg-shift-vtag text-shift-vtag-ink"
+                                  : "bg-crit-bg text-crit-fg",
+                            )}
+                          >
+                            {day.kind === "urlaub" ? "U" : day.kind === "v_tag" ? "V" : "–"}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
+              <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
+              <span className="tnum text-lg font-semibold">
+                {holidays ? formatDays(days) : "…"}
+              </span>
+            </div>
+          )}
 
-          {valid ? (
+          {valid && kind !== "auto" ? (
             <div className={cn("rounded-xl border px-4 py-3", panelTone)}>
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <PanelIcon className="h-4 w-4" strokeWidth={2} />
@@ -310,18 +432,22 @@ export function LiveLeaveRequestForm({
                 ) : null}
               </ul>
             </div>
-          ) : (
+          ) : !valid ? (
             <Alert tone="error">
               Das Enddatum liegt vor dem Startdatum. Bitte den Zeitraum korrigieren.
             </Alert>
-          )}
+          ) : null}
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
           <SubmitButton
             label={labels.action}
-            disabled={!valid || !holidays || days === 0 || insufficientBalance}
+            disabled={
+              kind === "auto"
+                ? !valid || autoDays === null || autoDays.length === 0 || autoOffen > 0
+                : !valid || !holidays || days === 0 || insufficientBalance
+            }
           />
         </form>
       </CardBody>

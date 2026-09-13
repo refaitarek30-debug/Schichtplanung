@@ -15,6 +15,13 @@ import {
 import type { Holiday } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+/** Farbe je Schichtkürzel – dieselben wie im Schichtplan. */
+const SHIFT_TONE: Record<string, string> = {
+  F: "bg-shift-frueh text-shift-frueh-ink",
+  S: "bg-shift-spaet text-shift-spaet-ink",
+  N: "bg-shift-nacht text-shift-nacht-ink",
+};
+
 /**
  * Große, klickbare Monatsansicht zur Zeitraumauswahl – ersetzt die kleinen
  * nativen Datumsfelder im Urlaubsantrag. Erster Klick setzt den Start
@@ -27,12 +34,22 @@ export function DateRangeCalendar({
   onChange,
   minDate,
   holidays = [],
+  shifts,
+  onMonthChange,
 }: {
   startDate: string;
   endDate: string;
   onChange: (start: string, end: string) => void;
   minDate?: string;
   holidays?: Holiday[];
+  /**
+   * Eigene Schicht je Tag (Kürzel F/S/N, null = frei). Damit sieht man beim
+   * Auswählen sofort, welche Schichten im Zeitraum liegen – sonst beantragt
+   * man Urlaub für Tage, an denen man ohnehin frei hat.
+   */
+  shifts?: Map<string, string | null>;
+  /** Meldet den angezeigten Monat, damit die Schichten nachgeladen werden. */
+  onMonthChange?: (year: number, month: number) => void;
 }) {
   const start = fromISO(startDate);
   const [year, setYear] = useState(start.getFullYear());
@@ -45,6 +62,7 @@ export function DateRangeCalendar({
     const next = new Date(year, month + delta, 1);
     setYear(next.getFullYear());
     setMonth(next.getMonth());
+    onMonthChange?.(next.getFullYear(), next.getMonth());
   }
 
   function handleClick(iso: string) {
@@ -108,6 +126,8 @@ export function DateRangeCalendar({
             const isEdge = iso === startDate || iso === endDate;
             const feiertag = holidayName(iso, holidays);
             const today = toISO(new Date());
+            const schichtKuerzel = shifts?.get(iso) ?? null;
+            const schichtFarbe = SHIFT_TONE[schichtKuerzel ?? ""] ?? "bg-surface-sunken text-ink-muted";
 
             return (
               <button
@@ -129,7 +149,16 @@ export function DateRangeCalendar({
                 )}
               >
                 <span className="tnum leading-none">{Number(iso.slice(8, 10))}</span>
-                {feiertag ? (
+                {schichtKuerzel ? (
+                  <span
+                    className={cn(
+                      "mt-1 rounded px-1 text-[10px] font-semibold leading-[14px]",
+                      isEdge ? "bg-white/25 text-white" : schichtFarbe,
+                    )}
+                  >
+                    {schichtKuerzel}
+                  </span>
+                ) : feiertag ? (
                   <span
                     className={cn(
                       "mt-1 h-1.5 w-1.5 rounded-full",
@@ -147,6 +176,13 @@ export function DateRangeCalendar({
         <Legend className="bg-brand-500" label="Start / Ende" />
         <Legend className="bg-brand-50" label="ausgewählter Zeitraum" />
         <Legend className="bg-plan-dot" label="Feiertag" />
+        {shifts ? (
+          <>
+            <Legend className="bg-shift-frueh" label="Frühschicht" />
+            <Legend className="bg-shift-spaet" label="Spätschicht" />
+            <Legend className="bg-shift-nacht" label="Nachtschicht" />
+          </>
+        ) : null}
       </div>
     </div>
   );

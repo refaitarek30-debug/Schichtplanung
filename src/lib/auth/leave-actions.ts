@@ -32,6 +32,8 @@ export async function submitLeaveRequest(
   // Zwei getrennte Konten: "urlaub" und "v_tag". Unbekannte Werte fallen
   // bewusst auf Urlaub zurück, statt den Antrag scheitern zu lassen.
   const kindRaw = String(formData.get("kind") ?? "urlaub");
+  // "auto" überlässt der Datenbank die Verteilung auf beide Konten.
+  if (kindRaw === "auto") return submitLeaveAuto(_prev, formData);
   const kind = kindRaw === "v_tag" ? "v_tag" : "urlaub";
 
   if (!startDate || !endDate) {
@@ -155,5 +157,57 @@ export async function decideLeaveRequestAction(
   return {
     success:
       decision === "approved" ? "Urlaubsantrag genehmigt." : "Urlaubsantrag abgelehnt.",
+  };
+}
+
+/**
+ * Zeitraum einreichen und die Verteilung der Datenbank überlassen.
+ *
+ * Sie geht den Zeitraum Tag für Tag durch: Sonntag, Feiertag und
+ * Nachtschicht kosten einen Urlaubstag (dann wird der Zuschlag mitbezahlt),
+ * alle anderen Arbeitstage einen V-Tag. Freie Tage kosten nichts. Ist ein
+ * Konto leer, wird auf das andere ausgewichen. Für jeden zusammenhängenden
+ * Block gleicher Art entsteht ein eigener Antrag.
+ */
+export async function submitLeaveAuto(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+
+  const startDate = String(formData.get("start_date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!startDate || !endDate) return { error: "Bitte Start- und Enddatum auswählen." };
+  if (endDate < startDate) {
+    return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("submit_leave_auto", {
+    p_start_date: startDate,
+    p_end_date: endDate,
+    p_reason: reason || null,
+  });
+
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Der Antrag konnte nicht gespeichert werden." };
+  }
+
+  const result = ((data ?? []) as { urlaub_tage: number; v_tage: number; antraege: number }[])[0];
+  revalidatePath("/urlaub");
+  revalidatePath("/dashboard");
+  revalidatePath("/urlaubsantraege");
+
+  if (!result) return { success: "Antrag eingereicht – Status: Ausstehend." };
+
+  const teile = [
+    result.urlaub_tage > 0 ? `${result.urlaub_tage} Urlaubstag(e)` : null,
+    result.v_tage > 0 ? `${result.v_tage} V-Tag(e)` : null,
+  ].filter(Boolean);
+
+  return {
+    success: `Eingereicht: ${teile.join(" und ")} in ${result.antraege} Antrag/Anträgen – Status: Ausstehend.`,
   };
 }
