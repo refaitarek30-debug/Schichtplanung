@@ -392,6 +392,16 @@ Dazu:
   Als Server-Aktion wäre sie aus dem Browser mit beliebigen Angaben
   aufrufbar gewesen und hätte Zugänge zu fremden Firmen erzeugt.
 
+**0.25.1** – `tsconfig.json` prüft nur noch `app/`, `src/` (ohne das tote
+`src/app/`), `middleware.ts` und `tailwind.config.ts`. Vorher stand dort
+`**/*.ts` – also wirklich jede Datei im Repo, auch die, die beim Hochladen
+über die GitHub-Oberfläche versehentlich im Wurzelverzeichnis landen. Genau
+daran sind an einem Tag vier Builds gescheitert: eine verirrte `client.ts`
+neben `package.json` sucht ihr `./config` direkt daneben, findet nichts, und
+der Typcheck bricht ab, obwohl die Datei von keiner Zeile der Anwendung
+benutzt wird. Jetzt kann solcher Streuverlust den Build nicht mehr umwerfen –
+er wird einfach ignoriert. Aufräumen sollte man trotzdem.
+
 **Weiter offen:** Bestätigungsmail und eigener Mailversand in Supabase
 einschalten (Anleitung liegt bei – jetzt Komfort, nicht mehr Voraussetzung),
 E-Mail bei Urlaubsanträgen,
