@@ -54,7 +54,11 @@ export const config = {
      * Alles außer statischen Dateien und Bildern. Die Middleware ist die
      * erste Verteidigungslinie; die eigentliche Absicherung der Daten
      * passiert über Row Level Security in Supabase.
+     *
+     * Manifest, Service Worker und Offline-Seite bleiben bewusst außen vor:
+     * sie enthalten keine Daten und müssen auch ohne Anmeldung erreichbar
+     * sein, sonst lässt sich die App nicht installieren.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|favicon.png|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

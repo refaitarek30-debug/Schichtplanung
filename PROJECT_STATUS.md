@@ -272,3 +272,45 @@ Vor `npm run build` in der Sandbox: `Inter`-Font-Import kurz aus
 danach zurückspielen. Für den Live-Modus-Build reichen Dummy-Werte für
 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY` als
 Umgebungsvariablen beim Build-Aufruf.
+
+## Phase 11–12 (September 2026) – Nachtrag
+
+**Repo/Deployment aktuell:** GitHub `refaitarek30-debug/Schichtplanung`,
+Vercel-Projekt `ready` (Scope `tarek-refai`), Supabase `ehmphogahhqytscdwtla`.
+Der Hinweis weiter oben auf `refaitarek30-debug/ready` ist überholt.
+
+**FALLE: der Code liegt doppelt im Repo.** Es gibt `app/`, `lib/`,
+`components/`, `context/` im Wurzelverzeichnis UND `src/app/`, `src/lib/` usw.
+Aktiv ist: Seiten aus `app/` (Next.js bevorzugt das Wurzelverzeichnis, wenn
+beide existieren), alles andere aus `src/` (weil `@/*` in `tsconfig.json` auf
+`./src/*` zeigt). `src/app/`, `lib/`, `components/`, `context/` sind tot.
+Änderungen also: Seiten in `app/`, Komponenten und Bibliothek in `src/`.
+`tailwind.config.ts` durchsucht seit 0.17.0 beide Bäume – vorher fehlten
+Klassen, die es nur unter `app/` gibt.
+
+**0.17.0** – Besetzungszeile „Ist/Min" je Schichtgruppe im Schichtplan (rot bei
+Unterschreitung), Dashboard-Kacheln „Krank gesamt" und „V-Tage gesamt" statt
+der Karte „Besetzung heute", Empfehlung Urlaub/V-Tag aus `suggest_leave_kind()`
+im Urlaubsformular. Bugfix: `fetchMyLeaveBalance()` hatte die `v_*`-Spalten gar
+nicht abgefragt, das V-Konto war deshalb immer 0.
+
+**0.18.0** – Engpassliste auf `/besetzung` entfernt. „Mein Team" zeigt die
+ganze Belegschaft nach Schichtgruppe mit Qualifikationen. Migration 0024:
+`set_leave_for_day()` löst einen einzelnen Tag aus einem bestehenden Antrag
+heraus, damit U→V umschaltbar ist. Migration 0025: Tabelle `announcements`,
+gepflegt auf `/regeln`, angezeigt auf dem Dashboard zusammen mit aktiven
+Urlaubssperren. Migration 0026: Jahresübertrag für Urlaub UND V-Tage,
+Verfall am 31.03., angelegt beim ersten Zugriff über `ensure_leave_balance()`.
+
+**0.18.1** – „Frei" im Schichtplan ist weiß statt rot.
+
+**0.19.0** – PWA: `app/manifest.ts`, Icons und `sw.js` unter `public/`,
+Registrierung im Root-Layout, Installationshinweis im AppShell. Der Service
+Worker speichert bewusst KEINE Seiten zwischen (angemeldete, personenbezogene
+Inhalte), nur `/_next/static/`, Bilder und die Offline-Seite.
+
+**Weiter offen:** `decide_leave_request()` prüft beim Genehmigen nur das
+Urlaubskonto, nicht das V-Konto – ein V-Tag-Antrag geht also auch durch, wenn
+die V-Tage aufgebraucht sind. E-Mail-Versand bei Urlaubsanträgen fehlt weiter.
+Im Wurzelverzeichnis liegen mehrere versehentlich hochgeladene ZIP-Dateien
+(`schichtplan-*.zip`), die gelöscht werden sollten.
