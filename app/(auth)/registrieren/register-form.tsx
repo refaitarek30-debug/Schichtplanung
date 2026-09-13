@@ -5,7 +5,8 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { registerCompany, type FormState } from "@/lib/auth/company-actions";
+import { registerCompany } from "@/lib/auth/company-actions";
+import type { FormState } from "@/lib/auth/form-state";
 
 const initialState: FormState = {};
 
