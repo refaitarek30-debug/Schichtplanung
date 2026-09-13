@@ -4,14 +4,15 @@ export async function inviteEmployee(
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
-  const employeeId = String(formData.get("employee_id") ?? "");
+  const employeeId = String(formData.get("employee_id") ?? "").trim();
+
   if (!employeeId) {
     return { error: "Mitarbeiter-ID fehlt." };
   }
 
   const supabase = await createClient();
 
-  // Aktuellen Benutzer sauber prüfen
+  // Aktuell eingeloggten Benutzer prüfen
   const {
     data: { user },
     error: sessionError,
@@ -24,36 +25,62 @@ export async function inviteEmployee(
     };
   }
 
-  // Prüfen, ob der eingeloggte Benutzer Administrator ist
+  // Prüfen, ob der Benutzer Administrator ist
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role, company_id")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profileError || !profile || profile.role !== "admin") {
-    return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  if (profileError) {
+    console.error("Profile error:", profileError);
+
+    return {
+      error: "Dein Benutzerprofil konnte nicht geladen werden.",
+    };
+  }
+
+  if (!profile || profile.role !== "admin") {
+    return {
+      error: "Du hast keine Berechtigung für diesen Bereich.",
+    };
   }
 
   // Mitarbeiter laden
   const { data: employee, error: employeeError } = await supabase
     .from("employees")
-    .select("id, email, first_name, last_name, role, company_id")
+    .select(
+      "id, email, first_name, last_name, role, company_id",
+    )
     .eq("id", employeeId)
     .maybeSingle();
 
-  if (employeeError || !employee) {
-    return { error: "Der Mitarbeiter wurde nicht gefunden." };
+  if (employeeError) {
+    console.error("Employee error:", employeeError);
+
+    return {
+      error: "Der Mitarbeiter konnte nicht geladen werden.",
+    };
+  }
+
+  if (!employee) {
+    return {
+      error: "Der Mitarbeiter wurde nicht gefunden.",
+    };
   }
 
   if (!employee.email) {
     return {
-      error: "Für diesen Mitarbeiter ist keine E-Mail-Adresse hinterlegt.",
+      error:
+        "Für diesen Mitarbeiter ist keine E-Mail-Adresse hinterlegt.",
     };
   }
 
+  // Sicherheitsprüfung: Mitarbeiter muss zur Firma gehören
   if (employee.company_id !== profile.company_id) {
-    return { error: "Du hast keine Berechtigung für diesen Bereich." };
+    return {
+      error: "Du hast keine Berechtigung für diesen Bereich.",
+    };
   }
 
   try {
@@ -75,13 +102,15 @@ export async function inviteEmployee(
     if (inviteError) {
       console.error("Supabase invitation error:", inviteError);
 
+      // Supabase lehnt die Admin-Anfrage ab
       if (inviteError.status === 401) {
         return {
           error:
-            "Die Supabase-Admin-Autorisierung funktioniert nicht. Bitte den SUPABASE_SERVICE_ROLE_KEY in Vercel prüfen.",
+            "Die Supabase-Admin-Autorisierung funktioniert nicht. Bitte SUPABASE_SERVICE_ROLE_KEY in Vercel prüfen.",
         };
       }
 
+      // Zu viele E-Mails/Anfragen
       if (inviteError.status === 429) {
         return {
           error:
