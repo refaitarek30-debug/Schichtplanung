@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import type { FormState } from "./actions";
+import type { FormState } from "./form-state";
+import { grantAccess, siteOrigin } from "./invite";
 import type { Role } from "@/lib/types";
 import type { Qualification } from "@/lib/qualifications";
 import { QUALIFICATIONS } from "@/lib/qualifications";
@@ -145,7 +146,39 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   }
 
   revalidatePath("/mitarbeiter");
-  return { success: `${firstName} ${lastName} wurde angelegt.` };
+
+  // Mit E-Mail-Adresse gleich den Zugang einrichten. Vorher war das ein
+  // zweiter, leicht zu übersehender Schritt – man legte jemanden an, wartete
+  // auf eine Mail und es kam nie eine, weil niemand auf "Einladen" geklickt
+  // hatte.
+  if (email && newId) {
+    const zugang = await grantAccess(
+      {
+        id: newId,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+        company_id: profile.company_id,
+      },
+      await siteOrigin(),
+    );
+
+    if (zugang.error) {
+      return {
+        success: `${firstName} ${lastName} wurde angelegt.`,
+        error: `Der Zugang konnte noch nicht eingerichtet werden: ${zugang.error}`,
+      };
+    }
+    return {
+      success: `${firstName} ${lastName} wurde angelegt. ${zugang.success ?? ""}`.trim(),
+      link: zugang.link,
+    };
+  }
+
+  return {
+    success: `${firstName} ${lastName} wurde angelegt. Ohne E-Mail-Adresse gibt es keinen Zugang – die Adresse lässt sich jederzeit nachtragen.`,
+  };
 }
 
 /**

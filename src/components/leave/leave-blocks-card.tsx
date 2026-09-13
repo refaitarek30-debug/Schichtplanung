@@ -13,7 +13,7 @@ import { formatDE } from "@/lib/dates";
 import { fetchLeaveBlocks, DataError } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions, type ShiftOption } from "@/lib/data/shifts";
 import { createLeaveBlock, deleteLeaveBlock } from "@/lib/auth/staffing-rule-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type { LiveLeaveBlock } from "@/lib/types";
 
 const initialState: FormState = {};

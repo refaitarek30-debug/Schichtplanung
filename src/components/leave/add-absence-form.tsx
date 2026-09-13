@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { createAbsence } from "@/lib/auth/absence-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import type { EmployeeRecord } from "@/lib/types";
 
 const initialState: FormState = {};

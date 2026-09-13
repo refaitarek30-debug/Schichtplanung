@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { currentIdentity } from "@/lib/supabase/identity";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import type { AbsenceWithEmployee } from "@/lib/supabase/database.types";
@@ -52,24 +53,13 @@ export async function fetchMySickDays(
 ): Promise<number> {
   if (!isSupabaseConfigured) return 0;
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return 0;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("employee_id")
-    .eq("id", user.id)
-    .returns<{ employee_id: string | null }[]>()
-    .maybeSingle();
-
-  if (!profile?.employee_id) return 0;
+  const ich = await currentIdentity();
+  if (!ich?.employeeId) return 0;
 
   const { count, error } = await supabase
     .from("absences")
     .select("id", { count: "exact", head: true })
-    .eq("employee_id", profile.employee_id)
+    .eq("employee_id", ich.employeeId)
     .eq("type", "krank")
     .gte("date", `${year}-01-01`)
     .lte("date", `${year}-12-31`);
