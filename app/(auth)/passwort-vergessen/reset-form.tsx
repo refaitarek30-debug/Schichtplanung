@@ -5,7 +5,8 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { requestPasswordReset, type FormState } from "@/lib/auth/actions";
+import { requestPasswordReset } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 
 export function ResetForm() {
   const [state, formAction] = useActionState(requestPasswordReset, {} as FormState);
