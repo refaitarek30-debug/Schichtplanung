@@ -6,7 +6,8 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { signIn, type FormState } from "@/lib/auth/actions";
+import { signIn } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 
 const initialState: FormState = {};
 
