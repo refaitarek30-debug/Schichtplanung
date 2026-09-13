@@ -8,7 +8,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
 import { updateEmployee } from "@/lib/auth/employee-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord, Role } from "@/lib/types";
