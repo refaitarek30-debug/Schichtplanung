@@ -7,6 +7,7 @@ import type {
 } from "@/lib/supabase/database.types";
 import type {
   LiveAutoDay,
+  LiveTeamBalance,
   LiveLeaveBalance,
   LiveLeaveKindSuggestion,
   LiveLeaveRequest,
@@ -103,10 +104,9 @@ export async function fetchMyLeaveBalance(
 
   if (!profile?.employee_id) return null;
 
-  // Legt das Konto des Jahres an, falls es noch fehlt, und überträgt dabei
-  // den Rest des Vorjahres. Beim ersten Zugriff im neuen Jahr passiert das
-  // also automatisch – ohne Hintergrundjob. Schlägt es fehl (z. B. weil die
-  // Zeile längst existiert), wird trotzdem weitergelesen.
+  // Legt das Konto des Jahres an, falls es noch fehlt, und zieht den
+  // Übertrag nach, solange das Vorjahr noch läuft. Damit stimmt die Zahl
+  // auch dann, wenn jemand im Herbst schon das kommende Jahr plant.
   await supabase.rpc("ensure_leave_balance", {
     p_employee_id: profile.employee_id,
     p_year: year,
@@ -245,4 +245,35 @@ export async function fetchAutoPreview(
     kind: row.art === "urlaub" ? "urlaub" : row.art === "v_tag" ? "v_tag" : "keins",
     reason: row.grund,
   }));
+}
+
+interface TeamBalanceRow {
+  employee_id: string;
+  rest: number;
+  anspruch: number;
+  v_rest: number;
+  v_anspruch: number;
+}
+
+/** Rest-Urlaub und Rest-V-Tage je Mitarbeiter, Schlüssel ist die Mitarbeiter-ID. */
+export async function fetchTeamBalances(
+  year?: number,
+): Promise<Map<string, LiveTeamBalance>> {
+  if (!isSupabaseConfigured) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("team_leave_balances", {
+    p_year: year ?? null,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+
+  const map = new Map<string, LiveTeamBalance>();
+  for (const row of (data ?? []) as TeamBalanceRow[]) {
+    map.set(row.employee_id, {
+      remainingDays: Number(row.rest ?? 0),
+      entitlement: Number(row.anspruch ?? 0),
+      vRemainingDays: Number(row.v_rest ?? 0),
+      vEntitlement: Number(row.v_anspruch ?? 0),
+    });
+  }
+  return map;
 }

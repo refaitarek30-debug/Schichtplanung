@@ -4,7 +4,19 @@ import { formatDays } from "@/lib/dates";
 import type { LiveLeaveBalance } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function LiveBalanceCard({ balance }: { balance: LiveLeaveBalance | null }) {
+export function LiveBalanceCard({
+  balance,
+  year,
+  onYearChange,
+}: {
+  balance: LiveLeaveBalance | null;
+  /** Angezeigtes Urlaubsjahr – für die Planung des kommenden Jahres. */
+  year?: number;
+  onYearChange?: (year: number) => void;
+}) {
+  const jetzt = new Date().getFullYear();
+  const jahre = [jetzt - 1, jetzt, jetzt + 1];
+
   if (!balance) {
     return (
       <Card>
@@ -30,8 +42,24 @@ export function LiveBalanceCard({ balance }: { balance: LiveLeaveBalance | null 
         title="Urlaubskonto"
         hint={
           balance.carriedOver > 0
-            ? `${formatDays(balance.entitlement)} Tage Anspruch + ${formatDays(balance.carriedOver)} Tage Übertrag · ${balance.year}`
-            : `${formatDays(balance.entitlement)} Tage Jahresanspruch · ${balance.year}`
+            ? `${formatDays(balance.entitlement)} Tage Anspruch + ${formatDays(balance.carriedOver)} Tage Übertrag`
+            : `${formatDays(balance.entitlement)} Tage Jahresanspruch`
+        }
+        action={
+          onYearChange ? (
+            <select
+              value={year ?? balance.year}
+              onChange={(e) => onYearChange(Number(e.target.value))}
+              aria-label="Urlaubsjahr"
+              className="tnum rounded-lg border border-line bg-surface px-2 py-1 text-[13px]"
+            >
+              {jahre.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          ) : undefined
         }
       />
       <CardBody className="space-y-4">

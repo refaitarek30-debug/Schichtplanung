@@ -23,6 +23,11 @@ export default function LeavePage() {
   const { mode, user, profile } = useSession();
 
   const [balance, setBalance] = useState<LiveLeaveBalance | null>(null);
+  /**
+   * Urlaubsjahr. Wer im Herbst das kommende Jahr plant, braucht dessen
+   * Konto – inklusive des Übertrags, der bis zum 31.03. gilt.
+   */
+  const [year, setYear] = useState(new Date().getFullYear());
   const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +36,7 @@ export default function LeavePage() {
     setError(null);
     try {
       const [balanceResult, requestsResult] = await Promise.all([
-        fetchMyLeaveBalance(),
+        fetchMyLeaveBalance(year),
         fetchMyLeaveRequests(),
       ]);
       setBalance(balanceResult);
@@ -42,7 +47,7 @@ export default function LeavePage() {
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [mode]);
+  }, [mode, year]);
 
   useEffect(() => {
     void load();
@@ -75,7 +80,7 @@ export default function LeavePage() {
 
         <div className="space-y-4">
           {mode === "live" ? (
-            <LiveBalanceCard balance={balance} />
+            <LiveBalanceCard balance={balance} year={year} onYearChange={setYear} />
           ) : (
             <BalanceCard balance={demoBalance} />
           )}

@@ -9,10 +9,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { TODAY, employeesOfShift, holidays, staffingContext } from "@/lib/demo-data";
 import { staffingFor, shiftRunsOn } from "@/lib/staffing";
-import { addDays, formatDE, isHoliday, WEEKDAY_SHORT, fromISO } from "@/lib/dates";
+import { addDays, formatDays, formatDE, isHoliday, WEEKDAY_SHORT, fromISO } from "@/lib/dates";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
-import { fetchMyLeaveRequests } from "@/lib/data/leave";
+import { fetchMyLeaveRequests, fetchTeamBalances } from "@/lib/data/leave";
 import { fetchMyShiftPlan } from "@/lib/data/rotation";
 import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchAbsences } from "@/lib/data/absences";
@@ -21,6 +21,7 @@ import { fetchEmployees } from "@/lib/data/employees";
 import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type {
   EmployeeRecord,
+  LiveTeamBalance,
   Holiday,
   LiveLeaveRequest,
   LiveShiftPlanDay,
@@ -132,6 +133,8 @@ function LiveView({
   const [twoWeeks, setTwoWeeks] = useState<LiveStaffingSnapshot[] | null>(null);
   const [plan, setPlan] = useState<LiveShiftPlanDay[] | null>(null);
   const [colleagues, setColleagues] = useState<EmployeeRecord[] | null>(null);
+  /** Rest-Urlaub und Rest-V-Tage je Mitarbeiter – nur für die Führung. */
+  const [balances, setBalances] = useState<Map<string, LiveTeamBalance>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   const myShift = useMemo(
@@ -157,7 +160,14 @@ function LiveView({
       setMyAbsenceDates(new Set(absenceResult.map((a) => a.date)));
 
       if (role !== "employee") {
-        setColleagues((await fetchEmployees()).filter((e) => e.active));
+        const [people, teamBalances] = await Promise.allSettled([
+          fetchEmployees(),
+          fetchTeamBalances(),
+        ]);
+        if (people.status === "fulfilled") {
+          setColleagues(people.value.filter((e) => e.active));
+        }
+        if (teamBalances.status === "fulfilled") setBalances(teamBalances.value);
       }
     } catch (caught) {
       setError(
@@ -418,6 +428,29 @@ function LiveView({
                           </span>
                         ) : null}
                       </div>
+                      {/* Kontostände: wer plant, muss sehen, wie viel noch
+                          offen ist – sonst genehmigt man Urlaub, den es
+                          gar nicht mehr gibt. */}
+                      {(() => {
+                        const konto = balances.get(person.id);
+                        if (!konto) return null;
+                        return (
+                          <div className="tnum mt-1 flex flex-wrap gap-x-3 text-[11px] text-ink-muted">
+                            <span>
+                              <span className="font-semibold text-ink">
+                                {formatDays(Math.max(konto.remainingDays, 0))}
+                              </span>{" "}
+                              von {formatDays(konto.entitlement)} Urlaub
+                            </span>
+                            <span>
+                              <span className="font-semibold text-ink">
+                                {formatDays(Math.max(konto.vRemainingDays, 0))}
+                              </span>{" "}
+                              von {formatDays(konto.vEntitlement)} V-Tage
+                            </span>
+                          </div>
+                        );
+                      })()}
                       {person.qualifications.length > 0 ? (
                         <div className="mt-1.5 flex flex-wrap gap-1">
                           {person.qualifications.map((q) => (

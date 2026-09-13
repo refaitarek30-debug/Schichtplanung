@@ -119,6 +119,14 @@ export interface LiveAnnouncement {
   createdAt: string;
 }
 
+/** Restliche Urlaubs- und V-Tage eines Mitarbeiters, für die Teamübersicht. */
+export interface LiveTeamBalance {
+  remainingDays: number;
+  entitlement: number;
+  vRemainingDays: number;
+  vEntitlement: number;
+}
+
 /**
  * Ein Tag aus der Vorschau der automatischen Verteilung
  * (`preview_leave_auto()`): auf welches Konto er ginge und warum.

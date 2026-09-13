@@ -66,9 +66,9 @@ const legend = [
   { code: "S", label: "Spätschicht" },
   { code: "N", label: "Nachtschicht" },
   { code: "U", label: "Urlaub" },
-  { code: "u", label: "Urlaub beantragt" },
+  { code: "u", label: "beantragt" },
   { code: "V", label: "V-Tag" },
-  { code: "v", label: "V-Tag beantragt" },
+  { code: "v", label: "V beantragt" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
   { code: "FREI", label: "frei" },
@@ -539,12 +539,14 @@ export function ShiftPlanGrid({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3 text-[12px] text-ink-muted">
+      {/* Legende: auf dem Handy bewusst klein und eng – sie soll erklären,
+          nicht die halbe Ansicht belegen. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line px-2 py-1.5 text-[10px] text-ink-faint sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 sm:text-[12px] sm:text-ink-muted">
         {legend.map((item) => (
-          <span key={item.code} className="inline-flex items-center gap-1.5">
+          <span key={item.code} className="inline-flex items-center gap-1">
             <span
               className={cn(
-                "flex h-5 w-6 items-center justify-center rounded text-[11px] font-semibold",
+                "flex h-3.5 w-4 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-5 sm:w-6 sm:rounded sm:text-[11px]",
                 cellStyles[item.code],
                 legendExtra[item.code],
               )}
@@ -554,8 +556,8 @@ export function ShiftPlanGrid({
             {item.label}
           </span>
         ))}
-        <span className="inline-flex items-center gap-1.5">
-          <span className="flex h-5 w-6 items-center justify-center rounded bg-surface-muted/40" />
+        <span className="inline-flex items-center gap-1">
+          <span className="flex h-3.5 w-4 items-center justify-center rounded-sm bg-surface-muted/40 sm:h-5 sm:w-6 sm:rounded" />
           frei
         </span>
       </div>
