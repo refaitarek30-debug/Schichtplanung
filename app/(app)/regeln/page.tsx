@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
 import { AnnouncementsCard } from "@/components/settings/announcements-card";
+import { HolidaySettings } from "@/components/settings/holiday-settings";
 import { useSession } from "@/context/session";
-import { holidays as demoHolidays } from "@/lib/demo-data";
-import { fetchHolidays } from "@/lib/data/holidays";
-import { formatDE, weekdayLong } from "@/lib/dates";
-import type { Holiday } from "@/lib/types";
 
 const rules = [
   {
@@ -25,7 +21,7 @@ const rules = [
   },
   {
     title: "Feiertage zählen nicht als Urlaub",
-    value: "Nordrhein-Westfalen",
+    value: "je Bundesland",
     body: "Fällt ein Feiertag in den Urlaubszeitraum, wird er nicht vom Urlaubskonto abgezogen – auch dann nicht, wenn an diesem Tag eine Schicht geplant gewesen wäre.",
   },
   {
@@ -42,14 +38,6 @@ const rules = [
 
 export default function RulesPage() {
   const { mode, role } = useSession();
-  const [holidays, setHolidays] = useState<Holiday[]>(demoHolidays);
-
-  useEffect(() => {
-    if (mode !== "live") return;
-    fetchHolidays()
-      .then(setHolidays)
-      .catch(() => setHolidays([]));
-  }, [mode]);
 
   return (
     <div className="space-y-5">
@@ -81,30 +69,9 @@ export default function RulesPage() {
         <>
           <AnnouncementsCard canManage={role !== "employee"} />
           <LeaveBlocksCard canManage={role === "admin"} />
+          <HolidaySettings canManage={role === "admin"} />
         </>
       ) : null}
-
-      <Card>
-        <CardHeader
-          title="Feiertage"
-          hint="Nordrhein-Westfalen · fließen automatisch in jede Berechnung ein"
-        />
-        <CardBody className="px-0 py-0">
-          <ul className="divide-y divide-line">
-            {holidays.map((holiday) => (
-              <li
-                key={holiday.date}
-                className="flex items-center justify-between px-5 py-2.5 text-sm"
-              >
-                <span>{holiday.name}</span>
-                <span className="tnum text-ink-muted">
-                  {weekdayLong(holiday.date).slice(0, 2)} · {formatDE(holiday.date)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardBody>
-      </Card>
     </div>
   );
 }

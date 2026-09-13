@@ -2,9 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Farben als RGB-Kanäle, damit Tailwind sie mit Transparenz kombinieren kann
+ * (bg-surface-muted/40 funktioniert nur so). Hier stehen die Werte, in
+ * tailwind.config.ts nur noch die Namen.
+ */
 :root {
   color-scheme: light;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --c-surface: 255 255 255;
+  --c-surface-muted: 245 246 248;
+  --c-surface-sunken: 238 240 244;
+
+  --c-ink: 17 24 39;
+  --c-ink-muted: 91 100 114;
+  --c-ink-faint: 138 147 162;
+
+  --c-line: 229 232 238;
+
+  --c-brand-50: 238 243 255;
+  --c-brand-100: 220 230 255;
+  --c-brand-500: 47 91 234;
+  --c-brand-600: 33 72 204;
+  --c-brand-700: 26 57 163;
+
+  --c-ok-bg: 232 247 239;
+  --c-ok-fg: 15 123 79;
+  --c-ok-dot: 22 163 74;
+
+  --c-warn-bg: 254 245 225;
+  --c-warn-fg: 154 98 6;
+  --c-warn-dot: 245 158 11;
+
+  --c-crit-bg: 253 235 236;
+  --c-crit-fg: 176 27 34;
+  --c-crit-dot: 220 38 38;
+
+  --c-info-bg: 234 241 254;
+  --c-info-fg: 31 73 182;
+  --c-info-dot: 47 91 234;
+
+  --c-plan-bg: 241 237 253;
+  --c-plan-fg: 91 52 199;
+  --c-plan-dot: 124 77 224;
+
+  /* Kürzel im Schichtplan – die gewohnten Farben aus der Excel-Vorlage. */
+  --c-frueh: 251 215 166;
+  --c-frueh-ink: 122 74 5;
+  --c-spaet: 215 239 176;
+  --c-spaet-ink: 63 93 18;
+  --c-nacht: 187 217 247;
+  --c-nacht-ink: 18 62 104;
+  --c-urlaub: 252 233 106;
+  --c-urlaub-ink: 107 89 0;
+  --c-vtag: 199 179 240;
+  --c-vtag-ink: 58 34 112;
+  --c-krank: 245 163 163;
+  --c-krank-ink: 122 16 16;
+  --c-schulung: 214 196 240;
+  --c-schulung-ink: 66 34 122;
+}
+
+/*
+ * Dunkelmodus. Für die Nachtschicht kein Luxus: um drei Uhr früh ist ein
+ * weißes Display im Leitstand unangenehm hell. Die Schichtfarben werden
+ * abgedunkelt statt invertiert, damit Früh/Spät/Nacht wiedererkennbar
+ * bleiben.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --c-surface: 28 31 39;
+    --c-surface-muted: 20 22 28;
+    --c-surface-sunken: 34 38 47;
+
+    --c-ink: 236 238 243;
+    --c-ink-muted: 167 174 188;
+    --c-ink-faint: 121 129 143;
+
+    --c-line: 44 49 60;
+
+    --c-brand-50: 30 39 64;
+    --c-brand-100: 38 50 82;
+    --c-brand-500: 123 155 255;
+    --c-brand-600: 148 175 255;
+    --c-brand-700: 176 196 255;
+
+    --c-ok-bg: 22 48 31;
+    --c-ok-fg: 91 215 155;
+    --c-ok-dot: 52 190 118;
+
+    --c-warn-bg: 49 40 20;
+    --c-warn-fg: 229 181 98;
+    --c-warn-dot: 214 152 46;
+
+    --c-crit-bg: 51 25 27;
+    --c-crit-fg: 255 138 138;
+    --c-crit-dot: 226 84 84;
+
+    --c-info-bg: 27 36 58;
+    --c-info-fg: 148 175 255;
+    --c-info-dot: 123 155 255;
+
+    --c-plan-bg: 38 31 60;
+    --c-plan-fg: 189 165 255;
+    --c-plan-dot: 156 122 240;
+
+    --c-frueh: 122 84 30;
+    --c-frueh-ink: 252 224 183;
+    --c-spaet: 74 100 33;
+    --c-spaet-ink: 226 244 195;
+    --c-nacht: 35 76 122;
+    --c-nacht-ink: 202 226 250;
+    --c-urlaub: 116 98 16;
+    --c-urlaub-ink: 253 240 160;
+    --c-vtag: 71 51 122;
+    --c-vtag-ink: 216 203 250;
+    --c-krank: 120 43 43;
+    --c-krank-ink: 250 200 200;
+    --c-schulung: 79 55 122;
+    --c-schulung-ink: 224 210 248;
+  }
 }
 
 html,

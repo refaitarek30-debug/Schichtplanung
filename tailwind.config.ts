@@ -1,5 +1,8 @@
 import type { Config } from "tailwindcss";
 
+/** Kurzform: Farbe aus einer CSS-Variablen, mit Transparenz kombinierbar. */
+const c = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 const config: Config = {
   // Beide Bäume: die Seiten liegen unter ./app, Komponenten und Bibliothek
   // unter ./src. Fehlt ./app hier, werden Klassen, die es NUR dort gibt,
@@ -7,30 +10,49 @@ const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Die Werte stehen in app/globals.css – einmal für hell, einmal für
+      // dunkel. Hier nur die Namen.
       colors: {
         surface: {
-          DEFAULT: "#FFFFFF",
-          muted: "#F5F6F8",
-          sunken: "#EEF0F4",
+          DEFAULT: c("surface"),
+          muted: c("surface-muted"),
+          sunken: c("surface-sunken"),
         },
         ink: {
-          DEFAULT: "#111827",
-          muted: "#5B6472",
-          faint: "#8A93A2",
+          DEFAULT: c("ink"),
+          muted: c("ink-muted"),
+          faint: c("ink-faint"),
         },
-        line: "#E5E8EE",
+        line: c("line"),
         brand: {
-          50: "#EEF3FF",
-          100: "#DCE6FF",
-          500: "#2F5BEA",
-          600: "#2148CC",
-          700: "#1A39A3",
+          50: c("brand-50"),
+          100: c("brand-100"),
+          500: c("brand-500"),
+          600: c("brand-600"),
+          700: c("brand-700"),
         },
-        ok: { bg: "#E8F7EF", fg: "#0F7B4F", dot: "#16A34A" },
-        warn: { bg: "#FEF5E1", fg: "#9A6206", dot: "#F59E0B" },
-        crit: { bg: "#FDEBEC", fg: "#B01B22", dot: "#DC2626" },
-        info: { bg: "#EAF1FE", fg: "#1F49B6", dot: "#2F5BEA" },
-        plan: { bg: "#F1EDFD", fg: "#5B34C7", dot: "#7C4DE0" },
+        ok: { bg: c("ok-bg"), fg: c("ok-fg"), dot: c("ok-dot") },
+        warn: { bg: c("warn-bg"), fg: c("warn-fg"), dot: c("warn-dot") },
+        crit: { bg: c("crit-bg"), fg: c("crit-fg"), dot: c("crit-dot") },
+        info: { bg: c("info-bg"), fg: c("info-fg"), dot: c("info-dot") },
+        plan: { bg: c("plan-bg"), fg: c("plan-fg"), dot: c("plan-dot") },
+        // Kürzel im Schichtplan
+        shift: {
+          frueh: c("frueh"),
+          "frueh-ink": c("frueh-ink"),
+          spaet: c("spaet"),
+          "spaet-ink": c("spaet-ink"),
+          nacht: c("nacht"),
+          "nacht-ink": c("nacht-ink"),
+          urlaub: c("urlaub"),
+          "urlaub-ink": c("urlaub-ink"),
+          vtag: c("vtag"),
+          "vtag-ink": c("vtag-ink"),
+          krank: c("krank"),
+          "krank-ink": c("krank-ink"),
+          schulung: c("schulung"),
+          "schulung-ink": c("schulung-ink"),
+        },
       },
       borderRadius: {
         card: "16px",

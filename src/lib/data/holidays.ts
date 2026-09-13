@@ -33,3 +33,17 @@ export async function fetchHolidays(): Promise<Holiday[]> {
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   return (data ?? []).map((row) => ({ date: row.date, name: row.name, region: row.region }));
 }
+
+/** Eingestelltes Bundesland des eigenen Unternehmens. */
+export async function fetchCompanyState(): Promise<string> {
+  if (!isSupabaseConfigured) return "NW";
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("company_settings")
+    .select("state")
+    .returns<{ state: string | null }[]>()
+    .maybeSingle();
+
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return data?.state ?? "NW";
+}

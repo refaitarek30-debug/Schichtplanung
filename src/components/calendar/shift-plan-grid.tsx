@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { addDays, formatDE, fromISO, isWeekend, WEEKDAY_SHORT } from "@/lib/dates";
+import { addDays, formatDE, fromISO, isWeekend, monthName, WEEKDAY_SHORT } from "@/lib/dates";
 import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
 import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
@@ -22,15 +22,15 @@ import { cn } from "@/lib/utils";
 
 /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
 const cellStyles: Record<string, string> = {
-  F: "bg-[#FBD7A6] text-[#7A4A05]",
-  S: "bg-[#D7EFB0] text-[#3F5D12]",
-  N: "bg-[#BBD9F7] text-[#123E68]",
-  U: "bg-[#FCE96A] text-[#6B5900]",
-  u: "bg-[#FCE96A]/50 text-[#6B5900] ring-1 ring-inset ring-[#C7A800]",
-  V: "bg-[#C7B3F0] text-[#3A2270]",
-  v: "bg-[#C7B3F0]/50 text-[#3A2270] ring-1 ring-inset ring-[#8E6FD8]",
-  K: "bg-[#F5A3A3] text-[#7A1010]",
-  FB: "bg-[#D6C4F0] text-[#42227A]",
+  F: "bg-shift-frueh text-shift-frueh-ink",
+  S: "bg-shift-spaet text-shift-spaet-ink",
+  N: "bg-shift-nacht text-shift-nacht-ink",
+  U: "bg-shift-urlaub text-shift-urlaub-ink",
+  u: "bg-shift-urlaub/50 text-shift-urlaub-ink ring-1 ring-inset ring-shift-urlaub-ink/40",
+  V: "bg-shift-vtag text-shift-vtag-ink",
+  v: "bg-shift-vtag/50 text-shift-vtag-ink ring-1 ring-inset ring-shift-vtag-ink/40",
+  K: "bg-shift-krank text-shift-krank-ink",
+  FB: "bg-shift-schulung text-shift-schulung-ink",
   A: "bg-surface-sunken text-ink-muted",
   // Freier Tag laut Rotationsmuster – bleibt weiß. Ein freier Tag ist nichts
   // Kritisches; die Farbe war irreführend und hat wie "Krank" ausgesehen.
@@ -91,6 +91,9 @@ export function ShiftPlanGrid({
   canEdit: boolean;
 }) {
   const [start, setStart] = useState(from);
+  // Fensterbreite in Tagen. Rollend sind es die mitgegebenen Tage, bei
+  // Monatsauswahl genau die Tage des Monats.
+  const [span, setSpan] = useState(days);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shifts, setShifts] = useState<ShiftOption[]>([]);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
@@ -103,10 +106,10 @@ export function ShiftPlanGrid({
     setError(null);
     try {
       const [grid, shiftOptions, details, blockedDays] = await Promise.all([
-        fetchShiftPlanGrid(companyId, start, days),
+        fetchShiftPlanGrid(companyId, start, span),
         fetchShiftOptions(),
         fetchShiftDetails(),
-        fetchBlockedDays(start, addDays(start, days - 1)),
+        fetchBlockedDays(start, addDays(start, span - 1)),
       ]);
       setCells(grid);
       setShifts(shiftOptions);
@@ -118,15 +121,15 @@ export function ShiftPlanGrid({
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [companyId, start, days]);
+  }, [companyId, start, span]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const dates = useMemo(
-    () => Array.from({ length: days }, (_, i) => addDays(start, i)),
-    [start, days],
+    () => Array.from({ length: span }, (_, i) => addDays(start, i)),
+    [start, span],
   );
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
@@ -205,6 +208,30 @@ export function ShiftPlanGrid({
     return result;
   }, [groups, dates, minimumByShift]);
 
+  // Auswahlliste: das laufende Jahr und das kommende, dazu der Dezember
+  // davor – mehr braucht die Planung im Betrieb nicht.
+  const viewYear = fromISO(start).getFullYear();
+  const viewMonth = fromISO(start).getMonth();
+  const monthOptions = useMemo(() => {
+    const base = fromISO(from).getFullYear();
+    const list: { value: string; label: string }[] = [];
+    for (let y = base - 1; y <= base + 1; y += 1) {
+      for (let m = 0; m < 12; m += 1) {
+        list.push({ value: `${y}-${m}`, label: `${monthName(m)} ${y}` });
+      }
+    }
+    // Der angezeigte Monat muss in der Liste stehen, sonst springt das Feld
+    // beim Blättern über den Rand auf einen falschen Eintrag.
+    if (!list.some((o) => o.value === `${viewYear}-${viewMonth}`)) {
+      list.push({
+        value: `${viewYear}-${viewMonth}`,
+        label: `${monthName(viewMonth)} ${viewYear}`,
+      });
+      list.sort((a, b) => a.value.localeCompare(b.value, "de", { numeric: true }));
+    }
+    return list;
+  }, [from, viewYear, viewMonth]);
+
   function applyChange(
     action: "shift" | "absence" | "free" | "urlaub" | "v_tag" | "clear",
     value: string,
@@ -249,30 +276,55 @@ export function ShiftPlanGrid({
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">Schichtplan</h2>
           <p className="tnum text-[12px] text-ink-muted">
-            {formatDE(start)} – {formatDE(addDays(start, days - 1))}
+            {formatDE(start)} – {formatDE(addDays(start, span - 1))}
           </p>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setStart(addDays(start, -days))}
-            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-            aria-label="Vorheriger Zeitraum"
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
+              zu klicken – bei Jahresplanung der schnellste Weg. */}
+          <select
+            value={`${viewYear}-${viewMonth}`}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split("-").map(Number);
+              setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
+              setSpan(new Date(y, m + 1, 0).getDate());
+            }}
+            aria-label="Monat auswählen"
+            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setStart(from)}
-            className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
-          >
-            Heute
-          </button>
-          <button
-            onClick={() => setStart(addDays(start, days))}
-            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-            aria-label="Nächster Zeitraum"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setStart(addDays(start, -span))}
+              className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
+              aria-label="Vorheriger Zeitraum"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setStart(from);
+                setSpan(days);
+              }}
+              className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
+            >
+              Heute
+            </button>
+            <button
+              onClick={() => setStart(addDays(start, span))}
+              className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
+              aria-label="Nächster Zeitraum"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -305,7 +357,7 @@ export function ShiftPlanGrid({
               variant="secondary"
               disabled={pending}
               onClick={() => applyChange("urlaub", "")}
-              className="bg-[#FCE96A] text-[#6B5900] hover:bg-[#FBE24A]"
+              className="bg-shift-urlaub text-shift-urlaub-ink hover:brightness-95"
             >
               Urlaub
             </Button>
@@ -313,7 +365,7 @@ export function ShiftPlanGrid({
               variant="secondary"
               disabled={pending}
               onClick={() => applyChange("v_tag", "")}
-              className="bg-[#C7B3F0] text-[#3A2270] hover:bg-[#B9A2E9]"
+              className="bg-shift-vtag text-shift-vtag-ink hover:brightness-95"
             >
               V-Tag
             </Button>

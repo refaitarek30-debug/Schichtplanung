@@ -106,14 +106,42 @@ export function buildShiftPlanCsv({ title, dates, cells }: ShiftPlanCsvOptions):
 }
 
 /** Löst den Download im Browser aus. */
-export function downloadCsv(filename: string, content: string) {
+/**
+ * Datei zum Gerät geben.
+ *
+ * Auf dem Handy scheitert der klassische Download-Link: iOS kennt keinen
+ * Download-Ordner, und in einer installierten Web-App passiert oft schlicht
+ * nichts. Deshalb zuerst das Teilen-Menü des Systems anbieten – dort steht
+ * "In Dateien sichern", und die Datei landet dort, wo sie der Nutzer haben
+ * will. Nur wenn das Gerät das nicht kann, der gewohnte Weg über einen Link.
+ *
+ * Zweiter Fallstrick: die Objekt-URL darf nicht sofort wieder freigegeben
+ * werden – manche Browser brechen den Download dann ab.
+ */
+export async function downloadCsv(filename: string, content: string): Promise<void> {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+
+  if (typeof navigator !== "undefined" && typeof navigator.canShare === "function") {
+    try {
+      const file = new File([blob], filename, { type: "text/csv" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: filename });
+        return;
+      }
+    } catch (caught) {
+      // Abbruch durch den Nutzer ist kein Fehler – dann gar nichts tun.
+      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      // Alles andere: unten der normale Weg.
+    }
+  }
+
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  link.rel = "noopener";
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }

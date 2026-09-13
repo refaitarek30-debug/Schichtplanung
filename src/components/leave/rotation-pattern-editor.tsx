@@ -11,9 +11,9 @@ import { saveRotationPattern, type PatternBlock } from "@/lib/auth/rotation-patt
 import { cn } from "@/lib/utils";
 
 const shiftMeta: Record<PatternBlock["code"], { label: string; cls: string }> = {
-  F: { label: "Frühschicht", cls: "bg-[#FBD7A6] text-[#7A4A05]" },
-  S: { label: "Spätschicht", cls: "bg-[#D7EFB0] text-[#3F5D12]" },
-  N: { label: "Nachtschicht", cls: "bg-[#BBD9F7] text-[#123E68]" },
+  F: { label: "Frühschicht", cls: "bg-shift-frueh text-shift-frueh-ink" },
+  S: { label: "Spätschicht", cls: "bg-shift-spaet text-shift-spaet-ink" },
+  N: { label: "Nachtschicht", cls: "bg-shift-nacht text-shift-nacht-ink" },
   FREI: { label: "Frei", cls: "bg-surface-sunken text-ink-muted" },
 };
 

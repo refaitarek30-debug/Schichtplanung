@@ -23,3 +23,20 @@ export async function setNotifyLeaveEmail(enabled: boolean): Promise<FormState> 
       : "E-Mail-Benachrichtigung bei Urlaubsanträgen ist deaktiviert.",
   };
 }
+
+/**
+ * Bundesland umstellen und die Feiertage der nächsten drei Jahre neu
+ * setzen (nur Admin). Die Datenbank rechnet die beweglichen Termine rund
+ * um Ostern selbst aus – siehe `german_holidays()`.
+ */
+export async function setCompanyState(state: string): Promise<FormState> {
+  if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_company_state", { p_state: state });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Das Bundesland konnte nicht gespeichert werden." };
+  }
+  revalidatePath("/regeln");
+  revalidatePath("/urlaub");
+  return { success: "Bundesland gespeichert, Feiertage wurden neu erzeugt." };
+}

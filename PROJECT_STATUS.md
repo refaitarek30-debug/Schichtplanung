@@ -279,14 +279,11 @@ Umgebungsvariablen beim Build-Aufruf.
 Vercel-Projekt `ready` (Scope `tarek-refai`), Supabase `ehmphogahhqytscdwtla`.
 Der Hinweis weiter oben auf `refaitarek30-debug/ready` ist überholt.
 
-**FALLE: der Code liegt doppelt im Repo.** Es gibt `app/`, `lib/`,
-`components/`, `context/` im Wurzelverzeichnis UND `src/app/`, `src/lib/` usw.
-Aktiv ist: Seiten aus `app/` (Next.js bevorzugt das Wurzelverzeichnis, wenn
-beide existieren), alles andere aus `src/` (weil `@/*` in `tsconfig.json` auf
-`./src/*` zeigt). `src/app/`, `lib/`, `components/`, `context/` sind tot.
-Änderungen also: Seiten in `app/`, Komponenten und Bibliothek in `src/`.
-`tailwind.config.ts` durchsucht seit 0.17.0 beide Bäume – vorher fehlten
-Klassen, die es nur unter `app/` gibt.
+**Aufgeräumt (0.20.0):** Der Code lag lange doppelt im Repo – einmal im
+Wurzelverzeichnis, einmal unter `src/`. Der tote Zweig ist jetzt weg. Gültig
+ist: Seiten unter `app/`, alles andere unter `src/` (`@/*` zeigt in
+`tsconfig.json` auf `./src/*`). `tailwind.config.ts` durchsucht beide.
+Bitte nicht wieder eine zweite Kopie anlegen.
 
 **0.17.0** – Besetzungszeile „Ist/Min" je Schichtgruppe im Schichtplan (rot bei
 Unterschreitung), Dashboard-Kacheln „Krank gesamt" und „V-Tage gesamt" statt
@@ -309,8 +306,36 @@ Registrierung im Root-Layout, Installationshinweis im AppShell. Der Service
 Worker speichert bewusst KEINE Seiten zwischen (angemeldete, personenbezogene
 Inhalte), nur `/_next/static/`, Bilder und die Offline-Seite.
 
-**Weiter offen:** `decide_leave_request()` prüft beim Genehmigen nur das
-Urlaubskonto, nicht das V-Konto – ein V-Tag-Antrag geht also auch durch, wenn
-die V-Tage aufgebraucht sind. E-Mail-Versand bei Urlaubsanträgen fehlt weiter.
-Im Wurzelverzeichnis liegen mehrere versehentlich hochgeladene ZIP-Dateien
-(`schichtplan-*.zip`), die gelöscht werden sollten.
+**0.20.0** – Migration 0027: `decide_leave_request()` prüft beim Genehmigen
+das Konto, das zur Art des Antrags gehört – V-Tag-Anträge gehen nicht mehr
+durch, wenn die V-Tage aufgebraucht sind. Dazu der große Aufräumer: der tote
+Verzeichnisbaum (`lib/`, `components/`, `context/`, `src/app/`), die beim
+Hochladen im Wurzelverzeichnis gelandeten Dateien und die versehentlich
+eingecheckten ZIP-Dateien sind entfernt – 123 Dateien.
+
+**0.21.0** – Sicherheit, Feiertage, Aussehen.
+
+- Migration 0028 schließt eine ausnutzbare Lücke: `handle_new_user()` hatte
+  `company_id` und `role` aus den Client-Metadaten übernommen. Da der
+  Anmelde-Endpunkt öffentlich ist, konnte sich jeder angemeldete Mitarbeiter
+  ein zweites Konto als Administrator der eigenen Firma anlegen. Jetzt
+  kommen Firma und Rolle aus `employees`, abgeglichen über die E-Mail.
+  **Das steht und fällt mit der Bestätigungsmail** – siehe
+  `supabase/email-templates/README.md`.
+- Migration 0029/0030: Feiertage werden je Bundesland berechnet
+  (`german_holidays()`, Ostern nach Gauß) und bei der Registrierung
+  automatisch angelegt. Vorher standen nur elf Tage für 2027 in der
+  Datenbank und die Urlaubsberechnung zählte Feiertage als Arbeitstage.
+- Schriftart: die Anwendung lief ohne eigene Schrift
+  (`const inter = { variable: "" }` war ein nie ausgefüllter Platzhalter).
+  Jetzt IBM Plex Sans/Mono über `next/font`.
+- Dunkelmodus: alle Farben liegen als RGB-Kanäle in `app/globals.css`,
+  `tailwind.config.ts` nennt nur noch die Namen. Folgt der Systemeinstellung.
+  Keine festen Hex-Werte mehr in Komponenten.
+- Export: Monat oder Jahr, auf dem Handy über das Teilen-Menü.
+- Schichtplan: Monat direkt anspringbar.
+
+**Weiter offen:** Bestätigungsmail und eigener Mailversand in Supabase
+einschalten (Anleitung liegt bei), E-Mail bei Urlaubsanträgen,
+Einrichtungsweg für neue Firmen, Navigation zusammenlegen (Kalender in
+Schichtplan, drei Verwaltungsseiten in eine), Demo-Modus ausbauen.
