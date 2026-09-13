@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { createEmployee } from "@/lib/auth/employee-actions";
-import type { FormState } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 import { roleLabels } from "@/lib/nav";
 import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
@@ -16,11 +16,16 @@ import type { Role } from "@/lib/types";
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
 
-export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
+export function CreateEmployeePanel({
+  onCreated,
+}: {
+  /** Bekommt das Ergebnis, damit der Einladungslink oben stehen bleibt. */
+  onCreated: (result: FormState) => void;
+}) {
   const [state, formAction] = useActionState(createEmployee, initialState);
 
   useEffect(() => {
-    if (state.success) onCreated();
+    if (state.success) onCreated(state);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 
@@ -28,7 +33,7 @@ export function CreateEmployeePanel({ onCreated }: { onCreated: () => void }) {
     <Card>
       <CardHeader
         title="Neuer Mitarbeiter"
-        hint="Legt den Personalstammsatz an. Mit E-Mail-Adresse kann anschließend eine Einladung verschickt werden."
+        hint="Mit E-Mail-Adresse wird der Zugang gleich mit eingerichtet – die Einladung geht raus, der Link zum Weitergeben erscheint darüber."
       />
       <CardBody>
         <form action={formAction} className="space-y-4">
