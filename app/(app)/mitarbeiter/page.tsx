@@ -19,6 +19,8 @@ import { deleteEmployee } from "@/lib/auth/employee-actions";
 import { roleLabels } from "@/lib/nav";
 import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type { EmployeeRecord } from "@/lib/types";
+import { InviteLinkCard } from "@/components/employees/invite-link-card";
+import type { FormState } from "@/lib/auth/form-state";
 import { CreateEmployeePanel } from "./create-employee-panel";
 import { EditEmployeePanel } from "./edit-employee-panel";
 
@@ -35,7 +37,10 @@ export default function EmployeesPage() {
   const [editing, setEditing] = useState<EmployeeRecord | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [invited, setInvited] = useState<Record<string, string>>({});
+  // Ergebnis der letzten Einladung – bleibt oben stehen, bis es
+  // weggeklickt wird. Ein Link, der beim nächsten Klick verschwindet, ist
+  // wertlos: bis man ihn kopiert hat, ist er weg.
+  const [access, setAccess] = useState<FormState | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(async () => {
@@ -107,16 +112,15 @@ export default function EmployeesPage() {
   function invite(row: EmployeeRecord) {
     setBusyId(row.id);
     setError(null);
+    setAccess(null);
     const formData = new FormData();
     formData.set("employee_id", row.id);
     startTransition(async () => {
       const result = await inviteEmployee({}, formData);
-      if (result.error) {
-        setError(result.error);
-      } else if (result.success) {
-        setInvited((current) => ({ ...current, [row.id]: result.success! }));
-      }
+      setAccess(result);
       setBusyId(null);
+      if (result.success) void load();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
 
@@ -156,10 +160,20 @@ export default function EmployeesPage() {
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
+      {access ? (
+        <InviteLinkCard
+          message={access.error ?? access.success ?? ""}
+          link={access.link}
+          tone={access.error ? "error" : "ok"}
+          onClose={() => setAccess(null)}
+        />
+      ) : null}
+
       {showCreate && role === "admin" ? (
         <CreateEmployeePanel
-          onCreated={() => {
+          onCreated={(result) => {
             setShowCreate(false);
+            setAccess(result);
             void load();
           }}
         />
@@ -254,9 +268,6 @@ export default function EmployeesPage() {
                         ? `Schicht ${row.rotationTeam}`
                         : (row.shiftName ?? "keine Schicht")}
                     </p>
-                    {invited[row.id] ? (
-                      <p className="mt-0.5 text-[12px] text-ok-fg">{invited[row.id]}</p>
-                    ) : null}
                     {row.qualifications.length > 0 ? (
                       <p className="mt-1 flex flex-wrap gap-1">
                         {row.qualifications.map((q) => (
@@ -292,14 +303,24 @@ export default function EmployeesPage() {
                   ) : null}
                   {role === "admin" ? (
                     <div className="flex items-center gap-2">
-                      {mode === "live" && !row.hasAccount ? (
+                      {mode === "live" ? (
                         <Button
                           variant="secondary"
                           disabled={!row.email || (pending && busyId === row.id)}
                           onClick={() => invite(row)}
-                          title={row.email ? undefined : "Keine E-Mail-Adresse hinterlegt"}
+                          title={
+                            row.email
+                              ? row.hasAccount
+                                ? "Neuen Link zum Passwort-Setzen erzeugen"
+                                : "Zugang einrichten und Link erzeugen"
+                              : "Keine E-Mail-Adresse hinterlegt"
+                          }
                         >
-                          Einladen
+                          {pending && busyId === row.id
+                            ? "…"
+                            : row.hasAccount
+                              ? "Neuer Zugangslink"
+                              : "Einladen"}
                         </Button>
                       ) : null}
                       <Button
