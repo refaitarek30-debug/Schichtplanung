@@ -19,9 +19,11 @@ export default async function LoginPage({
         Mit der E-Mail-Adresse, die dein Unternehmen hinterlegt hat.
       </p>
 
-      {params.fehler === "link" ? (
+      {params.fehler === "link" || params.fehler === "abgelaufen" ? (
         <Alert tone="error" className="mt-4">
-          Der Link ist abgelaufen oder wurde schon benutzt. Fordere unten einen neuen an.
+          {params.fehler === "abgelaufen"
+            ? "Dieser Einladungslink ist abgelaufen oder wurde schon benutzt. Jeder Link gilt 24 Stunden und lässt sich nur einmal einlösen – bitte bei der Administration einen neuen anfordern."
+            : "Der Link ist unvollständig. Bitte ihn komplett aus der Nachricht kopieren oder unten einen neuen anfordern."}
         </Alert>
       ) : null}
 
