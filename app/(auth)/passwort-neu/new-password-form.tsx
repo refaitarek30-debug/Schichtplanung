@@ -5,7 +5,8 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { updatePassword, type FormState } from "@/lib/auth/actions";
+import { updatePassword } from "@/lib/auth/actions";
+import type { FormState } from "@/lib/auth/form-state";
 
 export function NewPasswordForm() {
   const [state, formAction] = useActionState(updatePassword, {} as FormState);
