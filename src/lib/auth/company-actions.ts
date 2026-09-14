@@ -96,10 +96,11 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   }
 
   // Ist die Bestätigungsmail in Supabase deaktiviert, kommt sofort eine
-  // Session zurück – dann direkt einloggen. Sonst muss die E-Mail erst
-  // bestätigt werden, bevor eine Session entsteht.
+  // Session zurück – dann direkt in den Einrichtungsassistenten. Sonst
+  // muss die E-Mail erst bestätigt werden, bevor eine Session entsteht;
+  // der Hinweis auf dem Dashboard führt dann später dorthin.
   if (signUpData.session) {
-    redirect("/dashboard");
+    redirect("/einrichtung");
   }
 
   return {

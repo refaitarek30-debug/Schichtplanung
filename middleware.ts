@@ -17,6 +17,7 @@ const PROTECTED_PREFIXES = [
   "/schichten",
   "/regeln",
   "/einstellungen",
+  "/einrichtung",
   "/profil",
   "/hilfe",
 ];

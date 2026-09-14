@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/leave";
 import { fetchMySickDays } from "@/lib/data/absences";
 import { fetchAnnouncements } from "@/lib/data/announcements";
+import { SetupBanner } from "@/components/settings/setup-banner";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -204,6 +205,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <SetupBanner />
+
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
           {greeting()}, {profile.firstName} 👋
