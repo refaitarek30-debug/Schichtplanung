@@ -75,7 +75,7 @@ export function SchrittMitarbeiter({
 
           <p className="text-sm leading-relaxed text-ink-muted">
             Deinen eigenen Eintrag kannst du unter{" "}
-            <Link href="/mitarbeiter" className="font-medium text-brand-600 hover:underline">
+            <Link href="/verwaltung?bereich=mitarbeiter" className="font-medium text-brand-600 hover:underline">
               Mitarbeiter
             </Link>{" "}
             vervollständigen – Personalnummer, Abteilung und Schichtgruppe. Dort lassen

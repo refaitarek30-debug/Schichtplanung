@@ -51,7 +51,7 @@ export async function setLeaveEntitlement(
     return { error: dataErrorMessage(error) ?? "Speichern fehlgeschlagen." };
   }
 
-  revalidatePath("/mitarbeiter");
+  revalidatePath("/verwaltung");
   revalidatePath("/urlaub");
   revalidatePath("/dashboard");
   return { success: "Urlaubsanspruch gespeichert." };

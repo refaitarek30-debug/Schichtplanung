@@ -145,7 +145,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       .eq("year", new Date().getFullYear());
   }
 
-  revalidatePath("/mitarbeiter");
+  revalidatePath("/verwaltung");
 
   // Mit E-Mail-Adresse gleich den Zugang einrichten. Vorher war das ein
   // zweiter, leicht zu übersehender Schritt – man legte jemanden an, wartete
@@ -268,7 +268,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
     return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht geändert werden." };
   }
 
-  revalidatePath("/mitarbeiter");
+  revalidatePath("/verwaltung");
   return { success: `${firstName} ${lastName} wurde aktualisiert.` };
 }
 
@@ -327,6 +327,6 @@ export async function deleteEmployee(employeeId: string): Promise<FormState> {
     return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht gelöscht werden." };
   }
 
-  revalidatePath("/mitarbeiter");
+  revalidatePath("/verwaltung");
   return { success: "Mitarbeiter gelöscht." };
 }

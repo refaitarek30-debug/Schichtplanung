@@ -80,7 +80,7 @@ export async function saveShiftSystem(
     };
   }
 
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/schichtplan");
   revalidatePath("/einrichtung");
   return { success: "Schichtmuster gespeichert und allen Schichtgruppen zugeordnet." };

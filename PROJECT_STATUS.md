@@ -836,3 +836,95 @@ select id, 'Betreiber' from auth.users where email = 'DEINE@ADRESSE';
 
 Danach `https://ready-tarek-refai.vercel.app/plattform` aufrufen.
 Wieder entfernen mit `delete from platform_admins where user_id = '…';`
+
+---
+
+## Phase E – Navigation zusammenlegen
+
+Die Seitenleiste hatte elf Einträge, davon fünf für Dinge, die paarweise
+zusammengehören. Jetzt sind es acht.
+
+### Kalender in den Schichtplan
+
+Beide Seiten zeigten **dieselben Daten aus zwei Richtungen**:
+
+- **Plan je Person** – eine Zeile je Person über 28 Tage. Beantwortet „wer
+  arbeitet wann" und ist für die Führung der Ort zum Ändern.
+- **Monat** – ein Feld je Tag über einen Monat. Beantwortet „wie sieht der
+  Monat aus" und zeigt je Tag die kritischste Besetzung aller Schichten.
+
+Keine der beiden ersetzt die andere, zwei Navigationseinträge braucht es
+dafür aber nicht. `/schichtplan` hat jetzt einen Ansichtswechsel; `/kalender`
+leitet dorthin weiter (alte Lesezeichen, Startbildschirm, installierte PWA).
+
+**Vor dem Löschen geprüft, was auf `/kalender` exklusiv war** – das war die
+Vorgabe des Auftrags. Ergebnis:
+
+| Bestandteil | Urteil |
+|---|---|
+| `LiveMonthCalendar` / `MonthCalendar` | **exklusiv** → übernommen |
+| `ShiftLeaveList` („Urlaub in meiner Schicht") | steht schon auf `/meine-schichten` → nicht doppelt |
+| `LiveLeaveOverview` (Antragsliste, nur lesen, max. 8) | schwächere Dublette von `LiveRequestList` auf `/urlaub` (eigene Anträge, mit Zurückziehen) bzw. `ReviewPanel` auf `/urlaubsantraege` (mit Entscheiden) → entfällt |
+
+Nebenbei ein echter Gewinn: im Demo-Modus stand auf `/schichtplan` nur „im
+Demo-Modus nicht verfügbar". Die Monatsansicht läuft auch ohne Supabase und
+ist dort jetzt die Startansicht.
+
+### Mitarbeiter, Schichten und Regeln zu einer Seite
+
+Drei Einträge für Dinge, die man beim Einrichten ohnehin nacheinander
+durchgeht. Jetzt `/verwaltung` mit drei Reitern. Der gewählte Bereich steht
+in der Adresse (`?bereich=`), damit Lesezeichen, Neuladen und der
+Zurück-Knopf funktionieren; gewechselt wird mit `router.replace`, damit das
+Blättern zwischen Reitern nicht den Zurück-Knopf zumüllt.
+
+Die Reiter sind nach Rolle gefiltert – die Schichtleitung sieht nur die
+Mitarbeiter. Das ist Bequemlichkeit, **keine Absicherung**: die liegt
+unverändert in den Server-Aktionen und in Row Level Security.
+
+Die drei Seiten wurden als Ganzes nach `src/components/admin/` verschoben
+(`git mv`, damit die Historie erhalten bleibt) und nur um ihre eigene
+`PageHeader` erleichtert – sonst stünde der Titel zweimal. Ihre
+Beschreibung und die Aktion („Mitarbeiter anlegen") bleiben über
+`AdminViewHeader` erhalten.
+
+**Eine Sache ist dabei weggefallen:** der Knopf „Schicht anlegen" in der
+alten Kopfzeile von `/schichten`. Er hatte nie einen `onClick` – er sah aus
+wie eine Funktion und war keine. In eine gemeinsame Kopfzeile mitgenommen
+hätte er nur weiter in die Irre geführt.
+
+### Alle Verweise nachgezogen
+
+- Navigation: drei Einträge → einer, Kalender-Eintrag entfernt
+- `middleware.ts`: `/verwaltung` in den geschützten Pfaden
+- Zehn Server-Aktionen: `revalidatePath("/mitarbeiter" | "/schichten" |
+  "/regeln")` → `"/verwaltung"`, doppelte Zeilen zusammengefasst
+- Wo vorher `/kalender` neu geladen wurde, steht jetzt `/schichtplan`
+- Links im Einrichtungsassistenten auf `/verwaltung?bereich=…`
+
+Durchgeklickt im Live-Modus gegen die echte Datenbank: alle vier
+Weiterleitungen landen richtig, die Reiter setzen die Adresse, keine
+JS-Fehler.
+
+### Eine Einschränkung bei der Prüfung
+
+Die **Farben der Monatsansicht** konnte ich in dieser Umgebung nicht im
+Browser bestätigen. `staffing_month_overview()` braucht serverseitig rund
+1,6 Sekunden; der Proxy dieser Arbeitsumgebung bricht Browser-Anfragen ab,
+die länger als etwa eine Sekunde dauern – ein reines
+`fetch()` mit demselben Schlüssel scheitert nach 14 Sekunden, während
+dasselbe per `curl` in 1,6 Sekunden mit HTTP 200 antwortet. Die kürzeren
+Abfragen derselben Seite (Tagesdetail, „wer fehlt") laufen im Browser
+durch und zeigen richtige Werte.
+
+Geprüft habe ich deshalb die Datenquelle direkt: `staffing_month_overview`
+liefert für September 2026 dreißig Tage, davon 27 ok, 2 knapp, 1 kritisch.
+Der Code der Monatsansicht ist unverändert aus `/kalender` übernommen und
+verhielt sich dort genauso.
+
+**Advisor:** keine Migration in dieser Phase, keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Beim ersten Öffnen nach dem Deployment kann die installierte PWA
+noch die alte Navigation im Cache haben – einmal neu laden genügt.

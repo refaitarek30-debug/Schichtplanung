@@ -57,7 +57,7 @@ export async function createAnnouncement(
     return { error: dataErrorMessage(error) ?? "Die Mitteilung konnte nicht gespeichert werden." };
   }
 
-  revalidatePath("/regeln");
+  revalidatePath("/verwaltung");
   revalidatePath("/dashboard");
   return { success: "Mitteilung veröffentlicht." };
 }
@@ -73,7 +73,7 @@ export async function retireAnnouncement(id: string): Promise<FormState> {
     return { error: dataErrorMessage(error) ?? "Die Mitteilung konnte nicht entfernt werden." };
   }
 
-  revalidatePath("/regeln");
+  revalidatePath("/verwaltung");
   revalidatePath("/dashboard");
   return { success: "Mitteilung entfernt." };
 }

@@ -182,7 +182,7 @@ export async function grantAccess(
     admin,
   );
 
-  revalidatePath("/mitarbeiter");
+  revalidatePath("/verwaltung");
 
   if (!mailError) {
     return {
