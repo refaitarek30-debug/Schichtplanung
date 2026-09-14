@@ -44,6 +44,86 @@ aber er ist keine Voraussetzung mehr dafür, dass jemand einen Zugang bekommt.
    „Leaked password protection" einschalten (Abgleich mit bekannten
    Datenlecks).
 
+## Benachrichtigungen aus der Anwendung (nicht Supabase Auth)
+
+Die Vorlagen weiter unten gelten nur für **Auth-Mails** – Bestätigung,
+Einladung, Passwort. Fachliche Nachrichten wie „neuer Urlaubsantrag"
+verschickt Supabase Auth nicht; die stellt die Anwendung selbst zu.
+
+Der Weg dorthin:
+
+1. Jemand beantragt Urlaub.
+2. Ein Trigger schreibt für die zuständige Schichtleitung und die
+   Administration je eine Zeile in die Tabelle `email_outbox`. Das passiert
+   in derselben Transaktion – die Nachricht kann also nicht verloren gehen,
+   wenn gerade kein Mailserver erreichbar ist.
+3. Die Edge Function `mail-versand` holt offene Zeilen ab und verschickt
+   sie per SMTP.
+
+**Wer die Mail bekommt:** die Schichtleitung der eigenen Rotationsgruppe
+plus die Administration – nicht alle Schichtleiter. Bei vier Schichten
+bekämen sonst acht Personen jeden Antrag, und nach einer Woche liest das
+niemand mehr. Die Glocke in der Anwendung geht weiterhin an die gesamte
+Führung.
+
+**Abschaltbar** unter Einstellungen → Benachrichtigungen (firmenweit, nur
+Administration). Die Glocke bleibt davon unberührt.
+
+### Einrichten
+
+1. **Supabase → Edge Functions → Secrets** – diese fünf setzen:
+
+   | Name | Beispiel |
+   |---|---|
+   | `SMTP_HOST` | `smtp.example.de` |
+   | `SMTP_PORT` | `465` (implizites TLS) oder `587` (STARTTLS) |
+   | `SMTP_USER` | Postfachname |
+   | `SMTP_PASS` | Passwort bzw. App-Kennwort |
+   | `SMTP_FROM` | `schichtplan@deine-domain.de` |
+
+   `SUPABASE_URL` und `SUPABASE_SERVICE_ROLE_KEY` setzt Supabase selbst –
+   die müssen nicht angelegt werden.
+
+2. **Supabase → Integrations → Cron** – einen Auftrag anlegen, der die
+   Funktion `mail-versand` minütlich aufruft. Ohne diesen Schritt bleiben
+   die Nachrichten im Postausgang stehen.
+
+Solange Schritt 1 fehlt, läuft die Funktion trotzdem durch und meldet
+zurück, dass SMTP nicht eingerichtet ist. Die Zeilen bleiben offen und
+werden nachgeholt, sobald die Zugangsdaten stehen – es geht nichts
+verloren.
+
+### Kontrolle
+
+Unter **Einstellungen → Mailversand** (nur Administration) steht, wie
+viele Nachrichten warten, wie viele versendet wurden und woran der letzte
+Versand gescheitert ist. Stauen sich offene Zeilen, ist der Versand nicht
+eingerichtet oder der Cron-Auftrag fehlt.
+
+### Text der Benachrichtigung
+
+Der Text entsteht im Trigger `leave_requests_notify_leadership()`
+(Migration `0041_email_outbox.sql`) und liegt nicht in Supabase, weil er
+Werte aus dem Antrag einsetzt. Zur Ansicht:
+
+Betreff: `Neuer Urlaubsantrag: <Name>`
+
+```
+Hallo <Vorname>,
+
+<Name> hat Urlaub beantragt.
+Zeitraum: 16.11.2026 bis 18.11.2026
+Tage: 3
+Kommentar: <falls angegeben>
+
+Der Antrag liegt im Schichtplan zur Entscheidung bereit.
+
+<Firma> · Schichtplan
+```
+
+Soll der Wortlaut geändert werden, gehört das in eine neue Migration, die
+die Triggerfunktion ersetzt – nicht in die Supabase-Oberfläche.
+
 ## Vorlagen
 
 ### Confirm signup

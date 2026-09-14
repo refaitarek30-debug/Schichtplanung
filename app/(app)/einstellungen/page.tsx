@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
 import { ThemeToggle } from "@/components/layout/theme";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
@@ -40,7 +41,10 @@ const permissions: { role: Role; items: string[] }[] = [
 ];
 
 export default function SettingsPage() {
-  const { company, mode } = useSession();
+  const { company, mode, profile } = useSession();
+  // Der Postausgang zeigt Adressen und Namen von Beschäftigten – die
+  // Datenbank gibt ihn ohnehin nur der Administration heraus.
+  const istAdmin = profile?.role === "admin";
 
   return (
     <div className="space-y-5">
@@ -61,6 +65,7 @@ export default function SettingsPage() {
       </Card>
 
       {mode === "live" ? <NotificationSettings /> : null}
+      {mode === "live" && istAdmin ? <MailDeliveryCard /> : null}
 
       <Card>
         <CardHeader title="Unternehmen" />

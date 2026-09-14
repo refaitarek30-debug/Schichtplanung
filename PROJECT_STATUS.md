@@ -584,3 +584,88 @@ gewollt – ohne ihn könnte sich kein neues Unternehmen anlegen.
    die trägt das eigene Muster nicht.
 6. **Leaked Password Protection** in Supabase einschalten (Authentication →
    Policies).
+
+---
+
+## Phase B – E-Mail-Zustellung
+
+In den Einstellungen stand seit `0020` ein Schalter **„E-Mail bei neuem
+Urlaubsantrag"** – verschickt wurde aber nie eine. Die Einstellung war ein
+Versprechen, das die Anwendung nicht gehalten hat. Die Glocke in der App
+lief, die Mail gab es schlicht nicht.
+
+### Postausgang statt Versand im Trigger
+
+`0041_email_outbox.sql` legt die Tabelle `email_outbox` an. Der Trigger
+`leave_requests_notify_leadership()` schreibt dort je eine Zeile, die Edge
+Function `mail-versand` holt sie ab und verschickt sie per SMTP.
+
+Warum nicht direkt im Trigger senden: ein Trigger läuft in derselben
+Transaktion wie der Urlaubsantrag. Ein ausgehender HTTP-Aufruf darin hängt
+das Beantragen von Urlaub an die Erreichbarkeit des Mailservers – ist der
+langsam oder weg, scheitert der Antrag. Die Zeile dagegen kann nicht
+scheitern.
+
+Der zweite, ebenso wichtige Grund: solange kein eigener SMTP-Versand
+eingerichtet ist, **sammeln sich die Zeilen sichtbar an, statt lautlos
+verloren zu gehen**.
+
+### Wer die Mail bekommt
+
+Die Schichtleitung der **eigenen Rotationsgruppe** plus die Administration
+– nicht alle Schichtleiter. Bei vier Schichten bekämen sonst acht Personen
+jeden Antrag, und nach einer Woche liest das niemand mehr. Die Glocke geht
+weiterhin an die gesamte Führung, die kostet nichts. Wer den Antrag selbst
+stellt, bekommt keine Mail.
+
+### Edge Function `mail-versand`
+
+Liegt unter `supabase/functions/mail-versand/` und ist auf dem Projekt
+deployt (`verify_jwt: true`). Verhalten:
+
+- höchstens 25 Mails je Aufruf, damit die Laufzeit kurz bleibt
+- bis zu 5 Versuche je Zeile – ein kurzer Ausfall des Mailservers soll
+  keine Nachricht kosten; danach `status = 'fehler'` mit Begründung
+- **ohne SMTP-Secrets** tut sie bewusst nichts, gibt HTTP 200 und einen
+  klaren Hinweis zurück und lässt die Zeilen offen stehen. Das ist keine
+  Störung, sondern ein noch nicht erledigter Einrichtungsschritt.
+
+Live geprüft: Testzeile eingefügt, Funktion aufgerufen, Antwort war
+`{"offen":1,"gesendet":0,"hinweis":"SMTP ist nicht eingerichtet …"}`, Zeile
+blieb offen. Testzeile wieder entfernt.
+
+### Sichtbar in der Anwendung
+
+Neue Karte **Einstellungen → Mailversand** (nur Administration, nur
+Live-Modus): wie viele Nachrichten warten, versendet und gescheitert sind,
+wann zuletzt versendet wurde und woran es zuletzt lag – dazu die
+Einrichtungsschritte.
+
+Damit ist Punkt B.1 besser gelöst als mit einem festen Hinweistext: ob in
+Supabase SMTP hinterlegt ist, lässt sich über die Schnittstelle **nicht**
+abfragen (geprüft – es gibt keinen solchen Endpunkt). Ob Nachrichten liegen
+bleiben, schon. Stauen sich offene Zeilen, läuft der Versand nicht.
+
+`supabase/email-templates/README.md` ist um den ganzen Ablauf, die fünf
+Secrets, den Cron-Schritt und den Wortlaut der Benachrichtigung ergänzt.
+
+**Advisor nach der Migration:** eine neue Meldung, `email_outbox_status()`
+in der Liste der von angemeldeten Nutzern aufrufbaren SECURITY
+DEFINER-Funktionen. Gewollt und ungefährlich: die Funktion prüft intern
+`is_admin()` und liefert nur Zählwerte des eigenen Unternehmens, keine
+Inhalte. Keine neue anonym aufrufbare Funktion.
+
+### Von Hand zu erledigen – Tarek
+
+1. **Supabase → Edge Functions → Secrets**: `SMTP_HOST`, `SMTP_PORT`,
+   `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` setzen.
+2. **Supabase → Integrations → Cron**: einen Auftrag anlegen, der
+   `mail-versand` minütlich aufruft. Ohne diesen Schritt bleiben die
+   Nachrichten im Postausgang stehen.
+3. **Supabase → Authentication → Emails → SMTP Settings**: denselben Zugang
+   auch dort hinterlegen (gilt für Bestätigungs- und Einladungsmails, ein
+   getrennter Weg).
+
+Punkt 1 und 2 lassen sich an der Karte *Einstellungen → Mailversand*
+kontrollieren: sobald beide stehen, geht „wartet" auf 0 und der Status auf
+*läuft*.
