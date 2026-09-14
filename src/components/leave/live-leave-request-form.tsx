@@ -237,7 +237,8 @@ export function LiveLeaveRequestForm({
         title="Urlaub beantragen"
         hint="Die Anzahl Tage wird verbindlich vom Server berechnet."
       />
-      <CardBody className="space-y-4">
+      {/* Weniger Rand auf dem Handy – die Breite braucht der Kalender. */}
+      <CardBody className="space-y-4 px-3 sm:px-5">
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="start_date" value={startDate} />
           <input type="hidden" name="end_date" value={endDate} />
