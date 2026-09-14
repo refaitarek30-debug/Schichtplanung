@@ -11,12 +11,7 @@ import { addDays, formatDE, fromISO, isWeekend, monthName, WEEKDAY_SHORT } from 
 import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
 import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
-import {
-  fetchShiftDetails,
-  fetchShiftOptions,
-  type ShiftDetail,
-  type ShiftOption,
-} from "@/lib/data/shifts";
+import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +98,6 @@ export function ShiftPlanGrid({
   // Monatsauswahl genau die Tage des Monats.
   const [span, setSpan] = useState(days);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
-  const [shifts, setShifts] = useState<ShiftOption[]>([]);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -114,14 +108,14 @@ export function ShiftPlanGrid({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [grid, shiftOptions, details, blockedDays] = await Promise.all([
+      // Die Schichtdetails liefern Name und Id gleich mit – eine zweite
+      // Abfrage nur für die Auswahlliste braucht es nicht.
+      const [grid, details, blockedDays] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, span),
-        fetchShiftOptions(),
         fetchShiftDetails(),
         fetchBlockedDays(start, addDays(start, span - 1)),
       ]);
       setCells(grid);
-      setShifts(shiftOptions);
       setShiftDetails(details);
       setBlocked(blockedDays);
     } catch (caught) {
@@ -373,7 +367,7 @@ export function ShiftPlanGrid({
             {selected.employeeName} · {formatDE(selected.day)}
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {shifts.map((shift) => (
+            {shiftDetails.map((shift) => (
               <Button
                 key={shift.id}
                 variant="secondary"

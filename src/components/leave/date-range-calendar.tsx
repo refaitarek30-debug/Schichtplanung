@@ -151,23 +151,28 @@ export function DateRangeCalendar({
                 )}
               >
                 <span className="tnum leading-none">{Number(iso.slice(8, 10))}</span>
-                {schichtKuerzel ? (
-                  <span
-                    className={cn(
-                      "mt-0.5 rounded px-1 text-[11px] font-semibold leading-[15px] sm:mt-1",
-                      isEdge ? "bg-white/25 text-white" : schichtFarbe,
-                    )}
-                  >
-                    {schichtKuerzel}
-                  </span>
-                ) : feiertag ? (
-                  <span
-                    className={cn(
-                      "mt-1 h-1.5 w-1.5 rounded-full",
-                      isEdge ? "bg-white" : "bg-plan-dot",
-                    )}
-                  />
-                ) : null}
+                {/* Die Zeile unter der Zahl steht immer – auch leer. Sonst
+                    rutscht die Zahl in Tagen ohne Schicht nach unten und die
+                    Zahlen stehen im Monat nicht mehr auf einer Linie. */}
+                <span className="mt-0.5 flex h-[15px] items-center">
+                  {schichtKuerzel ? (
+                    <span
+                      className={cn(
+                        "rounded px-1 text-[11px] font-semibold leading-[15px]",
+                        isEdge ? "bg-white/25 text-white" : schichtFarbe,
+                      )}
+                    >
+                      {schichtKuerzel}
+                    </span>
+                  ) : feiertag ? (
+                    <span
+                      className={cn(
+                        "h-1.5 w-1.5 rounded-full",
+                        isEdge ? "bg-white" : "bg-plan-dot",
+                      )}
+                    />
+                  ) : null}
+                </span>
               </button>
             );
           })}

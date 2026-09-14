@@ -18,7 +18,6 @@ import {
   fetchMyLeaveRequests,
   fetchReviewLeaveRequests,
 } from "@/lib/data/leave";
-import { fetchMyShiftPlan } from "@/lib/data/rotation";
 import { fetchMySickDays } from "@/lib/data/absences";
 import { fetchAnnouncements } from "@/lib/data/announcements";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
@@ -29,7 +28,6 @@ import type {
   LiveLeaveBalance,
   LiveLeaveBlock,
   LiveLeaveRequest,
-  LiveShiftPlanDay,
 } from "@/lib/types";
 import { useSession } from "@/context/session";
 import {
@@ -43,7 +41,7 @@ import {
   shifts,
   staffingContext,
 } from "@/lib/demo-data";
-import { absentOn, dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
+import { dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
 import { addDays, formatDE, formatDays, fromISO, weekdayLong } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -67,17 +65,14 @@ function greeting(): string {
 }
 
 export default function DashboardPage() {
-  const { mode, role, profile, user, shift, company } = useSession();
+  const { mode, role, profile, user, company } = useSession();
   const reference = nextProductionDay(TODAY);
   const isToday = reference === TODAY;
 
   const [liveBalance, setLiveBalance] = useState<LiveLeaveBalance | null>(null);
   const [liveMyRequests, setLiveMyRequests] = useState<LiveLeaveRequest[] | null>(null);
   const [livePendingCount, setLivePendingCount] = useState<number | null>(null);
-  // Echte Besetzung statt Demo-Zahlen: der eigene Plan (für "Schichten diese
-  // Woche") und – für Führungskräfte – die Besetzung des Referenztages sowie
-  // die kritischen Tage der nächsten zwei Wochen.
-  const [livePlan, setLivePlan] = useState<LiveShiftPlanDay[] | null>(null);
+  // Für Führungskräfte: die kritischen Tage der nächsten zwei Wochen.
   const [liveCriticalDays, setLiveCriticalDays] = useState<string[] | null>(null);
   /** Eigene Kranktage im laufenden Jahr – für die Kachel "Krank gesamt". */
   const [liveSickDays, setLiveSickDays] = useState<number | null>(null);
@@ -90,47 +85,46 @@ export default function DashboardPage() {
   const loadLive = useCallback(async () => {
     if (mode !== "live") return;
 
+    const fuehrung = role !== "employee";
+
     /**
-     * Jede Abfrage einzeln auswerten. Vorher hingen alle in einem
-     * Promise.all: eine einzige fehlgeschlagene Abfrage hat dann sämtliche
-     * Kacheln auf null gelassen – die Urlaubstage standen auf 0, obwohl das
-     * Konto voll war.
+     * Alles in einem Zug anfordern und jede Abfrage einzeln auswerten.
+     *
+     * Einzeln, weil vorher alle in einem Promise.all hingen: eine einzige
+     * fehlgeschlagene Abfrage hat sämtliche Kacheln auf null gelassen – die
+     * Urlaubstage standen auf 0, obwohl das Konto voll war. In einem Zug,
+     * weil die beiden Abfragen der Führung vorher hinterher liefen und den
+     * Aufbau um eine ganze Wartezeit verlängert haben.
      */
-    const [balance, requests, plan, sick, notices, blocks, shifts] = await Promise.allSettled([
-      fetchMyLeaveBalance(),
-      fetchMyLeaveRequests(),
-      fetchMyShiftPlan(TODAY, 14),
-      fetchMySickDays(),
-      fetchAnnouncements(10),
-      fetchLeaveBlocks(),
-      fetchShiftOptions(),
-    ]);
+    const [balance, requests, sick, notices, blocks, shifts, review, range] =
+      await Promise.allSettled([
+        fetchMyLeaveBalance(),
+        fetchMyLeaveRequests(),
+        fetchMySickDays(),
+        fetchAnnouncements(10),
+        fetchLeaveBlocks(),
+        fetchShiftOptions(),
+        fuehrung ? fetchReviewLeaveRequests() : Promise.resolve(null),
+        fuehrung ? fetchStaffingRange(company.id, TODAY, 14) : Promise.resolve(null),
+      ]);
 
     if (balance.status === "fulfilled") setLiveBalance(balance.value);
     if (requests.status === "fulfilled") setLiveMyRequests(requests.value);
-    if (plan.status === "fulfilled") setLivePlan(plan.value);
     if (sick.status === "fulfilled") setLiveSickDays(sick.value);
     setLiveAnnouncements(notices.status === "fulfilled" ? notices.value : []);
     if (blocks.status === "fulfilled") setLiveBlocks(blocks.value);
     if (shifts.status === "fulfilled") {
       setShiftNames(new Map(shifts.value.map((o) => [o.id, o.name])));
     }
-
-    if (role !== "employee") {
-      const [review, range] = await Promise.allSettled([
-        fetchReviewLeaveRequests(),
-        fetchStaffingRange(company.id, TODAY, 14),
-      ]);
-      if (review.status === "fulfilled") {
-        setLivePendingCount(review.value.filter((r) => r.status === "pending").length);
-      }
-      if (range.status === "fulfilled") {
-        setLiveCriticalDays(
-          [
-            ...new Set(range.value.filter((s) => s.status === "critical").map((s) => s.date)),
-          ].sort(),
-        );
-      }
+    if (review.status === "fulfilled" && review.value) {
+      setLivePendingCount(review.value.filter((r) => r.status === "pending").length);
+    }
+    if (range.status === "fulfilled" && range.value) {
+      setLiveCriticalDays(
+        [
+          ...new Set(range.value.filter((s) => s.status === "critical").map((s) => s.date)),
+        ].sort(),
+      );
     }
   }, [mode, role, company.id]);
 
@@ -141,6 +135,12 @@ export default function DashboardPage() {
   const demoBalance = leaveBalance(user, staffingContext.leaveRequests, TODAY);
   const availableLeave =
     mode === "live" ? (liveBalance?.remainingDays ?? 0) : demoBalance.available;
+  // Was im Jahr insgesamt zur Verfügung stand: Anspruch plus Übertrag aus dem
+  // Vorjahr – dieselbe Rechnung wie im Urlaubskonto auf der Urlaubsseite.
+  const totalLeave =
+    mode === "live"
+      ? (liveBalance?.entitlement ?? 0) + (liveBalance?.carriedOver ?? 0)
+      : demoBalance.entitlement + demoBalance.carryOver;
 
   const ownRequests = requestsOfEmployee(user.id);
   const ownPending =
@@ -151,26 +151,6 @@ export default function DashboardPage() {
   const demoPending =
     role === "admin" ? allPendingRequests() : pendingRequestsForShift(user.shiftId);
   const pendingCount = mode === "live" ? (livePendingCount ?? 0) : demoPending.length;
-
-  const demoWeekShiftCount = (() => {
-    if (!shift || shift.code === "FREI") return 0;
-    const weekday = (fromISO(TODAY).getDay() + 6) % 7;
-    const monday = addDays(TODAY, -weekday);
-    let count = 0;
-    for (let i = 0; i < 7; i += 1) {
-      const iso = addDays(monday, i);
-      if (!shiftRunsOn(shift, iso, holidays)) continue;
-      const absent = absentOn(iso, staffingContext).includes(user.id);
-      if (!absent) count += 1;
-    }
-    return count;
-  })();
-
-  // Live: eigene Arbeitstage der nächsten 7 Tage aus dem echten Schichtplan.
-  const weekShiftCount =
-    mode === "live"
-      ? (livePlan ?? []).slice(0, 7).filter((d) => !d.isFree && d.shiftId).length
-      : demoWeekShiftCount;
 
   const demoCriticalDays = Array.from({ length: 14 }, (_, i) => addDays(TODAY, i)).filter(
     (iso) => dayStatus(iso, staffingContext) === "critical",
@@ -240,6 +220,8 @@ export default function DashboardPage() {
           label="Urlaubstage verfügbar"
           value={formatDays(availableLeave)}
           unit="Tage"
+          hint={`von ${formatDays(totalLeave)} übrig`}
+          accent="plan"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />
         <KpiCard
@@ -255,21 +237,19 @@ export default function DashboardPage() {
           accent="neutral"
           icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
         />
-        <KpiCard
-          label={role === "employee" ? "Schichten diese Woche" : "Kritische Tage (14 T.)"}
-          value={role === "employee" ? weekShiftCount : criticalDays.length}
-          hint={
-            role === "employee"
-              ? shift?.name ?? "–"
-              : criticalDays.length > 0
+        {role === "employee" ? null : (
+          <KpiCard
+            label="Kritische Tage (14 T.)"
+            value={criticalDays.length}
+            hint={
+              criticalDays.length > 0
                 ? `nächster: ${formatDE(criticalDays[0])}`
                 : "keine Engpässe erkannt"
-          }
-          accent={
-            role === "employee" ? "neutral" : criticalDays.length > 0 ? "critical" : "ok"
-          }
-          icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
-        />
+            }
+            accent={criticalDays.length > 0 ? "critical" : "ok"}
+            icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
+          />
+        )}
         <KpiCard
           label="Krank gesamt"
           value={sickDays}
