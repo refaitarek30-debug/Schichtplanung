@@ -49,7 +49,7 @@ export async function createLeaveBlock(_prev: FormState, formData: FormData): Pr
     return { error: dataErrorMessage(error) ?? "Die Urlaubssperre konnte nicht gespeichert werden." };
   }
 
-  revalidatePath("/regeln");
+  revalidatePath("/verwaltung");
   return { success: "Urlaubssperre angelegt." };
 }
 
@@ -60,6 +60,6 @@ export async function deleteLeaveBlock(id: string): Promise<FormState> {
   if (error) {
     return { error: dataErrorMessage(error) ?? "Die Urlaubssperre konnte nicht entfernt werden." };
   }
-  revalidatePath("/regeln");
+  revalidatePath("/verwaltung");
   return { success: "Urlaubssperre entfernt." };
 }

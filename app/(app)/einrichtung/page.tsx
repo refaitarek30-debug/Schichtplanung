@@ -176,15 +176,15 @@ export default function EinrichtungPage() {
 
       <p className="text-center text-[12px] text-ink-faint">
         Alles hier lässt sich später auch einzeln ändern – unter{" "}
-        <Link href="/regeln" className="hover:underline">
+        <Link href="/verwaltung?bereich=regeln" className="hover:underline">
           Regeln
         </Link>
         ,{" "}
-        <Link href="/schichten" className="hover:underline">
+        <Link href="/verwaltung?bereich=schichten" className="hover:underline">
           Schichten
         </Link>{" "}
         und{" "}
-        <Link href="/mitarbeiter" className="hover:underline">
+        <Link href="/verwaltung?bereich=mitarbeiter" className="hover:underline">
           Mitarbeiter
         </Link>
         .

@@ -43,9 +43,9 @@ export async function assignShift(_prev: FormState, formData: FormData): Promise
     return { error: dataErrorMessage(error) ?? "Die Zuordnung konnte nicht gespeichert werden." };
   }
 
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+  revalidatePath("/schichtplan");
   revalidatePath("/meine-schichten");
   return { success: "Zuordnung gespeichert." };
 }
@@ -57,9 +57,9 @@ export async function removeShiftAssignment(id: string): Promise<FormState> {
   if (error) {
     return { error: dataErrorMessage(error) ?? "Die Zuordnung konnte nicht entfernt werden." };
   }
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+  revalidatePath("/schichtplan");
   revalidatePath("/meine-schichten");
   return { success: "Zuordnung entfernt." };
 }

@@ -52,7 +52,7 @@ export async function saveRotationPattern(
     };
   }
 
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/schichtplan");
   return { success: "Schichtmuster gespeichert und allen Schichtgruppen zugeordnet." };
 }

@@ -36,7 +36,7 @@ export async function setCompanyState(state: string): Promise<FormState> {
   if (error) {
     return { error: dataErrorMessage(error) ?? "Das Bundesland konnte nicht gespeichert werden." };
   }
-  revalidatePath("/regeln");
+  revalidatePath("/verwaltung");
   revalidatePath("/urlaub");
   return { success: "Bundesland gespeichert, Feiertage wurden neu erzeugt." };
 }

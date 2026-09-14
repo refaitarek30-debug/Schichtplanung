@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   "/mitarbeiter",
   "/schichten",
   "/regeln",
+  "/verwaltung",
   "/einstellungen",
   "/einrichtung",
   "/profil",
