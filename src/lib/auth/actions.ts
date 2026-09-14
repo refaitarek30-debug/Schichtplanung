@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "./idle";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
@@ -17,6 +19,16 @@ const NOT_CONFIGURED: FormState = {
 
 function isSafePath(path: string | null): path is string {
   return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
+}
+
+/** Startpunkt für die automatische Abmeldung nach Inaktivität. */
+async function merkeAnmeldung() {
+  (await cookies()).set(ACTIVITY_COOKIE, String(Date.now()), {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: ACTIVITY_COOKIE_MAX_AGE,
+  });
 }
 
 
@@ -35,6 +47,10 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: authErrorMessage(error) ?? "Anmeldung fehlgeschlagen." };
 
+  // Die Frist für die automatische Abmeldung beginnt jetzt. Ohne das würde
+  // ein Zeitstempel aus einer früheren Sitzung sofort wieder greifen.
+  await merkeAnmeldung();
+
   revalidatePath("/", "layout");
   redirect(isSafePath(next) ? next : "/dashboard");
 }
@@ -44,6 +60,7 @@ export async function signOut() {
     const supabase = await createClient();
     await supabase.auth.signOut();
   }
+  (await cookies()).delete(ACTIVITY_COOKIE);
   revalidatePath("/", "layout");
   redirect("/login");
 }
