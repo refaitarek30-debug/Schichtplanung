@@ -543,8 +543,7 @@ export function ShiftPlanGrid({
                   {offen && (
                   <tr>
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-4 sm:text-[11px]">
-                      <span className="sm:hidden">Ist/Min</span>
-                      <span className="hidden sm:inline">Besetzung Ist/Min</span>
+                      Besetzung
                     </th>
                     {dates.map((iso) => {
                       const day = coverage.get(teamName)?.get(iso);
@@ -558,15 +557,15 @@ export function ShiftPlanGrid({
                             <span
                               title={
                                 below
-                                  ? `Mindestbesetzung unterschritten: ${day.present} von ${day.minimum}`
-                                  : `${day.present} von mindestens ${day.minimum}`
+                                  ? `${day.present} anwesend – Mindestbesetzung unterschritten`
+                                  : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum flex h-6 w-full items-center justify-center rounded text-[9px] font-semibold sm:text-[11px]",
+                                "tnum flex h-6 w-full items-center justify-center rounded text-[10px] font-semibold sm:text-[12px]",
                                 below ? "bg-crit-bg text-crit-fg" : "text-ink-muted",
                               )}
                             >
-                              {day.present}/{day.minimum}
+                              {day.present}
                             </span>
                           )}
                         </td>

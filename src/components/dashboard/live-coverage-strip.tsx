@@ -31,13 +31,13 @@ export function LiveCoverageStrip({
     <Card>
       <CardHeader
         title="Besetzungsband"
-        hint="Die nächsten 14 Tage. Zahl = anwesende Mitarbeiter, darunter die Soll-Besetzung."
+        hint="Die nächsten 14 Tage. Die Zahl sind die anwesenden Mitarbeiter."
       />
       <CardBody className="overflow-x-auto px-0 py-0">
         {loading ? (
           <RowSkeleton rows={3} />
         ) : shiftNames.length === 0 ? (
-          <EmptyState title="Keine Schichten mit Sollwert gefunden." />
+          <EmptyState title="Keine Besetzungsdaten gefunden." />
         ) : (
           <table className="w-full min-w-[720px] border-separate border-spacing-0">
             <thead>
@@ -80,15 +80,12 @@ export function LiveCoverageStrip({
                       <td key={iso} className="px-1 py-1.5 text-center">
                         <span
                           className={cn(
-                            "tnum mx-auto flex h-10 w-10 flex-col items-center justify-center rounded-lg text-[13px] font-semibold leading-none",
+                            "tnum mx-auto flex h-10 w-10 items-center justify-center rounded-lg text-[15px] font-semibold leading-none",
                             cellTone[snap.status],
                           )}
-                          title={`${name} am ${formatDEShort(iso)}: ${snap.present} von ${snap.target} (Mindestbesetzung ${snap.minimum})`}
+                          title={`${name} am ${formatDEShort(iso)}: ${snap.present} anwesend`}
                         >
                           {snap.present}
-                          <span className="mt-0.5 text-[10px] font-normal opacity-70">
-                            /{snap.target}
-                          </span>
                         </span>
                       </td>
                     );
@@ -100,8 +97,8 @@ export function LiveCoverageStrip({
         )}
       </CardBody>
       <div className="flex flex-wrap items-center gap-4 border-t border-line px-5 py-3 text-[12px] text-ink-muted">
-        <Legend className="bg-ok-dot" label="Soll erfüllt" />
-        <Legend className="bg-warn-dot" label="unter Soll" />
+        <Legend className="bg-ok-dot" label="ausreichend besetzt" />
+        <Legend className="bg-warn-dot" label="knapp" />
         <Legend className="bg-crit-dot" label="unter Mindestbesetzung" />
       </div>
     </Card>
