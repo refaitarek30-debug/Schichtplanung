@@ -103,9 +103,9 @@ export async function createShift(_prev: FormState, formData: FormData): Promise
     return { error: dataErrorMessage(error) ?? "Die Schicht konnte nicht angelegt werden." };
   }
 
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+  revalidatePath("/schichtplan");
   return { success: `${input.name} wurde angelegt.` };
 }
 
@@ -146,8 +146,8 @@ export async function updateShift(_prev: FormState, formData: FormData): Promise
     return { error: dataErrorMessage(error) ?? "Die Änderungen konnten nicht gespeichert werden." };
   }
 
-  revalidatePath("/schichten");
+  revalidatePath("/verwaltung");
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+  revalidatePath("/schichtplan");
   return { success: `${input.name} wurde gespeichert.` };
 }

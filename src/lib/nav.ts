@@ -5,7 +5,6 @@ import {
   Layers,
   LayoutDashboard,
   Palmtree,
-  Scale,
   Timer,
   Users,
   type LucideIcon,
@@ -40,13 +39,6 @@ export const navItems: NavItem[] = [
     primary: true,
   },
   {
-    href: "/kalender",
-    label: "Kalender",
-    short: "Kalender",
-    icon: CalendarDays,
-    roles: ["employee", "shift_leader", "admin"],
-  },
-  {
     href: "/urlaub",
     label: "Urlaub",
     short: "Urlaub",
@@ -75,22 +67,13 @@ export const navItems: NavItem[] = [
     roles: ["shift_leader", "admin"],
   },
   {
-    href: "/mitarbeiter",
-    label: "Mitarbeiter",
+    // Mitarbeiter, Schichten und Regeln – drei Reiter auf einer Seite.
+    // Die Schichtleitung sieht dort nur die Mitarbeiter, deshalb steht der
+    // Eintrag auch für sie in der Navigation.
+    href: "/verwaltung",
+    label: "Verwaltung",
     icon: Users,
     roles: ["shift_leader", "admin"],
-  },
-  {
-    href: "/schichten",
-    label: "Schichten",
-    icon: Layers,
-    roles: ["admin"],
-  },
-  {
-    href: "/regeln",
-    label: "Regeln",
-    icon: Scale,
-    roles: ["admin"],
   },
   {
     href: "/einstellungen",

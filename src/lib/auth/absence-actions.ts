@@ -63,7 +63,8 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
   }
 
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+
+  revalidatePath("/schichtplan");
   revalidatePath("/dashboard");
   return { success: `${TYPE_LABELS[type] ?? "Abwesenheit"} erfasst.` };
 }
@@ -78,7 +79,8 @@ export async function deleteAbsence(absenceId: string): Promise<FormState> {
   }
 
   revalidatePath("/besetzung");
-  revalidatePath("/kalender");
+
+  revalidatePath("/schichtplan");
   revalidatePath("/dashboard");
   return { success: "Eintrag entfernt." };
 }
