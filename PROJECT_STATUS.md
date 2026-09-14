@@ -752,3 +752,87 @@ Chemie GmbH war dafür kurz geöffnet und ist wieder gesetzt.
 
 Nichts. Phase C ist vollständig in Code. Wer die Wirkung sehen will:
 Einstellungen → Einrichtung → *Assistent öffnen*.
+
+---
+
+## Phase D – Betreiber-Übersicht
+
+Jede Firma sieht ausschließlich sich selbst. Das ist richtig und bleibt so.
+Der Betreiber braucht daneben eine eigene, streng getrennte Sicht über alle
+Firmen hinweg – erreichbar unter `/plattform`, in keiner Navigation.
+
+### Warum eine eigene Tabelle und keine weitere Rolle
+
+Jede Zeile in `profiles` hängt an genau einer `company_id`. Eine Rolle
+`platform_admin` dort wäre damit immer an eine Firma gebunden – und jede
+Policy, die sie berücksichtigt, wäre ein Loch in der Mandantentrennung.
+Deshalb `platform_admins (user_id, notiz, created_at)` **neben** dem
+Mandantenmodell, nicht darin.
+
+Die Tabelle hat RLS an und **keine einzige Policy**. Über die
+REST-Schnittstelle ist sie damit für jeden leer; der
+Service-Role-Schlüssel umgeht RLS und ist der einzige Weg hinein. Gepflegt
+wird sie ausschließlich per SQL – es gibt bewusst keine Oberfläche, über
+die sich jemand selbst eintragen könnte.
+
+### Die Grenze steht in der Datenbank
+
+`platform_overview()` gibt je Firma zurück: Name, Anlagedatum, aktiv,
+AVV-Zustimmung, Einrichtungsstand, Zahl aktiver Mitarbeiter, Zahl der
+Zugänge, letzte Anmeldung, Zahl der Urlaubsanträge und davon offene.
+
+**Keine Namen von Beschäftigten, keine Adressen, keine Urlaubsinhalte,
+keine Abwesenheitsgründe.** Was die Funktion nicht herausgibt, kann die
+Seite auch nicht anzeigen – die Grenze steht damit in der Datenbank und
+nicht erst in der Oberfläche, wo ein späterer Umbau sie versehentlich
+verschieben könnte.
+
+`platform_overview()` und `is_platform_admin()` sind für `public`, `anon`
+und `authenticated` entzogen und nur für `service_role` freigegeben. Wäre
+`is_platform_admin()` für Angemeldete aufrufbar, könnte jeder
+durchprobieren, wer Betreiber ist – genau das soll die Seite ja verbergen.
+
+Live geprüft, angemeldet als normaler Firmen-Admin:
+
+| Aufruf | Ergebnis |
+|---|---|
+| `GET /rest/v1/platform_admins` | 403 permission denied |
+| `POST /rest/v1/rpc/platform_overview` | 403 permission denied |
+| `POST /rest/v1/rpc/is_platform_admin` | 403 permission denied |
+| dieselbe Abfrage anonym | 401 |
+
+### Die Seite
+
+`app/plattform/page.tsx` ist eine Server Component außerhalb von `(app)` –
+ohne Seitenleiste, ohne Navigationseintrag. Ablauf: angemeldeten Benutzer
+holen, mit dem Service-Role-Client `is_platform_admin()` fragen, erst dann
+`platform_overview()`.
+
+**404 statt 403 in jedem Fehlerfall** – nicht angemeldet, kein Betreiber,
+Supabase nicht konfiguriert, Service-Role-Schlüssel fehlt. Ein 403 wäre
+eine Bestätigung, dass es die Seite gibt.
+
+Der letzte Fall ist eine bewusste Entscheidung: fehlt der Schlüssel, lässt
+sich die Berechtigung gar nicht prüfen. Dann gilt für alle dasselbe.
+Lieber eine falsche 404 für den Betreiber als eine Fehlermeldung, die
+Fremden die Existenz der Seite verrät. Geprüft: ohne Schlüssel bekommt
+auch ein eingetragener Betreiber 404.
+
+Eine zusätzliche client-seitige Prüfung gibt es nicht und wäre auch keine
+Sicherheit: die Seite wird serverseitig gerendert, unbefugte Anfragen
+erhalten nie Markup, das ein Client-Check noch verstecken müsste.
+
+**Advisor nach der Migration:** keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+**Sich selbst eintragen.** Ohne diesen Schritt ist `/plattform` auch für
+dich eine 404 – so ist es gedacht.
+
+```sql
+insert into platform_admins (user_id, notiz)
+select id, 'Betreiber' from auth.users where email = 'DEINE@ADRESSE';
+```
+
+Danach `https://ready-tarek-refai.vercel.app/plattform` aufrufen.
+Wieder entfernen mit `delete from platform_admins where user_id = '…';`
