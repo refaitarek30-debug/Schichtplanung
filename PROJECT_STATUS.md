@@ -407,3 +407,84 @@ einschalten (Anleitung liegt bei – jetzt Komfort, nicht mehr Voraussetzung),
 E-Mail bei Urlaubsanträgen,
 Einrichtungsweg für neue Firmen, Navigation zusammenlegen (Kalender in
 Schichtplan, drei Verwaltungsseiten in eine), Demo-Modus ausbauen.
+
+---
+
+## 0.26 – Drei stille Fehler aus dem Betrieb
+
+Alle drei waren in den Supabase-Logs sichtbar, aber nicht als Absturz: die
+Anwendung hat in jedem Fall etwas anderes angezeigt, statt zu melden, dass
+sie gerade keine Antwort bekommt.
+
+**Urlaub ohne Schichtzuordnung** (`0038_workday_without_shift.sql`).
+`preview_leave_auto()` und `submit_leave_auto()` haben jeden Tag
+übersprungen, an dem `effective_shift_id()` null liefert. Wer keiner Schicht
+und keinem Rotationsmuster zugeordnet ist – Verwaltung, Betriebsleitung und
+**jeder frisch eingeladene Mitarbeiter, der noch keine Schicht hat** – hatte
+damit nie einen Arbeitstag. Im Formular stand „In diesem Zeitraum hast du
+keinen eingeplanten Arbeitstag" und der Knopf blieb grau; Urlaub war für
+diese Personen gar nicht beantragbar. Der vorhandene Zweig
+`if not e.shift_worker then art := 'urlaub'` war nie erreichbar.
+`calculate_leave_days_for_employee()` kannte den Fall längst und rechnete
+Montag bis Freitag ohne Feiertage – die beiden Stellen widersprachen sich.
+Diese Regel heißt jetzt `is_planned_workday()` und wird in Vorschau,
+Einreichung und Empfehlung gleich verwendet. `suggest_leave_kind()` hat
+„freier Tag" ebenfalls allein daran festgemacht, dass keine Schicht
+hinterlegt ist, und empfiehlt ohne Schichtsystem jetzt Urlaub statt V-Tage
+(die es dort nicht gibt).
+
+Nebenbefund: `current_rotation_pattern()` ist seit `0019` bei **jedem**
+Aufruf mit `column reference "id" is ambiguous` abgebrochen – der
+Rückgabespalte `id` stand ein unqualifiziertes `select id from shifts`
+gegenüber. Der Mustereditor hat den Fehler stillschweigend abgefangen und
+deshalb immer leer geöffnet, statt das vorhandene Muster zu zeigen.
+
+**Mitteilungen** (`0039_announcements_columns_and_role_sync.sql`).
+`0003` hat `announcements` ohne `active` und `updated_at` angelegt. `0025`
+wollte die Tabelle mit beiden Spalten anlegen, benutzt aber
+`create table if not exists` – die Tabelle gab es schon, also passierte
+nichts. Die Anwendung fragt seither `select … active … where active = true`
+ab und bekommt 400 zurück. Auf der Regeln-Seite stand „Die Daten konnten
+nicht geladen werden.", auf dem Dashboard blieben die Mitteilungen still
+leer; in 24 Stunden 105 fehlgeschlagene Abrufe. Der Trigger
+`announcements_updated_at` existierte ebenfalls schon und hätte jedes UPDATE
+mit „record new has no field updated_at" abgebrochen – Zurückziehen einer
+Mitteilung war also auch kaputt. Drei seit Tagen gespeicherte Mitteilungen
+sind jetzt sichtbar.
+
+*Lehre für künftige Migrationen:* `create table if not exists` ist kein
+Ersatz für `alter table … add column if not exists`. Eine Tabelle, die es in
+einer früheren Migration schon gibt, nimmt keine neuen Spalten an.
+
+**Rolle ohne Wirkung** (dieselbe Migration). Geprüft wird überall
+`profiles.role` (`auth_role`, `is_admin`, `is_leadership`), geändert wird in
+der Mitarbeiterverwaltung aber `employees.role` – `updateEmployee()` fasst
+`profiles` nie an. Wer in der Liste auf „Administrator" gestellt wurde,
+blieb deshalb ohne Adminrechte: die Oberfläche zeigte eine Rolle, die es in
+der Berechtigung nicht gab. Der neue Trigger `employees_sync_profile_role`
+zieht das Profil nach und lässt Rollenwechsel nur durch die Administration
+zu (`auth.uid() is not null and not is_admin()` → Abbruch); ohne
+angemeldeten Nutzer, also bei Wartung per SQL, greift die Bremse bewusst
+nicht. Die Triggerfunktion ist aus der REST-Schnittstelle entzogen, sonst
+meldet der Linter sie zu Recht als anonym aufrufbare SECURITY DEFINER-
+Funktion.
+
+**Demo-Konten (Demo Chemie GmbH).** Drei Zugänge, alle bestätigt:
+
+| Konto | Rolle | Person |
+|---|---|---|
+| `admin@demo-chemie.de` | Admin | Sabine Wagner, Betriebsleitung |
+| `admin2@demo-chemie.de` | Admin | Thomas Keller, Betriebsleitung |
+| `mitarbeiter@demo-chemie.de` | Mitarbeiter | Jonas Brandt, Produktion |
+
+Jonas Brandt stand auf `employees.role = 'admin'`, ohne dass die Berechtigung
+je gefolgt wäre (siehe oben) – er ist wieder Mitarbeiter, damit die Demo
+beide Sichten zeigt.
+
+**Advisor nach den Migrationen:** keine neue Warnung. Die bestehenden
+`SECURITY DEFINER`-Meldungen sind die absichtlichen RLS-Helfer.
+`auth_leaked_password_protection` steht weiterhin offen – das ist ein
+Schalter im Supabase-Dashboard (Authentication → Policies), kein Code.
+
+**Von Hand zu erledigen:** Leaked-Password-Protection in Supabase
+einschalten.
