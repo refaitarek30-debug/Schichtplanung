@@ -70,6 +70,8 @@ export interface CompanyRow {
   name: string;
   logo_url: string | null;
   active: boolean;
+  /** Zustimmung zu Datenschutzerklärung und AVV bei der Registrierung. */
+  avv_accepted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -270,7 +272,13 @@ export interface Database {
         }[];
       };
       register_company: {
-        Args: { p_company_name: string; p_first_name: string; p_last_name: string; p_email: string };
+        Args: {
+          p_company_name: string;
+          p_first_name: string;
+          p_last_name: string;
+          p_email: string;
+          p_avv_accepted: boolean;
+        };
         Returns: { company_id: string; employee_id: string }[];
       };
       decide_leave_request: {
