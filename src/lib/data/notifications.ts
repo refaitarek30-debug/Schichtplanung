@@ -62,3 +62,41 @@ export async function fetchNotifyLeaveEmail(): Promise<boolean> {
   const row = (data ?? [])[0] as { notify_leave_email: boolean } | undefined;
   return row?.notify_leave_email ?? true;
 }
+
+export interface MailPostausgang {
+  offen: number;
+  gesendet: number;
+  fehler: number;
+  letzterVersand: string | null;
+  letzterFehler: string | null;
+}
+
+/**
+ * Stand des Postausgangs (nur Admin). Ob der eigene SMTP-Versand in
+ * Supabase eingerichtet ist, lässt sich über die Schnittstelle nicht
+ * abfragen – wohl aber, ob Nachrichten liegen bleiben. Stauen sich offene
+ * Zeilen, läuft der Versand nicht.
+ */
+export async function fetchMailPostausgang(): Promise<MailPostausgang | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("email_outbox_status");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const row = (data ?? [])[0] as
+    | {
+        offen: number;
+        gesendet: number;
+        fehler: number;
+        letzter_versand: string | null;
+        letzter_fehler: string | null;
+      }
+    | undefined;
+  if (!row) return null;
+  return {
+    offen: Number(row.offen ?? 0),
+    gesendet: Number(row.gesendet ?? 0),
+    fehler: Number(row.fehler ?? 0),
+    letzterVersand: row.letzter_versand,
+    letzterFehler: row.letzter_fehler,
+  };
+}

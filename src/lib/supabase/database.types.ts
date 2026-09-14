@@ -271,6 +271,16 @@ export interface Database {
           is_me: boolean;
         }[];
       };
+      email_outbox_status: {
+        Args: Record<string, never>;
+        Returns: {
+          offen: number;
+          gesendet: number;
+          fehler: number;
+          letzter_versand: string | null;
+          letzter_fehler: string | null;
+        }[];
+      };
       register_company: {
         Args: {
           p_company_name: string;
