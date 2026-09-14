@@ -349,9 +349,12 @@ export function LiveLeaveRequestForm({
               {autoDays === null ? (
                 <p className="text-sm text-ink-muted">wird berechnet …</p>
               ) : autoDays.length === 0 ? (
+                // Ohne Arbeitstag gibt es nichts zu beantragen. Der Knopf
+                // bleibt dann grau, deshalb steht hier auch, warum.
                 <p className="text-sm text-ink-muted">
-                  In diesem Zeitraum hast du keinen eingeplanten Arbeitstag – es wird nichts
-                  abgezogen.
+                  In diesem Zeitraum liegt kein Arbeitstag, für den ein Antrag nötig wäre –
+                  entweder hast du ohnehin frei, oder die Tage sind bereits beantragt. Wähle
+                  einen Zeitraum mit Arbeitstagen.
                 </p>
               ) : (
                 <>
