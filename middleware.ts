@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { updateSession } from "@/lib/supabase/middleware";
+import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE, IDLE_TIMEOUT_MS } from "@/lib/auth/idle";
 
 /** Alles unter diesen Pfaden setzt eine Anmeldung voraus. */
 const PROTECTED_PREFIXES = [
@@ -22,6 +23,36 @@ const PROTECTED_PREFIXES = [
 
 const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren"];
 
+/** Zeitpunkt der letzten Aktivität auf der Antwort festhalten. */
+function merkeAktivitaet(response: NextResponse): NextResponse {
+  response.cookies.set(ACTIVITY_COOKIE, String(Date.now()), {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: ACTIVITY_COOKIE_MAX_AGE,
+  });
+  return response;
+}
+
+/**
+ * Sitzung beenden: die Supabase-Cookies aus dem Browser entfernen und zur
+ * Anmeldung schicken. Ohne diese Cookies ist der Zugang weg, auch wenn das
+ * Gerät unbeaufsichtigt liegen bleibt.
+ */
+function abmelden(request: NextRequest): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = "/login";
+  url.search = "";
+  url.searchParams.set("fehler", "inaktiv");
+
+  const response = NextResponse.redirect(url);
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith("sb-")) response.cookies.delete(cookie.name);
+  }
+  response.cookies.delete(ACTIVITY_COOKIE);
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -29,6 +60,14 @@ export async function middleware(request: NextRequest) {
   if (!isSupabaseConfigured) return NextResponse.next();
 
   const { response, user } = await updateSession(request);
+
+  if (user) {
+    const zuletzt = Number(request.cookies.get(ACTIVITY_COOKIE)?.value);
+    if (Number.isFinite(zuletzt) && Date.now() - zuletzt > IDLE_TIMEOUT_MS) {
+      return abmelden(request);
+    }
+  }
+
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (!user && isProtected) {
@@ -42,10 +81,11 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
-    return NextResponse.redirect(url);
+    return merkeAktivitaet(NextResponse.redirect(url));
   }
 
-  return response;
+  // Ein Seitenaufruf ist Aktivität – damit läuft die Frist neu.
+  return user ? merkeAktivitaet(response) : response;
 }
 
 export const config = {

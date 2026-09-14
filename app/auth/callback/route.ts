@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 
 /**
  * Landepunkt für Einladungs- und Passwort-Links.
@@ -29,6 +30,21 @@ const OTP_TYPES = new Set([
   "email_change",
 ]);
 
+/**
+ * Weiterleitung mit frischem Zeitstempel: ein eingelöster Link ist eine
+ * Anmeldung, ab hier läuft die Frist für die automatische Abmeldung.
+ */
+function angemeldet(ziel: string) {
+  const response = NextResponse.redirect(ziel);
+  response.cookies.set(ACTIVITY_COOKIE, String(Date.now()), {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: ACTIVITY_COOKIE_MAX_AGE,
+  });
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -56,7 +72,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return angemeldet(`${origin}${next}`);
     return NextResponse.redirect(`${origin}/login?fehler=link`);
   }
 
@@ -66,7 +82,7 @@ export async function GET(request: NextRequest) {
       token_hash: tokenHash,
       type: type as "invite" | "recovery" | "signup" | "magiclink" | "email" | "email_change",
     });
-    if (!error) return NextResponse.redirect(`${origin}${next}`);
+    if (!error) return angemeldet(`${origin}${next}`);
     return NextResponse.redirect(`${origin}/login?fehler=abgelaufen`);
   }
 

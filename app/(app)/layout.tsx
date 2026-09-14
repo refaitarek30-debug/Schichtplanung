@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { IdleLogout } from "@/components/layout/idle-logout";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -28,6 +29,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SessionProvider mode="live" profile={session.profile} company={session.company}>
+      <IdleLogout />
       <AppShell>{children}</AppShell>
     </SessionProvider>
   );
