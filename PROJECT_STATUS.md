@@ -488,3 +488,99 @@ Schalter im Supabase-Dashboard (Authentication → Policies), kein Code.
 
 **Von Hand zu erledigen:** Leaked-Password-Protection in Supabase
 einschalten.
+
+---
+
+## Phase A – Rechtliches
+
+Ohne diese Seiten darf keine fremde Firma echte Beschäftigtendaten
+eintragen. Krankheitstage sind eine besondere Datenkategorie nach Art. 9
+DSGVO – das ist in Deutschland harte Voraussetzung, kein Komfort.
+
+**`/impressum`** und **`/datenschutz`** – neuer Routenbereich
+`app/(rechtliches)/` mit eigenem Layout. Nicht unter `(app)` (setzt eine
+Sitzung voraus) und nicht unter `(auth)` (zweispaltiges Anmeldelayout);
+beide Seiten sind ohne Anmeldung erreichbar, weil die Middleware nur
+umleitet, was in `PROTECTED_PREFIXES` steht.
+
+Im Impressum sind die Pflichtangaben nach § 5 DDG **bewusst offen
+gelassen** und gelb markiert. Eine erfundene Anschrift ist schlimmer als
+eine fehlende, weil sie wie eine echte aussieht. Ein sichtbarer Kasten oben
+sagt, dass die Seite noch nicht vollständig ist.
+
+Die Datenschutzerklärung ist ein Entwurf auf Grundlage dessen, was die
+Anwendung tatsächlich verarbeitet – Felder, Rollen, Cookie-Namen und
+Speicherorte sind aus dem Schema und der Projektkonfiguration übernommen,
+nicht aus einer Vorlage. Sie trennt sauber zwischen zwei Verantwortlichen:
+für Beschäftigtendaten ist die Kunden-Firma verantwortlich, der Betreiber
+ist insoweit nur Auftragsverarbeiter.
+
+Zwei Punkte, die aus der Konfiguration kommen und unangenehm, aber richtig
+sind:
+
+- Die Datenbank liegt bei Supabase in `eu-west-1` (Irland, EU).
+- Die Vercel-Serverfunktionen laufen in `iad1` (Washington, D.C., USA).
+  Das ist eine Drittlandübermittlung und steht als solche im Text. Lässt
+  sich in Vercel auf `fra1` (Frankfurt) umstellen; dann entfällt der
+  Abschnitt. Für deutsche Kunden mit Betriebsrat ist das regelmäßig ein
+  Thema.
+
+**`docs/avv-muster.md`** – Muster-Auftragsverarbeitungsvertrag nach Art. 28
+DSGVO mit allen Mindestinhalten, Unterauftragsverarbeitern (Supabase,
+Vercel) namentlich und einer Checkliste am Ende. Kein UI-Bestandteil,
+sondern die Vorlage, die jeder Kunden-Firma vor dem Produktivgang vorgelegt
+wird.
+
+**Footer** – `LegalFooter` hängt im App-Shell (alle angemeldeten Seiten),
+im Anmeldelayout (Login, Registrierung, Passwort vergessen) und im
+Rechtliches-Layout. Gerade auf der Registrierung ist er Pflicht: dort
+werden bereits personenbezogene Daten erhoben.
+
+**Zustimmung bei der Registrierung** (`0040_avv_consent.sql`) – neue Spalte
+`companies.avv_accepted_at` und eine Pflicht-Checkbox im
+Registrierungsformular. Der Zeitstempel entsteht in `register_company()`,
+nicht im Browser: was der Client schickt, ist kein Nachweis. Ohne
+Zustimmung bricht die Funktion mit einer verständlichen Meldung ab. Die
+beiden bestehenden Firmen haben `avv_accepted_at = null` – Altbestand von
+vor der Einführung, in der Betreiber-Übersicht (Phase D) sichtbar zu
+machen.
+
+**Nebenbefund: Selbstregistrierung war seit `0030` komplett kaputt.**
+`register_company()` gibt eine Spalte `company_id` zurück; `0030` hat eine
+Zeile `insert into company_settings … on conflict (company_id) do nothing`
+hinzugefügt. Die Inferenzklausel wird als Ausdruck geparst und kollidiert
+mit dem Rückgabeparameter – jede Registrierung ist seitdem mit
+`column reference "company_id" is ambiguous` abgebrochen. Kein Unternehmen
+konnte sich seit `0030` mehr anlegen; aufgefallen ist es nur, weil die neue
+Fassung getestet wurde. Ersetzt durch eine eindeutige `if not exists`-
+Prüfung.
+
+*Dasselbe Muster wie bei `current_rotation_pattern()` in 0.26: ein
+`returns table (id …)` oder `(company_id …)` macht jeden unqualifizierten
+Spaltenverweis im Funktionsrumpf zur Zeitbombe. Bei neuen Funktionen mit
+Rückgabetabelle künftig jede Spalte im Rumpf qualifizieren.*
+
+**Advisor nach den Migrationen:** keine neue Warnung.
+`register_company` bleibt als einziger anonym aufrufbarer Einstiegspunkt
+gewollt – ohne ihn könnte sich kein neues Unternehmen anlegen.
+`auth_leaked_password_protection` steht weiterhin offen (Phase F.1).
+
+### Von Hand zu erledigen – Tarek
+
+1. **Impressum ausfüllen.** Alle gelb markierten Stellen in
+   `app/(rechtliches)/impressum/page.tsx`. Eine unvollständige
+   Anbieterkennzeichnung ist abmahnfähig. Ohne das keinen echten Kunden
+   aufschalten.
+2. **Datenschutzerklärung ergänzen.** Name, Anschrift und Kontaktadresse in
+   `app/(rechtliches)/datenschutz/page.tsx`; prüfen, ob ein
+   Datenschutzbeauftragter zu benennen ist (§ 38 BDSG, ab 20 Personen).
+3. **Entscheiden: Vercel-Region.** `iad1` (USA) beibehalten und die
+   Drittlandübermittlung dokumentieren – oder auf `fra1` (Frankfurt)
+   umstellen und die betreffenden Abschnitte streichen. Die Entscheidung
+   muss in Datenschutzerklärung *und* AVV gleich lauten.
+4. **AVV-Muster** (`docs/avv-muster.md`) ausfüllen und durch eine
+   fachkundige Stelle prüfen lassen.
+5. **Eigene AVV mit Supabase und Vercel abschließen** und ablegen – ohne
+   die trägt das eigene Muster nicht.
+6. **Leaked Password Protection** in Supabase einschalten (Authentication →
+   Policies).

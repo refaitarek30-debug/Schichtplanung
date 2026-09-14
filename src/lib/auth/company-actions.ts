@@ -41,12 +41,21 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const passwordRepeat = String(formData.get("password_repeat") ?? "");
+  const avvAccepted = formData.get("avv_accepted") === "on";
 
   if (!companyName) return { error: "Bitte einen Unternehmensnamen angeben." };
   if (!firstName || !lastName) return { error: "Bitte Vor- und Nachnamen angeben." };
   if (!email) return { error: "Bitte eine E-Mail-Adresse angeben." };
   if (password.length < 8) return { error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
   if (password !== passwordRepeat) return { error: "Die beiden Passwörter stimmen nicht überein." };
+  // Pflichtangabe. Der Zeitstempel entsteht in register_company(), nicht
+  // hier – was der Browser schickt, ist kein Nachweis.
+  if (!avvAccepted) {
+    return {
+      error:
+        "Bitte bestätige, dass du die Datenschutzerklärung gelesen und den Auftragsverarbeitungsvertrag akzeptiert hast.",
+    };
+  }
 
   const supabase = await createClient();
 
@@ -55,6 +64,7 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     p_first_name: firstName,
     p_last_name: lastName,
     p_email: email,
+    p_avv_accepted: avvAccepted,
   });
 
   const registered = (data ?? []) as { company_id: string; employee_id: string }[];

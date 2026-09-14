@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
@@ -61,6 +62,30 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
           />
         </Field>
       </div>
+
+      {/* Pflichtangabe: ab hier trägt das Unternehmen echte
+          Beschäftigtendaten ein. Den Zeitstempel der Zustimmung setzt
+          register_company() in der Datenbank. */}
+      <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface-muted px-3.5 py-3">
+        <input
+          type="checkbox"
+          name="avv_accepted"
+          required
+          disabled={disabled}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-line accent-brand-500"
+        />
+        <span className="text-[13px] leading-snug text-ink">
+          Ich habe die{" "}
+          <Link
+            href="/datenschutz"
+            target="_blank"
+            className="font-medium text-brand-600 hover:underline"
+          >
+            Datenschutzerklärung
+          </Link>{" "}
+          gelesen und akzeptiere den Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.
+        </span>
+      </label>
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.success ? <Alert tone="success">{state.success}</Alert> : null}
