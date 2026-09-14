@@ -72,6 +72,8 @@ export interface CompanyRow {
   active: boolean;
   /** Zustimmung zu Datenschutzerklärung und AVV bei der Registrierung. */
   avv_accepted_at: string | null;
+  /** Abschluss des Einrichtungsassistenten. Null = noch offen. */
+  setup_completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -271,6 +273,22 @@ export interface Database {
           is_me: boolean;
         }[];
       };
+      setup_state: {
+        Args: Record<string, never>;
+        Returns: {
+          abgeschlossen_at: string | null;
+          bundesland: string | null;
+          feiertage: number;
+          muster_vorhanden: boolean;
+          gruppen: number;
+          mitarbeiter: number;
+          mitarbeiter_mit_gruppe: number;
+        }[];
+      };
+      complete_setup: {
+        Args: { p_abgeschlossen: boolean };
+        Returns: string | null;
+      };
       email_outbox_status: {
         Args: Record<string, never>;
         Returns: {
@@ -362,7 +380,10 @@ export interface Database {
 
 /** Profil samt verknüpftem Unternehmen und Mitarbeiterdatensatz. */
 export interface ProfileWithRelations extends ProfileRow {
-  companies: Pick<CompanyRow, "id" | "name" | "logo_url" | "active"> | null;
+  companies: Pick<
+    CompanyRow,
+    "id" | "name" | "logo_url" | "active" | "setup_completed_at"
+  > | null;
   employees:
     | (Pick<EmployeeRow, "personnel_number" | "department"> & {
         shifts: Pick<ShiftRow, "name"> | null;

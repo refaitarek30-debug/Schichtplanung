@@ -7,27 +7,9 @@ import { Field } from "@/components/ui/input";
 import { formatDE, weekdayLong } from "@/lib/dates";
 import { fetchCompanyState, fetchHolidays } from "@/lib/data/holidays";
 import { setCompanyState } from "@/lib/auth/settings-actions";
+import { GERMAN_STATES } from "@/lib/german-states";
 import type { Holiday } from "@/lib/types";
 
-/** Kürzel nach ISO, wie sie die Datenbank erwartet. */
-const STATES: { code: string; name: string }[] = [
-  { code: "BW", name: "Baden-Württemberg" },
-  { code: "BY", name: "Bayern" },
-  { code: "BE", name: "Berlin" },
-  { code: "BB", name: "Brandenburg" },
-  { code: "HB", name: "Bremen" },
-  { code: "HH", name: "Hamburg" },
-  { code: "HE", name: "Hessen" },
-  { code: "MV", name: "Mecklenburg-Vorpommern" },
-  { code: "NI", name: "Niedersachsen" },
-  { code: "NW", name: "Nordrhein-Westfalen" },
-  { code: "RP", name: "Rheinland-Pfalz" },
-  { code: "SL", name: "Saarland" },
-  { code: "SN", name: "Sachsen" },
-  { code: "ST", name: "Sachsen-Anhalt" },
-  { code: "SH", name: "Schleswig-Holstein" },
-  { code: "TH", name: "Thüringen" },
-];
 
 /**
  * Feiertage: Bundesland wählen, den Rest rechnet die Datenbank aus.
@@ -92,7 +74,7 @@ export function HolidaySettings({ canManage }: { canManage: boolean }) {
               onChange={(e) => change(e.target.value)}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm disabled:bg-surface-muted disabled:text-ink-faint"
             >
-              {STATES.map((s) => (
+              {GERMAN_STATES.map((s) => (
                 <option key={s.code} value={s.code}>
                   {s.name}
                 </option>
