@@ -11,7 +11,6 @@ import {
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
-import { NextShifts } from "@/components/dashboard/next-shifts";
 import { RequestList } from "@/components/dashboard/request-list";
 import { LiveRequestList } from "@/components/leave/live-request-list";
 import {
@@ -140,13 +139,8 @@ export default function DashboardPage() {
   }, [loadLive]);
 
   const demoBalance = leaveBalance(user, staffingContext.leaveRequests, TODAY);
-  const balance =
-    mode === "live"
-      ? {
-          available: liveBalance?.remainingDays ?? 0,
-          planned: liveBalance?.plannedDays ?? 0,
-        }
-      : { available: demoBalance.available, planned: demoBalance.planned };
+  const availableLeave =
+    mode === "live" ? (liveBalance?.remainingDays ?? 0) : demoBalance.available;
 
   const ownRequests = requestsOfEmployee(user.id);
   const ownPending =
@@ -244,14 +238,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <KpiCard
           label="Urlaubstage verfügbar"
-          value={formatDays(balance.available)}
+          value={formatDays(availableLeave)}
           unit="Tage"
-          hint={
-            mode === "live" && liveBalance === null
-              ? "wird geladen …"
-              : `${formatDays(balance.planned)} verplant · ${formatDays(vRemaining)} V-Tage übrig`
-          }
-          accent="plan"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />
         <KpiCard
@@ -300,9 +288,19 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Der Schichtplan steht für alle auf dem Dashboard – ändern darf ihn
+          nur die Führung, gelesen wird er von allen. */}
+      {mode === "live" ? (
+        <ShiftPlanGrid
+          companyId={company.id}
+          from={TODAY}
+          days={14}
+          canEdit={role === "admin" || role === "shift_leader"}
+        />
+      ) : null}
+
       {role === "employee" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <NextShifts employee={user} from={TODAY} />
+        <div className="grid gap-4">
           {mode === "live" ? (
             <LiveRequestList
               requests={liveMyRequests}
@@ -321,14 +319,6 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          {mode === "live" ? (
-            <ShiftPlanGrid
-              companyId={company.id}
-              from={TODAY}
-              days={14}
-              canEdit={role === "admin" || role === "shift_leader"}
-            />
-          ) : null}
           <div className="grid gap-4">
             {mode === "live" ? (
               <Card>
