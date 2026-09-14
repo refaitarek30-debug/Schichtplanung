@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { CoverageStrip } from "@/components/dashboard/coverage-strip";
+import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { NextShifts } from "@/components/dashboard/next-shifts";
 import { RequestList } from "@/components/dashboard/request-list";
 import { LiveRequestList } from "@/components/leave/live-request-list";
@@ -321,7 +321,14 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-          <CoverageStrip from={TODAY} />
+          {mode === "live" ? (
+            <ShiftPlanGrid
+              companyId={company.id}
+              from={TODAY}
+              days={14}
+              canEdit={role === "admin" || role === "shift_leader"}
+            />
+          ) : null}
           <div className="grid gap-4">
             {mode === "live" ? (
               <Card>

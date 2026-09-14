@@ -12,11 +12,14 @@ const NOT_CONFIGURED: FormState = {
 
 /**
  * Teilt einen Mitarbeiter für einen einzelnen Tag einer Schicht zu – als
- * Ausnahme von der festen Zuordnung (`employees.shift_id`). Ruft die
- * Postgres-Funktion `assign_shift()` auf, die selbst noch einmal prüft,
- * dass Mitarbeiter und Schicht zum selben Unternehmen gehören; die
- * eigentliche Berechtigung (nur Führung) erzwingt die RLS-Policy auf
- * `shift_assignments`.
+ * Ausnahme von der festen Zuordnung (`employees.shift_id`). Leeres
+ * `shift_id` heißt: der Tag ist ausdrücklich frei.
+ *
+ * `plan_set_shift()` räumt dabei den Tag frei: ein Urlaubstag, V-Tag oder
+ * eine Abwesenheit an genau diesem Tag fällt weg, denn wer eingeteilt ist,
+ * arbeitet. Ohne das blieb die Abwesenheit stehen und überdeckte die neue
+ * Schicht in der Matrix – die Zuordnung wurde gespeichert, sah aber aus,
+ * als wäre nichts passiert.
  */
 export async function assignShift(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
@@ -25,24 +28,18 @@ export async function assignShift(_prev: FormState, formData: FormData): Promise
   const shiftId = String(formData.get("shift_id") ?? "");
   const date = String(formData.get("date") ?? "");
 
-  if (!employeeId || !shiftId || !date) {
-    return { error: "Bitte Mitarbeiter, Schicht und Datum auswählen." };
+  if (!employeeId || !date) {
+    return { error: "Bitte Mitarbeiter und Datum auswählen." };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("assign_shift", {
+  const { error } = await supabase.rpc("plan_set_shift", {
     p_employee_id: employeeId,
-    p_shift_id: shiftId,
+    p_shift_id: shiftId || null,
     p_date: date,
   });
 
   if (error) {
-    if (error.message?.includes("row-level security")) {
-      return { error: "Du hast keine Berechtigung für diesen Bereich." };
-    }
-    if (error.message?.includes("nicht gefunden") || error.message?.includes("unterschiedlichen")) {
-      return { error: error.message };
-    }
     return { error: dataErrorMessage(error) ?? "Die Zuordnung konnte nicht gespeichert werden." };
   }
 
