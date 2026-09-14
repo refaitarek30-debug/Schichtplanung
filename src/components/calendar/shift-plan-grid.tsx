@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,7 @@ interface GridEmployee {
   name: string;
   team: string | null;
   number: string | null;
+  isMe: boolean;
   cells: Map<string, LiveShiftPlanCell>;
 }
 
@@ -107,6 +108,7 @@ export function ShiftPlanGrid({
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
+  const [aufgeklappt, setAufgeklappt] = useState<Set<string> | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(async () => {
@@ -148,6 +150,7 @@ export function ShiftPlanGrid({
           name: cell.employeeName,
           team: cell.rotationTeam,
           number: cell.personnelNumber,
+          isMe: cell.isMe,
           cells: new Map(),
         });
       }
@@ -162,6 +165,29 @@ export function ShiftPlanGrid({
     }
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [cells]);
+
+  /**
+   * Welche Schichtgruppen aufgeklappt sind. `null` heißt: noch nichts von Hand
+   * umgestellt, dann gilt die Vorgabe – eine einzelne Gruppe (so sieht ein
+   * Mitarbeiter seinen Plan) steht offen, bei mehreren nur die eigene. Sonst
+   * füllt die Führung mit vier Gruppen den ganzen Bildschirm.
+   */
+  const standardOffen = useMemo(() => {
+    if (groups.length <= 1) return new Set(groups.map(([teamName]) => teamName));
+    const eigene = groups.find(([, members]) => members.some((m) => m.isMe));
+    return new Set(eigene ? [eigene[0]] : []);
+  }, [groups]);
+
+  const offeneGruppen = aufgeklappt ?? standardOffen;
+
+  function toggleGruppe(teamName: string) {
+    setAufgeklappt((bisher) => {
+      const naechste = new Set(bisher ?? standardOffen);
+      if (naechste.has(teamName)) naechste.delete(teamName);
+      else naechste.add(teamName);
+      return naechste;
+    });
+  }
 
   /** Mindestbesetzung je Schicht, nachschlagbar über den Schichtnamen. */
   const minimumByShift = useMemo(() => {
@@ -448,17 +474,37 @@ export function ShiftPlanGrid({
               </tr>
             </thead>
             <tbody>
-              {groups.map(([teamName, members]) => (
+              {groups.map(([teamName, members]) => {
+                const offen = offeneGruppen.has(teamName);
+                return (
                 <Fragment key={teamName}>
                   <tr>
                     <th
                       colSpan={dates.length + 1}
-                      className="sticky left-0 bg-brand-50 px-4 py-1.5 text-left text-[12px] font-semibold text-brand-700"
+                      className="sticky left-0 bg-brand-50 p-0 text-left"
                     >
-                      {teamName}
+                      {/* Zusammenklappen: mit vier Gruppen passt sonst nichts
+                          anderes mehr auf den Bildschirm. */}
+                      <button
+                        type="button"
+                        onClick={() => toggleGruppe(teamName)}
+                        aria-expanded={offen}
+                        className="flex w-full items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-brand-700 hover:bg-brand-100"
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "h-3.5 w-3.5 shrink-0 transition-transform",
+                            !offen && "-rotate-90",
+                          )}
+                        />
+                        {teamName}
+                        <span className="font-normal text-brand-700/70">
+                          · {members.length}
+                        </span>
+                      </button>
                     </th>
                   </tr>
-                  {members.map((member) => (
+                  {offen && members.map((member) => (
                     <tr key={member.employeeId} className="hover:bg-surface-muted/50">
                       <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-1 text-left text-[12px] font-normal sm:px-4 sm:text-[13px]">
                         {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
@@ -500,6 +546,7 @@ export function ShiftPlanGrid({
                       })}
                     </tr>
                   ))}
+                  {offen && (
                   <tr>
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-4 sm:text-[11px]">
                       <span className="sm:hidden">Ist/Min</span>
@@ -532,8 +579,10 @@ export function ShiftPlanGrid({
                       );
                     })}
                   </tr>
+                  )}
                 </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

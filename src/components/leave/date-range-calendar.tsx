@@ -84,8 +84,8 @@ export function DateRangeCalendar({
 
   return (
     <div className="select-none rounded-2xl border border-line bg-surface">
-      <div className="flex items-center justify-between border-b border-line px-5 py-4">
-        <h3 className="text-lg font-semibold tracking-tight">
+      <div className="flex items-center justify-between border-b border-line px-3 py-3 sm:px-5 sm:py-4">
+        <h3 className="text-[17px] font-semibold tracking-tight sm:text-lg">
           {monthName(month)} {year}
         </h3>
         <div className="flex items-center gap-1">
@@ -108,12 +108,14 @@ export function DateRangeCalendar({
         </div>
       </div>
 
-      <div className="p-4 sm:p-5">
-        <div className="grid grid-cols-7 gap-1.5">
+      {/* Auf dem Handy bewusst wenig Rand und enge Abstände: jeder gesparte
+          Pixel geht in die Tagesfelder, die getroffen werden müssen. */}
+      <div className="px-1.5 py-3 sm:p-5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {WEEKDAY_SHORT.map((day) => (
             <div
               key={day}
-              className="pb-1.5 text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-faint"
+              className="pb-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint sm:text-[12px]"
             >
               {day}
             </div>
@@ -137,7 +139,7 @@ export function DateRangeCalendar({
                 onClick={() => handleClick(iso)}
                 title={feiertag}
                 className={cn(
-                  "relative flex aspect-square flex-col items-center justify-center rounded-xl text-[15px] transition-colors sm:text-base",
+                  "relative flex aspect-square flex-col items-center justify-center rounded-xl text-[17px] transition-colors sm:text-base",
                   !inMonth && "text-ink-faint/50",
                   inMonth && !disabled && "text-ink",
                   disabled && "cursor-not-allowed text-ink-faint/30",
@@ -152,7 +154,7 @@ export function DateRangeCalendar({
                 {schichtKuerzel ? (
                   <span
                     className={cn(
-                      "mt-1 rounded px-1 text-[10px] font-semibold leading-[14px]",
+                      "mt-0.5 rounded px-1 text-[11px] font-semibold leading-[15px] sm:mt-1",
                       isEdge ? "bg-white/25 text-white" : schichtFarbe,
                     )}
                   >
@@ -172,7 +174,7 @@ export function DateRangeCalendar({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-line px-5 py-3 text-[12px] text-ink-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-line px-3 py-2.5 text-[11px] text-ink-muted sm:gap-4 sm:px-5 sm:py-3 sm:text-[12px]">
         <Legend className="bg-brand-500" label="Start / Ende" />
         <Legend className="bg-brand-50" label="ausgewählter Zeitraum" />
         <Legend className="bg-plan-dot" label="Feiertag" />
