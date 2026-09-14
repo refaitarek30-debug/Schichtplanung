@@ -17,6 +17,13 @@ export interface Company {
   region: string;
   logoUrl?: string | null;
   active?: boolean;
+  /**
+   * Wann der Einrichtungsassistent abgeschlossen wurde. `null` heißt: noch
+   * offen – dann weist das Dashboard darauf hin. Im Demo-Modus nicht
+   * gesetzt und auch nicht ausgewertet: dort sind Feiertage, Schichtmuster
+   * und Mitarbeiter Beispieldaten, es gibt nichts einzurichten.
+   */
+  setupCompletedAt?: string | null;
 }
 
 /** Angemeldete Person: Auth-Benutzer + Zeile aus `profiles` (+ `employees`). */

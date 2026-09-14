@@ -7,6 +7,7 @@ import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
@@ -66,6 +67,28 @@ export default function SettingsPage() {
 
       {mode === "live" ? <NotificationSettings /> : null}
       {mode === "live" && istAdmin ? <MailDeliveryCard /> : null}
+
+      {mode === "live" && istAdmin ? (
+        <Card>
+          <CardHeader
+            title="Einrichtung"
+            hint="Feiertage, Schichtmuster und Mitarbeiter in drei geführten Schritten."
+          />
+          <CardBody className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-ink-muted">
+              {company.setupCompletedAt
+                ? "Abgeschlossen. Der Assistent lässt sich jederzeit erneut durchgehen – geändert wird nur, was du speicherst."
+                : "Noch offen. Ohne hinterlegte Feiertage rechnet die Urlaubsberechnung falsch."}
+            </p>
+            <Link
+              href="/einrichtung"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted"
+            >
+              {company.setupCompletedAt ? "Assistent öffnen" : "Einrichtung fortsetzen"}
+            </Link>
+          </CardBody>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader title="Unternehmen" />

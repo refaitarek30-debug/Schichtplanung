@@ -669,3 +669,86 @@ Inhalte. Keine neue anonym aufrufbare Funktion.
 Punkt 1 und 2 lassen sich an der Karte *Einstellungen → Mailversand*
 kontrollieren: sobald beide stehen, geht „wartet" auf 0 und der Status auf
 *läuft*.
+
+---
+
+## Phase C – Einrichtungsassistent für neue Firmen
+
+Bisher endete die Registrierung im Dashboard: Standard-Feiertage aus
+Nordrhein-Westfalen, drei Schichten, kein Schichtmuster, ein einziger
+Personalstammsatz. Was zu tun ist, stand nirgends – es verteilte sich auf
+drei Verwaltungsseiten, die man erst finden muss.
+
+`/einrichtung` führt jetzt in drei Schritten durch dieselben Funktionen,
+die es schon gibt. Der Assistent richtet nichts Eigenes ein; sein Zweck ist
+die **Reihenfolge**: ohne Feiertage rechnet die Urlaubsberechnung falsch,
+ohne Schichtmuster steht der Plan leer, ohne Mitarbeiter gibt es nichts zu
+planen.
+
+- **Schritt 1 Feiertage** – Bundesland wählen, `set_company_state()`
+  erzeugt die Feiertage der nächsten drei Jahre.
+- **Schritt 2 Schichtsystem** – erst die Frage Schichtbetrieb ja/nein. Bei
+  Nein ist der Schritt erledigt (Montag bis Freitag, jeder Arbeitstag
+  kostet einen Urlaubstag). Bei Ja: Anzahl der Rotationsgruppen, Startdatum
+  und die Blöcke eines Durchlaufs, dazu drei Vorlagen (Konti mit vier
+  Gruppen, drei Schichten mit drei Gruppen, zwei Schichten mit zwei).
+- **Schritt 3 Mitarbeiter** – Stand des Teams und ein knappes Formular mit
+  Name, E-Mail, Schichtgruppe und Rolle. Bewusst nur das Nötigste; wer
+  zwanzig Leute anlegt, will nicht zwanzigmal durch zehn Felder. Alles
+  Weitere steht unter Mitarbeiter.
+
+Die Kopfzeile zeigt je Schritt einen Haken, sobald der Punkt erledigt ist
+(`setup_state()`), und lässt sich zum Springen benutzen.
+
+### Wie man hineinkommt – und wieder heraus
+
+- Nach erfolgreicher Registrierung leitet `registerCompany()` direkt nach
+  `/einrichtung` statt aufs Dashboard.
+- Ist die Einrichtung offen, steht oben auf dem Dashboard ein Streifen, der
+  dorthin führt. **Bewusst ein Hinweis und keine Zwangsumleitung:** wer
+  sich anmeldet, um schnell etwas nachzusehen, soll nicht in einem
+  Assistenten landen, aus dem er sich erst herausklicken muss. Der Streifen
+  fängt die Fälle ab, in denen jemand abgebrochen hat oder erst die
+  Bestätigungsmail abwarten musste.
+- Unter Einstellungen gibt es eine Karte, die den Assistenten jederzeit
+  wieder öffnet – auch nach Abschluss.
+- `setupCompletedAt` kommt aus derselben Abfrage wie Profil und
+  Unternehmen (`getAppSession`), kostet also keine zusätzliche Runde zur
+  Datenbank.
+
+### Bestandsfirmen
+
+`0042_setup_wizard.sql` setzt `setup_completed_at` für alle bestehenden
+Unternehmen auf ihr Anlagedatum. Röhm GmbH und Demo Chemie GmbH haben ihre
+Feiertage und ihr Schichtsystem von Hand eingerichtet – sie werden nicht
+nachträglich in den Assistenten gezwungen. Aufrufen können sie ihn
+weiterhin selbst.
+
+### Nebenbefund: vier Gruppen waren fest verdrahtet
+
+`save_rotation_pattern()` hat `team_offset_days` immer als
+`round(Zyklus / 4)` berechnet – vier Rotationsgruppen waren damit
+stillschweigend vorausgesetzt. Ein Betrieb mit drei oder zwei Gruppen bekam
+einen Versatz, der nicht zu seinem Modell passt, ohne dass irgendwo etwas
+davon stand. Die Funktion nimmt jetzt `p_teams` entgegen (Vorgabewert 4,
+damit der bestehende dreiargumentige Aufruf unverändert weiterläuft).
+
+### Nebenbefund im eigenen Code, gleich behoben
+
+Die erste Fassung der Seite kannte nur zwei Zustände – offen und
+abgeschlossen. Ließ sich der Stand nicht laden, behauptete sie,
+die Einrichtung sei fertig. Beim Durchklicken im Browser aufgefallen und in
+drei Zustände aufgeteilt: offen, abgeschlossen, unbekannt.
+
+**Geprüft:** Migration angewendet; Assistent im Live-Modus gegen die echte
+Datenbank durchgeklickt (angemeldet als `admin2@demo-chemie.de`), alle drei
+Schritte laden und zeigen den richtigen Stand (22 Feiertage für NW, Muster
+vorhanden, 50 Personen, 49 mit Gruppe). Die Einrichtungskennung der Demo
+Chemie GmbH war dafür kurz geöffnet und ist wieder gesetzt.
+
+**Advisor nach der Migration:** keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Phase C ist vollständig in Code. Wer die Wirkung sehen will:
+Einstellungen → Einrichtung → *Assistent öffnen*.
