@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LegalFooter } from "@/components/layout/legal-footer";
 
 /**
  * Anmeldebereich: eigenes Layout ohne Sidebar, gleiche Designsprache.
@@ -57,8 +58,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </p>
       </section>
 
-      <section className="flex items-center justify-center px-5 py-12">
-        <div className="w-full max-w-sm">{children}</div>
+      {/* Auf der Anmeldung und der Registrierung werden bereits
+          personenbezogene Daten erhoben – Impressum und Datenschutz
+          müssen von hier aus erreichbar sein. */}
+      <section className="flex flex-col px-5 py-12">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-sm">{children}</div>
+        </div>
+        <LegalFooter className="mt-10 pt-4 text-[12px] text-ink-faint" />
       </section>
     </div>
   );
