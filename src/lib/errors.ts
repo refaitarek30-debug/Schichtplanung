@@ -45,5 +45,13 @@ export function dataErrorMessage(error: { message?: string; code?: string } | nu
   if (code === "23505") {
     return "Dieser Eintrag existiert bereits.";
   }
+  // P0001 = "raise exception" in einer Postgres-Funktion. Jede dieser
+  // Meldungen im Schema ist bewusst als vollständiger, verständlicher Satz
+  // formuliert (Berechtigungen, Geschäftsregeln wie Urlaubssperren, fehlende
+  // Konten) – sie soll unverändert bei der Person ankommen, die den Antrag
+  // gestellt hat, statt hinter einer generischen Meldung zu verschwinden.
+  if (code === "P0001" && error.message) {
+    return error.message;
+  }
   return "Die Daten konnten nicht geladen werden.";
 }
