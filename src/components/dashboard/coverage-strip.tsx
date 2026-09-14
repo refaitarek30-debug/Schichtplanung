@@ -15,7 +15,7 @@ const cellTone: Record<StaffingStatus, string> = {
 
 /**
  * Besetzungsband: 14 Tage im Überblick, eine Zeile je Schicht.
- * Jede Zelle zeigt die anwesenden Mitarbeiter im Verhältnis zur Soll-Besetzung.
+ * Jede Zelle zeigt, wie viele Mitarbeiter an dem Tag anwesend sind.
  */
 export function CoverageStrip({ from, days = 14 }: { from: string; days?: number }) {
   const dates = Array.from({ length: days }, (_, i) => addDays(from, i));
@@ -25,7 +25,7 @@ export function CoverageStrip({ from, days = 14 }: { from: string; days?: number
     <Card>
       <CardHeader
         title="Besetzungsband"
-        hint="Die nächsten 14 Tage. Zahl = anwesende Mitarbeiter, darunter die Soll-Besetzung."
+        hint="Die nächsten 14 Tage. Die Zahl sind die anwesenden Mitarbeiter."
       />
       <CardBody className="overflow-x-auto px-0 py-0">
         <table className="w-full min-w-[720px] border-separate border-spacing-0">
@@ -62,8 +62,7 @@ export function CoverageStrip({ from, days = 14 }: { from: string; days?: number
                 <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-5 py-2 text-left">
                   <span className="block text-[13px] font-medium">{shift.name}</span>
                   <span className="tnum block text-[11px] text-ink-faint">
-                    {shift.startTime}–{shift.endTime} · Soll {shift.targetHeadcount} / Min{" "}
-                    {shift.minHeadcount}
+                    {shift.startTime}–{shift.endTime}
                   </span>
                 </th>
                 {dates.map((iso) => {
@@ -81,15 +80,12 @@ export function CoverageStrip({ from, days = 14 }: { from: string; days?: number
                     <td key={iso} className="px-1 py-1.5 text-center">
                       <span
                         className={cn(
-                          "tnum mx-auto flex h-10 w-10 flex-col items-center justify-center rounded-lg text-[13px] font-semibold leading-none",
+                          "tnum mx-auto flex h-10 w-10 items-center justify-center rounded-lg text-[15px] font-semibold leading-none",
                           cellTone[snapshot.status],
                         )}
-                        title={`${shift.name} am ${formatDEShort(iso)}: ${snapshot.present} von ${snapshot.target} (Mindestbesetzung ${snapshot.min})`}
+                        title={`${shift.name} am ${formatDEShort(iso)}: ${snapshot.present} anwesend`}
                       >
                         {snapshot.present}
-                        <span className="mt-0.5 text-[10px] font-normal opacity-70">
-                          /{snapshot.target}
-                        </span>
                       </span>
                     </td>
                   );
@@ -100,8 +96,8 @@ export function CoverageStrip({ from, days = 14 }: { from: string; days?: number
         </table>
       </CardBody>
       <div className="flex flex-wrap items-center gap-4 border-t border-line px-5 py-3 text-[12px] text-ink-muted">
-        <Legend className="bg-ok-dot" label="Soll erfüllt" />
-        <Legend className="bg-warn-dot" label="unter Soll" />
+        <Legend className="bg-ok-dot" label="ausreichend besetzt" />
+        <Legend className="bg-warn-dot" label="knapp" />
         <Legend className="bg-crit-dot" label="unter Mindestbesetzung" />
       </div>
     </Card>
