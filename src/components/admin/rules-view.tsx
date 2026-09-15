@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
 import { AnnouncementsCard } from "@/components/settings/announcements-card";
 import { HolidaySettings } from "@/components/settings/holiday-settings";
+import { HolidayWorkSetting } from "@/components/settings/holiday-work-setting";
 import { useSession } from "@/context/session";
 import { AdminViewHeader } from "./view-header";
 
@@ -20,9 +21,9 @@ const rules = [
     body: "Abgezogen wird jeder Tag, an dem laut Schichtplan tatsächlich gearbeitet würde – im Schichtbetrieb also auch Samstag und Sonntag. Freitage aus dem Rotationsmuster kosten keinen Urlaubstag. Wer keiner Schichtgruppe zugeordnet ist, für den gilt weiterhin Montag bis Freitag.",
   },
   {
-    title: "Feiertage zählen nicht als Urlaub",
-    value: "je Bundesland",
-    body: "Fällt ein Feiertag in den Urlaubszeitraum, wird er nicht vom Urlaubskonto abgezogen – auch dann nicht, wenn an diesem Tag eine Schicht geplant gewesen wäre.",
+    title: "An Feiertagen wird gearbeitet",
+    value: "einstellbar",
+    body: "Im durchlaufenden Betrieb läuft die Anlage auch an Feiertagen weiter. Wer an einem Feiertag eingeplant ist und dafür Urlaub nimmt, zahlt einen Urlaubstag – der Tag zählt wie jeder andere Schichttag. Wer keiner Schichtgruppe zugeordnet ist, hat an Feiertagen frei; dort wird nichts abgezogen. Unten umstellbar, falls in eurem Betrieb an Feiertagen niemand arbeitet.",
   },
   {
     title: "Halbe Urlaubstage",
@@ -65,6 +66,7 @@ export function RulesView() {
         <>
           <AnnouncementsCard canManage={role !== "employee"} />
           <LeaveBlocksCard canManage={role === "admin"} />
+          <HolidayWorkSetting canManage={role === "admin"} />
           <HolidaySettings canManage={role === "admin"} />
         </>
       ) : null}
