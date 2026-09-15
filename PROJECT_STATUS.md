@@ -979,3 +979,78 @@ Millisekunden später ausgelöst, bestätigt wurde um 10:42:47, angemeldet um
 Nichts. Wer sich registrieren will, braucht eine Adresse, die hier noch
 kein Konto hat – `refaitarek7@gmail.com` und `refaitarek30@gmail.com`
 gehören bereits zur Röhm GmbH.
+
+---
+
+## Nachtrag: V-Tage auf 0 setzen, Kachel ohne Konto, „Tagschicht"
+
+### V-Tage ließen sich nicht auf 0 setzen
+
+**Symptom:** In der Verwaltung die V-Tage auf 0 stellen und speichern –
+danach stand wieder 27 da.
+
+**Ursache:** eine einzige Zeile in `updateEmployee()`:
+
+```ts
+v_days: Number.parseFloat(String(formData.get("v_days") ?? "27").replace(",", ".")) || 27,
+```
+
+In JavaScript ist `0` falsy. `parseFloat("0") || 27` ergibt deshalb `27`.
+Die 0 kam korrekt aus dem Formular, wurde korrekt geparst – und dann vom
+Fallback wieder überschrieben, der eigentlich nur leere Eingaben abfangen
+sollte. Beim *Anlegen* gab es den Fehler nicht, dort stand schon
+`Number.isFinite(vDays) ? vDays : 27`, was mit 0 richtig umgeht.
+
+**Behoben:** `v_days` wird wie `vacation_days` oben eingelesen und geprüft
+(`Number.isFinite` und `>= 0`, sonst eine verständliche Fehlermeldung),
+und beim Schreiben steht nur noch der geprüfte Wert.
+
+### „Änderungen sollen überall zu sehen sein"
+
+Die Weitergabe an die Urlaubskonten war bereits in Ordnung: der Trigger
+`employees_entitlement_sync` schreibt jede Änderung von `vacation_days`
+oder `v_days` sofort in `leave_balances` des laufenden Jahres. Blockiert
+hat das nur der Fallback oben – es kam nie eine 0 in der Tabelle an, also
+hatte der Trigger nichts zu tun. Dashboard und Urlaubsseite lesen live
+über `leave_balances_view`, ohne Next-Cache dazwischen; nach dem
+Speichern genügt ein Neuladen.
+
+Am Datenbankstand geprüft: `v_days = 0` setzen → `v_entitlement` im Konto
+2026 steht auf `0.0`, die Ansicht liefert denselben Wert. Beide Testläufe
+liefen in einer Transaktion und wurden zurückgerollt.
+
+### Keine V-Tage-Kachel ohne V-Konto
+
+Dashboard und Urlaubsseite blenden das V-Tage-Feld jetzt aus, wenn es
+nichts zu zeigen gibt.
+
+Die Bedingung schaut bewusst nicht nur auf den Anspruch. Wird der
+Anspruch auf 0 gesetzt, **nachdem** jemand schon V-Tage genommen hat,
+steht das Konto im Minus – beim Testlauf mit einem echten Datensatz kam
+`v_remaining = -5.0` heraus. Ein Minusstand darf nicht verschwinden.
+Ausgeblendet wird deshalb nur ein Konto, auf dem nie etwas gebucht wurde:
+kein Anspruch, kein Übertrag, nichts genommen, nichts beantragt, Rest
+genau 0. Beide Fälle sind gegen die Datenbank geprüft.
+
+Nebenbei repariert: der Hinweis „Übertragene Tage aus … verfallen am
+31.03." stand innerhalb des V-Kastens, gilt aber auch für reinen
+Urlaubsübertrag. Er steht jetzt daneben und verschwindet nicht mehr mit,
+wenn jemand keine V-Tage hat.
+
+### „Ohne Schichtgruppe" heißt jetzt „Tagschicht"
+
+Umbenannt im Schichtplan-Raster, unter „Meine Schichten" und im
+Erklärtext zur Feiertagsregel. Die Gruppe steht alphabetisch weiterhin
+hinter „Schicht A"–„Schicht D".
+
+**Advisor:** keine Migration, keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts.
+
+### Aufgefallen, nicht angefasst
+
+`npm run lint` läuft nicht: das Skript ruft `next lint` auf, das es in
+Next 16 nicht mehr gibt. Das bestand schon vor dieser Änderung und gehört
+nicht hierher – sag Bescheid, wenn ich es auf ESLint umstellen soll.

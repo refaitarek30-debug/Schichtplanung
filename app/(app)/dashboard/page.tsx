@@ -171,6 +171,18 @@ export default function DashboardPage() {
   const DEMO_V_DAYS = 27;
   const vRemaining = mode === "live" ? (liveBalance?.vRemainingDays ?? 0) : DEMO_V_DAYS;
   const vEntitlement = mode === "live" ? (liveBalance?.vEntitlement ?? 0) : DEMO_V_DAYS;
+  const vCarriedOver = mode === "live" ? (liveBalance?.vCarriedOver ?? 0) : 0;
+  const vUsed = mode === "live" ? (liveBalance?.vUsedDays ?? 0) : 0;
+  const vPending = mode === "live" ? (liveBalance?.vPendingDays ?? 0) : 0;
+  // Wer keine V-Tage hat, braucht auch keine Kachel dafür: „0 von 0 übrig"
+  // sagt nichts und nimmt nur Platz weg.
+  //
+  // Es reicht aber nicht, nur auf den Anspruch zu schauen. Wird der
+  // Anspruch auf 0 gesetzt, nachdem jemand schon V-Tage genommen hat,
+  // steht das Konto im Minus – und genau das darf nicht verschwinden.
+  // Ausgeblendet wird deshalb nur ein Konto, auf dem nie etwas los war.
+  const hatVKonto =
+    vEntitlement > 0 || vCarriedOver > 0 || vUsed > 0 || vPending > 0 || vRemaining !== 0;
 
   // Mitteilungen: im Live-Modus das, was die Führung auf der Regeln-Seite
   // geschrieben hat, plus jede aktive Urlaubssperre als eigener Eintrag.
@@ -261,14 +273,16 @@ export default function DashboardPage() {
           accent={sickDays > 0 ? "warn" : "ok"}
           icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
         />
-        <KpiCard
-          label="V-Tage gesamt"
-          value={formatDays(vRemaining)}
-          unit="Tage"
-          hint={`von ${formatDays(vEntitlement)} übrig`}
-          accent="plan"
-          icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
-        />
+        {hatVKonto ? (
+          <KpiCard
+            label="V-Tage gesamt"
+            value={formatDays(vRemaining)}
+            unit="Tage"
+            hint={`von ${formatDays(vEntitlement)} übrig`}
+            accent="plan"
+            icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
+          />
+        ) : null}
       </div>
 
       {/* Der Schichtplan steht für alle auf dem Dashboard – ändern darf ihn
