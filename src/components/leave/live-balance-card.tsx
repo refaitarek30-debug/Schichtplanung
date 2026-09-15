@@ -36,6 +36,16 @@ export function LiveBalanceCard({
     { label: "Beantragt", value: balance.pendingDays, className: "bg-info-dot" },
   ];
 
+  // Dieselbe Regel wie auf dem Dashboard: ohne V-Konto kein V-Kasten –
+  // aber ein Konto, auf dem schon etwas gebucht wurde, bleibt sichtbar,
+  // auch wenn der Anspruch nachträglich auf 0 gesetzt wurde.
+  const hatVKonto =
+    balance.vEntitlement > 0 ||
+    balance.vCarriedOver > 0 ||
+    balance.vUsedDays > 0 ||
+    balance.vPendingDays > 0 ||
+    balance.vRemainingDays !== 0;
+
   return (
     <Card>
       <CardHeader
@@ -92,27 +102,33 @@ export function LiveBalanceCard({
         </dl>
 
         {/* Zweites Konto: V-Tage (Freischichten), getrennt vom Urlaub. */}
-        <div className="rounded-xl border border-line px-4 py-3">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[13px] font-medium text-ink-muted">V-Tage (Freischichten)</span>
-            <span className="tnum text-xl font-semibold">
-              {formatDays(Math.max(balance.vRemainingDays, 0))}
-            </span>
-          </div>
-          <p className="tnum mt-1 text-[12px] text-ink-faint">
-            von {formatDays(balance.vEntitlement)}
-            {balance.vCarriedOver > 0
-              ? ` + ${formatDays(balance.vCarriedOver)} Übertrag`
-              : ""}{" "}
-            · {formatDays(balance.vUsedDays)} genommen
-            {balance.vPendingDays > 0 ? `, ${formatDays(balance.vPendingDays)} beantragt` : ""}
-          </p>
-          {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? (
-            <p className="mt-2 text-[12px] text-ink-muted">
-              Übertragene Tage aus {balance.year - 1} verfallen am 31.03.{balance.year}.
+        {hatVKonto ? (
+          <div className="rounded-xl border border-line px-4 py-3">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[13px] font-medium text-ink-muted">V-Tage (Freischichten)</span>
+              <span className="tnum text-xl font-semibold">
+                {formatDays(Math.max(balance.vRemainingDays, 0))}
+              </span>
+            </div>
+            <p className="tnum mt-1 text-[12px] text-ink-faint">
+              von {formatDays(balance.vEntitlement)}
+              {balance.vCarriedOver > 0
+                ? ` + ${formatDays(balance.vCarriedOver)} Übertrag`
+                : ""}{" "}
+              · {formatDays(balance.vUsedDays)} genommen
+              {balance.vPendingDays > 0 ? `, ${formatDays(balance.vPendingDays)} beantragt` : ""}
             </p>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
+
+        {/* Steht bewusst außerhalb des V-Kastens: der Hinweis gilt auch für
+            einen reinen Urlaubsübertrag und darf nicht mitverschwinden,
+            wenn jemand gar keine V-Tage hat. */}
+        {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? (
+          <p className="text-[12px] text-ink-muted">
+            Übertragene Tage aus {balance.year - 1} verfallen am 31.03.{balance.year}.
+          </p>
+        ) : null}
       </CardBody>
     </Card>
   );

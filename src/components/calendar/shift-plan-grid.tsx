@@ -165,7 +165,7 @@ export function ShiftPlanGrid({
 
     const teams = new Map<string, GridRow[]>();
     for (const [employeeId, value] of byEmployee) {
-      const key = value.team ? `Schicht ${value.team}` : "Ohne Schichtgruppe";
+      const key = value.team ? `Schicht ${value.team}` : "Tagschicht";
       if (!teams.has(key)) teams.set(key, []);
       teams.get(key)!.push({ employeeId, ...value });
     }

@@ -201,6 +201,8 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   const role = String(formData.get("role") ?? "employee") as Role;
   const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
   const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
+  const vDaysRaw = String(formData.get("v_days") ?? "27");
+  const vDays = Number.parseFloat(vDaysRaw.replace(",", "."));
   const active = formData.get("active") !== "false";
 
   if (!employeeId) {
@@ -211,6 +213,9 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   }
   if (!Number.isFinite(vacationDays) || vacationDays < 0) {
     return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
+  }
+  if (!Number.isFinite(vDays) || vDays < 0) {
+    return { error: "Die V-Tage müssen eine Zahl ab 0 sein." };
   }
 
   const supabase = await createClient();
@@ -251,7 +256,11 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       shift_id: shiftId || null,
       role,
       vacation_days: vacationDays,
-      v_days: Number.parseFloat(String(formData.get("v_days") ?? "27").replace(",", ".")) || 27,
+      // Früher stand hier `... || 27`. In JavaScript ist 0 falsy, also wurde
+      // aus „keine V-Tage" stillschweigend wieder der Regelanspruch von 27 –
+      // das Feld ließ sich nicht auf null setzen. Geprüft wird jetzt oben,
+      // hier steht nur noch der geprüfte Wert.
+      v_days: vDays,
       shift_worker: formData.get("shift_worker") === "on",
       active,
       qualifications: parseQualifications(formData),

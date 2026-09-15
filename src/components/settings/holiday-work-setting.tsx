@@ -50,7 +50,7 @@ export function HolidayWorkSetting({ canManage }: { canManage: boolean }) {
             <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">
               {aktiv === false
                 ? "Aus: Feiertage sind für alle frei. Sie zählen nicht zur Besetzung und kosten keinen Urlaubstag."
-                : "An: Der Schichtplan läuft über Feiertage hinweg. Wer an einem Feiertag eingeplant ist und Urlaub nimmt, zahlt dafür einen Urlaubstag. Ohne Schichtgruppe bleibt der Feiertag frei."}
+                : "An: Der Schichtplan läuft über Feiertage hinweg. Wer an einem Feiertag eingeplant ist und Urlaub nimmt, zahlt dafür einen Urlaubstag. In der Tagschicht bleibt der Feiertag frei."}
             </p>
           </div>
           <button
