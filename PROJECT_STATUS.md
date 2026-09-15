@@ -1054,3 +1054,96 @@ Nichts.
 `npm run lint` läuft nicht: das Skript ruft `next lint` auf, das es in
 Next 16 nicht mehr gibt. Das bestand schon vor dieser Änderung und gehört
 nicht hierher – sag Bescheid, wenn ich es auf ESLint umstellen soll.
+
+---
+
+## Nachtrag: Die Tagschicht arbeitet nicht am Wochenende
+
+**Gemeldet:** „Die Tagschicht braucht an Sonn- und Feiertagen bzw.
+Wochenende keinen Urlaubstag nehmen, das gilt nur für Schichtarbeiter."
+
+### Ursache: zwei Antworten auf dieselbe Frage
+
+Es gab zwei verschiedene Definitionen von „ist Schichtarbeiter":
+
+| Wo | Wonach entschieden wurde |
+|---|---|
+| Auf welches Konto ein Tag gebucht wird (seit 0031) | `employees.shift_worker` |
+| Welche Tage überhaupt Arbeitstage sind | `shift_id is not null or rotation_pattern_id is not null` |
+
+Wer das Kennzeichen „Schichtarbeiter" **nicht** gesetzt hatte, aber
+trotzdem eine Schichtgruppe zugewiesen bekam, fiel damit in die
+Schichtlogik. Am echten Datenbestand nachgemessen, Sabine Wagner
+(`shift_worker = false`, Gruppe C), Zeitraum 03.10.–11.10.2026:
+
+| Tag | Feiertag | vorher „arbeitet" | jetzt |
+|---|---|---|---|
+| Sa 03.10. | ja | ja | nein |
+| So 04.10. | – | ja | nein |
+| Mo 05.10. | – | **nein** | ja |
+| Di 06.10. | – | **nein** | ja |
+| Mi–Fr | – | ja | ja |
+| Sa 10.10. | – | ja | nein |
+| So 11.10. | – | ja | nein |
+
+Derselbe Zeitraum kostete sie **7 Urlaubstage statt 5** – und sie hatte
+Montag und Dienstag „frei", obwohl sie Tagschicht fährt.
+
+### Korrigiert
+
+Ab jetzt entscheidet allein `shift_worker`. Eine Schichtgruppe an einer
+Tagschichtkraft ist folgenlos, statt stillschweigend die Berechnung
+umzustellen. Geändert in `0047_tagschicht_kein_wochenende.sql`:
+
+- `calculate_leave_days_for_employee()` – die verbindliche Tageszahl
+- `is_planned_workday()` – Vorschau und automatische Verteilung
+- `effective_shift_id()` – die eigentliche Wurzel: das Rotationsmuster
+  greift nicht mehr für Nicht-Schichtarbeiter
+- `shift_plan_grid()` – die ausgegebene Gruppe folgt ebenfalls
+  `shift_worker`
+- `meine-schichten/page.tsx` – dieselbe Regel, weil die Seite die Spalte
+  direkt liest
+
+### Warum auch der Schichtplan
+
+Die reine Urlaubskorrektur hätte einen Widerspruch hinterlassen: der Plan
+hätte Sabine samstags und sonntags weiter im Dienst gezeigt und sie dort
+zur Besetzung gezählt, während die Urlaubsrechnung sie als frei führt. Ein
+Schichtleiter hätte sie als Sonntagsabdeckung gesehen, die es nicht gibt.
+Deshalb geht die Korrektur bis auf `effective_shift_id()` – dann stimmen
+Plan, Besetzung und Urlaub wieder überein.
+
+Ein ausdrücklicher Eintrag in `shift_assignments` gilt weiterhin: setzt
+die Schichtleitung jemanden von Hand auf einen Tag, ist das gewollt und
+schlägt jede Automatik.
+
+**Nicht angetastet:** die Sichtbarkeitsregel in `shift_plan_grid()`, die
+entscheidet, wer wessen Plan sehen darf. Sabine sieht weiterhin den Plan
+der Gruppe C. Das ist eine Frage der Berechtigung, nicht der Darstellung,
+und sie hier stillschweigend zu verengen wäre die falsche Stelle.
+
+### Geprüft
+
+| Prüfung | Ergebnis |
+|---|---|
+| Sabine (Tagschicht, Gruppe C), 03.–11.10. | 7 → **5 Urlaubstage** |
+| Lars Schunk (Schichtarbeiter, Gruppe C), gleicher Zeitraum | unverändert 7 |
+| Schichtplan 14 Tage, 48 Schichtarbeiter | 504 geplante Zellen, unverändert |
+| Schichtplan, 2 Tagschichtkräfte | 0 Einträge, Gruppe „Tagschicht" |
+| Gruppen A–D | je 12 Personen |
+
+Die Änderung an `effective_shift_id()` wirkt sich nachweislich nur auf
+Zeilen mit `shift_worker = false` aus – davon gibt es in der ganzen
+Datenbank drei. Für Schichtarbeiter ist der Code Zeile für Zeile
+unverändert.
+
+`tsc --noEmit` und `next build` laufen sauber durch.
+
+**Advisor:** keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+Prüf einmal in der Verwaltung, bei wem das Häkchen „Schichtarbeiter"
+richtig steht – danach richtet sich jetzt alles. Sabine Wagner in der
+Demo-Firma hat eine Schichtgruppe, fährt aber keine Schicht; die Gruppe
+kannst du bei ihr entfernen, nötig ist es nicht mehr.

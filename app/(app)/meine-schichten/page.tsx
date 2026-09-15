@@ -90,7 +90,14 @@ function LiveView({ role }: { role: string }) {
   const teamGroups = useMemo(() => {
     const groups = new Map<string, EmployeeRecord[]>();
     for (const person of colleagues ?? []) {
-      const key = person.rotationTeam ? `Schicht ${person.rotationTeam}` : "Tagschicht";
+      // Eine Schichtgruppe an jemandem, der keine Schicht fährt, ist
+      // folgenlos – die Person gehört zur Tagschicht. Sonst stünde sie
+      // hier unter „Schicht C", während ihre Zeile im Schichtplan leer
+      // ist und ihr Urlaub nach Montag–Freitag gerechnet wird.
+      const key =
+        person.shiftWorker && person.rotationTeam
+          ? `Schicht ${person.rotationTeam}`
+          : "Tagschicht";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(person);
     }
