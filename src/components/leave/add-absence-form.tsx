@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,10 @@ export function AddAbsenceForm({
   onSaved: () => void;
 }) {
   const [state, formAction] = useActionState(createAbsence, initialState);
+  // Ein Tag ist der Normalfall; das Ende zieht deshalb mit dem Beginn mit,
+  // solange es nicht von Hand gesetzt wurde.
+  const [von, setVon] = useState("");
+  const [bis, setBis] = useState("");
 
   useEffect(() => {
     if (state.success) onSaved();
@@ -36,11 +40,11 @@ export function AddAbsenceForm({
     <Card>
       <CardHeader
         title="Abwesenheit erfassen"
-        hint="Krankheit, Schulung oder Sonstiges – wirkt sich sofort auf die Besetzung aus."
+        hint="Krankheit, Schulung oder Sonstiges – für einen Tag oder über Wochen. Wirkt sich sofort auf die Besetzung aus."
       />
       <CardBody>
         <form action={formAction} className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Mitarbeiter">
               <select
                 name="employee_id"
@@ -55,8 +59,27 @@ export function AddAbsenceForm({
                 ))}
               </select>
             </Field>
-            <Field label="Datum">
-              <Input type="date" name="date" required />
+            <Field label="Von">
+              <Input
+                type="date"
+                name="date_from"
+                required
+                value={von}
+                onChange={(e) => {
+                  setVon(e.target.value);
+                  if (!bis || bis < e.target.value) setBis(e.target.value);
+                }}
+              />
+            </Field>
+            <Field label="Bis">
+              <Input
+                type="date"
+                name="date_to"
+                required
+                min={von || undefined}
+                value={bis}
+                onChange={(e) => setBis(e.target.value)}
+              />
             </Field>
             <Field label="Art">
               <select
@@ -75,6 +98,12 @@ export function AddAbsenceForm({
           <Field label="Notiz (optional)">
             <Input name="note" placeholder="z. B. Gefahrgut-Auffrischung" />
           </Field>
+
+          <p className="text-[12px] leading-snug text-ink-faint">
+            Erfasst wird nur an eingeplanten Arbeitstagen. Freie Tage aus dem
+            Rotationsmuster überspringt die Anwendung – dort ändert eine Abwesenheit
+            nichts an der Besetzung.
+          </p>
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}

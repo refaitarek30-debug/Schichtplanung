@@ -93,3 +93,28 @@ export async function setLeaveForDay(
           : "Urlaub eingetragen.",
   };
 }
+
+/**
+ * Reihenfolge der Mitarbeiter im Schichtplan festschreiben.
+ *
+ * Übergeben wird eine ganze Gruppe in der gewünschten Reihenfolge; die
+ * Datenbank macht daraus die Plätze 1..n und prüft dabei selbst, ob die
+ * aufrufende Person Schichtleitung oder Administration ist.
+ */
+export async function setEmployeeOrder(employeeIds: string[]): Promise<FormState> {
+  if (!isSupabaseConfigured) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  if (employeeIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_employee_order", {
+    p_employee_ids: employeeIds,
+  });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Reihenfolge konnte nicht gespeichert werden." };
+  }
+
+  revalidatePath("/schichtplan");
+  return { success: "Reihenfolge gespeichert." };
+}

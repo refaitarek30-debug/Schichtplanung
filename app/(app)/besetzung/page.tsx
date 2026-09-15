@@ -3,15 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { CoverageStrip } from "@/components/dashboard/coverage-strip";
 import { LiveCoverageStrip } from "@/components/dashboard/live-coverage-strip";
-import { AddAbsenceForm } from "@/components/leave/add-absence-form";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { TODAY } from "@/lib/demo-data";
 import { addDays } from "@/lib/dates";
 import { DataError, fetchStaffingRange } from "@/lib/data/staffing";
-import { fetchEmployees } from "@/lib/data/employees";
-import type { EmployeeRecord, LiveStaffingSnapshot } from "@/lib/types";
+import type { LiveStaffingSnapshot } from "@/lib/types";
 
 export default function StaffingPage() {
   const { mode } = useSession();
@@ -31,18 +29,12 @@ export default function StaffingPage() {
 function LiveStaffingSection() {
   const { company } = useSession();
   const [range, setRange] = useState<LiveStaffingSnapshot[] | null>(null);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [rangeResult, employeesResult] = await Promise.all([
-        fetchStaffingRange(company.id, TODAY, 14),
-        fetchEmployees(),
-      ]);
-      setRange(rangeResult);
-      setEmployees(employeesResult.filter((e) => e.active));
+      setRange(await fetchStaffingRange(company.id, TODAY, 14));
     } catch (caught) {
       setRange([]);
       setError(
@@ -67,7 +59,6 @@ function LiveStaffingSection() {
         loading={range === null}
       />
 
-      <AddAbsenceForm employees={employees} onSaved={load} />
     </>
   );
 }

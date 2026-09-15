@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ListOrdered, Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { addDays, formatDE, fromISO, isWeekend, monthName, WEEKDAY_SHORT } from "@/lib/dates";
 import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
-import { assignShift, setLeaveForDay } from "@/lib/auth/rotation-actions";
+import { assignShift, setEmployeeOrder, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import type { LiveShiftPlanCell } from "@/lib/types";
@@ -103,6 +103,18 @@ export function ShiftPlanGrid({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
   const [aufgeklappt, setAufgeklappt] = useState<Set<string> | null>(null);
+  /**
+   * Reihenfolge-Modus. Die Pfeile stehen nur dann in den Zeilen – sonst
+   * verstellen sie bei fünfzig Mitarbeitern jede Namensspalte.
+   */
+  const [sortieren, setSortieren] = useState(false);
+  /**
+   * Von Hand gesetzte Reihenfolge je Gruppe, bis der Plan neu geladen ist.
+   * Ohne das springt die Zeile nach einem Klick zurück, weil die Antwort
+   * der Datenbank erst später kommt.
+   */
+  const [ordnung, setOrdnung] = useState<Record<string, string[]>>({});
+  const [ordnungFehler, setOrdnungFehler] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(async () => {
@@ -157,8 +169,19 @@ export function ShiftPlanGrid({
       if (!teams.has(key)) teams.set(key, []);
       teams.get(key)!.push({ employeeId, ...value });
     }
+    // Wurde in dieser Sitzung von Hand sortiert, gilt das sofort – sonst
+    // käme die Zeile erst nach dem nächsten Laden an ihrem Platz an.
+    for (const [key, members] of teams) {
+      const eigene = ordnung[key];
+      if (!eigene) continue;
+      members.sort((a, b) => {
+        const ia = eigene.indexOf(a.employeeId);
+        const ib = eigene.indexOf(b.employeeId);
+        return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+      });
+    }
     return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [cells]);
+  }, [cells, ordnung]);
 
   /**
    * Welche Schichtgruppen aufgeklappt sind. `null` heißt: noch nichts von Hand
@@ -180,6 +203,28 @@ export function ShiftPlanGrid({
       if (naechste.has(teamName)) naechste.delete(teamName);
       else naechste.add(teamName);
       return naechste;
+    });
+  }
+
+  /**
+   * Eine Zeile innerhalb ihrer Gruppe verschieben.
+   *
+   * Gespeichert wird immer die vollständige Gruppe in ihrer neuen
+   * Reihenfolge; die Datenbank macht daraus die Plätze 1..n und prüft
+   * dabei selbst, ob die aufrufende Person das darf.
+   */
+  function verschieben(teamName: string, members: GridRow[], index: number, richtung: -1 | 1) {
+    const ziel = index + richtung;
+    if (ziel < 0 || ziel >= members.length) return;
+
+    const ids = members.map((m) => m.employeeId);
+    [ids[index], ids[ziel]] = [ids[ziel], ids[index]];
+
+    setOrdnung((bisher) => ({ ...bisher, [teamName]: ids }));
+    setOrdnungFehler(null);
+    startTransition(async () => {
+      const result = await setEmployeeOrder(ids);
+      if (result.error) setOrdnungFehler(result.error);
     });
   }
 
@@ -308,6 +353,27 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Die Reihenfolge im Plan ist Sache der Schichtleitung: wer seine
+              Mannschaft nach Anlage oder Arbeitsplatz sortiert sehen will,
+              stellt sie hier um. Die Pfeile erscheinen nur in diesem Modus,
+              sonst verstellen sie bei fünfzig Zeilen jede Namensspalte. */}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => setSortieren((v) => !v)}
+              aria-pressed={sortieren}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                sortieren
+                  ? "border-brand-500 bg-brand-500 text-white"
+                  : "border-line bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink",
+              )}
+            >
+              <ListOrdered className="h-4 w-4" strokeWidth={2} />
+              {sortieren ? "Fertig" : "Reihenfolge"}
+            </button>
+          ) : null}
+
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
               zu klicken – bei Jahresplanung der schnellste Weg. */}
           <select
@@ -358,6 +424,21 @@ export function ShiftPlanGrid({
       {error ? (
         <div className="px-4 pt-3">
           <Alert tone="error">{error}</Alert>
+        </div>
+      ) : null}
+
+      {ordnungFehler ? (
+        <div className="px-4 pt-3">
+          <Alert tone="error">{ordnungFehler}</Alert>
+        </div>
+      ) : null}
+
+      {sortieren && canEdit ? (
+        <div className="px-4 pt-3">
+          <Alert tone="info">
+            Mit den Pfeilen verschiebst du eine Person innerhalb ihrer Schichtgruppe.
+            Die Reihenfolge gilt für alle im Unternehmen und wird sofort gespeichert.
+          </Alert>
         </div>
       ) : null}
 
@@ -498,17 +579,45 @@ export function ShiftPlanGrid({
                       </button>
                     </th>
                   </tr>
-                  {offen && members.map((member) => (
+                  {offen && members.map((member, memberIndex) => (
                     <tr key={member.employeeId} className="hover:bg-surface-muted/50">
                       <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-1 text-left text-[12px] font-normal sm:px-4 sm:text-[13px]">
-                        {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
-                        <span className="block truncate sm:hidden">{shortName(member.name)}</span>
-                        <span className="hidden truncate sm:block">{member.name}</span>
-                        {member.number ? (
-                          <span className="tnum hidden text-[10px] text-ink-faint sm:block">
-                            {member.number}
+                        <span className="flex items-center gap-1.5">
+                          {sortieren && canEdit ? (
+                            <span className="flex shrink-0 flex-col">
+                              <button
+                                type="button"
+                                onClick={() => verschieben(teamName, members, memberIndex, -1)}
+                                disabled={memberIndex === 0 || pending}
+                                aria-label={`${member.name} nach oben`}
+                                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
+                              >
+                                <ArrowUp className="h-3 w-3" strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => verschieben(teamName, members, memberIndex, 1)}
+                                disabled={memberIndex === members.length - 1 || pending}
+                                aria-label={`${member.name} nach unten`}
+                                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
+                              >
+                                <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
+                              </button>
+                            </span>
+                          ) : null}
+                          <span className="min-w-0">
+                            {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
+                            <span className="block truncate sm:hidden">
+                              {shortName(member.name)}
+                            </span>
+                            <span className="hidden truncate sm:block">{member.name}</span>
+                            {member.number ? (
+                              <span className="tnum hidden text-[10px] text-ink-faint sm:block">
+                                {member.number}
+                              </span>
+                            ) : null}
                           </span>
-                        ) : null}
+                        </span>
                       </th>
                       {dates.map((iso) => {
                         const cell = member.cells.get(iso);
