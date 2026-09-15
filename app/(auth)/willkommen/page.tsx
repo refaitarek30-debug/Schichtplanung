@@ -28,8 +28,8 @@ export default function WelcomePage() {
         </Link>
       </div>
       <p className="mx-auto mt-6 max-w-sm text-[12px] leading-snug text-ink-faint">
-        Tipp: Lege zuerst unter „Schichten" dein Schichtmuster an, dann ordne unter „Mitarbeiter"
-        jeder Person eine Schichtgruppe A–D zu.
+        Nach der Anmeldung führt dich die Einrichtung in drei Schritten durch Feiertage,
+        Schichtmuster und die ersten Mitarbeiter.
       </p>
     </div>
   );

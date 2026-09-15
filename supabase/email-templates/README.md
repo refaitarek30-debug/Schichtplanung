@@ -126,6 +126,26 @@ die Triggerfunktion ersetzt – nicht in die Supabase-Oberfläche.
 
 ## Vorlagen
 
+> **Wichtig: nicht `{{ .ConfirmationURL }}` verwenden.**
+>
+> Dieser Platzhalter zeigt auf Supabases eigenen Endpunkt
+> `…supabase.co/auth/v1/verify`. Wer dort landet, sieht rohes JSON:
+>
+> ```json
+> {"message":"No API key found in request","hint":"No `apikey` request header or url param was found."}
+> ```
+>
+> Die Vorlagen unten zeigen stattdessen auf `/auth/callback` der eigenen
+> Anwendung. Diese Stelle löst den Link serverseitig ein
+> (`supabase.auth.verifyOtp`) und leitet danach weiter – bei der
+> Registrierung auf `/willkommen`, bei Einladung und Passwort-Neusetzen
+> auf `/passwort-neu`. Ein abgelaufener Link landet auf der Anmeldeseite
+> mit einer verständlichen Meldung statt auf einer Fehlerseite.
+>
+> Damit `{{ .SiteURL }}` stimmt, muss unter **Authentication → URL
+> Configuration** die Site URL auf die Live-Adresse gesetzt sein und
+> `https://<deine-adresse>/auth/callback` unter „Redirect URLs" stehen.
+
 ### Confirm signup
 
 Betreff: `Bitte bestätige deine E-Mail-Adresse`
@@ -134,7 +154,7 @@ Betreff: `Bitte bestätige deine E-Mail-Adresse`
 <h2>Willkommen beim Schichtplan</h2>
 <p>Damit dein Zugang freigeschaltet wird, bestätige bitte diese
 E-Mail-Adresse. Der Link gilt 24 Stunden.</p>
-<p><a href="{{ .ConfirmationURL }}">E-Mail-Adresse bestätigen</a></p>
+<p><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup">E-Mail-Adresse bestätigen</a></p>
 <p>Falls du dich nicht angemeldet hast, ignoriere diese Nachricht einfach –
 ohne Bestätigung passiert nichts.</p>
 ```
@@ -148,7 +168,7 @@ Betreff: `Du wurdest zum Schichtplan eingeladen`
 <p>Deine Schichtleitung hat dir einen Zugang eingerichtet. Über den Link
 legst du dein Passwort fest und siehst danach deinen Schichtplan, dein
 Urlaubskonto und kannst Urlaub beantragen.</p>
-<p><a href="{{ .ConfirmationURL }}">Passwort festlegen</a></p>
+<p><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite">Passwort festlegen</a></p>
 <p>Der Link gilt 24 Stunden. Danach kann deine Schichtleitung eine neue
 Einladung verschicken.</p>
 ```
@@ -161,7 +181,7 @@ Betreff: `Passwort zurücksetzen`
 <h2>Neues Passwort festlegen</h2>
 <p>Über diesen Link kannst du ein neues Passwort für den Schichtplan
 vergeben. Er gilt 60 Minuten.</p>
-<p><a href="{{ .ConfirmationURL }}">Neues Passwort festlegen</a></p>
+<p><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery">Neues Passwort festlegen</a></p>
 <p>Hast du das nicht angefordert, ändert sich nichts – dann kannst du diese
 Nachricht löschen.</p>
 ```
@@ -173,5 +193,5 @@ Betreff: `Neue E-Mail-Adresse bestätigen`
 ```html
 <h2>Adresse ändern</h2>
 <p>Bestätige die neue Adresse, damit sie für deinen Zugang gilt.</p>
-<p><a href="{{ .ConfirmationURL }}">Neue Adresse bestätigen</a></p>
+<p><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email_change">Neue Adresse bestätigen</a></p>
 ```
