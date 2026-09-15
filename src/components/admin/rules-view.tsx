@@ -2,8 +2,6 @@
 
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
-import { AnnouncementsCard } from "@/components/settings/announcements-card";
 import { HolidaySettings } from "@/components/settings/holiday-settings";
 import { HolidayWorkSetting } from "@/components/settings/holiday-work-setting";
 import { useSession } from "@/context/session";
@@ -62,10 +60,12 @@ export function RulesView() {
         </CardBody>
       </Card>
 
+      {/* Mitteilungen und Urlaubssperren standen bis hierhin dazwischen.
+          Sie liegen jetzt unter Führung → Mitteilungen: Regeln stellt man
+          einmal beim Einrichten ein, eine Mitteilung schreibt man mitten
+          im Tagesgeschäft. */}
       {mode === "live" ? (
         <>
-          <AnnouncementsCard canManage={role !== "employee"} />
-          <LeaveBlocksCard canManage={role === "admin"} />
           <HolidayWorkSetting canManage={role === "admin"} />
           <HolidaySettings canManage={role === "admin"} />
         </>

@@ -40,6 +40,57 @@ export async function completeSetup(abgeschlossen = true): Promise<FormState> {
 }
 
 /**
+ * Die eigenen Stammdaten aus dem ersten Schritt des Assistenten.
+ *
+ * Wer ein Unternehmen registriert, hat danach einen Personalstammsatz
+ * ohne Inhalt: 0 Urlaubstage, keine Abteilung, keine Qualifikation. Das
+ * ist Absicht – erfundene Vorgabewerte sähen aus wie gepflegte Daten.
+ * Dieser Schritt füllt sie.
+ *
+ * Geschrieben wird über `save_own_setup_profile()`, das ausschließlich die
+ * Zeile des angemeldeten Zugangs anfasst. Eine Mitarbeiter-ID von außen
+ * gibt es bewusst nicht, also lässt sich auch keine fremde unterschieben.
+ */
+export async function saveOwnSetupProfile(formData: FormData): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+
+  const department = String(formData.get("department") ?? "").trim();
+  const vacationDays = Number.parseFloat(
+    String(formData.get("vacation_days") ?? "0").replace(",", "."),
+  );
+  const vDays = Number.parseFloat(String(formData.get("v_days") ?? "0").replace(",", "."));
+  const shiftWorker = formData.get("shift_worker") === "on";
+  const rotationTeam = String(formData.get("rotation_team") ?? "").trim();
+  const qualifications = formData.getAll("qualifications").map((v) => String(v));
+
+  if (!Number.isFinite(vacationDays) || vacationDays < 0) {
+    return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
+  }
+  if (!Number.isFinite(vDays) || vDays < 0) {
+    return { error: "Die V-Tage müssen eine Zahl ab 0 sein." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_own_setup_profile", {
+    p_department: department,
+    p_vacation_days: vacationDays,
+    p_v_days: vDays,
+    p_shift_worker: shiftWorker,
+    p_rotation_team: rotationTeam,
+    p_qualifications: qualifications,
+  });
+
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Deine Angaben konnten nicht gespeichert werden." };
+  }
+
+  revalidatePath("/einrichtung");
+  revalidatePath("/verwaltung");
+  revalidatePath("/dashboard");
+  return { success: "Deine Angaben sind gespeichert." };
+}
+
+/**
  * Schichtsystem festlegen: Muster speichern und allen Mitarbeitern mit
  * Schichtgruppe zuordnen. Anders als `saveRotationPattern()` nimmt diese
  * Fassung die Anzahl der Rotationsgruppen entgegen – daraus ergibt sich

@@ -62,9 +62,12 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   const department = String(formData.get("department") ?? "").trim();
   const shiftId = String(formData.get("shift_id") ?? "").trim();
   const role = String(formData.get("role") ?? "employee") as Role;
-  const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
+  // Vorgabe 0, nicht 30/27: eine Zahl, die niemand eingegeben hat, soll
+  // nicht wie ein gepflegter Wert aussehen. Dieselbe Vorgabe steht in der
+  // Datenbank an den Spalten selbst.
+  const vacationDaysRaw = String(formData.get("vacation_days") ?? "0");
   const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
-  const vDaysRaw = String(formData.get("v_days") ?? "27");
+  const vDaysRaw = String(formData.get("v_days") ?? "0");
   const vDays = Number.parseFloat(vDaysRaw.replace(",", "."));
 
   if (!firstName || !lastName) {
@@ -111,7 +114,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       shift_id: shiftId || null,
       role,
       vacation_days: vacationDays,
-      v_days: Number.isFinite(vDays) ? vDays : 27,
+      v_days: Number.isFinite(vDays) ? vDays : 0,
       qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
       rotation_pattern_id: rotationPatternId,
@@ -199,9 +202,9 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   const department = String(formData.get("department") ?? "").trim();
   const shiftId = String(formData.get("shift_id") ?? "").trim();
   const role = String(formData.get("role") ?? "employee") as Role;
-  const vacationDaysRaw = String(formData.get("vacation_days") ?? "30");
+  const vacationDaysRaw = String(formData.get("vacation_days") ?? "0");
   const vacationDays = Number.parseFloat(vacationDaysRaw.replace(",", "."));
-  const vDaysRaw = String(formData.get("v_days") ?? "27");
+  const vDaysRaw = String(formData.get("v_days") ?? "0");
   const vDays = Number.parseFloat(vDaysRaw.replace(",", "."));
   const active = formData.get("active") !== "false";
 

@@ -1147,3 +1147,96 @@ Prüf einmal in der Verwaltung, bei wem das Häkchen „Schichtarbeiter"
 richtig steht – danach richtet sich jetzt alles. Sabine Wagner in der
 Demo-Firma hat eine Schichtgruppe, fährt aber keine Schicht; die Gruppe
 kannst du bei ihr entfernen, nötig ist es nicht mehr.
+
+---
+
+## Neue Unternehmen: keine erfundenen Vorgaben, eigener erster Schritt
+
+### Nichts mehr voreingestellt
+
+Bisher bekam jeder neu angelegte Mitarbeiter 30 Urlaubstage und 27 V-Tage,
+weil das die Spaltenvorgaben waren. Für ein frisch registriertes
+Unternehmen sind das erfundene Zahlen: niemand hat sie eingegeben, sie
+sehen aber aus wie gepflegte Daten.
+
+Umgestellt auf 0 – an vier Stellen, damit es keinen Weg gibt, auf dem
+doch wieder eine Zahl entsteht:
+
+| Wo | vorher | jetzt |
+|---|---|---|
+| `employees.vacation_days` / `v_days` | 30 / 27 | 0 / 0 |
+| `leave_balances.entitlement` / `v_entitlement` | 30 / 27 | 0 / 0 |
+| `register_company()` (Gründer) | Spaltenvorgabe | ausdrücklich 0 / 0 |
+| Formular „Neuer Mitarbeiter" | 30 / 27 | 0 / 0 |
+
+Bestehende Datensätze sind nicht betroffen – eine geänderte
+Spaltenvorgabe wirkt nur auf neue Zeilen.
+
+### Schritt 1: die eigenen Angaben
+
+Der Assistent hat jetzt vier Schritte statt drei. Vorneweg steht, was
+vorher gar nicht gefragt wurde: Abteilung, Urlaubsanspruch, V-Tage,
+Schichtarbeiter ja/nein, Schichtgruppe und Qualifikationen der Person, die
+das Unternehmen registriert hat.
+
+Der Reihenfolgekonflikt dabei: der Schritt fragt nach der Schichtgruppe,
+das Rotationsmuster entsteht aber erst in Schritt 3. Aufgelöst, weil die
+Gruppen A–D im Programm festliegen – gewählt wird die Gruppe sofort, die
+Verknüpfung zum Muster stellt `save_own_setup_profile()` her, sobald eines
+da ist. Kommt das Muster später, zieht Schritt 3 sie über
+`apply_rotation_to_all()` nach.
+
+Geschrieben wird über eine eigene Funktion, nicht über das allgemeine
+Mitarbeiterformular: `save_own_setup_profile()` fasst ausschließlich die
+Zeile des angemeldeten Zugangs an (`auth_employee_id()`), nimmt keine
+Mitarbeiter-ID von außen entgegen und ändert weder Rolle noch Status. Eine
+Schichtgruppe an jemandem ohne Schichtbetrieb wird verworfen – genau die
+Widersprüchlichkeit, die in 0047 die Urlaubsberechnung verdreht hatte.
+Unbekannte Qualifikationen fallen weg, statt mit einer rohen
+Datenbankmeldung zu platzen.
+
+Die Fortschrittsanzeige hängt an einer eigenen Spalte
+`employees.profile_confirmed_at`, nicht an den Werten: „0 Urlaubstage" ist
+eine gültige Antwort, keine fehlende.
+
+### Mitteilungen und Urlaubssperren unter Führung
+
+Beide Karten lagen unter `Verwaltung → Regeln`, zwischen Planungsregeln
+und Feiertagseinstellungen. Falscher Ort: Regeln stellt man einmal beim
+Einrichten ein, eine Mitteilung schreibt man mitten im Tagesgeschäft.
+
+Jetzt unter `Führung → Mitteilungen` – zwei Klicks näher, erreichbar für
+Schichtleitung und Administration. Urlaubssperren bleiben wie vorher der
+Administration vorbehalten.
+
+Dass beides auf jedem Dashboard steht, war schon vorher so und ist
+unverändert: das Dashboard zieht Mitteilungen und aktive Sperren für alle
+Rollen.
+
+### Geprüft
+
+Neuregistrierung komplett durchgespielt, in einer Transaktion und
+zurückgerollt:
+
+| | |
+|---|---|
+| Rolle des Gründers | `admin` |
+| Urlaubstage / V-Tage | 0 / 0 |
+| Abteilung | leer |
+| Profil bestätigt | nein → Schritt 1 steht offen |
+| Schichten / Feiertage angelegt | 3 / 22 |
+
+`save_own_setup_profile()` in drei Fällen geprüft: Schichtarbeiter mit
+Gruppe B (Muster verknüpft), Tagschicht mit übergebener Gruppe C (Gruppe
+und Muster verworfen), unbekannte Qualifikation `quatsch` (herausgefiltert).
+
+`tsc --noEmit` und `next build` laufen sauber durch, 29 Seiten.
+
+**Advisor:** keine neue Warnkategorie. Die neue Funktion erscheint in der
+bekannten Liste der SECURITY-DEFINER-Funktionen für angemeldete Nutzer –
+das ist die Bauweise dieser Anwendung, nicht ein neuer Befund.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Beim nächsten Testdurchlauf einer Registrierung führt der
+Assistent von selbst durch die vier Schritte.
