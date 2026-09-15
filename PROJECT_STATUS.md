@@ -928,3 +928,54 @@ verhielt sich dort genauso.
 
 Nichts. Beim ersten Öffnen nach dem Deployment kann die installierte PWA
 noch die alte Navigation im Cache haben – einmal neu laden genügt.
+
+---
+
+## Nachtrag: Registrierung mit bereits vergebener Adresse
+
+**Symptom:** „Ich habe keine Mail bekommen." Die Registrierung meldete
+Erfolg und bat um Bestätigung der E-Mail-Adresse – es kam aber nie eine
+Mail, und Anmelden war unmöglich.
+
+**Ursache:** Supabase verrät absichtlich nicht, dass eine Adresse schon
+vergeben ist, sonst könnte jeder über das Registrierungsformular
+durchprobieren, wer hier ein Konto hat. Stattdessen antwortet `signUp()`
+mit HTTP 200 und einem Scheinbenutzer: kein Fehler, keine Sitzung,
+`identities` leer – und keine Mail. Im Auth-Protokoll steht die Aktion
+`user_repeated_signup` mit Status 200.
+
+`registerCompany()` kannte diesen Fall nicht. Da kein Fehler zurückkam,
+lief die Funktion in den Erfolgszweig und behauptete, eine Mail sei
+unterwegs. Das kurz zuvor von `register_company()` angelegte Unternehmen
+blieb dauerhaft ohne jedes Profil stehen – aufgeräumt wurde bis dahin nur
+im Fehlerzweig. So sind die Waisen „Muster GmbH" (14.09., 23:44) und
+„muster 2" (15.09., 10:39) entstanden, beide aus Versuchen mit einer
+Adresse, die bereits der Röhm GmbH gehört.
+
+**Behoben in `src/lib/auth/company-actions.ts`:** ein leeres `identities`
+wird jetzt als „Adresse bereits vergeben" erkannt. Das angelegte
+Unternehmen wird über `discard_unclaimed_company()` sofort
+zurückgenommen, und der Benutzer bekommt den wahren Grund zu lesen statt
+eines Erfolgs, den es nicht gab.
+
+Dass die Anwendung dem Anfragenden damit bestätigt, dass die Adresse
+vergeben ist, ist hier bewusst in Kauf genommen: die Alternative wäre,
+jemanden ins Leere laufen zu lassen, der sein eigenes Unternehmen anlegen
+will. Die Registrierung erzeugt ohnehin sichtbare Zustände.
+
+**Datenbank aufgeräumt:** „muster 2" gelöscht (0 Zugänge, für niemanden
+erreichbar). Bestand jetzt: Röhm GmbH (2 Zugänge), Demo Chemie GmbH (3),
+Tarek Firma (1).
+
+**Mailversand funktioniert:** Die Registrierung von „Tarek Firma" um
+10:42:38 mit einer noch freien Adresse hat die Bestätigungsmail 28
+Millisekunden später ausgelöst, bestätigt wurde um 10:42:47, angemeldet um
+10:43:21. Die Brevo-Einrichtung ist damit im Live-Betrieb bewiesen.
+
+**Advisor:** keine Migration, keine neue Warnung.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Wer sich registrieren will, braucht eine Adresse, die hier noch
+kein Konto hat – `refaitarek7@gmail.com` und `refaitarek30@gmail.com`
+gehören bereits zur Röhm GmbH.
