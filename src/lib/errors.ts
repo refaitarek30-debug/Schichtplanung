@@ -27,6 +27,25 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
   if (message.includes("jwt") || error.status === 401) {
     return "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.";
   }
+  // Supabase antwortet mit 500 "Error sending confirmation email", wenn die
+  // Bestätigungsmail nicht zugestellt werden kann. Das Konto wird dann gar
+  // nicht erst angelegt – die Registrierung ist also nicht "später noch mal
+  // versuchen", sondern blockiert, bis jemand den Mailversand einrichtet.
+  if (message.includes("error sending") || message.includes("confirmation email")) {
+    return (
+      "Die Registrierung konnte nicht abgeschlossen werden, weil die " +
+      "Bestätigungsmail nicht versendet werden konnte. Das liegt an der " +
+      "Mail-Einstellung des Anbieters, nicht an deinen Angaben. Bitte wende " +
+      "dich an den Betreiber dieser Anwendung."
+    );
+  }
+  if (message.includes("already registered") || message.includes("already been registered")) {
+    return (
+      "Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Jede Adresse kann " +
+      "nur zu einem Unternehmen gehören – bitte melde dich an oder nimm eine " +
+      "andere Adresse."
+    );
+  }
   return "Das hat nicht geklappt. Bitte später erneut versuchen.";
 }
 

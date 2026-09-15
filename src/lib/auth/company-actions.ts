@@ -92,6 +92,21 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   });
 
   if (signUpError) {
+    // Das Unternehmen steht schon, der Zugang dazu nicht. Ohne Aufräumen
+    // bliebe eine vollständig eingerichtete Firma zurück, auf die sich
+    // niemand anmelden kann und die niemand mehr loswird. Die Funktion
+    // greift nur bei einem Unternehmen ohne jedes Profil – ein echtes
+    // kann sie nicht anrühren.
+    const { error: cleanupError } = await supabase.rpc("discard_unclaimed_company", {
+      p_company_id: company_id,
+    });
+    if (cleanupError) {
+      console.error(
+        "Registrierung fehlgeschlagen und das angelegte Unternehmen konnte nicht " +
+          `zurückgenommen werden (company_id ${company_id}):`,
+        cleanupError.message,
+      );
+    }
     return { error: authErrorMessage(signUpError) ?? "Die Registrierung ist fehlgeschlagen." };
   }
 
