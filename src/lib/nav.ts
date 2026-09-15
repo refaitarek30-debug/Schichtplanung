@@ -4,6 +4,7 @@ import {
   Cog,
   Layers,
   LayoutDashboard,
+  Megaphone,
   Palmtree,
   Timer,
   Users,
@@ -64,6 +65,15 @@ export const navItems: NavItem[] = [
     href: "/urlaubsantraege",
     label: "Urlaubsanträge",
     icon: ClipboardCheck,
+    roles: ["shift_leader", "admin"],
+  },
+  {
+    // Mitteilungen und Urlaubssperren. Lagen vorher unter Verwaltung →
+    // Regeln; beides geht an die ganze Belegschaft und gehört ins
+    // Tagesgeschäft, nicht zu den Einstellungen, die man einmal setzt.
+    href: "/mitteilungen",
+    label: "Mitteilungen",
+    icon: Megaphone,
     roles: ["shift_leader", "admin"],
   },
   {

@@ -88,11 +88,13 @@ export function CreateEmployeePanel({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
+            {/* Keine Vorbelegung mehr: 30 und 27 waren erfundene Zahlen, die
+                wie gepflegte Daten aussahen. Wer anlegt, trägt sie bewusst ein. */}
             <Field label="Urlaubsanspruch (Tage/Jahr)">
-              <Input name="vacation_days" type="number" step="0.5" min="0" defaultValue="30" />
+              <Input name="vacation_days" type="number" step="0.5" min="0" defaultValue="0" />
             </Field>
             <Field label="V-Tage (Freischichten/Jahr)" hint="Eigenes Konto neben dem Urlaub.">
-              <Input name="v_days" type="number" step="0.5" min="0" defaultValue="27" />
+              <Input name="v_days" type="number" step="0.5" min="0" defaultValue="0" />
             </Field>
           </div>
           <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">

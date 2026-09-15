@@ -11,25 +11,31 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { fetchSetupState, DataError, type SetupState } from "@/lib/data/setup";
 import { completeSetup } from "@/lib/auth/setup-actions";
+import { SchrittProfil } from "./schritt-profil";
 import { SchrittBundesland } from "./schritt-bundesland";
 import { SchrittSchichtsystem } from "./schritt-schichtsystem";
 import { SchrittMitarbeiter } from "./schritt-mitarbeiter";
 import { cn } from "@/lib/utils";
 
 const SCHRITTE = [
-  { nr: 1, titel: "Feiertage", kurz: "Bundesland" },
-  { nr: 2, titel: "Schichtsystem", kurz: "Muster und Gruppen" },
-  { nr: 3, titel: "Mitarbeiter", kurz: "Team anlegen" },
+  { nr: 1, titel: "Deine Angaben", kurz: "Urlaub, Schicht, Abteilung" },
+  { nr: 2, titel: "Feiertage", kurz: "Bundesland" },
+  { nr: 3, titel: "Schichtsystem", kurz: "Muster und Gruppen" },
+  { nr: 4, titel: "Mitarbeiter", kurz: "Team anlegen" },
 ];
+
+const LETZTER_SCHRITT = SCHRITTE.length;
 
 /**
  * Geführte Ersteinrichtung für neu registrierte Unternehmen.
  *
  * Der Assistent richtet nichts Eigenes ein – er führt durch dieselben
  * Funktionen, die es unter Schichten, Regeln und Mitarbeiter schon gibt.
- * Sein Zweck ist die Reihenfolge: ohne Feiertage rechnet die
- * Urlaubsberechnung falsch, ohne Schichtmuster steht der Plan leer, und
- * ohne Mitarbeiter gibt es nichts zu planen.
+ * Sein Zweck ist die Reihenfolge: ein frisch registriertes Unternehmen hat
+ * bewusst keine Vorgabewerte, deshalb stehen die eigenen Angaben am
+ * Anfang. Danach das Gerüst – ohne Feiertage rechnet die Urlaubsberechnung
+ * falsch, ohne Schichtmuster steht der Plan leer, und ohne Mitarbeiter
+ * gibt es nichts zu planen.
  *
  * Er lässt sich jederzeit überspringen und später über die Einstellungen
  * erneut öffnen. Bestehende Unternehmen, die alles von Hand eingerichtet
@@ -113,7 +119,7 @@ export default function EinrichtungPage() {
       <PageHeader
         eyebrow="Verwaltung"
         title={`${company.name} einrichten`}
-        description="Drei Schritte, danach ist die Anwendung einsatzbereit. Du kannst jederzeit abbrechen und später hier weitermachen."
+        description="Vier Schritte, danach ist die Anwendung einsatzbereit. Du kannst jederzeit abbrechen und später hier weitermachen."
         action={
           <Button variant="ghost" onClick={() => router.push("/dashboard")}>
             Später
@@ -144,8 +150,10 @@ export default function EinrichtungPage() {
           </CardBody>
         </Card>
       ) : schritt === 1 ? (
-        <SchrittBundesland stand={stand} onFertig={laden} />
+        <SchrittProfil onFertig={laden} />
       ) : schritt === 2 ? (
+        <SchrittBundesland stand={stand} onFertig={laden} />
+      ) : schritt === 3 ? (
         <SchrittSchichtsystem stand={stand} onFertig={laden} />
       ) : (
         <SchrittMitarbeiter stand={stand} onFertig={laden} />
@@ -161,8 +169,8 @@ export default function EinrichtungPage() {
             Zurück
           </Button>
 
-          {schritt < 3 ? (
-            <Button onClick={() => setSchritt((s) => Math.min(3, s + 1))}>
+          {schritt < LETZTER_SCHRITT ? (
+            <Button onClick={() => setSchritt((s) => Math.min(LETZTER_SCHRITT, s + 1))}>
               Weiter
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -193,7 +201,7 @@ export default function EinrichtungPage() {
   );
 }
 
-/** Kopfzeile mit den drei Schritten und ihrem Stand. */
+/** Kopfzeile mit den vier Schritten und ihrem Stand. */
 function Fortschritt({
   aktiv,
   stand,
@@ -204,13 +212,16 @@ function Fortschritt({
   onWechsel: (nr: number) => void;
 }) {
   const erledigt: Record<number, boolean> = {
-    1: (stand?.feiertage ?? 0) > 0,
-    2: Boolean(stand?.musterVorhanden),
-    3: (stand?.mitarbeiter ?? 0) > 1,
+    // Eigener Vermerk in der Datenbank statt Raten anhand der Werte:
+    // „0 Urlaubstage" ist eine gültige Antwort, keine fehlende.
+    1: Boolean(stand?.eigenesProfilBestaetigt),
+    2: (stand?.feiertage ?? 0) > 0,
+    3: Boolean(stand?.musterVorhanden),
+    4: (stand?.mitarbeiter ?? 0) > 1,
   };
 
   return (
-    <div className="grid gap-2 sm:grid-cols-3">
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {SCHRITTE.map((s) => {
         const ist = aktiv === s.nr;
         const fertig = erledigt[s.nr];

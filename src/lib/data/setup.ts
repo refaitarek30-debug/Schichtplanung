@@ -13,6 +13,12 @@ export interface SetupState {
   gruppen: number;
   mitarbeiter: number;
   mitarbeiterMitGruppe: number;
+  /**
+   * Hat die angemeldete Person ihre eigenen Stammdaten im Assistenten
+   * bestätigt? Eigener Vermerk statt Raten anhand der Werte – „0
+   * Urlaubstage" ist eine gültige Antwort, keine fehlende.
+   */
+  eigenesProfilBestaetigt: boolean;
 }
 
 /**
@@ -34,6 +40,7 @@ export async function fetchSetupState(): Promise<SetupState | null> {
         gruppen: number;
         mitarbeiter: number;
         mitarbeiter_mit_gruppe: number;
+        eigenes_profil_bestaetigt: boolean;
       }
     | undefined;
   if (!row) return null;
@@ -45,5 +52,57 @@ export async function fetchSetupState(): Promise<SetupState | null> {
     gruppen: Number(row.gruppen ?? 0),
     mitarbeiter: Number(row.mitarbeiter ?? 0),
     mitarbeiterMitGruppe: Number(row.mitarbeiter_mit_gruppe ?? 0),
+    eigenesProfilBestaetigt: Boolean(row.eigenes_profil_bestaetigt),
+  };
+}
+
+/** Die eigenen Stammdaten, wie sie der erste Einrichtungsschritt vorbelegt. */
+export interface OwnProfile {
+  department: string | null;
+  vacationDays: number;
+  vDays: number;
+  shiftWorker: boolean;
+  rotationTeam: string | null;
+  qualifications: string[];
+  bestaetigtAm: string | null;
+}
+
+/**
+ * Der Personalstammsatz der angemeldeten Person. Der Assistent braucht ihn,
+ * um sein Formular vorzubelegen – sonst überschriebe ein zweiter Durchlauf
+ * die eigenen Angaben mit leeren Feldern.
+ */
+export async function fetchOwnProfile(employeeId: string): Promise<OwnProfile | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("employees")
+    .select("department, vacation_days, v_days, shift_worker, rotation_team, qualifications, profile_confirmed_at")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  if (!data) return null;
+
+  const row = data as {
+    department: string | null;
+    vacation_days: number | string | null;
+    v_days: number | string | null;
+    shift_worker: boolean | null;
+    rotation_team: string | null;
+    qualifications: string[] | null;
+    profile_confirmed_at: string | null;
+  };
+
+  return {
+    department: row.department,
+    vacationDays: Number(row.vacation_days ?? 0),
+    vDays: Number(row.v_days ?? 0),
+    // Vorgabe true wie in der Datenbank: die Anwendung ist für den
+    // Schichtbetrieb gebaut, die Tagschicht ist der Sonderfall.
+    shiftWorker: row.shift_worker ?? true,
+    rotationTeam: row.rotation_team,
+    qualifications: row.qualifications ?? [],
+    bestaetigtAm: row.profile_confirmed_at,
   };
 }
