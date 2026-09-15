@@ -110,6 +110,34 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     return { error: authErrorMessage(signUpError) ?? "Die Registrierung ist fehlgeschlagen." };
   }
 
+  // Dass eine Adresse schon vergeben ist, verrät Supabase absichtlich nicht:
+  // sonst könnte jeder über das Registrierungsformular durchprobieren, wer
+  // hier ein Konto hat. Stattdessen kommt HTTP 200 mit einem Scheinbenutzer –
+  // ohne Sitzung, mit leerem `identities`, und vor allem ohne dass jemals
+  // eine Mail verschickt wird. Genau daran erkennt man den Fall.
+  //
+  // Ohne diese Prüfung meldete die Anwendung „Bitte bestätige deine
+  // E-Mail-Adresse", obwohl nie eine Mail kommt, und das eben angelegte
+  // Unternehmen bliebe für immer ohne Zugang stehen – so ist die verwaiste
+  // „Muster GmbH" entstanden.
+  if (signUpData.user && (signUpData.user.identities?.length ?? 0) === 0) {
+    const { error: cleanupError } = await supabase.rpc("discard_unclaimed_company", {
+      p_company_id: company_id,
+    });
+    if (cleanupError) {
+      console.error(
+        "Adresse bereits vergeben und das angelegte Unternehmen konnte nicht " +
+          `zurückgenommen werden (company_id ${company_id}):`,
+        cleanupError.message,
+      );
+    }
+    return {
+      error:
+        "Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Jede Adresse kann nur " +
+        "zu einem Unternehmen gehören – bitte melde dich an oder nimm eine andere Adresse.",
+    };
+  }
+
   // Ist die Bestätigungsmail in Supabase deaktiviert, kommt sofort eine
   // Session zurück – dann direkt in den Einrichtungsassistenten. Sonst
   // muss die E-Mail erst bestätigt werden, bevor eine Session entsteht;
