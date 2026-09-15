@@ -100,3 +100,13 @@ export async function fetchMailPostausgang(): Promise<MailPostausgang | null> {
     letzterFehler: row.letzter_fehler,
   };
 }
+
+/** Firmenweite Planungsregel: wird an Feiertagen gearbeitet? */
+export async function fetchWorkOnHolidays(): Promise<boolean> {
+  if (!isSupabaseConfigured) return true;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("get_company_rules");
+  if (error) return true;
+  const row = (data ?? [])[0] as { work_on_holidays: boolean } | undefined;
+  return row?.work_on_holidays ?? true;
+}

@@ -40,3 +40,27 @@ export async function setCompanyState(state: string): Promise<FormState> {
   revalidatePath("/urlaub");
   return { success: "Bundesland gespeichert, Feiertage wurden neu erzeugt." };
 }
+
+/**
+ * Wird an Feiertagen gearbeitet? Die Regel entscheidet, ob ein Feiertag
+ * im Schichtplan als Arbeitstag gilt – und damit auch, ob er einen
+ * Urlaubstag kostet. Nur Admin; geprüft wird das in der Datenbank.
+ */
+export async function setWorkOnHolidays(value: boolean): Promise<FormState> {
+  if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_work_on_holidays", { p_value: value });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Regel konnte nicht gespeichert werden." };
+  }
+
+  revalidatePath("/verwaltung");
+  revalidatePath("/schichtplan");
+  revalidatePath("/besetzung");
+  return {
+    success: value
+      ? "Feiertage gelten jetzt als Arbeitstage."
+      : "An Feiertagen wird nicht mehr geplant.",
+  };
+}

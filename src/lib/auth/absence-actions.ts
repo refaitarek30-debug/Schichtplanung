@@ -26,47 +26,50 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const employeeId = String(formData.get("employee_id") ?? "");
-  const date = String(formData.get("date") ?? "");
+  const from = String(formData.get("date_from") ?? "");
+  // Ohne Ende gilt der eine Tag – so bleibt ein alter Aufruf mit nur
+  // einem Datum weiterhin gültig.
+  const to = String(formData.get("date_to") ?? "") || from;
   const type = String(formData.get("type") ?? "krank");
   const note = String(formData.get("note") ?? "").trim();
 
-  if (!employeeId || !date) {
-    return { error: "Bitte Mitarbeiter und Datum auswählen." };
+  if (!employeeId || !from) {
+    return { error: "Bitte Mitarbeiter und Zeitraum auswählen." };
+  }
+  if (to < from) {
+    return { error: "Das Ende darf nicht vor dem Beginn liegen." };
   }
 
   const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("company_id")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
-    .returns<{ company_id: string }[]>()
-    .maybeSingle();
 
-  if (!profile) return { error: "Dein Profil konnte nicht geladen werden." };
-
-  const { error } = await supabase.from("absences").insert({
-    company_id: profile.company_id,
-    employee_id: employeeId,
-    date,
-    type,
-    note: note || null,
+  // Der ganze Zeitraum entsteht in einem Aufruf und in einer Transaktion.
+  // Tage, an denen die Person ohnehin frei hat, überspringt die Datenbank –
+  // eine Krankmeldung an einem Freitag aus dem Rotationsmuster ändert
+  // nichts und würde die Besetzungsrechnung nur verwirren.
+  const { data, error } = await supabase.rpc("create_absence_range", {
+    p_employee_id: employeeId,
+    p_from: from,
+    p_to: to,
+    p_type: type,
+    p_note: note || null,
   });
 
   if (error) {
-    if (error.code === "42501" || error.message?.includes("row-level security")) {
-      return { error: "Du hast keine Berechtigung für diesen Bereich." };
-    }
-    if (error.code === "23505") {
-      return { error: "Für diesen Tag ist bereits ein Eintrag dieser Art erfasst." };
-    }
     return { error: dataErrorMessage(error) ?? "Die Abwesenheit konnte nicht gespeichert werden." };
   }
 
   revalidatePath("/besetzung");
-
   revalidatePath("/schichtplan");
   revalidatePath("/dashboard");
-  return { success: `${TYPE_LABELS[type] ?? "Abwesenheit"} erfasst.` };
+
+  const tage = Number(data ?? 0);
+  const art = TYPE_LABELS[type] ?? "Abwesenheit";
+  return {
+    success:
+      tage === 1
+        ? `${art} für einen Tag erfasst.`
+        : `${art} für ${tage} Arbeitstage erfasst.`,
+  };
 }
 
 export async function deleteAbsence(absenceId: string): Promise<FormState> {
