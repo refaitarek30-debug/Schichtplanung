@@ -1545,3 +1545,116 @@ Damit die Prüfung greift, muss je Schicht hinterlegt sein, wie viele
 einer Funktion gebraucht werden (`shift_qualification_needs`). Solange
 nichts eingetragen ist, prüft die Anwendung wie bisher nur die Kopfzahl
 und meldet das auch so. Die Oberfläche dafür kommt in Phase 7.
+
+---
+
+## Phase 7 · Auswertung und Gesundheitsrate
+
+Zwei Migrationen (0058, 0059) plus neue Seite `Führung → Auswertung`.
+
+### 0058 · Eine Funktion, alle Ebenen
+
+`absence_report(jahr, monat)` liefert die feinste Ebene: **eine Zeile je
+Person und Monat**. Gesamtbetrieb, Schicht und Jahr entstehen daraus durch
+Summieren. Eine eigene Abfrage je Ebene wäre eine zweite Wahrheit für
+dieselbe Zahl.
+
+Grundlage ist `is_planned_workday()` — dieselbe Funktion, mit der auch
+Urlaub gerechnet wird. Damit kann die Auswertung nicht von dem abweichen,
+was die Mitarbeiter auf ihrem Konto sehen. Eintritt und Austritt sind
+seit 0049 darin enthalten.
+
+**Jeder Arbeitstag fällt in genau eine Kategorie**, sonst addieren sich
+die Zahlen nicht auf die Soll-Tage. Erfasste Abwesenheit sticht
+genehmigten Urlaub: eine Krankmeldung während des Urlaubs zählt als
+Kranktag, nicht doppelt.
+
+### Die Formel
+
+```
+Gesundheitsrate = Anwesenheit ÷ (Anwesenheit + Ausfall) × 100
+```
+
+- **Anwesenheit** = Soll − alle Abwesenheiten, plus Seminar (die Person
+  arbeitet, nur woanders — so rechnet es auch die Excel)
+- **Ausfall** = Krank + Sonstiges (der ungeplante Teil)
+- Urlaub, V-Tage, Sonderurlaub, Altersfreizeit und Bildungsurlaub sind
+  **geplante** Abwesenheiten und gehen in keine der beiden Größen ein
+
+Anders als die Excel-Vorlage, die Kranktage nicht von der Anwesenheit
+abzieht und sie dadurch in Zähler und Nenner doppelt zählt. Da die alten
+Vergleichswerte nicht erhalten bleiben mussten, gilt die saubere Formel.
+
+### 0059 · Tempo
+
+Die Jahresauswertung prüft 50 Mitarbeiter × 365 Tage. Gemessen und
+verbessert, statt geraten:
+
+| | vorher | nachher |
+|---|---|---|
+| `is_planned_workday`, 365 Tage | 54 ms | **38 ms** |
+| Auswertung eines Monats | 0,33 s | **0,23 s** |
+| Auswertung eines Jahres | 3,31 s | **2,68 s** |
+
+Der erste Versuch — die Personalzeile nicht dreimal je Tag zu laden —
+brachte nichts; gemessen lag es woanders. Der eigentliche Posten war
+`rotation_shift_for()` mit drei Abfragen je Aufruf, obwohl das Muster für
+alle gleich ist. Zwei davon fallen weg: die Zykluslänge wird aus den
+bereits geladenen Schritten gerechnet, und eine Fassung nimmt die
+Personalzeile entgegen.
+
+**Die Regel wurde dabei nicht kopiert.** `is_employed_on()` und
+`rotation_shift_for()` haben jetzt je eine Fassung für eine bereits
+geladene Zeile; die bisherige Fassung mit der ID ruft sie auf. Es bleibt
+bei einer Definition.
+
+Die restlichen 2,7 Sekunden sind Aufruf-Overhead je Tag — der Preis
+dafür, dass die Auswertung dieselbe Funktion benutzt wie die
+Urlaubsberechnung. Die Monatsansicht, der Normalfall, liegt bei 0,23 s.
+
+### Oberfläche
+
+Neue Seite mit Filtern für Jahr, Zeitraum (Monat oder ganzes Jahr) und
+Ebene (Gesamt / Schicht / Mitarbeiter). Vier Kennzahlen, eine Tabelle mit
+allen Abwesenheitsarten, und im Jahresmodus der Monatsverlauf.
+
+**Zur Darstellung des Verlaufs:** gezeigt wird die *Abweichung vom
+Zielwert*, nicht die Rate selbst. Bei Werten zwischen 93 % und 98 % sähen
+Balken von 0 bis 100 alle gleich lang aus, und eine gestauchte Achse ab
+90 % würde jeden Unterschied künstlich aufblasen. Der Zielwert ist der
+natürliche Nullpunkt. Farbe trägt hier Zustand, nicht Identität — jeder
+Balken ist zusätzlich beschriftet, Farbe ist also nie das einzige
+Merkmal.
+
+Die Raten werden auf jeder Ebene aus den **summierten Tagen neu
+gerechnet**, nicht aus Einzelraten gemittelt. Ein Mittelwert über
+Personen würde jemanden mit fünf Arbeitstagen genauso stark gewichten wie
+jemanden mit zwanzig.
+
+### Geprüft — Test 10
+
+September 2026, Demo Chemie GmbH:
+
+| | |
+|---|---|
+| Soll-Arbeitstage | 1124 |
+| Anwesend | 1062 (+ 4 Seminar) |
+| Krank | 13 |
+| Urlaub / V-Tage | 36 / 9 |
+| **Summe aller Kategorien** | **1124 = Soll** |
+
+Kein Tag doppelt gezählt, keiner verloren. Gegen die Rohdaten:
+
+| | |
+|---|---|
+| Kranktage direkt aus `absences` | 13 |
+| Kranktage laut Auswertung | 13 ✓ |
+| Rate aus der Auswertung | 98,8 % |
+| Rate von Hand nachgerechnet | 98,8 % ✓ |
+
+`tsc --noEmit` und `next build` laufen sauber, 30 Seiten.
+
+### Von Hand zu erledigen – Tarek
+
+Den Zielwert der Gesundheitsrate (96 %) kannst du in `staffing_rules`
+ändern; die Auswertung liest ihn von dort.
