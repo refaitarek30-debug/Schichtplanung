@@ -1240,3 +1240,114 @@ das ist die Bauweise dieser Anwendung, nicht ein neuer Befund.
 
 Nichts. Beim nächsten Testdurchlauf einer Registrierung führt der
 Assistent von selbst durch die vier Schritte.
+
+---
+
+## Phase 4 · Grundlage für Auswertung, Ersatzsuche und Ausbildung
+
+Sechs Migrationen (0049–0054), alle auf dem Live-Projekt angewandt. Keine
+Oberfläche berührt — das ist Phase 5.
+
+### 0049 · Eintritt und Austritt
+
+`employees` bekommt `entry_date`, `exit_date` und `is_apprentice`. Die
+Prüfung steht **nicht** verstreut, sondern in einem Helfer
+`is_employed_on()`, der an genau zwei Stellen greift:
+`is_planned_workday()` und `effective_shift_id()`. Schichtplan, Besetzung
+und Urlaubsberechnung lesen bereits durch diese beiden und erben die
+Regel dadurch.
+
+Leere Felder heißen „keine Grenze" — der bestehende Datenbestand verhält
+sich unverändert.
+
+Nachgemessen an der Demo-Firma, in Transaktionen und zurückgerollt:
+
+| Prüfung | vorher | nachher |
+|---|---|---|
+| Arbeitstage Mai–Juli bei Eintritt 01.06./Austritt 30.06. | 70 | 23 |
+| Urlaub 04.–08.05. (vor Eintritt) | 4,0 Tage | 0,0 Tage |
+| Besetzung 15.07. nach Austritt 30.06. | 12 geplant | 11 geplant |
+| Zeilen im Schichtplan 01.–14.07. | 50 Personen | 49 Personen |
+
+Test 7 (vor Eintritt) und Test 8 (nach Austritt) liefern beide `false`,
+ein Tag innerhalb `true`.
+
+### 0050 · Qualifikationen als Daten
+
+Drei Tabellen: `qualifications` (je Unternehmen frei anlegbar),
+`employee_qualifications`, `shift_qualification_needs`. RLS nach dem
+Muster der übrigen Tabellen.
+
+Der Bestand wurde übernommen und Zeile für Zeile geprüft:
+
+| | |
+|---|---|
+| alte Zuordnungen (Enum-Array) | 77 |
+| neue Zuordnungen (Tabelle) | 77 |
+| fehlen | 0 |
+| zu viel | 0 |
+
+`employees.qualifications` **bleibt stehen** und wird nicht mehr gelesen.
+Sie ist der Rückweg, falls beim Übernehmen etwas übersehen wurde;
+entfernt wird sie erst nach ausdrücklicher Freigabe.
+
+### 0051 · Abwesenheitsarten
+
+`absence_type` um `sonderurlaub`, `altersfreizeit` und `bildungsurlaub`
+erweitert. `SE` (Seminar) aus der Excel wird auf die vorhandene Art
+`schulung` abgebildet, statt ein zweites Konzept danebenzustellen.
+
+### 0052 · Betriebsregeln
+
+Vier Werte in die vorhandene `staffing_rules`, keine neue Tabelle:
+Ruhezeit 11 h, maximale Einsatzdauer 8 h, 8 Stunden je Arbeitstag,
+Zielwert der Gesundheitsrate 96 %. Gelesen über `company_rule_number()`,
+wobei eine Regel je Schicht die betriebsweite sticht.
+
+Die beiden Zeitwerte sind Vorgaben des Betriebs und erscheinen später in
+der Oberfläche als solche, nicht als gesetzliche Vorschrift.
+
+### 0053 · Schulferien
+
+Eigene Tabelle `school_holidays`, **nicht** in `holidays`: dort gilt
+`unique (company_id, date)`, der Ostermontag läge also im Streit mit den
+Osterferien. Die sechs NRW-Zeiträume 2026 stammen aus der Excel-Referenz
+(Zeilen 77–82) und sind nicht aus dem Gedächtnis ergänzt.
+
+Rein darstellend — Besetzungs- und Urlaubsberechnung fassen sie nicht an.
+
+### 0054 · Urlaubskonten korrigiert
+
+Zwei Änderungen an `leave_balances_view`:
+
+**Tagschichtkräfte verbrauchten keinen Urlaub.** Die Ansicht zählte einen
+Tag nur bei `effective_shift_id(...) is not null`; seit 0047 haben
+Tagschichtkräfte keine Schicht. Jetzt `is_planned_workday()` — dieselbe
+Funktion, mit der auch der Antrag rechnet.
+
+| Antrag 05.–09.10.2026, Tagschicht | vorher | nachher |
+|---|---|---|
+| `requested_days` laut Antrag | 5,0 | 5,0 |
+| `view.planned_days` | 0 | 5 |
+| `view.remaining_days` | 30,0 | 25,0 |
+
+**V-Tage verfallen nicht mehr** am 31.03. Die Kappung bleibt für Urlaub.
+Jonas Brandt: 27 Anspruch + 3 Übertrag − 5 genommen = 25 (vorher 22).
+
+Gegenprobe über den ganzen Bestand: **0 negative Urlaubskonten, 0
+negative V-Konten.**
+
+**Advisor:** keine neue Warnkategorie. `tsc --noEmit` und `next build`
+laufen sauber, 29 Seiten.
+
+### Aufgefallen
+
+In der Datenbank steht seit dem 15.09. eine Firma **Evonik AG** mit
+`refaitarek7@gmail.com` — Tareks eigene Testregistrierung. Alle Tests
+wurden ausdrücklich auf die Demo Chemie GmbH eingegrenzt, damit dort
+nichts angefasst wird.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Eintritts- und Austrittsfelder sowie die Qualifikationsverwaltung
+bekommen in Phase 5 ihre Oberfläche.
