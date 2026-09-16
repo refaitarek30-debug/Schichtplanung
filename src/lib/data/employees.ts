@@ -25,9 +25,13 @@ function demoRecords(): EmployeeRecord[] {
     active: person.active,
     hasAccount: true,
     qualifications: [],
+    qualificationLabels: [],
     rotationTeam: null,
     vDays: 27,
     shiftWorker: true,
+    entryDate: null,
+    exitDate: null,
+    isApprentice: false,
   }));
 }
 
@@ -40,11 +44,11 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
   if (!isSupabaseConfigured) return demoRecords();
 
   const supabase = createClient();
-  const [employeesResult, profilesResult] = await Promise.all([
+  const [employeesResult, profilesResult, qualsResult] = await Promise.all([
     supabase
       .from("employees")
       .select(
-        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, qualifications, rotation_team, v_days, shift_worker, shifts ( name )",
+        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, rotation_team, v_days, shift_worker, entry_date, exit_date, is_apprentice, shifts ( name )",
       )
       .order("last_name", { ascending: true })
       .returns<EmployeeWithShift[]>(),
@@ -52,6 +56,17 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       .from("profiles")
       .select("employee_id")
       .returns<{ employee_id: string | null }[]>(),
+    // Qualifikationen stehen seit Migration 0050 in eigenen Tabellen. Die
+    // Spalte employees.qualifications wird nicht mehr gelesen.
+    supabase
+      .from("employee_qualifications")
+      .select("employee_id, qualifications ( key, label )")
+      .returns<
+        {
+          employee_id: string;
+          qualifications: { key: string; label: string } | { key: string; label: string }[] | null;
+        }[]
+      >(),
   ]);
 
   if (employeesResult.error) {
@@ -62,6 +77,18 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
   const linkedEmployeeIds = new Set(
     (profilesResult.data ?? []).map((row) => row.employee_id).filter(Boolean),
   );
+
+  // Ebenso hier: scheitert der Abgleich, bleibt die Liste nutzbar und
+  // zeigt für alle keine Qualifikation an.
+  const qualsByEmployee = new Map<string, { keys: string[]; labels: string[] }>();
+  for (const row of qualsResult.data ?? []) {
+    const bezug = Array.isArray(row.qualifications) ? row.qualifications[0] : row.qualifications;
+    if (!bezug?.key) continue;
+    const bisher = qualsByEmployee.get(row.employee_id) ?? { keys: [], labels: [] };
+    bisher.keys.push(bezug.key);
+    bisher.labels.push(bezug.label);
+    qualsByEmployee.set(row.employee_id, bisher);
+  }
 
   return (employeesResult.data ?? []).map((row) => {
     const shift = Array.isArray(row.shifts) ? row.shifts[0] : row.shifts;
@@ -80,10 +107,14 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       vacationDays: row.vacation_days,
       active: row.active,
       hasAccount: linkedEmployeeIds.has(row.id),
-      qualifications: row.qualifications ?? [],
+      qualifications: qualsByEmployee.get(row.id)?.keys ?? [],
+      qualificationLabels: qualsByEmployee.get(row.id)?.labels ?? [],
       rotationTeam: row.rotation_team ?? null,
-      vDays: row.v_days ?? 27,
-    shiftWorker: row.shift_worker ?? true,
+      vDays: row.v_days ?? 0,
+      shiftWorker: row.shift_worker ?? true,
+      entryDate: row.entry_date ?? null,
+      exitDate: row.exit_date ?? null,
+      isApprentice: row.is_apprentice ?? false,
     };
   });
 }

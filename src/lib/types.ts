@@ -60,13 +60,26 @@ export interface EmployeeRecord {
   active: boolean;
   /** Hat diese Person bereits einen Login (Zeile in `profiles`)? */
   hasAccount: boolean;
+  /** Schlüssel der Qualifikationen – für Formularfelder. */
   qualifications: string[];
+  /**
+   * Die zugehörigen Bezeichnungen, in derselben Reihenfolge. Seit die
+   * Qualifikationen je Unternehmen frei angelegt werden, kennt das
+   * Programm sie nicht mehr im Voraus – geraten wird deshalb nichts.
+   */
+  qualificationLabels: string[];
   /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
   rotationTeam: string | null;
   /** Jahresanspruch V-Tage (Freischichten). */
   vDays: number;
   /** Arbeitet im Schichtsystem – Grundlage für die automatische Verteilung. */
   shiftWorker: boolean;
+  /** Erster Arbeitstag. Leer = keine untere Grenze. */
+  entryDate: string | null;
+  /** Letzter Arbeitstag, einschließlich. Leer = unbefristet. */
+  exitDate: string | null;
+  /** Auszubildende – eigener Block in der Ausbildungsplanung. */
+  isApprentice: boolean;
 }
 
 export interface ShiftAssignment {

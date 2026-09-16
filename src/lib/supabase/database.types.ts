@@ -105,10 +105,17 @@ export interface EmployeeRow {
   shift_id: string | null;
   vacation_days: number;
   active: boolean;
+  /**
+   * ABGELÖST durch die Tabelle `employee_qualifications` (Migration 0050).
+   * Die Spalte steht noch in der Datenbank, wird aber nicht mehr gelesen.
+   */
   qualifications?: string[];
   rotation_team?: string | null;
   v_days?: number;
   shift_worker?: boolean;
+  entry_date?: string | null;
+  exit_date?: string | null;
+  is_apprentice?: boolean;
   created_at: string;
   updated_at: string;
 }

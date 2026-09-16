@@ -10,7 +10,6 @@ import { formatDays } from "@/lib/dates";
 import { fetchTeamBalances } from "@/lib/data/leave";
 import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchEmployees } from "@/lib/data/employees";
-import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type { EmployeeRecord, LiveTeamBalance } from "@/lib/types";
 
 export default function MyShiftsPage() {
@@ -184,12 +183,12 @@ function LiveView({ role }: { role: string }) {
                       })()}
                       {person.qualifications.length > 0 ? (
                         <div className="mt-1.5 flex flex-wrap gap-1">
-                          {person.qualifications.map((q) => (
+                          {person.qualifications.map((q, i) => (
                             <span
                               key={q}
                               className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] text-ink-muted"
                             >
-                              {qualificationLabels[q as Qualification] ?? q}
+                              {person.qualificationLabels[i] ?? q}
                             </span>
                           ))}
                         </div>

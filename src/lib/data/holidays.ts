@@ -47,3 +47,38 @@ export async function fetchCompanyState(): Promise<string> {
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   return data?.state ?? "NW";
 }
+
+/** Ein Ferienzeitraum, wie ihn der Schichtplan markiert. */
+export interface SchoolHolidayRange {
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * Schulferien, die einen Zeitraum berühren.
+ *
+ * Bewusst getrennt von `fetchHolidays()`: Feiertage sind einzelne Tage
+ * und steuern die Urlaubsberechnung, Ferien sind Zeiträume und werden
+ * nur angezeigt. In `holidays` hätten sie ohnehin keinen Platz – dort
+ * gilt ein Eintrag je Tag, der Ostermontag läge also im Streit mit den
+ * Osterferien.
+ */
+export async function fetchSchoolHolidays(
+  from: string,
+  to: string,
+): Promise<SchoolHolidayRange[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("school_holidays_for_range", {
+    p_from: from,
+    p_to: to,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+
+  return ((data ?? []) as { name: string; start_date: string; end_date: string }[]).map((row) => ({
+    name: row.name,
+    startDate: row.start_date,
+    endDate: row.end_date,
+  }));
+}

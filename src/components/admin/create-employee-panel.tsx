@@ -115,6 +115,35 @@ export function CreateEmployeePanel({
           </label>
 
 
+
+          {/* Eintritt und Austritt begrenzen alles, was von dieser Person
+              abhängt: Einplanung, Besetzung, Urlaubsberechnung, Auswertung.
+              Leer heißt „keine Grenze". */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Eintritt" hint="Erster Arbeitstag. Leer = keine Grenze.">
+              <Input name="entry_date" type="date" />
+            </Field>
+            <Field label="Austritt" hint="Letzter Arbeitstag. Leer = unbefristet.">
+              <Input name="exit_date" type="date" />
+            </Field>
+          </div>
+
+          <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">
+            <input
+              type="checkbox"
+              name="is_apprentice"
+              defaultChecked={false}
+              className="mt-0.5 h-4 w-4 rounded border-line accent-brand-500"
+            />
+            <span className="text-[13px] leading-snug">
+              <span className="block font-medium text-ink">Auszubildende oder Auszubildender</span>
+              <span className="text-ink-muted">
+                Erscheint zusätzlich in der Ausbildungsplanung. Am Schichtplan und an der
+                Urlaubsberechnung ändert das nichts.
+              </span>
+            </span>
+          </label>
+
           <QualificationCheckboxes />
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}

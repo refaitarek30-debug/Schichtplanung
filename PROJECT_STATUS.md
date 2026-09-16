@@ -1351,3 +1351,89 @@ nichts angefasst wird.
 
 Nichts. Eintritts- und Austrittsfelder sowie die Qualifikationsverwaltung
 bekommen in Phase 5 ihre Oberfläche.
+
+---
+
+## Phase 5 · Oberfläche für die neuen Daten
+
+Eine Migration (0055) plus die Anwendungsseite. Die Auswertung und die
+Ersatzsuche folgen in den Phasen 6 und 7.
+
+### 0055 · Qualifikationen pflegen
+
+Drei Funktionen, damit die Anwendung nicht in zwei Tabellen gleichzeitig
+schreibt und dabei Berechtigungen selbst prüft:
+
+- `set_employee_qualifications(person, schlüssel[])` — setzt den
+  vollständigen Satz. Nimmt Schlüssel statt IDs entgegen, weil das
+  Formular keine UUIDs kennt, und verwirft unbekannte still.
+- `company_qualifications()` — der Katalog samt Anzahl der Mitarbeiter je
+  Funktion.
+- `save_qualification()` — anlegen und umbenennen. Der Schlüssel entsteht
+  aus der Bezeichnung (`Kranführer (Halle 3)` → `kranfuehrer_halle_3`)
+  und bleibt danach fest, weil die Zuordnungen daran hängen.
+
+`save_own_setup_profile()` schreibt ebenfalls auf die neuen Tabellen.
+Unverändert: nur die eigene Zeile, keine Mitarbeiter-ID von außen.
+
+### Anwendung umgestellt
+
+| Stelle | vorher | jetzt |
+|---|---|---|
+| Auswahlfeld im Formular | feste Liste im Programm | Katalog des Unternehmens |
+| `createEmployee` / `updateEmployee` | schrieb `employees.qualifications` | `set_employee_qualifications()` |
+| `fetchEmployees` | las die alte Spalte | liest `employee_qualifications` |
+| Einrichtungsassistent | las die alte Spalte | liest die neue Tabelle |
+
+Die Spalte `employees.qualifications` wird **nirgends mehr gelesen** —
+nachgeprüft mit einer Suche über `src/` und `app/`. Sie bleibt als
+Rückweg stehen, siehe 0050.
+
+Nebenbei: `EmployeeRecord` führt jetzt neben den Schlüsseln auch die
+Bezeichnungen. Vorher fiel die Anzeige bei einer selbst angelegten
+Qualifikation auf den Schlüssel zurück und zeigte `staplerschein` statt
+„Staplerschein". Geraten wird nichts — die Bezeichnung kommt aus
+derselben Abfrage.
+
+### Neue Felder im Mitarbeiterformular
+
+Eintritt, Austritt und ein Kennzeichen für Auszubildende, in beiden
+Formularen. Der Austritt vor dem Eintritt wird vor dem Speichern
+abgefangen — die Datenbank hat dafür eine Prüfbedingung, die aber nur
+eine rohe Meldung liefert.
+
+### Qualifikationskatalog
+
+Neue Karte unter `Verwaltung → Regeln`: anlegen, umbenennen,
+deaktivieren, mit Anzahl der Mitarbeiter je Funktion. **Deaktivieren
+statt löschen** — an einer Qualifikation hängen Zuordnungen und später
+Besetzungsvorgaben; eine deaktivierte verschwindet aus neuen Formularen,
+bestehende Zuordnungen bleiben nachvollziehbar.
+
+### Ferien im Schichtplan
+
+Der Tabellenkopf zeigt Ferientage mit dezentem Hintergrund, kleiner Marke
+und Tooltip („Sommerferien (Schulferien)"). Eine Urlaubssperre ist das
+stärkere Signal und sticht die Ferien — die sind nur ein Hinweis und
+dürfen den Plan nicht überfärben.
+
+### Geprüft
+
+Am Live-Bestand, in Transaktionen und zurückgerollt:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Katalog lesen | 5 Einträge |
+| Qualifikationen setzen, dabei ein unbekannter Schlüssel | nur die gültigen gespeichert |
+| Neue Qualifikation „Kranführer (Halle 3)" | Schlüssel `kranfuehrer_halle_3` |
+| Mitarbeiter mit Eintritt und Azubi-Kennzeichen | gespeichert, Qualifikationen korrekt |
+| Ferien im Zeitraum 01.07.–30.09.2026 | Sommerferien 20.07.–01.09. |
+
+`tsc --noEmit` und `next build` laufen sauber, 29 Seiten. Bestand nach
+allen Tests unverändert: 77 Zuordnungen, 0 gepflegte Eintrittsdaten.
+
+### Von Hand zu erledigen – Tarek
+
+Eintritts- und Austrittsdaten sind leer und werden von Hand gepflegt —
+solange sie leer sind, verhält sich alles wie bisher. Den
+Qualifikationskatalog findest du unter `Verwaltung → Regeln`.
