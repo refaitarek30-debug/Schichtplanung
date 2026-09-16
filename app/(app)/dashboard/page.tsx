@@ -22,6 +22,7 @@ import { fetchMySickDays } from "@/lib/data/absences";
 import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
+import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -278,6 +279,11 @@ export default function DashboardPage() {
           accent={sickDays > 0 ? "warn" : "ok"}
           icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
         />
+        {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
+            offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
+            selbst aus. */}
+        <LeadershipKpis />
+
         {hatVKonto ? (
           <KpiCard
             label="V-Tage gesamt"

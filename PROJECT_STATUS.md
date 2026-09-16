@@ -1658,3 +1658,83 @@ Kein Tag doppelt gezählt, keiner verloren. Gegen die Rohdaten:
 
 Den Zielwert der Gesundheitsrate (96 %) kannst du in `staffing_rules`
 ändern; die Auswertung liest ihn von dort.
+
+---
+
+## Phase 8 · Ausbildungsplanung und Besetzungsbedarf
+
+Eine Migration (0060) plus zwei Oberflächen. Damit schließt sich der
+Kreis aus Phase 6: die Ersatzsuche prüft seitdem gegen den Bedarf je
+Funktion — nur eingeben konnte man ihn bisher nicht.
+
+### 0060 · Bedarf je Funktion
+
+`set_shift_qualification_need(schicht, qualifikation, anzahl)` schreibt
+in die Tabelle aus 0050. **Eine 0 löscht die Zeile**, statt „null
+Personen erforderlich" zu speichern. Sonst bliebe ein Eintrag stehen, der
+nichts fordert, den man aber bei jeder Fehlersuche wieder prüfen müsste.
+
+`shift_qualification_matrix()` liefert das **vollständige Raster** Schicht
+× Qualifikation, auch die leeren Zellen. Die Oberfläche soll nicht raten
+müssen, welche Kombinationen es gibt; eine leere Zelle ist eine echte
+Aussage („hier gilt keine Anforderung"), kein fehlender Datensatz.
+
+### 0060 · Ausbildungsabschnitte
+
+Neue Tabelle `training_assignments` (Person, Zeitraum, Bereich,
+optionale Schicht, Notiz, Status) mit RLS: die Führung pflegt,
+Auszubildende sehen ihre eigenen Abschnitte.
+
+**Bewusst getrennt vom Schichtplan.** Ein Ausbildungsabschnitt ist ein
+Zeitraum in einem Bereich („Messwarte, März bis Mai"), keine
+Tageszuweisung. Ihn in `shift_assignments` zu schreiben hieße, die
+Rotation zu überschreiben und den Plan für alle anderen zu verfälschen.
+Wer während eines Abschnitts in einer Schicht mitläuft, bekommt sie
+hinterlegt — der Schichtplan selbst bleibt unberührt.
+
+`training_plan(von, bis)` zählt die Ausfalltage eines Abschnitts über
+`employees_absent_on()` — dieselbe Quelle wie Schichtplan und
+Auswertung. Sonst stünde ein Abschnitt als bespielt da, während die
+Person im Urlaub ist.
+
+### Keine zweite Personenverwaltung
+
+Die Auszubildenden kommen aus `fetchEmployees()`, gefiltert auf
+`is_apprentice` (Feld aus 0049). Wer hier auftaucht, ist unter Verwaltung
+so gekennzeichnet — es gibt keine eigene Azubi-Liste, die auseinander
+laufen könnte.
+
+### Oberfläche
+
+- **Verwaltung → Regeln**: Raster Funktion × Schicht mit je einem
+  Zahlenfeld. Speichert beim Verlassen des Feldes, nur wenn sich der Wert
+  geändert hat.
+- **Führung → Ausbildung**: Jahresleiste (ein Balken je Abschnitt über
+  zwölf Monate) plus Liste mit Anlegeformular.
+- **Dashboard**: zwei Kacheln nur für die Führung — Gesundheitsrate des
+  laufenden Monats (über dieselbe Funktion wie die Auswertung, kann also
+  nicht abweichen) und offene Ersatzanfragen. Die Karte blendet sich für
+  Mitarbeiter selbst aus; die Rate wird nachgeladen, die übrigen Kacheln
+  stehen sofort.
+
+### Geprüft
+
+Alles gegen Demo Chemie GmbH, alle schreibenden Tests in `do $$ … raise
+exception … $$` und danach der Bestand nachgezählt:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Bedarf auf 2 setzen | gespeichert: 2 ✓ |
+| Bedarf auf 0 setzen | Zeile gelöscht ✓ |
+| Matrix | 15 Zellen (3 Schichten × 5 Funktionen) ✓ |
+| Abschnitt anlegen | Messwarte, 01.03.–31.05.2026, Frühschicht, 0 Ausfalltage ✓ |
+| Ende vor Beginn | „Das Ende darf nicht vor dem Beginn liegen." ✓ |
+| Mitarbeiter setzt Bedarf | „Nur die Administration darf den Besetzungsbedarf festlegen." ✓ |
+
+Bestand danach unverändert: 52 Mitarbeiter, 2 Firmen, 77
+Qualifikationszuordnungen, 23 Abwesenheiten, 29 Urlaubsanträge, 0
+Ausbildungsabschnitte, 0 Bedarfszeilen, 0 Ersatzanfragen.
+
+`tsc --noEmit` und `next build` laufen sauber, 31 Seiten.
+`get_advisors(security)` meldet keine neue Warnkategorie — beide neuen
+Tabellen haben Policies.
