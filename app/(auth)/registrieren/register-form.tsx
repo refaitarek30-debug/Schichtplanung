@@ -6,8 +6,10 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { VersionTag } from "@/components/legal/prose";
 import { registerCompany } from "@/lib/auth/company-actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 
 const initialState: FormState = {};
 
@@ -82,6 +84,7 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
             className="font-medium text-brand-600 hover:underline"
           >
             Datenschutzerklärung
+            <VersionTag version={DATENSCHUTZ_VERSION} />
           </Link>{" "}
           gelesen und akzeptiere den Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.
         </span>

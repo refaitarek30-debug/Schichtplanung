@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { VersionTag } from "@/components/legal/prose";
+import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 
 /**
  * Impressum und Datenschutz müssen von jeder Seite aus erreichbar sein –
@@ -20,6 +22,7 @@ export function LegalFooter({ className }: { className?: string }) {
         </Link>
         <Link href="/datenschutz" className="hover:text-ink-muted hover:underline">
           Datenschutz
+          <VersionTag version={DATENSCHUTZ_VERSION} />
         </Link>
       </div>
     </footer>
