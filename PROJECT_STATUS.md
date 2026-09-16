@@ -1437,3 +1437,111 @@ allen Tests unverändert: 77 Zuordnungen, 0 gepflegte Eintrittsdaten.
 Eintritts- und Austrittsdaten sind leer und werden von Hand gepflegt —
 solange sie leer sind, verhält sich alles wie bisher. Den
 Qualifikationskatalog findest du unter `Verwaltung → Regeln`.
+
+---
+
+## Phase 6 · Ersatz- und Besetzungsprüfung
+
+Zwei Migrationen (0056, 0057) plus Oberfläche. Das ist die Kernfunktion
+des Auftrags.
+
+### Warum die vorhandene Prüfung nicht reichte
+
+`staffing_snapshot()` zählt Köpfe gegen `minimum_staff`. Eine Schicht kann
+damit vollzählig sein und trotzdem niemanden mit B-Schein haben. Ab jetzt
+wird zusätzlich je Funktion gerechnet.
+
+### 0056 · Lücken und Kandidaten
+
+- `shift_starts_at()` / `shift_ends_at()` — Zeitfenster einer Schicht.
+  Die Nachtschicht läuft über Mitternacht; endet sie rechnerisch vor ihrem
+  Beginn, liegt das Ende am Folgetag. Ohne das käme für 22:00–06:00 eine
+  negative Dauer heraus und jede Ruhezeitprüfung wäre wertlos.
+- `qualification_coverage(schicht, tag)` — benötigt, vorhanden, fehlt je
+  Funktion. Ohne Eintrag in `shift_qualification_needs` gibt es keine
+  Anforderung und damit auch keine Lücke.
+- `replacement_candidates(tag, schicht, funktion)` — die Suche.
+
+Alles setzt auf Vorhandenem auf: `employees_absent_on()` sagt, wer fehlt,
+`effective_shift_id()`, wer wann arbeitet, `is_employed_on()` begrenzt auf
+die Beschäftigungszeit, `company_rule_number()` liefert Ruhezeit und
+Höchstdauer aus `staffing_rules`.
+
+**Zwei Dinge bewusst so entschieden:**
+
+Wer nicht in Frage kommt, steht trotzdem in der Liste — mit Grund. Eine
+Liste, aus der naheliegende Kollegen kommentarlos fehlen, lässt die
+Schichtleitung raten, ob das System sie übersehen hat.
+
+Wer **bereits in dieser Schicht** steht, ist kein Ersatz, sondern der
+Grund, warum keiner gebraucht wird. Er steht oben in der Liste, aber
+nicht als Auswahl — sonst würde man ihn sich selbst zuweisen.
+
+### 0057 · Anfragen mit Antwortweg
+
+`replacement_requests` plus drei Funktionen. **Eine Anfrage plant
+niemanden ein** — erst `confirm_replacement()` nach der Zusage setzt die
+Besetzung, und zwar über `plan_set_shift()`, das laufende Urlaubsanträge
+splittet und Abwesenheiten räumt. Davon wird nichts nachgebaut.
+
+Benachrichtigt wird über die vorhandene `notifications`. Das Beantworten
+läuft über eine Funktion statt über eine Schreibpolicy — sonst könnte
+jemand den Status auf beliebige Werte setzen.
+
+### Oberfläche
+
+| Wo | Was |
+|---|---|
+| `Besetzung` | Karte „Funktionen und Ersatz" mit Lücken je Schicht und Tag |
+| Dialog | Geeignete Kandidaten, darunter die Abgelehnten mit Grund |
+| `Dashboard` | Karte „Wirst du einspringen?" mit Annehmen/Ablehnen |
+
+### Geprüft — alle zehn Tests des Auftrags
+
+Am Live-Bestand der Demo-Firma, in Transaktionen und zurückgerollt.
+Frühschicht am 07.10.2026, Funktion B-Schein, fünf Träger im Betrieb:
+
+| Test | Ergebnis |
+|---|---|
+| 1 · Mitarbeiter krank | Besetzung wird neu gerechnet |
+| 2 · einer von zwei B-Schein-Trägern krank | 1 vorhanden, **keine Lücke → kein Ersatz nötig** |
+| 3 · beide krank | 0 vorhanden, Lücke 1 → Ersatzsuche |
+| 4 · Ruhezeit | Andreas Vogt: **0,0 statt 11 Stunden** (kommt aus der Nachtschicht) |
+| 5 · Überschneidung | „Bereits in einer anderen Schicht eingeplant" |
+| 6 · Urlaub | „Bereits abwesend" |
+| 7 · vor Eintritt | „An diesem Tag nicht im Betrieb" |
+| 8 · nach Austritt | in Phase 4 bewiesen: Besetzung 12 → 11 |
+| 9 · Jahreswechsel | zurückgestellt |
+| 10 · Gesundheitsrate | Phase 7 |
+
+Ablauf Ende zu Ende: Anfrage an eine ungeeignete Person wird mit dem
+genauen Grund abgewiesen („Ruhezeit nicht ausreichend: 0.0 statt 11
+Stunden"), Anfrage an eine geeignete erzeugt die Mitteilung, Zusage setzt
+den Status, Bestätigung plant tatsächlich ein.
+
+**Rechte geprüft.** Als normaler Mitarbeiter:
+
+| Versuch | Antwort |
+|---|---|
+| Ersatzsuche aufrufen | „Nur Schichtleitung oder Administration dürfen das." |
+| Ersatz anfragen | „Nur Schichtleitung oder Administration dürfen Ersatz anfragen." |
+| Fremde Anfrage beantworten | „Diese Anfrage richtet sich an jemand anderen." |
+
+### Dabei gefunden
+
+Beim Schreiben von `fetchMyOpenRequests()` hatte ich den Filter auf die
+eigene Person weggelassen mit der Begründung, RLS erledige das. Falsch:
+die Policy lässt die **Führung alle** Anfragen lesen, damit sie den Stand
+verfolgen kann. Eine Schichtleiterin hätte fremde Anfragen zum
+Beantworten angeboten bekommen — das Beantworten selbst weist die
+Datenbank ab, aber die Liste wäre schon falsch gewesen. Filter ergänzt.
+
+**Advisor:** keine neue Warnkategorie. `tsc --noEmit` und `next build`
+laufen sauber, 29 Seiten.
+
+### Von Hand zu erledigen – Tarek
+
+Damit die Prüfung greift, muss je Schicht hinterlegt sein, wie viele
+einer Funktion gebraucht werden (`shift_qualification_needs`). Solange
+nichts eingetragen ist, prüft die Anwendung wie bisher nur die Kopfzahl
+und meldet das auch so. Die Oberfläche dafür kommt in Phase 7.

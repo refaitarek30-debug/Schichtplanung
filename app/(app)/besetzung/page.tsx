@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { CoverageStrip } from "@/components/dashboard/coverage-strip";
 import { LiveCoverageStrip } from "@/components/dashboard/live-coverage-strip";
+import { CoverageGaps } from "@/components/staffing/coverage-gaps";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
@@ -59,6 +60,10 @@ function LiveStaffingSection() {
         loading={range === null}
       />
 
+      {/* Der Streifen oben zählt Köpfe. Diese Karte prüft, ob jede
+          benötigte Funktion tatsächlich besetzt ist – eine Schicht kann
+          vollzählig sein und trotzdem niemanden mit B-Schein haben. */}
+      <CoverageGaps />
     </>
   );
 }

@@ -21,6 +21,7 @@ import {
 import { fetchMySickDays } from "@/lib/data/absences";
 import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
+import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -218,6 +219,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <SetupBanner />
+
+      {/* Ganz oben, weil eine Ersatzanfrage schnell beantwortet werden
+          muss. Die Karte verschwindet, wenn nichts offen ist. */}
+      <MyReplacementRequests />
 
       <header>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
