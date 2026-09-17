@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { company as demoCompany, demoAccounts, employees, getShift } from "@/lib/demo-data";
+import { darfRolleUmschalten } from "@/lib/supabase/config";
 import type {
   Company,
   Employee,
@@ -71,7 +72,10 @@ export function SessionProvider({
     return {
       mode,
       role,
-      setRole: mode === "demo" ? setDemoRole : () => {},
+      // In Produktion nie umschaltbar. Die Berechtigung haengt an
+      // profiles.role in der Datenbank; der Umschalter aendert nur die
+      // Anzeige – aber er soll dort gar nicht erst auftauchen.
+      setRole: mode === "demo" && darfRolleUmschalten ? setDemoRole : () => {},
       profile: mode === "live" && profile ? profile : demoProfile(persona),
       company: mode === "live" && company ? company : demoCompany,
       user: persona,
