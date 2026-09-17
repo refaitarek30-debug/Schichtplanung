@@ -1738,3 +1738,61 @@ Ausbildungsabschnitte, 0 Bedarfszeilen, 0 Ersatzanfragen.
 `tsc --noEmit` und `next build` laufen sauber, 31 Seiten.
 `get_advisors(security)` meldet keine neue Warnkategorie — beide neuen
 Tabellen haben Policies.
+
+---
+
+## Unternehmen „Produktion PP" aus der Excel
+
+Angelegt am 17.09.2026 aus `2026-Schichtplan-PP-Sep.xlsm`.
+Firmen-ID `e2e4bff9-5475-4f6c-882c-3b9979b12d96`. **Nur Daten, keine
+Migration** – es ist der Bestand einer Firma, kein Schema.
+
+### Was in der Datei stand
+
+51 Personen: vier Schichten à 11, sechs Auszubildende mit
+Schichtzuordnung, eine Tagschicht (Silvan Westenhöfer). Ausgefüllt war
+**nur die C-Schicht** – A, B und D enthalten bloß Summenzeilen. Das ist
+die Gruppe des Auftraggebers.
+
+### Das Rotationsmuster – hergeleitet, nicht geraten
+
+Aus den Tagescodes der C-Schicht ergibt sich je Tag die vorherrschende
+Schicht. Die Folge wiederholt sich **exakt alle 28 Tage** über das ganze
+Jahr:
+
+```
+S S N N N - - F F S S S N N - - F F F S S N N - - - F F
+```
+
+Als Schrittliste: S2 N3 –2 F2 S3 N2 –2 F3 S2 N2 –3 F2 (Summe 28).
+
+`employees_sync_rotation_offset` legt den Versatz fest auf A=0, B=7,
+C=14, D=21 Tage. Frei wählbar ist daher nur der **Ankertag**, und der
+folgt aus der Bedingung, dass Gruppe C am 01.01.2026 Spätschicht hat:
+**17.12.2025**.
+
+A, B und D stehen nicht in der Datei. Ihre Pläne folgen damit zwingend
+aus dem Modell. Geprüft: an **allen 28 Tagen** des Zyklus ist genau eine
+Gruppe auf Früh, eine auf Spät, eine auf Nacht und eine frei – ein
+lückenloses Vierschichtsystem.
+
+**Gegen die Datei nachgerechnet: 366 von 366 Tagen stimmen überein, null
+Abweichungen.**
+
+### Bewusste Entscheidungen
+
+| Punkt | Entscheidung |
+|---|---|
+| Rest U / Rest V | **Nicht übernommen.** Die Datei zeigt Restbestände, keinen Anspruch. Um „Rest 0" nachzubauen, müsste man Urlaubsanträge erfinden. |
+| Jahresanspruch | 33 Urlaubstage, 27 V-Tage – der Wert, der bei allen unangetasteten Zeilen steht. |
+| Auszubildende, Tagschicht | 0 / 0. Die Datei nennt für sie keine Werte. |
+| Schichtzeiten | 06–14, 14–22, 22–06 Uhr. Steht nicht in der Datei, ist eine Annahme. |
+| `(Ab 06/26)`, `(Bis 03/26)` | Als Eintritt 01.06.2026 (Florimon Gashí) und Austritt 31.03.2026 (Ingo Diehr) übernommen, Zusatz aus dem Namen entfernt. |
+| Mindestbesetzung | Leer gelassen – steht nicht in der Datei. |
+
+### Offen
+
+Es gibt **keinen Login**. Ein Konto hängt an genau einer Firma, die
+bestehenden Adressen sind belegt. Weg: unter `/registrieren` mit einer
+freien Adresse anmelden, dann die 51 Personen in diese Firma umhängen
+und die leere Hülle entfernen.
