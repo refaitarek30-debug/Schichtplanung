@@ -17,7 +17,6 @@ import { DataError, fetchEmployees, setEmployeeActive } from "@/lib/data/employe
 import { inviteEmployee } from "@/lib/auth/actions";
 import { deleteEmployee } from "@/lib/auth/employee-actions";
 import { roleLabels } from "@/lib/nav";
-import { qualificationLabels, type Qualification } from "@/lib/qualifications";
 import type { EmployeeRecord } from "@/lib/types";
 import { InviteLinkCard } from "@/components/employees/invite-link-card";
 import type { FormState } from "@/lib/auth/form-state";
@@ -268,12 +267,12 @@ export function EmployeesView() {
                     </p>
                     {row.qualifications.length > 0 ? (
                       <p className="mt-1 flex flex-wrap gap-1">
-                        {row.qualifications.map((q) => (
+                        {row.qualifications.map((q, i) => (
                           <span
                             key={q}
                             className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] text-ink-muted"
                           >
-                            {qualificationLabels[q as Qualification] ?? q}
+                            {row.qualificationLabels[i] ?? q}
                           </span>
                         ))}
                       </p>

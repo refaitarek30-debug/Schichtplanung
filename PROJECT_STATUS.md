@@ -1240,3 +1240,501 @@ das ist die Bauweise dieser Anwendung, nicht ein neuer Befund.
 
 Nichts. Beim nächsten Testdurchlauf einer Registrierung führt der
 Assistent von selbst durch die vier Schritte.
+
+---
+
+## Phase 4 · Grundlage für Auswertung, Ersatzsuche und Ausbildung
+
+Sechs Migrationen (0049–0054), alle auf dem Live-Projekt angewandt. Keine
+Oberfläche berührt — das ist Phase 5.
+
+### 0049 · Eintritt und Austritt
+
+`employees` bekommt `entry_date`, `exit_date` und `is_apprentice`. Die
+Prüfung steht **nicht** verstreut, sondern in einem Helfer
+`is_employed_on()`, der an genau zwei Stellen greift:
+`is_planned_workday()` und `effective_shift_id()`. Schichtplan, Besetzung
+und Urlaubsberechnung lesen bereits durch diese beiden und erben die
+Regel dadurch.
+
+Leere Felder heißen „keine Grenze" — der bestehende Datenbestand verhält
+sich unverändert.
+
+Nachgemessen an der Demo-Firma, in Transaktionen und zurückgerollt:
+
+| Prüfung | vorher | nachher |
+|---|---|---|
+| Arbeitstage Mai–Juli bei Eintritt 01.06./Austritt 30.06. | 70 | 23 |
+| Urlaub 04.–08.05. (vor Eintritt) | 4,0 Tage | 0,0 Tage |
+| Besetzung 15.07. nach Austritt 30.06. | 12 geplant | 11 geplant |
+| Zeilen im Schichtplan 01.–14.07. | 50 Personen | 49 Personen |
+
+Test 7 (vor Eintritt) und Test 8 (nach Austritt) liefern beide `false`,
+ein Tag innerhalb `true`.
+
+### 0050 · Qualifikationen als Daten
+
+Drei Tabellen: `qualifications` (je Unternehmen frei anlegbar),
+`employee_qualifications`, `shift_qualification_needs`. RLS nach dem
+Muster der übrigen Tabellen.
+
+Der Bestand wurde übernommen und Zeile für Zeile geprüft:
+
+| | |
+|---|---|
+| alte Zuordnungen (Enum-Array) | 77 |
+| neue Zuordnungen (Tabelle) | 77 |
+| fehlen | 0 |
+| zu viel | 0 |
+
+`employees.qualifications` **bleibt stehen** und wird nicht mehr gelesen.
+Sie ist der Rückweg, falls beim Übernehmen etwas übersehen wurde;
+entfernt wird sie erst nach ausdrücklicher Freigabe.
+
+### 0051 · Abwesenheitsarten
+
+`absence_type` um `sonderurlaub`, `altersfreizeit` und `bildungsurlaub`
+erweitert. `SE` (Seminar) aus der Excel wird auf die vorhandene Art
+`schulung` abgebildet, statt ein zweites Konzept danebenzustellen.
+
+### 0052 · Betriebsregeln
+
+Vier Werte in die vorhandene `staffing_rules`, keine neue Tabelle:
+Ruhezeit 11 h, maximale Einsatzdauer 8 h, 8 Stunden je Arbeitstag,
+Zielwert der Gesundheitsrate 96 %. Gelesen über `company_rule_number()`,
+wobei eine Regel je Schicht die betriebsweite sticht.
+
+Die beiden Zeitwerte sind Vorgaben des Betriebs und erscheinen später in
+der Oberfläche als solche, nicht als gesetzliche Vorschrift.
+
+### 0053 · Schulferien
+
+Eigene Tabelle `school_holidays`, **nicht** in `holidays`: dort gilt
+`unique (company_id, date)`, der Ostermontag läge also im Streit mit den
+Osterferien. Die sechs NRW-Zeiträume 2026 stammen aus der Excel-Referenz
+(Zeilen 77–82) und sind nicht aus dem Gedächtnis ergänzt.
+
+Rein darstellend — Besetzungs- und Urlaubsberechnung fassen sie nicht an.
+
+### 0054 · Urlaubskonten korrigiert
+
+Zwei Änderungen an `leave_balances_view`:
+
+**Tagschichtkräfte verbrauchten keinen Urlaub.** Die Ansicht zählte einen
+Tag nur bei `effective_shift_id(...) is not null`; seit 0047 haben
+Tagschichtkräfte keine Schicht. Jetzt `is_planned_workday()` — dieselbe
+Funktion, mit der auch der Antrag rechnet.
+
+| Antrag 05.–09.10.2026, Tagschicht | vorher | nachher |
+|---|---|---|
+| `requested_days` laut Antrag | 5,0 | 5,0 |
+| `view.planned_days` | 0 | 5 |
+| `view.remaining_days` | 30,0 | 25,0 |
+
+**V-Tage verfallen nicht mehr** am 31.03. Die Kappung bleibt für Urlaub.
+Jonas Brandt: 27 Anspruch + 3 Übertrag − 5 genommen = 25 (vorher 22).
+
+Gegenprobe über den ganzen Bestand: **0 negative Urlaubskonten, 0
+negative V-Konten.**
+
+**Advisor:** keine neue Warnkategorie. `tsc --noEmit` und `next build`
+laufen sauber, 29 Seiten.
+
+### Aufgefallen
+
+In der Datenbank steht seit dem 15.09. eine Firma **Evonik AG** mit
+`refaitarek7@gmail.com` — Tareks eigene Testregistrierung. Alle Tests
+wurden ausdrücklich auf die Demo Chemie GmbH eingegrenzt, damit dort
+nichts angefasst wird.
+
+### Von Hand zu erledigen – Tarek
+
+Nichts. Eintritts- und Austrittsfelder sowie die Qualifikationsverwaltung
+bekommen in Phase 5 ihre Oberfläche.
+
+---
+
+## Phase 5 · Oberfläche für die neuen Daten
+
+Eine Migration (0055) plus die Anwendungsseite. Die Auswertung und die
+Ersatzsuche folgen in den Phasen 6 und 7.
+
+### 0055 · Qualifikationen pflegen
+
+Drei Funktionen, damit die Anwendung nicht in zwei Tabellen gleichzeitig
+schreibt und dabei Berechtigungen selbst prüft:
+
+- `set_employee_qualifications(person, schlüssel[])` — setzt den
+  vollständigen Satz. Nimmt Schlüssel statt IDs entgegen, weil das
+  Formular keine UUIDs kennt, und verwirft unbekannte still.
+- `company_qualifications()` — der Katalog samt Anzahl der Mitarbeiter je
+  Funktion.
+- `save_qualification()` — anlegen und umbenennen. Der Schlüssel entsteht
+  aus der Bezeichnung (`Kranführer (Halle 3)` → `kranfuehrer_halle_3`)
+  und bleibt danach fest, weil die Zuordnungen daran hängen.
+
+`save_own_setup_profile()` schreibt ebenfalls auf die neuen Tabellen.
+Unverändert: nur die eigene Zeile, keine Mitarbeiter-ID von außen.
+
+### Anwendung umgestellt
+
+| Stelle | vorher | jetzt |
+|---|---|---|
+| Auswahlfeld im Formular | feste Liste im Programm | Katalog des Unternehmens |
+| `createEmployee` / `updateEmployee` | schrieb `employees.qualifications` | `set_employee_qualifications()` |
+| `fetchEmployees` | las die alte Spalte | liest `employee_qualifications` |
+| Einrichtungsassistent | las die alte Spalte | liest die neue Tabelle |
+
+Die Spalte `employees.qualifications` wird **nirgends mehr gelesen** —
+nachgeprüft mit einer Suche über `src/` und `app/`. Sie bleibt als
+Rückweg stehen, siehe 0050.
+
+Nebenbei: `EmployeeRecord` führt jetzt neben den Schlüsseln auch die
+Bezeichnungen. Vorher fiel die Anzeige bei einer selbst angelegten
+Qualifikation auf den Schlüssel zurück und zeigte `staplerschein` statt
+„Staplerschein". Geraten wird nichts — die Bezeichnung kommt aus
+derselben Abfrage.
+
+### Neue Felder im Mitarbeiterformular
+
+Eintritt, Austritt und ein Kennzeichen für Auszubildende, in beiden
+Formularen. Der Austritt vor dem Eintritt wird vor dem Speichern
+abgefangen — die Datenbank hat dafür eine Prüfbedingung, die aber nur
+eine rohe Meldung liefert.
+
+### Qualifikationskatalog
+
+Neue Karte unter `Verwaltung → Regeln`: anlegen, umbenennen,
+deaktivieren, mit Anzahl der Mitarbeiter je Funktion. **Deaktivieren
+statt löschen** — an einer Qualifikation hängen Zuordnungen und später
+Besetzungsvorgaben; eine deaktivierte verschwindet aus neuen Formularen,
+bestehende Zuordnungen bleiben nachvollziehbar.
+
+### Ferien im Schichtplan
+
+Der Tabellenkopf zeigt Ferientage mit dezentem Hintergrund, kleiner Marke
+und Tooltip („Sommerferien (Schulferien)"). Eine Urlaubssperre ist das
+stärkere Signal und sticht die Ferien — die sind nur ein Hinweis und
+dürfen den Plan nicht überfärben.
+
+### Geprüft
+
+Am Live-Bestand, in Transaktionen und zurückgerollt:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Katalog lesen | 5 Einträge |
+| Qualifikationen setzen, dabei ein unbekannter Schlüssel | nur die gültigen gespeichert |
+| Neue Qualifikation „Kranführer (Halle 3)" | Schlüssel `kranfuehrer_halle_3` |
+| Mitarbeiter mit Eintritt und Azubi-Kennzeichen | gespeichert, Qualifikationen korrekt |
+| Ferien im Zeitraum 01.07.–30.09.2026 | Sommerferien 20.07.–01.09. |
+
+`tsc --noEmit` und `next build` laufen sauber, 29 Seiten. Bestand nach
+allen Tests unverändert: 77 Zuordnungen, 0 gepflegte Eintrittsdaten.
+
+### Von Hand zu erledigen – Tarek
+
+Eintritts- und Austrittsdaten sind leer und werden von Hand gepflegt —
+solange sie leer sind, verhält sich alles wie bisher. Den
+Qualifikationskatalog findest du unter `Verwaltung → Regeln`.
+
+---
+
+## Phase 6 · Ersatz- und Besetzungsprüfung
+
+Zwei Migrationen (0056, 0057) plus Oberfläche. Das ist die Kernfunktion
+des Auftrags.
+
+### Warum die vorhandene Prüfung nicht reichte
+
+`staffing_snapshot()` zählt Köpfe gegen `minimum_staff`. Eine Schicht kann
+damit vollzählig sein und trotzdem niemanden mit B-Schein haben. Ab jetzt
+wird zusätzlich je Funktion gerechnet.
+
+### 0056 · Lücken und Kandidaten
+
+- `shift_starts_at()` / `shift_ends_at()` — Zeitfenster einer Schicht.
+  Die Nachtschicht läuft über Mitternacht; endet sie rechnerisch vor ihrem
+  Beginn, liegt das Ende am Folgetag. Ohne das käme für 22:00–06:00 eine
+  negative Dauer heraus und jede Ruhezeitprüfung wäre wertlos.
+- `qualification_coverage(schicht, tag)` — benötigt, vorhanden, fehlt je
+  Funktion. Ohne Eintrag in `shift_qualification_needs` gibt es keine
+  Anforderung und damit auch keine Lücke.
+- `replacement_candidates(tag, schicht, funktion)` — die Suche.
+
+Alles setzt auf Vorhandenem auf: `employees_absent_on()` sagt, wer fehlt,
+`effective_shift_id()`, wer wann arbeitet, `is_employed_on()` begrenzt auf
+die Beschäftigungszeit, `company_rule_number()` liefert Ruhezeit und
+Höchstdauer aus `staffing_rules`.
+
+**Zwei Dinge bewusst so entschieden:**
+
+Wer nicht in Frage kommt, steht trotzdem in der Liste — mit Grund. Eine
+Liste, aus der naheliegende Kollegen kommentarlos fehlen, lässt die
+Schichtleitung raten, ob das System sie übersehen hat.
+
+Wer **bereits in dieser Schicht** steht, ist kein Ersatz, sondern der
+Grund, warum keiner gebraucht wird. Er steht oben in der Liste, aber
+nicht als Auswahl — sonst würde man ihn sich selbst zuweisen.
+
+### 0057 · Anfragen mit Antwortweg
+
+`replacement_requests` plus drei Funktionen. **Eine Anfrage plant
+niemanden ein** — erst `confirm_replacement()` nach der Zusage setzt die
+Besetzung, und zwar über `plan_set_shift()`, das laufende Urlaubsanträge
+splittet und Abwesenheiten räumt. Davon wird nichts nachgebaut.
+
+Benachrichtigt wird über die vorhandene `notifications`. Das Beantworten
+läuft über eine Funktion statt über eine Schreibpolicy — sonst könnte
+jemand den Status auf beliebige Werte setzen.
+
+### Oberfläche
+
+| Wo | Was |
+|---|---|
+| `Besetzung` | Karte „Funktionen und Ersatz" mit Lücken je Schicht und Tag |
+| Dialog | Geeignete Kandidaten, darunter die Abgelehnten mit Grund |
+| `Dashboard` | Karte „Wirst du einspringen?" mit Annehmen/Ablehnen |
+
+### Geprüft — alle zehn Tests des Auftrags
+
+Am Live-Bestand der Demo-Firma, in Transaktionen und zurückgerollt.
+Frühschicht am 07.10.2026, Funktion B-Schein, fünf Träger im Betrieb:
+
+| Test | Ergebnis |
+|---|---|
+| 1 · Mitarbeiter krank | Besetzung wird neu gerechnet |
+| 2 · einer von zwei B-Schein-Trägern krank | 1 vorhanden, **keine Lücke → kein Ersatz nötig** |
+| 3 · beide krank | 0 vorhanden, Lücke 1 → Ersatzsuche |
+| 4 · Ruhezeit | Andreas Vogt: **0,0 statt 11 Stunden** (kommt aus der Nachtschicht) |
+| 5 · Überschneidung | „Bereits in einer anderen Schicht eingeplant" |
+| 6 · Urlaub | „Bereits abwesend" |
+| 7 · vor Eintritt | „An diesem Tag nicht im Betrieb" |
+| 8 · nach Austritt | in Phase 4 bewiesen: Besetzung 12 → 11 |
+| 9 · Jahreswechsel | zurückgestellt |
+| 10 · Gesundheitsrate | Phase 7 |
+
+Ablauf Ende zu Ende: Anfrage an eine ungeeignete Person wird mit dem
+genauen Grund abgewiesen („Ruhezeit nicht ausreichend: 0.0 statt 11
+Stunden"), Anfrage an eine geeignete erzeugt die Mitteilung, Zusage setzt
+den Status, Bestätigung plant tatsächlich ein.
+
+**Rechte geprüft.** Als normaler Mitarbeiter:
+
+| Versuch | Antwort |
+|---|---|
+| Ersatzsuche aufrufen | „Nur Schichtleitung oder Administration dürfen das." |
+| Ersatz anfragen | „Nur Schichtleitung oder Administration dürfen Ersatz anfragen." |
+| Fremde Anfrage beantworten | „Diese Anfrage richtet sich an jemand anderen." |
+
+### Dabei gefunden
+
+Beim Schreiben von `fetchMyOpenRequests()` hatte ich den Filter auf die
+eigene Person weggelassen mit der Begründung, RLS erledige das. Falsch:
+die Policy lässt die **Führung alle** Anfragen lesen, damit sie den Stand
+verfolgen kann. Eine Schichtleiterin hätte fremde Anfragen zum
+Beantworten angeboten bekommen — das Beantworten selbst weist die
+Datenbank ab, aber die Liste wäre schon falsch gewesen. Filter ergänzt.
+
+**Advisor:** keine neue Warnkategorie. `tsc --noEmit` und `next build`
+laufen sauber, 29 Seiten.
+
+### Von Hand zu erledigen – Tarek
+
+Damit die Prüfung greift, muss je Schicht hinterlegt sein, wie viele
+einer Funktion gebraucht werden (`shift_qualification_needs`). Solange
+nichts eingetragen ist, prüft die Anwendung wie bisher nur die Kopfzahl
+und meldet das auch so. Die Oberfläche dafür kommt in Phase 7.
+
+---
+
+## Phase 7 · Auswertung und Gesundheitsrate
+
+Zwei Migrationen (0058, 0059) plus neue Seite `Führung → Auswertung`.
+
+### 0058 · Eine Funktion, alle Ebenen
+
+`absence_report(jahr, monat)` liefert die feinste Ebene: **eine Zeile je
+Person und Monat**. Gesamtbetrieb, Schicht und Jahr entstehen daraus durch
+Summieren. Eine eigene Abfrage je Ebene wäre eine zweite Wahrheit für
+dieselbe Zahl.
+
+Grundlage ist `is_planned_workday()` — dieselbe Funktion, mit der auch
+Urlaub gerechnet wird. Damit kann die Auswertung nicht von dem abweichen,
+was die Mitarbeiter auf ihrem Konto sehen. Eintritt und Austritt sind
+seit 0049 darin enthalten.
+
+**Jeder Arbeitstag fällt in genau eine Kategorie**, sonst addieren sich
+die Zahlen nicht auf die Soll-Tage. Erfasste Abwesenheit sticht
+genehmigten Urlaub: eine Krankmeldung während des Urlaubs zählt als
+Kranktag, nicht doppelt.
+
+### Die Formel
+
+```
+Gesundheitsrate = Anwesenheit ÷ (Anwesenheit + Ausfall) × 100
+```
+
+- **Anwesenheit** = Soll − alle Abwesenheiten, plus Seminar (die Person
+  arbeitet, nur woanders — so rechnet es auch die Excel)
+- **Ausfall** = Krank + Sonstiges (der ungeplante Teil)
+- Urlaub, V-Tage, Sonderurlaub, Altersfreizeit und Bildungsurlaub sind
+  **geplante** Abwesenheiten und gehen in keine der beiden Größen ein
+
+Anders als die Excel-Vorlage, die Kranktage nicht von der Anwesenheit
+abzieht und sie dadurch in Zähler und Nenner doppelt zählt. Da die alten
+Vergleichswerte nicht erhalten bleiben mussten, gilt die saubere Formel.
+
+### 0059 · Tempo
+
+Die Jahresauswertung prüft 50 Mitarbeiter × 365 Tage. Gemessen und
+verbessert, statt geraten:
+
+| | vorher | nachher |
+|---|---|---|
+| `is_planned_workday`, 365 Tage | 54 ms | **38 ms** |
+| Auswertung eines Monats | 0,33 s | **0,23 s** |
+| Auswertung eines Jahres | 3,31 s | **2,68 s** |
+
+Der erste Versuch — die Personalzeile nicht dreimal je Tag zu laden —
+brachte nichts; gemessen lag es woanders. Der eigentliche Posten war
+`rotation_shift_for()` mit drei Abfragen je Aufruf, obwohl das Muster für
+alle gleich ist. Zwei davon fallen weg: die Zykluslänge wird aus den
+bereits geladenen Schritten gerechnet, und eine Fassung nimmt die
+Personalzeile entgegen.
+
+**Die Regel wurde dabei nicht kopiert.** `is_employed_on()` und
+`rotation_shift_for()` haben jetzt je eine Fassung für eine bereits
+geladene Zeile; die bisherige Fassung mit der ID ruft sie auf. Es bleibt
+bei einer Definition.
+
+Die restlichen 2,7 Sekunden sind Aufruf-Overhead je Tag — der Preis
+dafür, dass die Auswertung dieselbe Funktion benutzt wie die
+Urlaubsberechnung. Die Monatsansicht, der Normalfall, liegt bei 0,23 s.
+
+### Oberfläche
+
+Neue Seite mit Filtern für Jahr, Zeitraum (Monat oder ganzes Jahr) und
+Ebene (Gesamt / Schicht / Mitarbeiter). Vier Kennzahlen, eine Tabelle mit
+allen Abwesenheitsarten, und im Jahresmodus der Monatsverlauf.
+
+**Zur Darstellung des Verlaufs:** gezeigt wird die *Abweichung vom
+Zielwert*, nicht die Rate selbst. Bei Werten zwischen 93 % und 98 % sähen
+Balken von 0 bis 100 alle gleich lang aus, und eine gestauchte Achse ab
+90 % würde jeden Unterschied künstlich aufblasen. Der Zielwert ist der
+natürliche Nullpunkt. Farbe trägt hier Zustand, nicht Identität — jeder
+Balken ist zusätzlich beschriftet, Farbe ist also nie das einzige
+Merkmal.
+
+Die Raten werden auf jeder Ebene aus den **summierten Tagen neu
+gerechnet**, nicht aus Einzelraten gemittelt. Ein Mittelwert über
+Personen würde jemanden mit fünf Arbeitstagen genauso stark gewichten wie
+jemanden mit zwanzig.
+
+### Geprüft — Test 10
+
+September 2026, Demo Chemie GmbH:
+
+| | |
+|---|---|
+| Soll-Arbeitstage | 1124 |
+| Anwesend | 1062 (+ 4 Seminar) |
+| Krank | 13 |
+| Urlaub / V-Tage | 36 / 9 |
+| **Summe aller Kategorien** | **1124 = Soll** |
+
+Kein Tag doppelt gezählt, keiner verloren. Gegen die Rohdaten:
+
+| | |
+|---|---|
+| Kranktage direkt aus `absences` | 13 |
+| Kranktage laut Auswertung | 13 ✓ |
+| Rate aus der Auswertung | 98,8 % |
+| Rate von Hand nachgerechnet | 98,8 % ✓ |
+
+`tsc --noEmit` und `next build` laufen sauber, 30 Seiten.
+
+### Von Hand zu erledigen – Tarek
+
+Den Zielwert der Gesundheitsrate (96 %) kannst du in `staffing_rules`
+ändern; die Auswertung liest ihn von dort.
+
+---
+
+## Phase 8 · Ausbildungsplanung und Besetzungsbedarf
+
+Eine Migration (0060) plus zwei Oberflächen. Damit schließt sich der
+Kreis aus Phase 6: die Ersatzsuche prüft seitdem gegen den Bedarf je
+Funktion — nur eingeben konnte man ihn bisher nicht.
+
+### 0060 · Bedarf je Funktion
+
+`set_shift_qualification_need(schicht, qualifikation, anzahl)` schreibt
+in die Tabelle aus 0050. **Eine 0 löscht die Zeile**, statt „null
+Personen erforderlich" zu speichern. Sonst bliebe ein Eintrag stehen, der
+nichts fordert, den man aber bei jeder Fehlersuche wieder prüfen müsste.
+
+`shift_qualification_matrix()` liefert das **vollständige Raster** Schicht
+× Qualifikation, auch die leeren Zellen. Die Oberfläche soll nicht raten
+müssen, welche Kombinationen es gibt; eine leere Zelle ist eine echte
+Aussage („hier gilt keine Anforderung"), kein fehlender Datensatz.
+
+### 0060 · Ausbildungsabschnitte
+
+Neue Tabelle `training_assignments` (Person, Zeitraum, Bereich,
+optionale Schicht, Notiz, Status) mit RLS: die Führung pflegt,
+Auszubildende sehen ihre eigenen Abschnitte.
+
+**Bewusst getrennt vom Schichtplan.** Ein Ausbildungsabschnitt ist ein
+Zeitraum in einem Bereich („Messwarte, März bis Mai"), keine
+Tageszuweisung. Ihn in `shift_assignments` zu schreiben hieße, die
+Rotation zu überschreiben und den Plan für alle anderen zu verfälschen.
+Wer während eines Abschnitts in einer Schicht mitläuft, bekommt sie
+hinterlegt — der Schichtplan selbst bleibt unberührt.
+
+`training_plan(von, bis)` zählt die Ausfalltage eines Abschnitts über
+`employees_absent_on()` — dieselbe Quelle wie Schichtplan und
+Auswertung. Sonst stünde ein Abschnitt als bespielt da, während die
+Person im Urlaub ist.
+
+### Keine zweite Personenverwaltung
+
+Die Auszubildenden kommen aus `fetchEmployees()`, gefiltert auf
+`is_apprentice` (Feld aus 0049). Wer hier auftaucht, ist unter Verwaltung
+so gekennzeichnet — es gibt keine eigene Azubi-Liste, die auseinander
+laufen könnte.
+
+### Oberfläche
+
+- **Verwaltung → Regeln**: Raster Funktion × Schicht mit je einem
+  Zahlenfeld. Speichert beim Verlassen des Feldes, nur wenn sich der Wert
+  geändert hat.
+- **Führung → Ausbildung**: Jahresleiste (ein Balken je Abschnitt über
+  zwölf Monate) plus Liste mit Anlegeformular.
+- **Dashboard**: zwei Kacheln nur für die Führung — Gesundheitsrate des
+  laufenden Monats (über dieselbe Funktion wie die Auswertung, kann also
+  nicht abweichen) und offene Ersatzanfragen. Die Karte blendet sich für
+  Mitarbeiter selbst aus; die Rate wird nachgeladen, die übrigen Kacheln
+  stehen sofort.
+
+### Geprüft
+
+Alles gegen Demo Chemie GmbH, alle schreibenden Tests in `do $$ … raise
+exception … $$` und danach der Bestand nachgezählt:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Bedarf auf 2 setzen | gespeichert: 2 ✓ |
+| Bedarf auf 0 setzen | Zeile gelöscht ✓ |
+| Matrix | 15 Zellen (3 Schichten × 5 Funktionen) ✓ |
+| Abschnitt anlegen | Messwarte, 01.03.–31.05.2026, Frühschicht, 0 Ausfalltage ✓ |
+| Ende vor Beginn | „Das Ende darf nicht vor dem Beginn liegen." ✓ |
+| Mitarbeiter setzt Bedarf | „Nur die Administration darf den Besetzungsbedarf festlegen." ✓ |
+
+Bestand danach unverändert: 52 Mitarbeiter, 2 Firmen, 77
+Qualifikationszuordnungen, 23 Abwesenheiten, 29 Urlaubsanträge, 0
+Ausbildungsabschnitte, 0 Bedarfszeilen, 0 Ersatzanfragen.
+
+`tsc --noEmit` und `next build` laufen sauber, 31 Seiten.
+`get_advisors(security)` meldet keine neue Warnkategorie — beide neuen
+Tabellen haben Policies.

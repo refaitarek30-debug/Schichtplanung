@@ -3,6 +3,8 @@ import {
   ClipboardCheck,
   Cog,
   Layers,
+  BarChart3,
+  GraduationCap,
   LayoutDashboard,
   Megaphone,
   Palmtree,
@@ -65,6 +67,18 @@ export const navItems: NavItem[] = [
     href: "/urlaubsantraege",
     label: "Urlaubsanträge",
     icon: ClipboardCheck,
+    roles: ["shift_leader", "admin"],
+  },
+  {
+    href: "/ausbildung",
+    label: "Ausbildung",
+    icon: GraduationCap,
+    roles: ["shift_leader", "admin"],
+  },
+  {
+    href: "/auswertung",
+    label: "Auswertung",
+    icon: BarChart3,
     roles: ["shift_leader", "admin"],
   },
   {

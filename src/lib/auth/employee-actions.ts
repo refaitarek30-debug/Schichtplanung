@@ -7,21 +7,47 @@ import { dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./form-state";
 import { grantAccess, siteOrigin } from "./invite";
 import type { Role } from "@/lib/types";
-import type { Qualification } from "@/lib/qualifications";
-import { QUALIFICATIONS } from "@/lib/qualifications";
 
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
 };
 
-/** Nur bekannte Werte übernehmen – schützt vor beliebigen Strings aus dem FormData. */
-function parseQualifications(formData: FormData): Qualification[] {
-  const known = new Set<string>(QUALIFICATIONS);
-  return formData
-    .getAll("qualifications")
-    .map((v) => String(v))
-    .filter((v) => known.has(v)) as Qualification[];
+/**
+ * Die angehakten Qualifikationen als Schlüssel.
+ *
+ * Geprüft wird nicht mehr hier: seit Migration 0050 führt jedes
+ * Unternehmen seinen eigenen Katalog, und welche Schlüssel es darin gibt,
+ * weiß nur die Datenbank. `set_employee_qualifications()` verwirft
+ * unbekannte still – dieselbe Wirkung wie die frühere Liste, aber an der
+ * Stelle, die den Katalog tatsächlich kennt.
+ */
+function parseQualifications(formData: FormData): string[] {
+  return formData.getAll("qualifications").map((v) => String(v).trim()).filter(Boolean);
 }
+
+/**
+ * Ein Datumsfeld aus dem Formular. Leer bleibt leer – das bedeutet in der
+ * Datenbank „keine Grenze" und darf nicht in einen Wert umschlagen.
+ */
+function parseDate(formData: FormData, name: string): string | null {
+  const wert = String(formData.get(name) ?? "").trim();
+  return wert === "" ? null : wert;
+}
+
+/**
+ * Austritt darf nicht vor dem Eintritt liegen. Die Datenbank hat dafür
+ * eine Prüfbedingung, die aber nur eine rohe Meldung liefert – hier steht
+ * ein Satz, mit dem jemand etwas anfangen kann.
+ */
+function pruefeZeitraum(formData: FormData): string | null {
+  const eintritt = parseDate(formData, "entry_date");
+  const austritt = parseDate(formData, "exit_date");
+  if (eintritt && austritt && austritt < eintritt) {
+    return "Der Austritt darf nicht vor dem Eintritt liegen.";
+  }
+  return null;
+}
+
 
 /**
  * Findet das aktive Rotationsmuster des Unternehmens. Eine Schichtgruppe
@@ -76,6 +102,8 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
   if (!Number.isFinite(vacationDays) || vacationDays < 0) {
     return { error: "Der Urlaubsanspruch muss eine Zahl ab 0 sein." };
   }
+  const zeitraumFehler = pruefeZeitraum(formData);
+  if (zeitraumFehler) return { error: zeitraumFehler };
 
   const supabase = await createClient();
   const {
@@ -115,9 +143,11 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       role,
       vacation_days: vacationDays,
       v_days: Number.isFinite(vDays) ? vDays : 0,
-      qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
       rotation_pattern_id: rotationPatternId,
+      entry_date: parseDate(formData, "entry_date"),
+      exit_date: parseDate(formData, "exit_date"),
+      is_apprentice: formData.get("is_apprentice") === "on",
       // Steuert, ob Urlaub automatisch auf Urlaubstage und V-Tage verteilt
       // wird. Ohne Schichtsystem gibt es keine Zuschläge und damit nichts
       // zu optimieren – dann kostet jeder Tag einen Urlaubstag.
@@ -146,6 +176,21 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       .update({ carried_over: carryOver })
       .eq("employee_id", newId)
       .eq("year", new Date().getFullYear());
+  }
+
+  // Qualifikationen stehen seit Migration 0050 in eigenen Tabellen. Die
+  // Funktion prüft Berechtigung und Katalog und verwirft unbekannte
+  // Schlüssel – deshalb hier kein eigener Abgleich.
+  if (newId) {
+    const { error: qualError } = await supabase.rpc("set_employee_qualifications", {
+      p_employee_id: newId,
+      p_keys: parseQualifications(formData),
+    });
+    // Der Stammsatz steht bereits; eine gescheiterte Zuordnung soll das
+    // Anlegen nicht zurücknehmen, sondern sichtbar werden.
+    if (qualError) {
+      console.error("Qualifikationen konnten nicht gesetzt werden:", qualError.message);
+    }
   }
 
   revalidatePath("/verwaltung");
@@ -220,6 +265,8 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   if (!Number.isFinite(vDays) || vDays < 0) {
     return { error: "Die V-Tage müssen eine Zahl ab 0 sein." };
   }
+  const zeitraumFehler = pruefeZeitraum(formData);
+  if (zeitraumFehler) return { error: zeitraumFehler };
 
   const supabase = await createClient();
   const {
@@ -266,9 +313,11 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       v_days: vDays,
       shift_worker: formData.get("shift_worker") === "on",
       active,
-      qualifications: parseQualifications(formData),
       rotation_team: rotationTeam || null,
       rotation_pattern_id: rotationPatternId,
+      entry_date: parseDate(formData, "entry_date"),
+      exit_date: parseDate(formData, "exit_date"),
+      is_apprentice: formData.get("is_apprentice") === "on",
     })
     .eq("id", employeeId)
     .eq("company_id", profile.company_id);
@@ -278,6 +327,17 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       return { error: "Diese Personalnummer ist in deinem Unternehmen bereits vergeben." };
     }
     return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht geändert werden." };
+  }
+
+  const { error: qualError } = await supabase.rpc("set_employee_qualifications", {
+    p_employee_id: employeeId,
+    p_keys: parseQualifications(formData),
+  });
+  if (qualError) {
+    return {
+      error:
+        dataErrorMessage(qualError) ?? "Die Qualifikationen konnten nicht gespeichert werden.",
+    };
   }
 
   revalidatePath("/verwaltung");

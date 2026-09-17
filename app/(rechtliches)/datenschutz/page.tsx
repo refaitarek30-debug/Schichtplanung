@@ -6,6 +6,7 @@ import {
   Liste,
   Platzhalter,
 } from "@/components/legal/prose";
+import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 
 export const metadata = {
   title: "Datenschutzerklärung – Schichtplan",
@@ -29,6 +30,7 @@ export default function DatenschutzPage() {
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
       updated="14. September 2026"
+      version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Zwei Verantwortliche – bitte nicht verwechseln">
         <p>

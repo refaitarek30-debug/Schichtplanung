@@ -1,7 +1,16 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, ListOrdered, Lock } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Backpack,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ListOrdered,
+  Lock,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,6 +21,7 @@ import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rota
 import { assignShift, setEmployeeOrder, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
+import { fetchSchoolHolidays } from "@/lib/data/holidays";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +110,8 @@ export function ShiftPlanGrid({
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
+  /** Ferientag → Name des Zeitraums, für die dezente Markierung im Kopf. */
+  const [ferien, setFerien] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
   const [aufgeklappt, setAufgeklappt] = useState<Set<string> | null>(null);
@@ -122,14 +134,27 @@ export function ShiftPlanGrid({
     try {
       // Die Schichtdetails liefern Name und Id gleich mit – eine zweite
       // Abfrage nur für die Auswahlliste braucht es nicht.
-      const [grid, details, blockedDays] = await Promise.all([
+      const bis = addDays(start, span - 1);
+      const [grid, details, blockedDays, ferienZeitraeume] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, span),
         fetchShiftDetails(),
-        fetchBlockedDays(start, addDays(start, span - 1)),
+        fetchBlockedDays(start, bis),
+        fetchSchoolHolidays(start, bis),
       ]);
       setCells(grid);
       setShiftDetails(details);
       setBlocked(blockedDays);
+
+      // Zeiträume auf einzelne Tage aufziehen, damit der Tabellenkopf je
+      // Spalte nachschlagen kann, statt für jeden Tag alle Zeiträume zu
+      // durchsuchen.
+      const tage = new Map<string, string>();
+      for (const zeitraum of ferienZeitraeume) {
+        for (let tag = zeitraum.startDate; tag <= zeitraum.endDate; tag = addDays(tag, 1)) {
+          tage.set(tag, zeitraum.name);
+        }
+      }
+      setFerien(tage);
     } catch (caught) {
       setCells([]);
       setError(
@@ -514,13 +539,23 @@ export function ShiftPlanGrid({
                 </th>
                 {dates.map((iso) => {
                   const blockReason = blocked.get(iso);
+                  const ferienName = ferien.get(iso);
+                  // Eine Urlaubssperre ist das stärkere Signal und sticht
+                  // die Ferien -- die sind nur ein Hinweis und dürfen den
+                  // Plan nicht überfärben.
+                  const hinweis = blockReason
+                    ? `Urlaubssperre: ${blockReason}`
+                    : ferienName
+                      ? `${ferienName} (Schulferien)`
+                      : undefined;
                   return (
                     <th
                       key={iso}
-                      title={blockReason ? `Urlaubssperre: ${blockReason}` : undefined}
+                      title={hinweis}
                       className={cn(
                         "min-w-[24px] px-0.5 py-2 text-center sm:min-w-[42px] sm:px-1",
                         isWeekend(iso) && "bg-surface-sunken/60",
+                        ferienName && !blockReason && "bg-plan-bg/40",
                         blockReason && "bg-crit-bg",
                       )}
                     >
@@ -542,6 +577,8 @@ export function ShiftPlanGrid({
                       </span>
                       {blockReason ? (
                         <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
+                      ) : ferienName ? (
+                        <Backpack className="mx-auto mt-0.5 h-3 w-3 text-plan-fg/70" />
                       ) : null}
                     </th>
                   );

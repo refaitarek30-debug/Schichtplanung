@@ -75,14 +75,30 @@ export interface OwnProfile {
 export async function fetchOwnProfile(employeeId: string): Promise<OwnProfile | null> {
   if (!isSupabaseConfigured) return null;
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("employees")
-    .select("department, vacation_days, v_days, shift_worker, rotation_team, qualifications, profile_confirmed_at")
-    .eq("id", employeeId)
-    .maybeSingle();
+  // Qualifikationen stehen seit Migration 0050 in eigenen Tabellen. Würde
+  // hier weiter die alte Spalte gelesen, verlöre ein zweiter Durchlauf des
+  // Assistenten die Haken.
+  const [stammResult, qualsResult] = await Promise.all([
+    supabase
+      .from("employees")
+      .select("department, vacation_days, v_days, shift_worker, rotation_team, profile_confirmed_at")
+      .eq("id", employeeId)
+      .maybeSingle(),
+    supabase
+      .from("employee_qualifications")
+      .select("qualifications ( key )")
+      .eq("employee_id", employeeId)
+      .returns<{ qualifications: { key: string } | { key: string }[] | null }[]>(),
+  ]);
 
+  const { data, error } = stammResult;
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   if (!data) return null;
+
+  const quals = (qualsResult.data ?? [])
+    .map((row) => (Array.isArray(row.qualifications) ? row.qualifications[0] : row.qualifications))
+    .map((bezug) => bezug?.key)
+    .filter((key): key is string => Boolean(key));
 
   const row = data as {
     department: string | null;
@@ -90,7 +106,6 @@ export async function fetchOwnProfile(employeeId: string): Promise<OwnProfile | 
     v_days: number | string | null;
     shift_worker: boolean | null;
     rotation_team: string | null;
-    qualifications: string[] | null;
     profile_confirmed_at: string | null;
   };
 
@@ -102,7 +117,7 @@ export async function fetchOwnProfile(employeeId: string): Promise<OwnProfile | 
     // Schichtbetrieb gebaut, die Tagschicht ist der Sonderfall.
     shiftWorker: row.shift_worker ?? true,
     rotationTeam: row.rotation_team,
-    qualifications: row.qualifications ?? [],
+    qualifications: quals,
     bestaetigtAm: row.profile_confirmed_at,
   };
 }

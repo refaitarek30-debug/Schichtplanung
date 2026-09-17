@@ -7,17 +7,23 @@ export function LegalPage({
   title,
   intro,
   updated,
+  version,
   children,
 }: {
   title: string;
   intro?: string;
   /** Datum der letzten Änderung – gehört sichtbar in jeden Rechtstext. */
   updated: string;
+  /** Nur bei der Datenschutzerklärung gesetzt, siehe `VersionTag`. */
+  version?: number;
   children: ReactNode;
 }) {
   return (
     <article className="rounded-card border border-line bg-surface px-5 py-6 shadow-card sm:px-8 sm:py-8">
-      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[30px]">{title}</h1>
+      <h1 className="text-[26px] font-semibold tracking-tight sm:text-[30px]">
+        {title}
+        {version ? <VersionTag version={version} /> : null}
+      </h1>
       {intro ? (
         <p className="mt-2 text-sm leading-relaxed text-ink-muted">{intro}</p>
       ) : null}
@@ -65,6 +71,22 @@ export function Platzhalter({ children }: { children: ReactNode }) {
     <span className="rounded bg-warn-bg px-1.5 py-0.5 text-[13px] font-medium text-warn-fg">
       [ {children} ]
     </span>
+  );
+}
+
+/**
+ * Kleines Versionszeichen neben „Datenschutz“ – im Footer, in der
+ * Registrierung und auf der Erklärung selbst. Steigt mit
+ * `DATENSCHUTZ_VERSION`, sobald sich die Erklärung inhaltlich ändert.
+ */
+export function VersionTag({ version }: { version: number }) {
+  return (
+    <sup
+      className="ml-0.5 text-[9px] font-medium leading-none text-ink-faint"
+      title={`Version ${version} der Datenschutzerklärung`}
+    >
+      v{version}
+    </sup>
   );
 }
 
