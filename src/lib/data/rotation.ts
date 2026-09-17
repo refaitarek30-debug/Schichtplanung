@@ -11,6 +11,12 @@ import type {
 export class DataError extends Error {}
 
 /**
+ * Zeilen je Abfrage. Entspricht der Obergrenze, die PostgREST selbst
+ * durchlässt – mehr anzufordern bringt nichts, weniger kostet Abfragen.
+ */
+const SEITENGROESSE = 1000;
+
+/**
  * Tagesgenaue Ausnahmen von der festen Schichtzuordnung in einem Zeitraum.
  * Nur Führung/Admin (RPC prüft es selbst) – dieselbe Begründung wie bei
  * `fetchStaffingForDay`: wer wo eingeteilt ist, ist kein Datum, das ein
@@ -138,13 +144,32 @@ export async function fetchShiftPlanGrid(
 ): Promise<LiveShiftPlanCell[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("shift_plan_grid", {
-    p_company_id: companyId,
-    p_from: fromISO,
-    p_days: days,
-  });
-  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-  return ((data ?? []) as ShiftPlanGridRow[]).map((row) => ({
+
+  // Der Plan liefert eine Zeile je Person und Tag – 50 Personen über vier
+  // Wochen sind 1400. PostgREST gibt aber höchstens 1000 Zeilen auf einmal
+  // heraus, und zwar ohne Fehlermeldung: der Rest fehlte einfach. Im
+  // Demobetrieb fielen dadurch Schicht D und die Tagschicht aus dem Plan.
+  // Deshalb seitenweise, bis eine Seite nicht mehr voll ist.
+  const rows: ShiftPlanGridRow[] = [];
+  for (let ab = 0; ; ab += SEITENGROESSE) {
+    const { data, error } = await supabase
+      .rpc("shift_plan_grid", {
+        p_company_id: companyId,
+        p_from: fromISO,
+        p_days: days,
+      })
+      .range(ab, ab + SEITENGROESSE - 1);
+    if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+
+    const seite = (data ?? []) as ShiftPlanGridRow[];
+    rows.push(...seite);
+    if (seite.length < SEITENGROESSE) break;
+    // Notbremse: 62 Tage mal 500 Personen ist die Obergrenze, die die
+    // Datenbankfunktion überhaupt zulässt. Danach stimmt etwas nicht.
+    if (rows.length >= 31_000) break;
+  }
+
+  return rows.map((row) => ({
     employeeId: row.employee_id,
     employeeName: row.employee_name,
     rotationTeam: row.rotation_team,
