@@ -367,7 +367,10 @@ export function ShiftPlanGrid({
       } else {
         const fd = new FormData();
         fd.set("employee_id", selected.employeeId);
-        fd.set("date", selected.day);
+        // `date_from`/`date_to`, seit Abwesenheiten über Zeiträume gehen.
+        // Hier ist es immer genau ein Tag – die angetippte Zelle.
+        fd.set("date_from", selected.day);
+        fd.set("date_to", selected.day);
         fd.set("type", value);
         result = await createAbsence({}, fd);
       }

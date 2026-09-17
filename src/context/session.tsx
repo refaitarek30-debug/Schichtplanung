@@ -44,6 +44,9 @@ function demoProfile(person: Employee): SessionProfile {
     personnelNumber: person.id.replace("e-", "1000"),
     department: "Produktion",
     shiftName: getShift(person.shiftId)?.name ?? null,
+    // Im Demo-Modus gibt es kein Profil zum Speichern – dort stehen alle
+    // Kacheln, damit man sieht, was die Anwendung kann.
+    hiddenDashboardTiles: [],
   };
 }
 

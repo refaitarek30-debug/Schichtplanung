@@ -41,6 +41,12 @@ export interface SessionProfile {
   personnelNumber?: string | null;
   department?: string | null;
   shiftName?: string | null;
+  /**
+   * Kacheln, die diese Person auf ihrem Dashboard ausgeblendet hat.
+   * Gespeichert wird das Ausgeblendete, damit neue Kacheln von selbst
+   * erscheinen statt unsichtbar zu bleiben.
+   */
+  hiddenDashboardTiles: string[];
 }
 
 /** Zeile aus `employees` – Personalstammdaten, unabhängig vom Login. */

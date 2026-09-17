@@ -88,6 +88,8 @@ export interface ProfileRow {
   role: Role;
   avatar_url: string | null;
   active: boolean;
+  /** Kacheln, die diese Person auf ihrem Dashboard ausgeblendet hat. */
+  hidden_dashboard_tiles: string[];
   created_at: string;
   updated_at: string;
 }

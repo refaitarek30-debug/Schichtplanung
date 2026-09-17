@@ -23,6 +23,7 @@ import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
+import { TileSettings, type TileOption } from "@/components/dashboard/tile-settings";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -69,6 +70,13 @@ function greeting(): string {
 
 export default function DashboardPage() {
   const { mode, role, profile, user, company } = useSession();
+
+  // Welche Kacheln diese Person ausgeblendet hat. Startwert kommt aus dem
+  // Profil; die Karte schreibt Änderungen im Hintergrund zurück.
+  const [versteckt, setVersteckt] = useState<Set<string>>(
+    () => new Set(profile.hiddenDashboardTiles ?? []),
+  );
+  const zeige = useCallback((key: string) => !versteckt.has(key), [versteckt]);
   const reference = nextProductionDay(TODAY);
   const isToday = reference === TODAY;
 
@@ -186,6 +194,24 @@ export default function DashboardPage() {
   const hatVKonto =
     vEntitlement > 0 || vCarriedOver > 0 || vUsed > 0 || vPending > 0 || vRemaining !== 0;
 
+  // Zur Auswahl stehen nur Kacheln, die diese Person überhaupt sehen
+  // könnte – ein Mitarbeiter soll nicht „Gesundheitsrate“ abwählen
+  // müssen, die es für ihn gar nicht gibt.
+  const kachelOptionen = useMemo(() => {
+    const liste: TileOption[] = [
+      { key: "urlaub", label: "Urlaubstage verfügbar" },
+      { key: "antraege", label: role === "employee" ? "Meine offenen Anträge" : "Offene Anträge" },
+    ];
+    if (role !== "employee") liste.push({ key: "kritisch", label: "Kritische Tage" });
+    liste.push({ key: "krank", label: "Krank gesamt" });
+    if (role !== "employee") {
+      liste.push({ key: "gesundheit", label: "Gesundheitsrate" });
+      liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
+    }
+    if (hatVKonto) liste.push({ key: "vtage", label: "V-Tage gesamt" });
+    return liste;
+  }, [role, hatVKonto]);
+
   // Mitteilungen: im Live-Modus das, was die Führung auf der Regeln-Seite
   // geschrieben hat, plus jede aktive Urlaubssperre als eigener Eintrag.
   // Gesperrte Zeiträume, die schon vorbei sind, fallen raus.
@@ -225,18 +251,29 @@ export default function DashboardPage() {
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
       <MyReplacementRequests />
 
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
-          {greeting()}, {profile.firstName} 👋
-        </h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          {isToday
-            ? "Hier ist dein Überblick für heute."
-            : `Heute wird nicht produziert. Der Überblick zeigt den nächsten Produktionstag, ${weekdayLong(reference)}, den ${formatDE(reference)}.`}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
+            {greeting()}, {profile.firstName} 👋
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            {isToday
+              ? "Hier ist dein Überblick für heute."
+              : `Heute wird nicht produziert. Der Überblick zeigt den nächsten Produktionstag, ${weekdayLong(reference)}, den ${formatDE(reference)}.`}
+          </p>
+        </div>
+        {mode === "live" ? (
+          <TileSettings
+            profileId={profile.id}
+            optionen={kachelOptionen}
+            versteckt={versteckt}
+            onChange={setVersteckt}
+          />
+        ) : null}
       </header>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {zeige("urlaub") ? (
         <KpiCard
           label="Urlaubstage verfügbar"
           value={formatDays(availableLeave)}
@@ -245,6 +282,8 @@ export default function DashboardPage() {
           accent="plan"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />
+        ) : null}
+        {zeige("antraege") ? (
         <KpiCard
           label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
           value={role === "employee" ? ownPending.length : pendingCount}
@@ -258,7 +297,8 @@ export default function DashboardPage() {
           accent="neutral"
           icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
         />
-        {role === "employee" ? null : (
+        ) : null}
+        {role === "employee" || !zeige("kritisch") ? null : (
           <KpiCard
             label="Kritische Tage (14 T.)"
             value={criticalDays.length}
@@ -271,6 +311,7 @@ export default function DashboardPage() {
             icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
           />
         )}
+        {zeige("krank") ? (
         <KpiCard
           label="Krank gesamt"
           value={sickDays}
@@ -279,12 +320,16 @@ export default function DashboardPage() {
           accent={sickDays > 0 ? "warn" : "ok"}
           icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
         />
+        ) : null}
         {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
             offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
             selbst aus. */}
-        <LeadershipKpis />
+        <LeadershipKpis
+          zeigeRate={zeige("gesundheit")}
+          zeigeAnfragen={zeige("ersatz")}
+        />
 
-        {hatVKonto ? (
+        {hatVKonto && zeige("vtage") ? (
           <KpiCard
             label="V-Tage gesamt"
             value={formatDays(vRemaining)}

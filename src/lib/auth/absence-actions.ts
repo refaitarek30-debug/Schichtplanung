@@ -26,9 +26,12 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const employeeId = String(formData.get("employee_id") ?? "");
-  const from = String(formData.get("date_from") ?? "");
-  // Ohne Ende gilt der eine Tag – so bleibt ein alter Aufruf mit nur
-  // einem Datum weiterhin gültig.
+  // `date` ist die alte Schreibweise aus der Zeit vor den Zeiträumen. Sie
+  // wird weiter angenommen: der Schichtplan hat sie noch gesendet, nachdem
+  // hier auf `date_from` umgestellt wurde, und die Krankmeldung aus dem
+  // Plan lief dadurch ins Leere – ohne dass irgendwo etwas rot wurde.
+  const from = String(formData.get("date_from") ?? formData.get("date") ?? "");
+  // Ohne Ende gilt der eine Tag.
   const to = String(formData.get("date_to") ?? "") || from;
   const type = String(formData.get("type") ?? "krank");
   const note = String(formData.get("note") ?? "").trim();

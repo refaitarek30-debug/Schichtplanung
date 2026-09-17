@@ -21,7 +21,13 @@ import { fetchCompanyRules } from "@/lib/data/staffing-rules";
  * Funktion läuft wie die Auswertung – und deshalb nicht von ihr abweichen
  * kann. Sie wird nachgeladen; die übrigen Kacheln stehen sofort.
  */
-export function LeadershipKpis() {
+export function LeadershipKpis({
+  zeigeRate = true,
+  zeigeAnfragen = true,
+}: {
+  zeigeRate?: boolean;
+  zeigeAnfragen?: boolean;
+} = {}) {
   const { mode, role } = useSession();
   const [rate, setRate] = useState<number | null | undefined>(undefined);
   const [ziel, setZiel] = useState(96);
@@ -29,9 +35,12 @@ export function LeadershipKpis() {
 
   const laden = useCallback(async () => {
     if (mode !== "live" || role === "employee" || !isSupabaseConfigured) return;
+    // Was ausgeblendet ist, wird auch nicht geladen – die Rate kostet
+    // eine Viertelsekunde, die niemand zahlen soll, der sie wegklickt.
+    if (!zeigeRate && !zeigeAnfragen) return;
     const jetzt = new Date();
 
-    try {
+    if (zeigeRate) try {
       const [zeilen, regeln] = await Promise.all([
         fetchReport(jetzt.getFullYear(), jetzt.getMonth() + 1),
         fetchCompanyRules(),
@@ -44,7 +53,7 @@ export function LeadershipKpis() {
       setRate(null);
     }
 
-    try {
+    if (zeigeAnfragen) try {
       const supabase = createClient();
       const { count } = await supabase
         .from("replacement_requests")
@@ -54,7 +63,7 @@ export function LeadershipKpis() {
     } catch {
       setOffen(null);
     }
-  }, [mode, role]);
+  }, [mode, role, zeigeRate, zeigeAnfragen]);
 
   useEffect(() => {
     void laden();
@@ -66,6 +75,7 @@ export function LeadershipKpis() {
 
   return (
     <>
+      {zeigeRate ? (
       <KpiCard
         label="Gesundheitsrate"
         value={rate === undefined ? "…" : typeof rate === "number" ? rate.toFixed(1) : "–"}
@@ -86,6 +96,8 @@ export function LeadershipKpis() {
         }
         icon={<Activity className="h-4 w-4" strokeWidth={1.8} />}
       />
+      ) : null}
+      {zeigeAnfragen ? (
       <KpiCard
         label="Offene Ersatzanfragen"
         value={offen ?? "–"}
@@ -94,6 +106,7 @@ export function LeadershipKpis() {
         accent={(offen ?? 0) > 0 ? "warn" : "ok"}
         icon={<HandHelping className="h-4 w-4" strokeWidth={1.8} />}
       />
+      ) : null}
     </>
   );
 }

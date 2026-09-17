@@ -28,6 +28,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
     .from("profiles")
     .select(
       `id, company_id, employee_id, first_name, last_name, email, role, avatar_url, active,
+       hidden_dashboard_tiles,
        companies ( id, name, logo_url, active, setup_completed_at ),
        employees ( personnel_number, department, shifts ( name ) )`,
     )
@@ -59,6 +60,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       personnelNumber: employeeRow?.personnel_number ?? null,
       department: employeeRow?.department ?? null,
       shiftName: shiftRow?.name ?? null,
+      hiddenDashboardTiles: data.hidden_dashboard_tiles ?? [],
     },
     company: {
       id: companyRow?.id ?? data.company_id,

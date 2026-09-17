@@ -14,7 +14,7 @@ import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
 import { fetchAutoPreview, fetchLeaveKindSuggestion } from "@/lib/data/leave";
-import { fetchMyShiftPlan } from "@/lib/data/rotation";
+import { fetchBlockedDays, fetchMyShiftPlan } from "@/lib/data/rotation";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
 import type {
@@ -70,6 +70,8 @@ export function LiveLeaveRequestForm({
   /** Vorschau der automatischen Verteilung. */
   const [autoDays, setAutoDays] = useState<LiveAutoDay[] | null>(null);
   const [holidays, setHolidays] = useState<Holiday[] | null>(null);
+  /** Gesperrte Tage im gewählten Zeitraum: Tag → Grund der Sperre. */
+  const [sperren, setSperren] = useState<Map<string, string>>(new Map());
   const [state, formAction] = useActionState(submitLeaveRequest, initialState);
 
   // Echte Feiertage des Unternehmens statt der Demo-Feiertage aus Phase 1 –
@@ -88,6 +90,42 @@ export function LiveLeaveRequestForm({
       cancelled = true;
     };
   }, []);
+
+  // Urlaubssperren im gewählten Zeitraum. Der Schichtplan zeigt sie längst,
+  // im Antragsformular waren sie unsichtbar – man stellte den Antrag und
+  // erfuhr erst bei der Ablehnung davon.
+  useEffect(() => {
+    if (endDate < startDate) {
+      setSperren(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchBlockedDays(startDate, endDate)
+      .then((result) => {
+        if (!cancelled) setSperren(result);
+      })
+      .catch(() => {
+        if (!cancelled) setSperren(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [startDate, endDate]);
+
+  /** Gesperrte Tage des Zeitraums, nach Datum sortiert. */
+  const gesperrt = useMemo(
+    () =>
+      [...sperren.entries()]
+        .map(([tag, grund]) => ({ tag, grund }))
+        .sort((a, b) => a.tag.localeCompare(b.tag)),
+    [sperren],
+  );
+
+  /** Jeder Grund einmal – mehrere Tage derselben Sperre nennen ihn sonst mehrfach. */
+  const sperrGruende = useMemo(
+    () => [...new Set(gesperrt.map((s) => s.grund).filter(Boolean))],
+    [gesperrt],
+  );
 
   const valid = endDate >= startDate;
   const days = useMemo(
@@ -265,6 +303,25 @@ export function LiveLeaveRequestForm({
                 ? formatDE(startDate)
                 : `${formatDE(startDate)} – ${formatDE(endDate)}`}
             </p>
+
+            {gesperrt.length > 0 ? (
+              <div className="mt-2">
+                <Alert tone="warning">
+                  <span className="font-medium">
+                    {gesperrt.length === 1
+                      ? `Am ${formatDE(gesperrt[0].tag)} gilt eine Urlaubssperre`
+                      : `An ${gesperrt.length} Tagen in diesem Zeitraum gilt eine Urlaubssperre`}
+                    {sperrGruende.length > 0 ? `: ${sperrGruende.join(", ")}` : ""}.
+                  </span>{" "}
+                  {gesperrt.length > 1 && gesperrt.length <= 5 ? (
+                    <span className="tnum">
+                      Betroffen: {gesperrt.map((s) => formatDE(s.tag)).join(", ")}.
+                    </span>
+                  ) : null}{" "}
+                  Du kannst den Antrag trotzdem stellen – die Schichtleitung entscheidet.
+                </Alert>
+              </div>
+            ) : null}
           </div>
 
           <Field
