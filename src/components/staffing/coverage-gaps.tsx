@@ -27,7 +27,9 @@ interface Luecke extends CoverageRecord {
  */
 export function CoverageGaps() {
   const [tag, setTag] = useState(TODAY);
-  const [schichten, setSchichten] = useState<ShiftDetail[]>([]);
+  // Nur gesetzt, nie gelesen: die Schichtnamen stecken bereits in jeder
+  // Luecke. Der Setter bleibt, damit der Ladeweg unveraendert ist.
+  const [, setSchichten] = useState<ShiftDetail[]>([]);
   const [luecken, setLuecken] = useState<Luecke[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Luecke | null>(null);

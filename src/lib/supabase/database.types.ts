@@ -12,8 +12,6 @@ export type LeaveKindDb = "urlaub" | "v_tag";
 export type StaffingStatusDb = "ok" | "warn" | "critical";
 export type AbsenceVisibilityLevelDb = "minimal" | "shift";
 export type SicknessVisibilityLevelDb = "private" | "shift";
-export type AbsenceVisibilityLevelDb = "minimal" | "shift";
-export type SicknessVisibilityLevelDb = "private" | "shift";
 
 export interface StaffingSnapshotRow {
   shift_id: string;

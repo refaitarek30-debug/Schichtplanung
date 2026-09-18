@@ -1,15 +1,11 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import type {
-  StaffingMonthRow,
-  StaffingSnapshotRow,
-} from "@/lib/supabase/database.types";
+import type { StaffingSnapshotRow } from "@/lib/supabase/database.types";
 import type {
   LiveAbsentToday,
   LiveLeaveImpact,
   LiveStaffingSnapshot,
-  StaffingStatus,
 } from "@/lib/types";
 
 export class DataError extends Error {}
