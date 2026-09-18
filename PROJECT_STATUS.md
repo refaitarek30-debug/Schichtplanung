@@ -1738,3 +1738,49 @@ Ausbildungsabschnitte, 0 Bedarfszeilen, 0 Ersatzanfragen.
 `tsc --noEmit` und `next build` laufen sauber, 31 Seiten.
 `get_advisors(security)` meldet keine neue Warnkategorie — beide neuen
 Tabellen haben Policies.
+
+
+---
+
+## Security-Hardening · 18.09.2026
+
+### Behoben
+
+- Profil-Identität serverseitig geschützt: `employee_id`, `company_id`, `role`, `active` und `email` können nicht per Self-Service übernommen werden.
+- Breite Profil-SELECT-Policy entfernt; normale Benutzer bekommen keine vollständigen Fremdprofile mehr.
+- Audit-Log-INSERT für `anon` und `authenticated` entfernt; Audit-Erzeugung läuft über geschützte Funktionen/Trigger.
+- Direkte Notification-INSERT-Rechte für Tenant-Clients entfernt.
+- `discard_unclaimed_company()` auf Service-Role begrenzt.
+- Employee-scoped SECURITY DEFINER-Helfer auf den aktuellen Tenant begrenzt.
+- Production-Demo-Fallback abgesichert.
+- Krankheits-Freitext bestehender Daten entfernt und zukünftige Krankheitsnotizen auf DB-Ebene verhindert.
+- Invite-Metadaten minimiert; Autorisierungsentscheidungen bleiben DB-basiert.
+
+### Neu implementiert
+
+- `privacy_settings` mit Privacy-by-Default.
+- `absence_visibility = minimal | shift`.
+- `sickness_visibility = private | shift`.
+- First-Login Privacy-Onboarding.
+- Profil → Datenschutz mit sofortiger Änderung/Widerruf.
+- Serverseitige Privacy-Ausgabe im `shift_plan_grid()`.
+- Geschützter `save_privacy_settings()`-RPC.
+- SQL-Security-Regressionstests unter `supabase/tests/security_hardening.sql`.
+
+### Verifiziert
+
+- Security Advisor nach den DB-Migrationen erneut ausgeführt.
+- Tenant-/Identitäts-/Audit-Angriffsprüfungen transaktional gegen die reale Supabase-Datenbank getestet.
+- 315 bestehende Krankheitsnotizen bereinigt; aktuelle Anzahl von Krankheitsnotizen: 0.
+- `discard_unclaimed_company()`: kein EXECUTE für `anon` oder `authenticated`.
+- `platform_overview()`: kein EXECUTE für `authenticated`.
+- `notifications`/ `audit_logs`: kein direkter INSERT für `authenticated`.
+
+### Verbleibende Risiken / Maßnahmen
+
+| Risiko | Schweregrad | Warum | Nächste Maßnahme |
+|---|---|---|---|
+| Leaked Password Protection deaktiviert | Hoch | Supabase Auth blockiert kompromittierte Passwörter noch nicht | In Supabase Auth/Security aktivieren und danach Advisor erneut prüfen |
+| `pg_net` im public-Schema | Mittel | Advisor-Warnung; automatisches Verschieben könnte bestehende Abhängigkeiten brechen | Abhängigkeiten prüfen und Extension kontrolliert in separates Schema verschieben |
+| Öffentliche Firmenregistrierung via SECURITY DEFINER | Mittel | Für Self-Service-Registrierung erforderlich | Rate-Limit/CAPTCHA und Monitoring für Missbrauch ergänzen |
+| DSGVO-Lösch-/Aufbewahrungskonzept | Mittel | Technische Löschung und gesetzliche Aufbewahrungsfristen müssen kundenspezifisch geklärt werden | Fachliches Retention-/Deletion-Konzept pro Kunde definieren |
