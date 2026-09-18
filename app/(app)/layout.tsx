@@ -6,7 +6,6 @@ import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
