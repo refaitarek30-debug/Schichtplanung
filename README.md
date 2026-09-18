@@ -730,3 +730,49 @@ Einzelabfragen.
 Mitarbeitende sehen dieselbe Matrix, können aber nichts anklicken – und die
 Datenbank lässt Änderungen ohnehin nur mit Führungsrolle zu, das Ausblenden
 der Klickfläche ist nur die freundliche Variante davon.
+
+
+## Security- und Privacy-Hardening · 18.09.2026
+
+Der aktuelle Stand ergänzt technische Datenschutzmaßnahmen / Datenschutz-by-Design für einen echten Multi-Tenant-Betrieb.
+
+### Tenant-Separation und Rollen
+
+- Jede sicherheitsrelevante Datenabfrage bleibt an `auth_company_id()`, RLS oder eine explizite serverseitige Rollenprüfung gebunden.
+- `profiles` erlaubt normalen Benutzern nur das eigene Profil; Führung/Admin erhalten notwendige Mandantendaten.
+- Selbständerung von `employee_id`, `company_id`, `role`, `active` und `email` wird zusätzlich durch einen Datenbank-Trigger verhindert.
+- `SECURITY DEFINER`-Funktionen setzen einen festen `search_path`; für interne Triggerfunktionen wurden direkte Client-EXECUTE-Rechte entzogen.
+- Die Provisionierungs-Cleanup-Funktion `discard_unclaimed_company()` ist nur noch für `service_role` ausführbar.
+
+### Privacy by Default
+
+Neue und bestehende Benutzer erhalten in `privacy_settings`:
+
+- `absence_visibility = minimal`
+- `sickness_visibility = private`
+
+Normale Mitarbeiter erhalten im Schichtplan keine Roh-Abwesenheitszeilen anderer Benutzer. Der Server gibt nur einen abgeleiteten Statuscode aus. Die konkrete Sichtbarkeit wird anhand der tatsächlichen `rotation_team`-Zuordnung und der Freigabe des betroffenen Benutzers entschieden.
+
+Krankheit wird separat behandelt. Ohne Freigabe erscheint nur „Abwesend“. Diagnosen und medizinische Freitexte werden nicht erfasst; vorhandene Krankheitsnotizen wurden bereinigt und weitere werden auf Datenbankebene abgelehnt.
+
+Die Einstellungen können unter **Profil → Datenschutz** jederzeit geändert werden. Ein First-Login-Onboarding erklärt die beiden freiwilligen Sichtbarkeitsentscheidungen. `privacy_notice_version`, `accepted_at` und Widerrufszeitpunkte werden technisch dokumentiert; die Einstellung ist ausdrücklich keine pauschale DSGVO-Einwilligung.
+
+### Audit
+
+Direktes Einfügen in `audit_logs` ist für `authenticated` und `anon` entzogen. Relevante Änderungen werden über geschützte Funktionen/Trigger protokolliert. Audit-Payloads enthalten keine unnötigen Gesundheitsdaten.
+
+### Production Guard
+
+Fehlende Supabase-Konfiguration aktiviert in Production keinen Demo-Betrieb mehr. Stattdessen wird der geschützte Bereich mit einer klaren 503-Fehlermeldung blockiert. Der Demo-Modus bleibt nur außerhalb von Production verfügbar.
+
+### Reproduzierbare Security-Tests
+
+Die Regressionstests liegen unter `supabase/tests/security_hardening.sql`. Sie prüfen u. a. direkte Audit-/Notification-Schreibrechte, Tenant-Grenzen, Profil-Identität, Privacy-Defaults, medizinische Freitexte und die geschützten Provisionierungsfunktionen.
+
+### Bewusst verbleibende Advisor-Hinweise
+
+- `platform_admins`: RLS ist absichtlich ohne Client-Policy aktiviert. Dadurch ist die Tabelle für `anon`/`authenticated` nicht lesbar; sie bleibt ein interner Plattform-Control-Store.
+- `register_company(...)`: öffentliche `SECURITY DEFINER`-Provisionierung ist für die selbstständige Firmenregistrierung absichtlich erforderlich und enthält keine Möglichkeit, sich einer bestehenden Firma anzuschließen.
+- Supabase meldet weiterhin die generische Kategorie für authentifizierbare `SECURITY DEFINER`-RPCs. Diese Funktionen sind Teil der bestehenden Server-RPC-Architektur und wurden funktional auf Tenant-/Rollenprüfungen untersucht; interne Triggerfunktionen wurden aus dem Client-EXECUTE entfernt.
+- Der Security Advisor meldet `pg_net` im `public`-Schema. Die Migration wurde bewusst nicht automatisiert, weil das Verschieben einer aktiv verwendeten Extension ohne vollständige Abhängigkeitsprüfung bestehende HTTP-/Triggerpfade brechen könnte.
+- Die Supabase-Auth-Einstellung für „Leaked Password Protection“ muss im Auth-/Dashboard-Bereich aktiviert werden; hierfür steht in der verbundenen Management-Schnittstelle kein Schreibzugriff zur Verfügung.
