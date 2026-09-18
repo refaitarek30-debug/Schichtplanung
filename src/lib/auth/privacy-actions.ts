@@ -46,43 +46,18 @@ export async function savePrivacySettings(
     return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
   }
 
-  const { data: current, error: currentError } = await supabase
-    .from("privacy_settings")
-    .select(
-      "user_id, company_id, absence_visibility, sickness_visibility, privacy_notice_version, accepted_at, updated_at, absence_revoked_at, sickness_revoked_at",
-    )
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (currentError) {
-    return { error: dataErrorMessage(currentError) ?? "Die Datenschutzeinstellungen konnten nicht geladen werden." };
-  }
-
-  const payload = {
-    absence_visibility: absenceVisibility,
-    sickness_visibility: sicknessVisibility,
-    privacy_notice_version:
-      acknowledge || current?.privacy_notice_version === NOTICE_VERSION
-        ? NOTICE_VERSION
-        : (current?.privacy_notice_version ?? NOTICE_VERSION),
-    accepted_at:
-      acknowledge || current?.privacy_notice_version === NOTICE_VERSION
-        ? (current?.accepted_at ?? new Date().toISOString())
-        : current?.accepted_at,
-  };
-
-  const { error } = current
-    ? await supabase.from("privacy_settings").update(payload).eq("user_id", user.id)
-    : await supabase.from("privacy_settings").insert({
-        user_id: user.id,
-        absence_visibility: absenceVisibility,
-        sickness_visibility: sicknessVisibility,
-        privacy_notice_version: NOTICE_VERSION,
-        accepted_at: acknowledge ? new Date().toISOString() : null,
-      });
+  const { error } = await supabase.rpc("save_privacy_settings", {
+    p_absence_visibility: absenceVisibility,
+    p_sickness_visibility: sicknessVisibility,
+    p_notice_acknowledged: acknowledge,
+  });
 
   if (error) {
-    return { error: dataErrorMessage(error) ?? "Die Datenschutzeinstellungen konnten nicht gespeichert werden." };
+    return {
+      error:
+        dataErrorMessage(error) ??
+        "Die Datenschutzeinstellungen konnten nicht gespeichert werden.",
+    };
   }
 
   revalidatePath("/profil");
