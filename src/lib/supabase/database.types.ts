@@ -80,7 +80,7 @@ export interface CompanyRow {
   updated_at: string;
 }
 
-export interface ProfileRow {
+export interface PersonalDetailsRow {\n  user_id: string;\n  company_id: string;\n  birth_date: string | null;\n  created_at: string;\n  updated_at: string;\n}\n\nexport interface ProfileRow {
   id: string;
   company_id: string;
   employee_id: string | null;
@@ -222,7 +222,7 @@ export interface Database {
   public: {
     Tables: {
       companies: Table<CompanyRow>;
-      profiles: Table<ProfileRow>;
+      profiles: Table<ProfileRow>;\n      personal_details: Table<PersonalDetailsRow>;
       employees: Table<EmployeeRow>;
       shifts: Table<ShiftRow>;
       shift_assignments: Table<ShiftAssignmentRow>;
