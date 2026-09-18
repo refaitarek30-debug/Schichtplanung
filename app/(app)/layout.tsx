@@ -4,7 +4,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { IdleLogout } from "@/components/layout/idle-logout";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
-import { isProductionMisconfigured } from "@/lib/supabase/config";
+import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
+import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 /**
@@ -34,7 +35,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider mode="live" profile={session.profile} company={session.company}>
       <IdleLogout />
+      <PrivacyGate userId={session.profile.id} />
       <AppShell>{children}</AppShell>
     </SessionProvider>
   );
+}
+
+async function PrivacyGate({ userId }: { userId: string }) {
+  const supabase = await import("@/lib/supabase/server").then((m) => m.createClient());
+  const { data } = await supabase
+    .from("privacy_settings")
+    .select("privacy_notice_version, accepted_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!data || data.privacy_notice_version !== "1.0" || !data.accepted_at) {
+    return <PrivacyOnboarding />;
+  }
+  return null;
 }
