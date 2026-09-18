@@ -8,6 +8,9 @@ export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
 
 export type AbsenceType = "urlaub" | "krank" | "schulung" | "sonstiges";
 
+export type AbsenceVisibility = "minimal" | "shift";
+export type SicknessVisibility = "private" | "shift";
+
 /** Ampelstatus der Besetzung – die einzige Statusskala der App. */
 export type StaffingStatus = "ok" | "warn" | "critical";
 
