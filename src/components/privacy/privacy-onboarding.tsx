@@ -16,7 +16,7 @@ export function PrivacyOnboarding() {
         aria-labelledby="privacy-onboarding-title"
         className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-card"
       >
-        <div className="space-y-4">
+        <form action={action} className="space-y-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
               Datenschutz
@@ -82,7 +82,7 @@ export function PrivacyOnboarding() {
           <div className="flex justify-end">
             <SaveButton />
           </div>
-          </form>
+        </form>
         </div>
       </div>
     </div>
