@@ -95,7 +95,7 @@ export function AddAbsenceForm({
               </select>
             </Field>
           </div>
-          <Field label="Notiz (optional)">
+          <Field label="Notiz (optional)" hint="Nicht für Krankheit – dort werden ausschließlich Status und Zeitraum erfasst.">
             <Input name="note" placeholder="z. B. Gefahrgut-Auffrischung" />
           </Field>
 
