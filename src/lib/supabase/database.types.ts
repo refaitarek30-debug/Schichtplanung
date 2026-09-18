@@ -10,6 +10,8 @@ export type HalfDayPeriod = "vormittag" | "nachmittag";
 /** Zweites Konto neben dem Urlaub: V-Tage (Freischichten). */
 export type LeaveKindDb = "urlaub" | "v_tag";
 export type StaffingStatusDb = "ok" | "warn" | "critical";
+export type AbsenceVisibilityLevelDb = "minimal" | "shift";
+export type SicknessVisibilityLevelDb = "private" | "shift";
 
 export interface StaffingSnapshotRow {
   shift_id: string;
@@ -227,6 +229,17 @@ export interface Database {
       leave_requests: Table<LeaveRequestRow>;
       leave_balances: Table<LeaveBalanceViewRow>;
       notifications: Table<NotificationRow>;
+      privacy_settings: Table<{
+        user_id: string;
+        company_id: string;
+        absence_visibility: AbsenceVisibilityLevelDb;
+        sickness_visibility: SicknessVisibilityLevelDb;
+        privacy_notice_version: string;
+        accepted_at: string | null;
+        updated_at: string;
+        absence_revoked_at: string | null;
+        sickness_revoked_at: string | null;
+      }>;
       absences: Table<AbsenceRow>;
       staffing_rules: Table<StaffingRuleRow>;
       announcements: Table<AnnouncementRow>;
@@ -261,6 +274,14 @@ export interface Database {
           absence_code: string | null;
           is_me: boolean;
         }[];
+      };
+      save_privacy_settings: {
+        Args: {
+          p_absence_visibility: AbsenceVisibilityLevelDb;
+          p_sickness_visibility: SicknessVisibilityLevelDb;
+          p_notice_acknowledged?: boolean;
+        };
+        Returns: undefined;
       };
       who_is_absent: {
         Args: { p_date: string };
