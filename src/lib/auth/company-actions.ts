@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./form-state";
@@ -10,8 +10,17 @@ import type { FormState } from "./form-state";
 export type { FormState };
 
 const NOT_CONFIGURED: FormState = {
-  error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
+  error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
+
+async function discardUnclaimedCompany(companyId: string) {
+  try {
+    const admin = createAdminClient();
+    await admin.rpc("discard_unclaimed_company", { p_company_id: companyId });
+  } catch (error) {
+    console.error("Unclaimed-company cleanup failed:", error);
+  }
+}
 
 async function siteOrigin() {
   const headerList = await headers();
@@ -95,16 +104,7 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     // niemand anmelden kann und die niemand mehr loswird. Die Funktion
     // greift nur bei einem Unternehmen ohne jedes Profil – ein echtes
     // kann sie nicht anrühren.
-    const { error: cleanupError } = await supabase.rpc("discard_unclaimed_company", {
-      p_company_id: company_id,
-    });
-    if (cleanupError) {
-      console.error(
-        "Registrierung fehlgeschlagen und das angelegte Unternehmen konnte nicht " +
-          `zurückgenommen werden (company_id ${company_id}):`,
-        cleanupError.message,
-      );
-    }
+    await discardUnclaimedCompany(company_id);
     return { error: authErrorMessage(signUpError) ?? "Die Registrierung ist fehlgeschlagen." };
   }
 
@@ -119,16 +119,7 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   // Unternehmen bliebe für immer ohne Zugang stehen – so ist die verwaiste
   // „Muster GmbH" entstanden.
   if (signUpData.user && (signUpData.user.identities?.length ?? 0) === 0) {
-    const { error: cleanupError } = await supabase.rpc("discard_unclaimed_company", {
-      p_company_id: company_id,
-    });
-    if (cleanupError) {
-      console.error(
-        "Adresse bereits vergeben und das angelegte Unternehmen konnte nicht " +
-          `zurückgenommen werden (company_id ${company_id}):`,
-        cleanupError.message,
-      );
-    }
+    await discardUnclaimedCompany(company_id);
     return {
       error:
         "Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Jede Adresse kann nur " +
