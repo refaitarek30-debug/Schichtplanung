@@ -67,7 +67,7 @@ export default function ImpressumPage() {
           </li>
         </Liste>
         <Absatz className="text-[13px] text-ink-muted">
-          Verlangt wird eine „unmittelbare und effiziente" Kontaktmöglichkeit. Eine
+          Verlangt wird eine „unmittelbare und effiziente&ldquo; Kontaktmöglichkeit. Eine
           E-Mail-Adresse allein reicht dafür in der Regel nicht; üblich ist eine
           Rufnummer oder ein Kontaktformular mit zugesicherter Antwortzeit.
         </Absatz>

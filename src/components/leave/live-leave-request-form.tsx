@@ -7,7 +7,7 @@ import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
 import { DateRangeCalendar } from "./date-range-calendar";
 import { addDays as addDaysISO, formatDE, formatDays, fromISO as fromISOLocal } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";

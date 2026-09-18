@@ -6,7 +6,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
-import { DataError, fetchCurrentPattern } from "@/lib/data/rotation";
+import { fetchCurrentPattern } from "@/lib/data/rotation";
 import { saveRotationPattern, type PatternBlock } from "@/lib/auth/rotation-pattern-actions";
 import { cn } from "@/lib/utils";
 
