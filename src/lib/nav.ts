@@ -103,7 +103,7 @@ export const navItems: NavItem[] = [
     href: "/einstellungen",
     label: "Einstellungen",
     icon: Cog,
-    roles: ["admin"],
+    roles: ["employee", "shift_leader", "admin"],
   },
 ];
 
