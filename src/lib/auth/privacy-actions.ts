@@ -27,7 +27,7 @@ export async function savePrivacySettings(
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const absenceVisibility = String(formData.get("absence_visibility") ?? "");
-  const sicknessVisibility = String(formData.get("sickness_visibility") ?? "");
+  const sicknessVisibility = formData.get("sickness_visibility") ? "shift" : "private";
   const acknowledge = formData.get("privacy_notice_acknowledged") === "on";
 
   if (!isAbsenceVisibility(absenceVisibility)) {
