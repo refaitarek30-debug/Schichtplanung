@@ -81,11 +81,9 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     password,
     options: {
       data: {
-        company_id,
         employee_id,
         first_name: firstName,
         last_name: lastName,
-        role: "admin",
       },
       emailRedirectTo: `${origin}/auth/callback`,
     },
