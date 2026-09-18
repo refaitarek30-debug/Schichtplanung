@@ -19,14 +19,15 @@ Urlaubswunsch automatisch, ob die Mindestbesetzung der betroffenen Schicht hält
 
 ```bash
 npm install
-cp .env.example .env.local     # ausfüllen – oder weglassen für den Demo-Modus
+cp .env.example .env.local     # für Live-Betrieb ausfüllen
 npm run dev
 ```
 
-Ohne `.env.local` startet die Anwendung im **Demo-Modus**: keine Anmeldung, alle
-Ansichten laufen auf Beispieldaten, oben rechts lässt sich die Rolle umschalten.
-Sobald `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` gesetzt sind,
-schaltet die Anwendung automatisch auf echte Anmeldung und echte Daten um.
+Ohne `.env.local` kann außerhalb von Production weiterhin der **Demo-Modus** genutzt werden.
+In **Production** wird eine fehlende Supabase-Konfiguration dagegen mit HTTP 503 blockiert;
+es gibt dort keinen öffentlichen Demo-Fallback. Sobald `NEXT_PUBLIC_SUPABASE_URL` und
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` gesetzt sind, schaltet die Anwendung auf echte Anmeldung
+und echte Daten um.
 
 Weitere Befehle: `npm run build`, `npm run start`, `npm run typecheck`.
 
@@ -161,9 +162,11 @@ Durchgespielte Fälle:
 | Sind die Schlüssel sicher? | Anon Key ist öffentlich und durch RLS gedeckt; der Service-Role-Key wird nur serverseitig gelesen. |
 | Funktioniert Session-Ablauf? | Die Middleware erneuert Tokens; schlägt das fehl, folgt die Umleitung auf `/login`. |
 
-Bewusste Entscheidung: Namen und Rollen der Kolleginnen und Kollegen sind innerhalb
-des Unternehmens lesbar (`profiles`-Select), weil Kalender und Schichtübersicht sie
-brauchen. Gründe von Abwesenheiten sind es nicht – die sieht nur die Führung.
+Bewusste Entscheidung: Normale Mitarbeitende erhalten keine vollständigen Fremdprofile.
+Namen für den Schichtplan kommen aus einer serverseitig begrenzten Schichtplan-RPC.
+Technische IDs, E-Mail-Adressen und Personalnummern werden an normale Mitarbeitende nicht
+unnötig ausgeliefert. Konkrete Abwesenheitsgründe werden nur nach freiwilliger Freigabe
+und nur innerhalb derselben betrieblichen Schichtgruppe ausgeliefert.
 
 Auf Next.js 16 aktualisiert; die in Next 14 gemeldete Middleware-Schwachstelle ist
 damit ausgeschlossen. Das ist relevant, weil die Middleware hier Teil des Auth-Wegs ist.
@@ -591,13 +594,10 @@ Unternehmen genauso wie für jedes andere – echt getestet: eine frisch
 registrierte Firma sieht nach dem Login ausschließlich sich selbst, nicht
 die Mitarbeiter oder Daten anderer Unternehmen.
 
-**Bekannte Einschränkung:** Schlägt `signUp()` nach erfolgreichem
-`register_company()` fehl (z. B. E-Mail bereits vergeben), bleibt eine
-„verwaiste" Firma mit einem Mitarbeiter ohne Login zurück. Für den Start
-unkritisch (nur ungenutzte Zeilen, kein Sicherheitsproblem), aber ein Punkt
-für später: entweder in einer Transaktion zusammenfassen oder verwaiste
-Firmen nach einer Frist automatisch aufräumen. Ebenfalls offen: keine
-Absicherung gegen automatisiertes Massen-Registrieren (Captcha o. Ä.).
+**Bekannte Einschränkung:** Die Registrierung erzeugt zunächst eine Firma und legt bei einem
+späteren Auth-Fehler einen Cleanup über eine ausschließlich serverseitig ausführbare
+Service-Role-Funktion aus. Für Missbrauchsschutz der öffentlichen Registrierung fehlen
+weiterhin Rate-Limit/CAPTCHA und ein Monitoring-Konzept.
 
 ### Größerer Kalender bei der Urlaubsauswahl
 
