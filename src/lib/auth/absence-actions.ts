@@ -7,7 +7,7 @@ import { dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./form-state";
 
 const NOT_CONFIGURED: FormState = {
-  error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
+  error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -34,7 +34,7 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
   // Ohne Ende gilt der eine Tag.
   const to = String(formData.get("date_to") ?? "") || from;
   const type = String(formData.get("type") ?? "krank");
-  const note = String(formData.get("note") ?? "").trim();
+  const note = type === "krank" ? "" : String(formData.get("note") ?? "").trim();
 
   if (!employeeId || !from) {
     return { error: "Bitte Mitarbeiter und Zeitraum auswählen." };
