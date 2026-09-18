@@ -9,6 +9,8 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
+import { PrivacySettingsForm } from "@/components/privacy/privacy-settings-form";
+import { createClient } from "@/lib/supabase/server";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -46,6 +48,7 @@ export default function SettingsPage() {
   // Der Postausgang zeigt Adressen und Namen von Beschäftigten – die
   // Datenbank gibt ihn ohnehin nur der Administration heraus.
   const istAdmin = profile?.role === "admin";
+  const privacy = mode === "live" ? await loadPrivacySettings() : null;
 
   return (
     <div className="space-y-5">
@@ -64,6 +67,22 @@ export default function SettingsPage() {
           <ThemeToggle />
         </CardBody>
       </Card>
+
+      {mode === "live" && privacy ? (
+        <Card>
+          <CardHeader
+            title="Datenschutz & Sichtbarkeit"
+            hint="Jede und jeder Mitarbeiter entscheidet selbst. Die Einstellung kann jederzeit geändert werden."
+          />
+          <CardBody>
+            <PrivacySettingsForm
+              absenceVisibility={privacy.absence_visibility}
+              sicknessVisibility={privacy.sickness_visibility}
+              acknowledged={Boolean(privacy.accepted_at)}
+            />
+          </CardBody>
+        </Card>
+      ) : null}
 
       {mode === "live" ? (
         <Card>
@@ -166,6 +185,15 @@ export default function SettingsPage() {
       </Card>
     </div>
   );
+}
+
+async function loadPrivacySettings() {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("privacy_settings")
+    .select("absence_visibility, sickness_visibility, accepted_at")
+    .maybeSingle();
+  return data;
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
