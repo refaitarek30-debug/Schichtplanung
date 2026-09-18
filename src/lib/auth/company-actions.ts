@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { siteOrigin } from "./invite";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./form-state";
@@ -20,13 +20,6 @@ async function discardUnclaimedCompany(companyId: string) {
   } catch (error) {
     console.error("Unclaimed-company cleanup failed:", error);
   }
-}
-
-async function siteOrigin() {
-  const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`;
 }
 
 /**
