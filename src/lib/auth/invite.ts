@@ -158,11 +158,9 @@ export async function grantAccess(
 
   const redirectTo = `${origin}/auth/callback?weiter=${NACH_EINLADUNG}`;
   const metadata = {
-    company_id: employee.company_id,
     employee_id: employee.id,
     first_name: employee.first_name,
     last_name: employee.last_name,
-    role: employee.role,
   };
 
   // Erst der Versuch über den Postversand – wenn er läuft, ist das der
