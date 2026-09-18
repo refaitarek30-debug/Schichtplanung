@@ -14,7 +14,7 @@ import { grantAccess, siteOrigin } from "./invite";
 export type { FormState } from "./form-state";
 
 const NOT_CONFIGURED: FormState = {
-  error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
+  error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
 
 function isSafePath(path: string | null): path is string {
