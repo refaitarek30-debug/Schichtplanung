@@ -82,6 +82,7 @@ export function PrivacyOnboarding() {
           <div className="flex justify-end">
             <SaveButton />
           </div>
+          </form>
         </div>
       </div>
     </div>
