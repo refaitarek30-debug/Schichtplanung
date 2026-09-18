@@ -83,7 +83,6 @@ export function PrivacyOnboarding() {
             <SaveButton />
           </div>
         </form>
-        </div>
       </div>
     </div>
   );
