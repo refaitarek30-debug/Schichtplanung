@@ -242,6 +242,13 @@ export interface LiveShiftLeaveEntry {
   endDate: string;
   status: LeaveStatus;
   isMe: boolean;
+  /**
+   * Hat die betroffene Person ihrer Schicht den Abwesenheitsgrund
+   * freigegeben? Ist das nicht der Fall, steht in der Liste nur
+   * "Abwesend" -- dass jemand fehlt, bleibt fuer die Planung sichtbar,
+   * warum er fehlt, nicht.
+   */
+  reasonVisible: boolean;
 }
 export interface LiveShiftPlanDay {
   date: string;

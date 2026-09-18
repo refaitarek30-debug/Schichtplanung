@@ -171,13 +171,20 @@ interface ShiftLeaveRow {
   end_date: string;
   status: string;
   is_me: boolean;
+  reason_visible: boolean;
 }
 
 /**
  * Wer aus der eigenen Schicht (feste Zuordnung oder gleiches Rotationsmuster)
- * hat im angegebenen Zeitraum Urlaub – genehmigt oder offen, mit Namen.
- * Absichtlich nur Urlaub (`leave_requests`), keine Abwesenheiten: der Grund
+ * fehlt im angegebenen Zeitraum – mit Namen.
+ *
+ * Absichtlich nur Urlaub (`leave_requests`), keine Krankmeldungen: der Grund
  * einer krankheitsbedingten Abwesenheit bleibt Sache der Führung.
+ *
+ * Ob der Grund „Urlaub“ überhaupt genannt werden darf, entscheidet die
+ * betroffene Person über ihre Datenschutzeinstellung. Die Datenbank liefert
+ * das Ergebnis dieser Entscheidung in `reason_visible` mit und lässt ohne
+ * Freigabe noch nicht genehmigte Anträge ganz weg.
  */
 export async function fetchMyShiftLeave(
   fromISO: string,
@@ -197,6 +204,9 @@ export async function fetchMyShiftLeave(
     endDate: row.end_date,
     status: row.status as LiveShiftLeaveEntry["status"],
     isMe: row.is_me,
+    // Die Datenbank entscheidet, nicht der Browser. Fehlt das Feld (alter
+    // Server), gilt die restriktive Annahme.
+    reasonVisible: row.reason_visible === true,
   }));
 }
 

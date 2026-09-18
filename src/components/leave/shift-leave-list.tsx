@@ -15,9 +15,16 @@ import { DataError, fetchMyShiftLeave } from "@/lib/data/leave";
 import type { LiveShiftLeaveEntry } from "@/lib/types";
 
 /**
- * Wer aus der eigenen Schicht wann Urlaub hat – mit Namen. Für alle
- * Rollen gedacht (nicht nur Führung): jeder soll sehen, wer in seiner
- * eigenen Schicht schon frei hat, um selbst besser planen zu können.
+ * Wer aus der eigenen Schicht wann fehlt – mit Namen. Für alle Rollen
+ * gedacht (nicht nur Führung): jeder soll sehen, wer in seiner eigenen
+ * Schicht schon frei hat, um selbst besser planen zu können.
+ *
+ * Ob dabei „Urlaub“ oder nur „Abwesend“ steht, entscheidet die betroffene
+ * Person selbst unter Profil → Datenschutz. Die Entscheidung fällt in der
+ * Datenbank (`my_shift_leave.reason_visible`), nicht hier – dieser Baustein
+ * zeigt nur an, was der Server herausgibt. Ohne Freigabe kommt auch der
+ * Status nicht mit: „offen“ oder „genehmigt“ würde sonst wieder verraten,
+ * dass es um einen Urlaubsantrag geht.
  */
 export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: number }) {
   const [entries, setEntries] = useState<LiveShiftLeaveEntry[] | null>(null);
@@ -42,7 +49,7 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
   return (
     <Card>
       <CardHeader
-        title="Urlaub in meiner Schicht"
+        title="Abwesend in meiner Schicht"
         hint="Kolleginnen und Kollegen der eigenen Schicht bzw. Rotationsgruppe"
       />
       {error ? (
@@ -54,7 +61,7 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
         {entries === null ? (
           <RowSkeleton rows={3} />
         ) : entries.length === 0 ? (
-          <EmptyState title="Aktuell niemand aus deiner Schicht im Urlaub." />
+          <EmptyState title="Aktuell fehlt niemand aus deiner Schicht." />
         ) : (
           entries.map((entry) => (
             <div
@@ -68,7 +75,16 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
                   · {formatRange(entry.startDate, entry.endDate)}
                 </span>
               </span>
-              <Badge tone={leaveStatusTone[entry.status]}>{leaveStatusLabel[entry.status]}</Badge>
+              {entry.reasonVisible ? (
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="text-[12px] text-ink-muted">Urlaub</span>
+                  <Badge tone={leaveStatusTone[entry.status]}>
+                    {leaveStatusLabel[entry.status]}
+                  </Badge>
+                </span>
+              ) : (
+                <Badge tone="neutral">Abwesend</Badge>
+              )}
             </div>
           ))
         )}

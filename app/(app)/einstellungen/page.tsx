@@ -65,6 +65,30 @@ export default function SettingsPage() {
         </CardBody>
       </Card>
 
+      {mode === "live" ? (
+        <Card>
+          <CardHeader
+            title="Was meine Schicht von mir sieht"
+            hint="Gilt nur für dich. Jede und jeder entscheidet das selbst."
+          />
+          <CardBody className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-prose text-sm text-ink-muted">
+              Du legst fest, ob Kolleginnen und Kollegen deiner Schicht den
+              Grund deiner Abwesenheit sehen – Urlaub, V-Tag oder Schulung –
+              oder nur „Abwesend“. Krankheit ist davon getrennt und
+              standardmäßig privat. Ohne deine Freigabe sieht niemand einen
+              Grund; du kannst sie jederzeit wieder zurücknehmen.
+            </p>
+            <Link
+              href="/profil/datenschutz"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted"
+            >
+              Sichtbarkeit festlegen
+            </Link>
+          </CardBody>
+        </Card>
+      ) : null}
+
       {mode === "live" ? <NotificationSettings /> : null}
       {mode === "live" && istAdmin ? <MailDeliveryCard /> : null}
 

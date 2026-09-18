@@ -301,6 +301,8 @@ export interface Database {
           end_date: string;
           status: LeaveStatusDb;
           is_me: boolean;
+          /** Darf der Grund (Urlaub/V-Tag) gezeigt werden? Entscheidet die betroffene Person. */
+          reason_visible: boolean;
         }[];
       };
       setup_state: {
