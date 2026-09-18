@@ -42,10 +42,8 @@ const permissions: { role: Role; items: string[] }[] = [
   },
 ];
 
-export default async function SettingsPage() {
+export default function SettingsPage() {
   const { company, mode, profile } = useSession();
-  // Der Postausgang zeigt Adressen und Namen von Beschäftigten – die
-  // Datenbank gibt ihn ohnehin nur der Administration heraus.
   const istAdmin = profile?.role === "admin";
 
   return (
@@ -174,13 +172,16 @@ export default async function SettingsPage() {
             status={mode === "live" ? "Phase 3 – aktiv" : "Phase 3 – Demo-Modus"}
             tone={mode === "live" ? "ok" : "neutral"}
           />
-          <Row label="Schichtzuordnung und Besetzungsprüfung serverseitig" status={mode === "live" ? "Phase 4 – aktiv" : "Phase 4 – Demo-Modus"} tone={mode === "live" ? "ok" : "neutral"} />
+          <Row
+            label="Schichtzuordnung und Besetzungsprüfung serverseitig"
+            status={mode === "live" ? "Phase 4 – aktiv" : "Phase 4 – Demo-Modus"}
+            tone={mode === "live" ? "ok" : "neutral"}
+          />
         </CardBody>
       </Card>
     </div>
   );
 }
-
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
