@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { IdleLogout } from "@/components/layout/idle-logout";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
+import { isProductionMisconfigured } from "@/lib/supabase/config";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 /**
@@ -12,6 +13,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
  * Die dritte und entscheidende Linie ist Row Level Security in Supabase.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  if (isProductionMisconfigured) {
+    throw new Error("Supabase ist in der Produktion nicht konfiguriert.");
+  }
   if (!isSupabaseConfigured) {
     return (
       <SessionProvider mode="demo">
