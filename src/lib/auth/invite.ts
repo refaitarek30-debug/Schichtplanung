@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { FormState } from "./form-state";
 
 /*
@@ -19,9 +20,21 @@ import type { FormState } from "./form-state";
  */
 export async function siteOrigin(): Promise<string> {
   const headerList = await headers();
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    const url = new URL(configured);
+    if (url.protocol !== "https:" && process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_SITE_URL muss in der Produktion HTTPS verwenden.");
+    }
+    return url.origin;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_SITE_URL ist in der Produktion erforderlich.");
+  }
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`;
+  if (!host) throw new Error("Keine öffentliche Host-Adresse verfügbar.");
+  return `${protocol}://${host}`;
 }
 
 /** Ziel nach dem Einlösen eines Einladungs- oder Passwortlinks. */
