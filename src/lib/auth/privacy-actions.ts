@@ -16,33 +16,23 @@ function isAbsenceVisibility(value: string): value is "minimal" | "shift" {
   return value === "minimal" || value === "shift";
 }
 
-function isSicknessVisibility(value: string): value is "private" | "shift" {
-  return value === "private" || value === "shift";
-}
-
 export async function savePrivacySettings(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
-  const absenceVisibility = String(formData.get("absence_visibility") ?? "");
+  const absenceVisibility = String(formData.get("absence_visibility") ?? "minimal");
   const sicknessVisibility = formData.get("sickness_visibility") ? "shift" : "private";
   const acknowledge = formData.get("privacy_notice_acknowledged") === "on";
 
   if (!isAbsenceVisibility(absenceVisibility)) {
     return { error: "Ungültige Einstellung für Abwesenheiten." };
   }
-  if (!isSicknessVisibility(sicknessVisibility)) {
-    return { error: "Ungültige Einstellung für Krankheit." };
-  }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
     return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
   }
 
