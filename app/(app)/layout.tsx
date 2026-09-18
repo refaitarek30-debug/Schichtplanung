@@ -31,25 +31,33 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login?fehler=deaktiviert");
   }
 
+  const privacyOnboardingRequired = await isPrivacyOnboardingRequired(session.profile.id);
+
   return (
     <SessionProvider mode="live" profile={session.profile} company={session.company}>
-      <IdleLogout />
-      <PrivacyGate userId={session.profile.id} />
-      <AppShell>{children}</AppShell>
+      {privacyOnboardingRequired ? (
+        <PrivacyOnboarding />
+      ) : (
+        <>
+          <IdleLogout />
+          <AppShell>{children}</AppShell>
+        </>
+      )}
     </SessionProvider>
   );
 }
 
-async function PrivacyGate({ userId }: { userId: string }) {
+async function isPrivacyOnboardingRequired(userId: string): Promise<boolean> {
   const supabase = await import("@/lib/supabase/server").then((m) => m.createClient());
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("privacy_settings")
     .select("privacy_notice_version, accepted_at")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (!data || data.privacy_notice_version !== "1.0" || !data.accepted_at) {
-    return <PrivacyOnboarding />;
-  }
-  return null;
+  // Fail closed: an unreadable or missing privacy record must never be
+  // interpreted as an already completed privacy setup.
+  if (error || !data) return true;
+
+  return data.privacy_notice_version !== "1.0" || !data.accepted_at;
 }
