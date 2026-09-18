@@ -9,4 +9,11 @@ export const isSupabaseConfigured =
   SUPABASE_URL.length > 0 && SUPABASE_ANON_KEY.length > 0;
 
 /** Im Demo-Modus laufen die Ansichten aus Phase 1 ohne Backend weiter. */
-export const sessionMode: "demo" | "live" = isSupabaseConfigured ? "live" : "demo";
+export const isProductionMisconfigured =
+  process.env.NODE_ENV === "production" && !isSupabaseConfigured;
+
+export const canUseDemoMode =
+  process.env.NODE_ENV !== "production" && !isSupabaseConfigured;
+
+export const sessionMode: "demo" | "live" =
+  isSupabaseConfigured ? "live" : "demo";
