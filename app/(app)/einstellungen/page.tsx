@@ -43,7 +43,7 @@ const permissions: { role: Role; items: string[] }[] = [
   },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const { company, mode, profile } = useSession();
   // Der Postausgang zeigt Adressen und Namen von Beschäftigten – die
   // Datenbank gibt ihn ohnehin nur der Administration heraus.
