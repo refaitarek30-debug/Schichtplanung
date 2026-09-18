@@ -58,7 +58,15 @@ function abmelden(request: NextRequest): NextResponse {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Ohne Supabase läuft die Anwendung im Demo-Modus weiter.
+  // In Production darf eine fehlende Backend-Konfiguration niemals den
+  // Demo-Datensatz aktivieren oder geschützte Seiten freigeben.
+  if (isProductionMisconfigured) {
+    return new NextResponse("Supabase ist in der Produktion nicht konfiguriert.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   if (!isSupabaseConfigured) return NextResponse.next();
 
   const { response, user } = await updateSession(request);
