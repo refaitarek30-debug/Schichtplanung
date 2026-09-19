@@ -35,13 +35,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SessionProvider mode="live" profile={session.profile} company={session.company}>
+      {/* Die Abmeldefrist laeuft auch waehrend der Datenschutzabfrage. Sonst
+          bliebe ein unbeaufsichtigtes Geraet mit offener Sitzung stehen,
+          nur weil die Abfrage noch nicht beantwortet ist. */}
+      <IdleLogout />
       {privacyOnboardingRequired ? (
         <PrivacyOnboarding />
       ) : (
-        <>
-          <IdleLogout />
-          <AppShell>{children}</AppShell>
-        </>
+        <AppShell>{children}</AppShell>
       )}
     </SessionProvider>
   );

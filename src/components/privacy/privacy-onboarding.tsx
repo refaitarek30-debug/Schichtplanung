@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { savePrivacySettings } from "@/lib/auth/privacy-actions";
+import { signOut } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 
 export function PrivacyOnboarding() {
@@ -79,9 +80,23 @@ export function PrivacyOnboarding() {
 
           {state.error ? <p role="alert" className="text-sm text-crit-fg">{state.error}</p> : null}
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-3">
             <SaveButton />
           </div>
+        </form>
+
+        {/* Ohne diesen Ausweg sitzt fest, wer die Abfrage gerade nicht
+            beantworten kann oder will: die Abmeldung haengt sonst allein
+            in der Topbar, und die wird waehrend der Abfrage nicht
+            gerendert. Ein eigenes Formular, weil ein <form> nicht in
+            einem anderen stehen darf. */}
+        <form action={signOut} className="mt-3 flex justify-end">
+          <button
+            type="submit"
+            className="text-[12px] text-ink-muted underline underline-offset-2 hover:text-ink"
+          >
+            Abmelden
+          </button>
         </form>
       </div>
     </div>
