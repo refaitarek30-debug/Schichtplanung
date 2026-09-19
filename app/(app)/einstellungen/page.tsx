@@ -9,6 +9,7 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
+import { PrivacySettingsPanel } from "./privacy-settings-panel";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -43,8 +44,6 @@ const permissions: { role: Role; items: string[] }[] = [
 
 export default function SettingsPage() {
   const { company, mode, profile } = useSession();
-  // Der Postausgang zeigt Adressen und Namen von Beschäftigten – die
-  // Datenbank gibt ihn ohnehin nur der Administration heraus.
   const istAdmin = profile?.role === "admin";
 
   return (
@@ -64,6 +63,42 @@ export default function SettingsPage() {
           <ThemeToggle />
         </CardBody>
       </Card>
+
+      {mode === "live" ? (
+        <Card>
+          <CardHeader
+            title="Datenschutz & Sichtbarkeit"
+            hint="Jede und jeder Mitarbeiter entscheidet selbst. Die Einstellung kann jederzeit geändert werden."
+          />
+          <CardBody>
+            <PrivacySettingsPanel />
+          </CardBody>
+        </Card>
+      ) : null}
+
+      {mode === "live" ? (
+        <Card>
+          <CardHeader
+            title="Was meine Schicht von mir sieht"
+            hint="Gilt nur für dich. Jede und jeder entscheidet das selbst."
+          />
+          <CardBody className="flex flex-wrap items-center justify-between gap-3">
+            <p className="max-w-prose text-sm text-ink-muted">
+              Du legst fest, ob Kolleginnen und Kollegen deiner Schicht den
+              Grund deiner Abwesenheit sehen – Urlaub, V-Tag oder Schulung –
+              oder nur „Abwesend“. Krankheit ist davon getrennt und
+              standardmäßig privat. Ohne deine Freigabe sieht niemand einen
+              Grund; du kannst sie jederzeit wieder zurücknehmen.
+            </p>
+            <Link
+              href="/profil/datenschutz"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted"
+            >
+              Sichtbarkeit festlegen
+            </Link>
+          </CardBody>
+        </Card>
+      ) : null}
 
       {mode === "live" ? <NotificationSettings /> : null}
       {mode === "live" && istAdmin ? <MailDeliveryCard /> : null}
@@ -137,7 +172,11 @@ export default function SettingsPage() {
             status={mode === "live" ? "Phase 3 – aktiv" : "Phase 3 – Demo-Modus"}
             tone={mode === "live" ? "ok" : "neutral"}
           />
-          <Row label="Schichtzuordnung und Besetzungsprüfung serverseitig" status={mode === "live" ? "Phase 4 – aktiv" : "Phase 4 – Demo-Modus"} tone={mode === "live" ? "ok" : "neutral"} />
+          <Row
+            label="Schichtzuordnung und Besetzungsprüfung serverseitig"
+            status={mode === "live" ? "Phase 4 – aktiv" : "Phase 4 – Demo-Modus"}
+            tone={mode === "live" ? "ok" : "neutral"}
+          />
         </CardBody>
       </Card>
     </div>

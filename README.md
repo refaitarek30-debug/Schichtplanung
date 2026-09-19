@@ -19,14 +19,15 @@ Urlaubswunsch automatisch, ob die Mindestbesetzung der betroffenen Schicht hält
 
 ```bash
 npm install
-cp .env.example .env.local     # ausfüllen – oder weglassen für den Demo-Modus
+cp .env.example .env.local     # für Live-Betrieb ausfüllen
 npm run dev
 ```
 
-Ohne `.env.local` startet die Anwendung im **Demo-Modus**: keine Anmeldung, alle
-Ansichten laufen auf Beispieldaten, oben rechts lässt sich die Rolle umschalten.
-Sobald `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY` gesetzt sind,
-schaltet die Anwendung automatisch auf echte Anmeldung und echte Daten um.
+Ohne `.env.local` kann außerhalb von Production weiterhin der **Demo-Modus** genutzt werden.
+In **Production** wird eine fehlende Supabase-Konfiguration dagegen mit HTTP 503 blockiert;
+es gibt dort keinen öffentlichen Demo-Fallback. Sobald `NEXT_PUBLIC_SUPABASE_URL` und
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` gesetzt sind, schaltet die Anwendung auf echte Anmeldung
+und echte Daten um.
 
 Weitere Befehle: `npm run build`, `npm run start`, `npm run typecheck`.
 
@@ -161,9 +162,11 @@ Durchgespielte Fälle:
 | Sind die Schlüssel sicher? | Anon Key ist öffentlich und durch RLS gedeckt; der Service-Role-Key wird nur serverseitig gelesen. |
 | Funktioniert Session-Ablauf? | Die Middleware erneuert Tokens; schlägt das fehl, folgt die Umleitung auf `/login`. |
 
-Bewusste Entscheidung: Namen und Rollen der Kolleginnen und Kollegen sind innerhalb
-des Unternehmens lesbar (`profiles`-Select), weil Kalender und Schichtübersicht sie
-brauchen. Gründe von Abwesenheiten sind es nicht – die sieht nur die Führung.
+Bewusste Entscheidung: Normale Mitarbeitende erhalten keine vollständigen Fremdprofile.
+Namen für den Schichtplan kommen aus einer serverseitig begrenzten Schichtplan-RPC.
+Technische IDs, E-Mail-Adressen und Personalnummern werden an normale Mitarbeitende nicht
+unnötig ausgeliefert. Konkrete Abwesenheitsgründe werden nur nach freiwilliger Freigabe
+und nur innerhalb derselben betrieblichen Schichtgruppe ausgeliefert.
 
 Auf Next.js 16 aktualisiert; die in Next 14 gemeldete Middleware-Schwachstelle ist
 damit ausgeschlossen. Das ist relevant, weil die Middleware hier Teil des Auth-Wegs ist.
@@ -591,13 +594,10 @@ Unternehmen genauso wie für jedes andere – echt getestet: eine frisch
 registrierte Firma sieht nach dem Login ausschließlich sich selbst, nicht
 die Mitarbeiter oder Daten anderer Unternehmen.
 
-**Bekannte Einschränkung:** Schlägt `signUp()` nach erfolgreichem
-`register_company()` fehl (z. B. E-Mail bereits vergeben), bleibt eine
-„verwaiste" Firma mit einem Mitarbeiter ohne Login zurück. Für den Start
-unkritisch (nur ungenutzte Zeilen, kein Sicherheitsproblem), aber ein Punkt
-für später: entweder in einer Transaktion zusammenfassen oder verwaiste
-Firmen nach einer Frist automatisch aufräumen. Ebenfalls offen: keine
-Absicherung gegen automatisiertes Massen-Registrieren (Captcha o. Ä.).
+**Bekannte Einschränkung:** Die Registrierung erzeugt zunächst eine Firma und legt bei einem
+späteren Auth-Fehler einen Cleanup über eine ausschließlich serverseitig ausführbare
+Service-Role-Funktion aus. Für Missbrauchsschutz der öffentlichen Registrierung fehlen
+weiterhin Rate-Limit/CAPTCHA und ein Monitoring-Konzept.
 
 ### Größerer Kalender bei der Urlaubsauswahl
 
@@ -730,3 +730,49 @@ Einzelabfragen.
 Mitarbeitende sehen dieselbe Matrix, können aber nichts anklicken – und die
 Datenbank lässt Änderungen ohnehin nur mit Führungsrolle zu, das Ausblenden
 der Klickfläche ist nur die freundliche Variante davon.
+
+
+## Security- und Privacy-Hardening · 18.09.2026
+
+Der aktuelle Stand ergänzt technische Datenschutzmaßnahmen / Datenschutz-by-Design für einen echten Multi-Tenant-Betrieb.
+
+### Tenant-Separation und Rollen
+
+- Jede sicherheitsrelevante Datenabfrage bleibt an `auth_company_id()`, RLS oder eine explizite serverseitige Rollenprüfung gebunden.
+- `profiles` erlaubt normalen Benutzern nur das eigene Profil; Führung/Admin erhalten notwendige Mandantendaten.
+- Selbständerung von `employee_id`, `company_id`, `role`, `active` und `email` wird zusätzlich durch einen Datenbank-Trigger verhindert.
+- `SECURITY DEFINER`-Funktionen setzen einen festen `search_path`; für interne Triggerfunktionen wurden direkte Client-EXECUTE-Rechte entzogen.
+- Die Provisionierungs-Cleanup-Funktion `discard_unclaimed_company()` ist nur noch für `service_role` ausführbar.
+
+### Privacy by Default
+
+Neue und bestehende Benutzer erhalten in `privacy_settings`:
+
+- `absence_visibility = minimal`
+- `sickness_visibility = private`
+
+Normale Mitarbeiter erhalten im Schichtplan keine Roh-Abwesenheitszeilen anderer Benutzer. Der Server gibt nur einen abgeleiteten Statuscode aus. Die konkrete Sichtbarkeit wird anhand der tatsächlichen `rotation_team`-Zuordnung und der Freigabe des betroffenen Benutzers entschieden.
+
+Krankheit wird separat behandelt. Ohne Freigabe erscheint nur „Abwesend“. Diagnosen und medizinische Freitexte werden nicht erfasst; vorhandene Krankheitsnotizen wurden bereinigt und weitere werden auf Datenbankebene abgelehnt.
+
+Die Einstellungen können unter **Profil → Datenschutz** jederzeit geändert werden. Ein First-Login-Onboarding erklärt die beiden freiwilligen Sichtbarkeitsentscheidungen. `privacy_notice_version`, `accepted_at` und Widerrufszeitpunkte werden technisch dokumentiert; die Einstellung ist ausdrücklich keine pauschale DSGVO-Einwilligung.
+
+### Audit
+
+Direktes Einfügen in `audit_logs` ist für `authenticated` und `anon` entzogen. Relevante Änderungen werden über geschützte Funktionen/Trigger protokolliert. Audit-Payloads enthalten keine unnötigen Gesundheitsdaten.
+
+### Production Guard
+
+Fehlende Supabase-Konfiguration aktiviert in Production keinen Demo-Betrieb mehr. Stattdessen wird der geschützte Bereich mit einer klaren 503-Fehlermeldung blockiert. Der Demo-Modus bleibt nur außerhalb von Production verfügbar.
+
+### Reproduzierbare Security-Tests
+
+Die Regressionstests liegen unter `supabase/tests/security_hardening.sql`. Sie prüfen u. a. direkte Audit-/Notification-Schreibrechte, Tenant-Grenzen, Profil-Identität, Privacy-Defaults, medizinische Freitexte und die geschützten Provisionierungsfunktionen.
+
+### Bewusst verbleibende Advisor-Hinweise
+
+- `platform_admins`: RLS ist absichtlich ohne Client-Policy aktiviert. Dadurch ist die Tabelle für `anon`/`authenticated` nicht lesbar; sie bleibt ein interner Plattform-Control-Store.
+- `register_company(...)`: öffentliche `SECURITY DEFINER`-Provisionierung ist für die selbstständige Firmenregistrierung absichtlich erforderlich und enthält keine Möglichkeit, sich einer bestehenden Firma anzuschließen.
+- Supabase meldet weiterhin die generische Kategorie für authentifizierbare `SECURITY DEFINER`-RPCs. Diese Funktionen sind Teil der bestehenden Server-RPC-Architektur und wurden funktional auf Tenant-/Rollenprüfungen untersucht; interne Triggerfunktionen wurden aus dem Client-EXECUTE entfernt.
+- Der Security Advisor meldet `pg_net` im `public`-Schema. Die Migration wurde bewusst nicht automatisiert, weil das Verschieben einer aktiv verwendeten Extension ohne vollständige Abhängigkeitsprüfung bestehende HTTP-/Triggerpfade brechen könnte.
+- Die Supabase-Auth-Einstellung für „Leaked Password Protection“ muss im Auth-/Dashboard-Bereich aktiviert werden; hierfür steht in der verbundenen Management-Schnittstelle kein Schreibzugriff zur Verfügung.

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { roleLabels } from "@/lib/nav";
 import { ProfileForm } from "./profile-form";
+import { PersonalDetailsForm } from "./personal-details-form";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
@@ -30,6 +31,14 @@ export default function ProfilePage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <ProfileForm profile={profile} readOnly={mode === "demo"} />
+        <div className="lg:col-span-2">
+          <a
+            href="/profil/datenschutz"
+            className="inline-flex rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface-muted"
+          >
+            Datenschutz &amp; Sichtbarkeit verwalten
+          </a>
+        </div>
 
         <Card className="h-fit">
           <CardHeader title="Stammdaten" />

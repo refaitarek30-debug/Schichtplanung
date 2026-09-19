@@ -1738,3 +1738,139 @@ Ausbildungsabschnitte, 0 Bedarfszeilen, 0 Ersatzanfragen.
 `tsc --noEmit` und `next build` laufen sauber, 31 Seiten.
 `get_advisors(security)` meldet keine neue Warnkategorie — beide neuen
 Tabellen haben Policies.
+
+
+---
+
+## Security-Hardening · 18.09.2026
+
+### Behoben
+
+- Profil-Identität serverseitig geschützt: `employee_id`, `company_id`, `role`, `active` und `email` können nicht per Self-Service übernommen werden.
+- Breite Profil-SELECT-Policy entfernt; normale Benutzer bekommen keine vollständigen Fremdprofile mehr.
+- Audit-Log-INSERT für `anon` und `authenticated` entfernt; Audit-Erzeugung läuft über geschützte Funktionen/Trigger.
+- Direkte Notification-INSERT-Rechte für Tenant-Clients entfernt.
+- `discard_unclaimed_company()` auf Service-Role begrenzt.
+- Employee-scoped SECURITY DEFINER-Helfer auf den aktuellen Tenant begrenzt.
+- Production-Demo-Fallback abgesichert.
+- Krankheits-Freitext bestehender Daten entfernt und zukünftige Krankheitsnotizen auf DB-Ebene verhindert.
+- Invite-Metadaten minimiert; Autorisierungsentscheidungen bleiben DB-basiert.
+
+### Neu implementiert
+
+- `privacy_settings` mit Privacy-by-Default.
+- `absence_visibility = minimal | shift`.
+- `sickness_visibility = private | shift`.
+- First-Login Privacy-Onboarding.
+- Profil → Datenschutz mit sofortiger Änderung/Widerruf.
+- Serverseitige Privacy-Ausgabe im `shift_plan_grid()`.
+- Geschützter `save_privacy_settings()`-RPC.
+- SQL-Security-Regressionstests unter `supabase/tests/security_hardening.sql`.
+
+### Verifiziert
+
+- Security Advisor nach den DB-Migrationen erneut ausgeführt.
+- Tenant-/Identitäts-/Audit-Angriffsprüfungen transaktional gegen die reale Supabase-Datenbank getestet.
+- 315 bestehende Krankheitsnotizen bereinigt; aktuelle Anzahl von Krankheitsnotizen: 0.
+- `discard_unclaimed_company()`: kein EXECUTE für `anon` oder `authenticated`.
+- `platform_overview()`: kein EXECUTE für `authenticated`.
+- `notifications`/ `audit_logs`: kein direkter INSERT für `authenticated`.
+
+### Verbleibende Risiken / Maßnahmen
+
+| Risiko | Schweregrad | Warum | Nächste Maßnahme |
+|---|---|---|---|
+| Leaked Password Protection deaktiviert | Hoch | Supabase Auth blockiert kompromittierte Passwörter noch nicht | In Supabase Auth/Security aktivieren und danach Advisor erneut prüfen |
+| `pg_net` im public-Schema | Mittel | Advisor-Warnung; automatisches Verschieben könnte bestehende Abhängigkeiten brechen | Abhängigkeiten prüfen und Extension kontrolliert in separates Schema verschieben |
+| Öffentliche Firmenregistrierung via SECURITY DEFINER | Mittel | Für Self-Service-Registrierung erforderlich | Rate-Limit/CAPTCHA und Monitoring für Missbrauch ergänzen |
+| DSGVO-Lösch-/Aufbewahrungskonzept | Mittel | Technische Löschung und gesetzliche Aufbewahrungsfristen müssen kundenspezifisch geklärt werden | Fachliches Retention-/Deletion-Konzept pro Kunde definieren |
+
+---
+
+## Build-Reparatur auf dem Security-Stand (18.09.2026)
+
+Zwei Branches waren auseinandergelaufen: `security-privacy-hardening-2026-09-18`
+(Security/Privacy) und `claude/vercel-build-fix-ll7fmm` (älterer Stand mit
+Build-Fixes). Zusammengeführt wurde **auf dem Security-Stand** – der ist
+die Grundlage, der andere hat nur zugeliefert.
+
+### Warum der Security-Branch nie ausgeliefert wurde
+
+**16 Vercel-Deployments in Folge standen auf ERROR.** Ursache waren zwei
+echte Fehler, keine Konfigurationsfrage:
+
+1. **`database.types.ts` deklarierte zwei Typen doppelt.**
+   `AbsenceVisibilityLevelDb` und `SicknessVisibilityLevelDb` standen je
+   zweimal da – ein Copy-Paste beim Einfügen der Privacy-Typen. Vier
+   `TS2300`-Fehler, `tsc` brach ab.
+
+2. **Die Produktionssperre feuerte im Build.**
+   `isProductionMisconfigured` hing allein an `NODE_ENV`. Das steht beim
+   Bauen *immer* auf `production`, auch lokal und in der CI. Die Sperre
+   schlug deshalb beim Prerendering von `/schichten` zu und `next build`
+   endete mit Code 1.
+
+   Die Sperre ist jetzt **nicht schwächer, sondern schärfer**: auf Vercel
+   greift sie über `VERCEL_ENV` und damit bereits im Produktionsbuild –
+   fehlen dort die Variablen, scheitert der Build statt erst der erste
+   Aufruf. Außerhalb von Vercel greift weiterhin `NODE_ENV` im laufenden
+   Server. Ausgenommen ist nur der reine Build-Lauf ohne Vercel, und dort
+   gibt es keine Produktion zu schützen.
+
+### ESLint lief seit Monaten überhaupt nicht
+
+`npm run lint` rief `next lint` – den Befehl gibt es seit Next 16 nicht
+mehr, er las „lint" als Verzeichnisnamen und brach ab. ESLint war zudem
+gar nicht installiert.
+
+Jetzt Flat Config mit `eslint-config-next` 16. Behoben: zwei nicht
+maskierte Anführungszeichen im JSX, vier unbenutzte Importe, ein anonymer
+Default-Export.
+
+**Offen:** 34 Warnungen `react-hooks/set-state-in-effect`, alle am selben
+Lademuster. Nachgeprüft an den Aufrufstellen: `laden()` ist `async`, jedes
+`setState` läuft nach dem ersten `await` – synchron wird nichts gesetzt.
+Die Regel erkennt die Form, nicht das Verhalten. Sie steht als Warnung mit
+Begründung in `eslint.config.mjs`.
+
+### Bewusst NICHT übernommen
+
+| Aus dem älteren Branch | Warum nicht |
+|---|---|
+| `0064_hardening_krankdaten_rechte_protokoll.sql` | enthält ein `shift_plan_grid`, das die `privacy_settings`-Logik überschreiben würde |
+| `src/lib/supabase/config.ts` (alte Fassung) | der Security-Stand ist besser |
+| `src/context/session.tsx` | der Security-Stand hat eine eigene Lösung |
+| `next.config.mjs` mit CSP-Headern | im Browser ungeprüft, siehe offene Punkte |
+
+### Getestet gegen die laufende Datenbank
+
+Alle Schreibtests in einer Transaktion, die absichtlich abbricht.
+
+| Prüfung | Ergebnis |
+|---|---|
+| Security-Regressionssuite (10 Zusicherungen) | 10 × PASS |
+| Cross-Tenant, Admin A gegen Mandant B | alle Lese-, Schreib- und RPC-Versuche DENY |
+| Gegenprobe eigener Mandant | 50 Zeilen lesbar – der Test misst wirklich |
+| Rollenmatrix Employee | 1 Mitarbeiterzeile, 0 Abwesenheiten, 0 fremde Kranktage |
+| Rollenmatrix Schichtleitung | 50 Mitarbeiter, 79 Abwesenheiten, 21 Kranktage (Disposition) |
+| Rollenmatrix Admin | eigener Mandant vollständig, fremder blockiert |
+| Selbst zum Admin machen | Trigger weist ab |
+| Open Redirect (`?weiter=`) | externe Ziele verworfen |
+| Auth-Gate im Deployment | alle geschützten Pfade → `/login` |
+
+**Ein Hinweis zur Methode, der Zeit spart:** Ein Cross-Tenant-Test über
+eine privilegierte Verbindung ist wertlos – die umgeht RLS. Es braucht
+`set_config('role','authenticated', true)` **und** eine Gegenprobe auf den
+eigenen Mandanten. Ohne Rollenwechsel ist jedes Ergebnis falsch-positiv,
+ohne Gegenprobe jedes falsch-negativ.
+
+### Nicht migriert: `middleware` → `proxy`
+
+Next 16 meldet `The "middleware" file convention is deprecated`. Die
+Migration wurde **bewusst nicht** durchgeführt: `middleware.ts` ist das
+Authentifizierungstor (geschützte Pfade, Sitzungserneuerung, Leerlauf-
+Abmeldung), der angebotene Codemod ist eine `canary`-Version, und das
+Ergebnis war ohne Anmeldedaten nicht funktional prüfbar. Eine
+Deprecation-Warnung gegen ein möglicherweise offenes Auth-Tor zu tauschen
+wäre ein schlechtes Geschäft. Gehört als eigener, im Vorschau-Deployment
+prüfbarer Schritt gemacht.

@@ -19,9 +19,21 @@ import type { FormState } from "./form-state";
  */
 export async function siteOrigin(): Promise<string> {
   const headerList = await headers();
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) {
+    const url = new URL(configured);
+    if (url.protocol !== "https:" && process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_SITE_URL muss in der Produktion HTTPS verwenden.");
+    }
+    return url.origin;
+  }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("NEXT_PUBLIC_SITE_URL ist in der Produktion erforderlich.");
+  }
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  return process.env.NEXT_PUBLIC_SITE_URL ?? `${protocol}://${host}`;
+  if (!host) throw new Error("Keine öffentliche Host-Adresse verfügbar.");
+  return `${protocol}://${host}`;
 }
 
 /** Ziel nach dem Einlösen eines Einladungs- oder Passwortlinks. */
@@ -158,11 +170,9 @@ export async function grantAccess(
 
   const redirectTo = `${origin}/auth/callback?weiter=${NACH_EINLADUNG}`;
   const metadata = {
-    company_id: employee.company_id,
     employee_id: employee.id,
     first_name: employee.first_name,
     last_name: employee.last_name,
-    role: employee.role,
   };
 
   // Erst der Versuch über den Postversand – wenn er läuft, ist das der

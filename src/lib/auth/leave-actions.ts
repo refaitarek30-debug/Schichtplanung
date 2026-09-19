@@ -10,7 +10,7 @@ export type { FormState };
 import type { LeaveRequestRow } from "@/lib/supabase/database.types";
 
 const NOT_CONFIGURED: FormState = {
-  error: "Supabase ist noch nicht konfiguriert. Die Anwendung läuft im Demo-Modus.",
+  error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
 
 /**

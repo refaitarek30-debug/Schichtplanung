@@ -236,7 +236,7 @@ export function ReplacementDialog({
               ) : null}
 
               <p className="border-t border-line pt-3 text-[12px] text-ink-faint">
-                Eine Anfrage plant niemanden ein. Erst nach der Zusage setzt „Einplanen" die
+                Eine Anfrage plant niemanden ein. Erst nach der Zusage setzt „Einplanen&ldquo; die
                 Besetzung.
               </p>
             </>
