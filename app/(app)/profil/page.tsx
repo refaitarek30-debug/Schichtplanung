@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { roleLabels } from "@/lib/nav";
-import { ProfileForm } from "./profile-form";\nimport { PersonalDetailsForm } from "./personal-details-form";
+import { ProfileForm } from "./profile-form";
+import { PersonalDetailsForm } from "./personal-details-form";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
