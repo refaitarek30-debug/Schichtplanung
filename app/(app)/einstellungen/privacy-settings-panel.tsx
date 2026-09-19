@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { PrivacySettingsForm } from "@/components/privacy/privacy-settings-form";
 import { createClient } from "@/lib/supabase/client";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { dataErrorMessage } from "@/lib/errors";
 
 export function PrivacySettingsPanel() {
   const [settings, setSettings] = useState<{
@@ -28,11 +28,15 @@ export function PrivacySettingsPanel() {
         if (active) setSettings(data);
       } catch (err) {
         if (active) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Datenschutzeinstellungen konnten nicht geladen werden.",
-          );
+          // Keine rohen Datenbanktexte auf den Bildschirm: die enthalten
+          // Tabellen- und Spaltennamen und gehoeren erst recht nicht auf
+          // eine Datenschutzseite. `dataErrorMessage` uebersetzt die
+          // bekannten Faelle, alles andere bekommt einen neutralen Satz.
+          const bekannt =
+            typeof err === "object" && err !== null
+              ? dataErrorMessage(err as { message?: string; code?: string })
+              : null;
+          setError(bekannt ?? "Datenschutzeinstellungen konnten nicht geladen werden.");
         }
       }
     }
