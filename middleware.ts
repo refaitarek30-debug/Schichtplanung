@@ -3,8 +3,20 @@ import { isSupabaseConfigured, isProductionMisconfigured } from "@/lib/supabase/
 import { updateSession } from "@/lib/supabase/middleware";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE, IDLE_TIMEOUT_MS } from "@/lib/auth/idle";
 
-/** Alles unter diesen Pfaden setzt eine Anmeldung voraus. */
+/**
+ * Alles unter diesen Pfaden setzt eine Anmeldung voraus.
+ *
+ * Die Liste muss jede Seite unter `app/(app)` enthalten. Fehlt eine, wird
+ * der Zugriff zwar immer noch abgewiesen -- das Layout von `(app)` prueft
+ * die Sitzung ebenfalls und leitet um --, aber erst eine Stufe spaeter:
+ * die Anfrage erreicht dann die Server-Komponente der Seite, statt schon
+ * in der Middleware zu enden. Nachgemessen fehlten hier vier Eintraege.
+ */
 const PROTECTED_PREFIXES = [
+  "/altersfreizeit",
+  "/ausbildung",
+  "/auswertung",
+  "/mitteilungen",
   "/dashboard",
   "/kalender",
   "/schichtplan",
