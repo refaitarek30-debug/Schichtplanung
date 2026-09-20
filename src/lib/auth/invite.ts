@@ -16,9 +16,27 @@ import type { FormState } from "./form-state";
 /**
  * Öffentliche Adresse dieser Installation. Einladungslinks müssen darauf
  * zeigen – nicht auf localhost und nicht auf eine Vorschau-Adresse.
+ *
+ * Warum die Adresse in der Produktion NICHT aus dem Anfrage-Header kommt:
+ * `Host` und `X-Forwarded-Host` bestimmt der Aufrufende. Wer sie fälscht,
+ * bekäme einen Einladungslink, der auf seine eigene Seite zeigt – und damit
+ * das Token einer fremden Person. Die Adresse muss deshalb von der
+ * Serverseite stammen.
+ *
+ * Reihenfolge:
+ *
+ *   1. NEXT_PUBLIC_SITE_URL – die ausdrücklich gesetzte eigene Domain.
+ *   2. VERCEL_PROJECT_PRODUCTION_URL – setzt Vercel selbst, immer die
+ *      Produktionsadresse, auch aus einer Vorschau heraus. Nicht vom
+ *      Aufrufenden beeinflussbar, die Absicherung bleibt also bestehen.
+ *   3. Außerhalb der Produktion der Anfrage-Header, damit die Entwicklung
+ *      ohne Konfiguration läuft.
+ *
+ * Punkt 2 war der Fehler: die Sperre verlangte eine Variable, die auf
+ * Vercel nie angelegt wurde. Jede Einladung endete deshalb in der
+ * Produktion mit einem Serverfehler, statt den Link zu erzeugen.
  */
 export async function siteOrigin(): Promise<string> {
-  const headerList = await headers();
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (configured) {
     const url = new URL(configured);
@@ -27,9 +45,20 @@ export async function siteOrigin(): Promise<string> {
     }
     return url.origin;
   }
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("NEXT_PUBLIC_SITE_URL ist in der Produktion erforderlich.");
+
+  // Vercel liefert die Adresse ohne Schema.
+  const vercelProduktion = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercelProduktion) {
+    return new URL(`https://${vercelProduktion}`).origin;
   }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Keine öffentliche Adresse hinterlegt. Bitte NEXT_PUBLIC_SITE_URL setzen.",
+    );
+  }
+
+  const headerList = await headers();
   const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
   const protocol = headerList.get("x-forwarded-proto") ?? "http";
   if (!host) throw new Error("Keine öffentliche Host-Adresse verfügbar.");
