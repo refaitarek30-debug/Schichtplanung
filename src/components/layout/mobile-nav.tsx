@@ -70,7 +70,16 @@ export function MobileNav() {
         </div>
       ) : null}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur lg:hidden">
+      {/*
+        Die Leiste liegt am unteren Rand des SICHTBAREN Fensters, nicht am
+        Ende der Seite. `pb-[env(safe-area-inset-bottom)]` schiebt sie auf
+        iPhones über den Home-Balken – ohne das sitzt sie teils darunter und
+        wirkt, als rutsche sie ins Bild.
+      */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+        style={{ position: "fixed" }}
+      >
         <ul className="mx-auto flex max-w-lg items-stretch">
           {primary.map((item) => {
             const Icon = item.icon;

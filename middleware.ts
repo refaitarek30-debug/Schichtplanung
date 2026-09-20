@@ -17,6 +17,7 @@ const PROTECTED_PREFIXES = [
   "/ausbildung",
   "/auswertung",
   "/mitteilungen",
+  "/krank",
   "/dashboard",
   "/kalender",
   "/schichtplan",

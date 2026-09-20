@@ -412,6 +412,24 @@ export function ShiftPlanGrid({
             </button>
           ) : null}
 
+          {/* Wie viele Tage nebeneinander?
+              Die Obergrenze ist keine willkürliche Zahl: `shift_plan_grid()`
+              weist in der Datenbank alles über 62 Tage ab, damit nicht mit
+              einem Aufruf der halbe Jahresplan herausgeht. 62 Tage sind
+              genau zwei volle Monate – mehr gibt die Schnittstelle nicht
+              her, und weniger wäre hier künstlich. */}
+          <select
+            value={span}
+            onChange={(e) => setSpan(Number(e.target.value))}
+            aria-label="Anzahl der Tage"
+            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+          >
+            <option value={14}>14 Tage</option>
+            <option value={28}>4 Wochen</option>
+            <option value={42}>6 Wochen</option>
+            <option value={62}>2 Monate</option>
+          </select>
+
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
               zu klicken – bei Jahresplanung der schnellste Weg. */}
           <select
