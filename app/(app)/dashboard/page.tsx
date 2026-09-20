@@ -276,6 +276,7 @@ export default function DashboardPage() {
         {zeige("urlaub") ? (
         <KpiCard
           label="Urlaubstage verfügbar"
+          href="/urlaub"
           value={formatDays(availableLeave)}
           unit="Tage"
           hint={`von ${formatDays(totalLeave)} übrig`}
@@ -286,6 +287,7 @@ export default function DashboardPage() {
         {zeige("antraege") ? (
         <KpiCard
           label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
+          href={role === "employee" ? "/urlaub" : "/urlaubsantraege"}
           value={role === "employee" ? ownPending.length : pendingCount}
           hint={
             role === "employee"
@@ -301,6 +303,7 @@ export default function DashboardPage() {
         {role === "employee" || !zeige("kritisch") ? null : (
           <KpiCard
             label="Kritische Tage (14 T.)"
+            href="/besetzung"
             value={criticalDays.length}
             hint={
               criticalDays.length > 0
@@ -314,6 +317,7 @@ export default function DashboardPage() {
         {zeige("krank") ? (
         <KpiCard
           label="Krank gesamt"
+          href="/krank"
           value={sickDays}
           unit={sickDays === 1 ? "Tag" : "Tage"}
           hint={`im Jahr ${year}`}
@@ -332,6 +336,7 @@ export default function DashboardPage() {
         {hatVKonto && zeige("vtage") ? (
           <KpiCard
             label="V-Tage gesamt"
+            href="/urlaub"
             value={formatDays(vRemaining)}
             unit="Tage"
             hint={`von ${formatDays(vEntitlement)} übrig`}

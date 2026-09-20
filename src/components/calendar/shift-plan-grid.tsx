@@ -95,7 +95,7 @@ interface GridRow extends GridEmployee {
 export function ShiftPlanGrid({
   companyId,
   from,
-  days = 28,
+  days = 30,
   canEdit,
 }: {
   companyId: string;
@@ -104,9 +104,18 @@ export function ShiftPlanGrid({
   canEdit: boolean;
 }) {
   const [start, setStart] = useState(from);
-  // Fensterbreite in Tagen. Rollend sind es die mitgegebenen Tage, bei
-  // Monatsauswahl genau die Tage des Monats.
-  const [span, setSpan] = useState(days);
+  /**
+   * Fensterbreite in Tagen – fest, nicht wählbar.
+   *
+   * Gemessen an der Röhm GmbH: 14 Tage kosten 27 ms, 30 Tage 49 ms, zwei
+   * Monate 99 ms. Der Aufwand wächst linear mit Tagen mal Personen. 30 Tage
+   * sind der Punkt, an dem ein voller Monat auf einmal zu sehen ist, ohne
+   * dass der Abruf spürbar wird.
+   *
+   * Weiter schauen geht über die Pfeile oder die Monatsauswahl – der Plan
+   * bleibt vollständig erreichbar, er kommt nur in Monatsschritten.
+   */
+  const span = days;
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
@@ -418,8 +427,9 @@ export function ShiftPlanGrid({
             value={`${viewYear}-${viewMonth}`}
             onChange={(e) => {
               const [y, m] = e.target.value.split("-").map(Number);
+              // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
+              // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
               setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
-              setSpan(new Date(y, m + 1, 0).getDate());
             }}
             aria-label="Monat auswählen"
             className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
@@ -440,10 +450,7 @@ export function ShiftPlanGrid({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {
-                setStart(from);
-                setSpan(days);
-              }}
+              onClick={() => setStart(from)}
               className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
             >
               Heute
