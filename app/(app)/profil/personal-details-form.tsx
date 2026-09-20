@@ -5,6 +5,21 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { dataErrorMessage } from "@/lib/errors";
+import { MyAgeLeaveHint } from "./my-age-leave-hint";
+
+/**
+ * Rohe Datenbanktexte gehören nicht auf den Bildschirm: sie nennen Tabellen,
+ * Spalten und bei einer RLS-Abweisung den Namen der Richtlinie. Auf einer
+ * Seite mit persönlichen Daten erst recht nicht.
+ */
+function lesbar(err: unknown, ersatz: string): string {
+  const bekannt =
+    typeof err === "object" && err !== null
+      ? dataErrorMessage(err as { message?: string; code?: string })
+      : null;
+  return bekannt ?? ersatz;
+}
 
 export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
   const [birthDate, setBirthDate] = useState("");
@@ -34,9 +49,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
         if (loadError) throw loadError;
         if (active) setBirthDate(data?.birth_date ?? "");
       } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Persönliche Angaben konnten nicht geladen werden.");
-        }
+        if (active) setError(lesbar(err, "Persönliche Angaben konnten nicht geladen werden."));
       } finally {
         if (active) setLoading(false);
       }
@@ -69,7 +82,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
       if (saveError) throw saveError;
       setMessage("Persönliche Angaben gespeichert.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+      setError(lesbar(err, "Speichern fehlgeschlagen."));
     } finally {
       setSaving(false);
     }
@@ -109,7 +122,9 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
 
         {readOnly ? (
           <Alert tone="warning">Im Demo-Modus lassen sich keine Änderungen speichern.</Alert>
-        ) : null}
+        ) : (
+          <MyAgeLeaveHint key={birthDate} />
+        )}
       </CardBody>
     </Card>
   );

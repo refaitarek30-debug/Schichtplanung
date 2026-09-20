@@ -1,4 +1,5 @@
 import {
+  CakeSlice,
   CalendarDays,
   ClipboardCheck,
   Cog,
@@ -79,6 +80,15 @@ export const navItems: NavItem[] = [
     href: "/auswertung",
     label: "Auswertung",
     icon: BarChart3,
+    roles: ["shift_leader", "admin"],
+  },
+  {
+    // Prüfen und Festlegen der Altersfreizeit. Steht bei der Führung, weil
+    // nur dort entschieden wird – die eigene Lage sieht jede Person im
+    // Profil.
+    href: "/altersfreizeit",
+    label: "Altersfreizeit",
+    icon: CakeSlice,
     roles: ["shift_leader", "admin"],
   },
   {
