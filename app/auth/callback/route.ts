@@ -76,23 +76,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?fehler=link`);
   }
 
+  // Hier wird bewusst NICHTS eingelöst.
+  //
+  // Gemessen an einem echten Fall: Link erzeugt um 17:39:44, Token
+  // verbraucht um 17:39:50 – sechs Sekunden später. Kein Mensch klickt so
+  // schnell. Das war der Link-Vorschau-Abruf des Mail- bzw.
+  // Messenger-Dienstes, der jede zugestellte Adresse für Vorschaubild und
+  // Virenprüfung aufruft. Dieser Abruf hat das Einmal-Token verbraucht,
+  // und die eingeladene Person bekam beim ERSTEN eigenen Klick
+  // "bereits eingelöst" zu sehen.
+  //
+  // Deshalb führt ein GET nur noch zu einer Zwischenseite mit einer
+  // Schaltfläche. Eingelöst wird erst beim Absenden des Formulars, also
+  // per POST. Scanner rufen ab, sie senden keine Formulare – das Token
+  // überlebt sie.
   if (tokenHash && OTP_TYPES.has(type)) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as "invite" | "recovery" | "signup" | "magiclink" | "email" | "email_change",
-    });
-    if (!error) return angemeldet(`${origin}${next}`);
-
-    // Ein Einladungslink wird beim Einlösen verbraucht. Der zweite Klick
-    // scheitert deshalb immer – auch wenn beim ersten alles geklappt hat.
-    // Wer dabei noch angemeldet ist, soll weitergehen statt auf einer
-    // Fehlerseite zu landen: für diese Person hat der Link funktioniert,
-    // sie hat nur zweimal geklickt oder die Seite neu geladen.
-    const { data } = await supabase.auth.getUser();
-    if (data.user) return angemeldet(`${origin}${next}`);
-
-    return NextResponse.redirect(`${origin}/login?fehler=verbraucht`);
+    // `(auth)` ist eine Routengruppe und steht nicht in der Adresse:
+    // die Seite liegt unter /bestaetigen.
+    const seite = new URL(`${origin}/bestaetigen`);
+    seite.searchParams.set("token_hash", tokenHash);
+    seite.searchParams.set("type", type);
+    seite.searchParams.set("weiter", next);
+    return NextResponse.redirect(seite.toString());
   }
 
   // Weder Code noch Token: dann stehen die Angaben hinter dem Rautezeichen.
@@ -101,4 +106,51 @@ export async function GET(request: NextRequest) {
   const bridge = new URL(`${origin}/auth/weiter`);
   if (nextParam) bridge.searchParams.set("weiter", next);
   return NextResponse.redirect(bridge.toString());
+}
+
+/**
+ * Das eigentliche Einlösen – nur über ein abgesendetes Formular erreichbar.
+ */
+export async function POST(request: NextRequest) {
+  const { origin } = new URL(request.url);
+  const form = await request.formData();
+  const tokenHash = String(form.get("token_hash") ?? "");
+  const type = String(form.get("type") ?? "");
+  const weiter = String(form.get("weiter") ?? "");
+
+  const ziel =
+    weiter.startsWith("/") && !weiter.startsWith("//") ? weiter : "/dashboard";
+
+  if (!isSupabaseConfigured || !tokenHash || !OTP_TYPES.has(type)) {
+    return NextResponse.redirect(`${origin}/login?fehler=link`, { status: 303 });
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type: type as "invite" | "recovery" | "signup" | "magiclink" | "email" | "email_change",
+  });
+
+  // 303, damit der Browser nach dem Absenden auf GET wechselt und ein
+  // Neuladen nicht erneut abschickt.
+  if (!error) {
+    const antwort = angemeldet(`${origin}${ziel}`);
+    return new NextResponse(antwort.body, {
+      status: 303,
+      headers: antwort.headers,
+    });
+  }
+
+  // Zweiter Versuch mit demselben Link: wer noch angemeldet ist, geht
+  // weiter statt auf einer Fehlerseite zu landen.
+  const { data } = await supabase.auth.getUser();
+  if (data.user) {
+    const antwort = angemeldet(`${origin}${ziel}`);
+    return new NextResponse(antwort.body, {
+      status: 303,
+      headers: antwort.headers,
+    });
+  }
+
+  return NextResponse.redirect(`${origin}/login?fehler=verbraucht`, { status: 303 });
 }
