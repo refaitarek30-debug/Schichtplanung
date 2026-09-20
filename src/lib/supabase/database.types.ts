@@ -250,6 +250,18 @@ export interface Database {
         sickness_revoked_at: string | null;
       }>;
       absences: Table<AbsenceRow>;
+      age_leave_grants: Table<{
+        id: string;
+        company_id: string;
+        employee_id: string;
+        year: number;
+        confirmed_days: number;
+        note: string | null;
+        confirmed_by: string | null;
+        confirmed_at: string;
+        created_at: string;
+        updated_at: string;
+      }>;
       staffing_rules: Table<StaffingRuleRow>;
       announcements: Table<AnnouncementRow>;
     };
@@ -291,6 +303,43 @@ export interface Database {
           p_notice_acknowledged?: boolean;
         };
         Returns: undefined;
+      };
+      age_leave_overview: {
+        Args: { p_year: number };
+        Returns: {
+          employee_id: string;
+          employee_name: string;
+          rotation_team: string | null;
+          birth_date: string | null;
+          alter_im_jahr: number | null;
+          automatisch_moeglich: boolean;
+          vorschlag_tage: number;
+          bestaetigt: boolean;
+          bestaetigte_tage: number;
+          bestaetigt_von: string | null;
+          bestaetigt_am: string | null;
+          notiz: string | null;
+        }[];
+      };
+      confirm_age_leave: {
+        Args: {
+          p_employee_id: string;
+          p_year: number;
+          p_days: number;
+          p_note?: string | null;
+        };
+        Returns: undefined;
+      };
+      my_age_leave: {
+        Args: { p_year: number };
+        Returns: {
+          alter_im_jahr: number | null;
+          automatisch_moeglich: boolean;
+          vorschlag_tage: number;
+          bestaetigt: boolean;
+          bestaetigte_tage: number;
+          bestaetigt_am: string | null;
+        }[];
       };
       who_is_absent: {
         Args: { p_date: string };

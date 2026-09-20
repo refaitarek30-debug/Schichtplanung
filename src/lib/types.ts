@@ -228,6 +228,41 @@ export interface LiveShiftPlanCell {
   isMe: boolean;
 }
 
+/**
+ * Altersfreizeit einer Person – für die Führungsübersicht.
+ *
+ * `suggestedDays` ist ein HINWEIS aus dem Geburtsdatum und nirgends
+ * gespeichert. Verbindlich ist allein `confirmedDays`, und nur wenn
+ * `confirmed` wahr ist. Die beiden Felder dürfen in der Anzeige nie
+ * vermischt werden – sonst sieht ein Vorschlag aus wie eine Zusage.
+ */
+export interface LiveAgeLeaveRow {
+  employeeId: string;
+  employeeName: string;
+  rotationTeam: string | null;
+  /** Nur für die Führung sichtbar; leer, wenn nichts hinterlegt wurde. */
+  birthDate: string | null;
+  ageInYear: number | null;
+  autoPossible: boolean;
+  suggestedDays: number;
+  confirmed: boolean;
+  confirmedDays: number;
+  confirmedBy: string | null;
+  confirmedAt: string | null;
+  /** Interne Begründung der Führung. Die betroffene Person sieht sie nicht. */
+  note: string | null;
+}
+
+/** Der eigene Stand zur Altersfreizeit – ohne die interne Notiz. */
+export interface LiveMyAgeLeave {
+  ageInYear: number | null;
+  autoPossible: boolean;
+  suggestedDays: number;
+  confirmed: boolean;
+  confirmedDays: number;
+  confirmedAt: string | null;
+}
+
 /** Ein Eintrag aus `who_is_absent()` – wer heute fehlt, mit Grund und Schicht. */
 export interface LiveAbsentToday {
   employeeId: string;
