@@ -211,22 +211,27 @@ export async function grantAccess(
     data: metadata,
   });
 
-  // Unabhängig davon einen Link erzeugen. Kommt die Mail an, ist der Link
-  // nur die Rückversicherung; kommt sie nicht an, ist er der eigentliche Weg.
-  const link = await createInviteLink(
-    employee.email,
-    origin,
-    redirectTo,
-    metadata,
-    admin,
-  );
+  // ACHTUNG, hier steckte ein Fehler: Supabase hinterlegt je Person und Art
+  // nur EIN gültiges Einmal-Token. `inviteUserByEmail` legt eines an und
+  // verschickt es; ein anschliessendes `generateLink` legt ein neues an und
+  // macht damit genau das Token unbrauchbar, das gerade per Mail unterwegs
+  // ist. Wer dann auf den Link in der Mail klickt, bekommt „abgelaufen“ zu
+  // sehen, obwohl der Link nie benutzt wurde.
+  //
+  // Deshalb wird nur noch dann ein eigener Link erzeugt, wenn die Mail NICHT
+  // rausging. Dann gibt es kein verschicktes Token, das kaputtgehen könnte,
+  // und der erzeugte Link ist der einzige Weg.
+  const link = mailError
+    ? await createInviteLink(employee.email, origin, redirectTo, metadata, admin)
+    : null;
 
   revalidatePath("/verwaltung");
 
   if (!mailError) {
     return {
-      success: `Einladung an ${employee.email} verschickt.`,
-      link: link ?? undefined,
+      success:
+        `Einladung an ${employee.email} verschickt. Der Link in der Mail gilt ` +
+        `24 Stunden und lässt sich einmal einlösen.`,
     };
   }
 

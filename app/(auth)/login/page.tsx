@@ -26,9 +26,11 @@ export default async function LoginPage({
         </Alert>
       ) : null}
 
-      {params.fehler === "link" || params.fehler === "abgelaufen" ? (
+      {params.fehler === "link" || params.fehler === "abgelaufen" || params.fehler === "verbraucht" ? (
         <Alert tone="error" className="mt-4">
-          {params.fehler === "abgelaufen"
+          {params.fehler === "verbraucht"
+            ? "Dieser Einladungslink wurde bereits eingelöst – oder er ist abgelaufen. Wenn du beim ersten Klick ein Passwort vergeben hast, melde dich einfach oben mit E-Mail und Passwort an. Falls nicht: über „Passwort vergessen“ bekommst du sofort einen neuen Link, ohne bei der Administration nachfragen zu müssen."
+            : params.fehler === "abgelaufen"
             ? "Dieser Einladungslink ist abgelaufen oder wurde schon benutzt. Jeder Link gilt 24 Stunden und lässt sich nur einmal einlösen – bitte bei der Administration einen neuen anfordern."
             : "Der Link ist unvollständig. Bitte ihn komplett aus der Nachricht kopieren oder unten einen neuen anfordern."}
         </Alert>

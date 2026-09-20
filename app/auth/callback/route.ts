@@ -83,7 +83,16 @@ export async function GET(request: NextRequest) {
       type: type as "invite" | "recovery" | "signup" | "magiclink" | "email" | "email_change",
     });
     if (!error) return angemeldet(`${origin}${next}`);
-    return NextResponse.redirect(`${origin}/login?fehler=abgelaufen`);
+
+    // Ein Einladungslink wird beim Einlösen verbraucht. Der zweite Klick
+    // scheitert deshalb immer – auch wenn beim ersten alles geklappt hat.
+    // Wer dabei noch angemeldet ist, soll weitergehen statt auf einer
+    // Fehlerseite zu landen: für diese Person hat der Link funktioniert,
+    // sie hat nur zweimal geklickt oder die Seite neu geladen.
+    const { data } = await supabase.auth.getUser();
+    if (data.user) return angemeldet(`${origin}${next}`);
+
+    return NextResponse.redirect(`${origin}/login?fehler=verbraucht`);
   }
 
   // Weder Code noch Token: dann stehen die Angaben hinter dem Rautezeichen.
