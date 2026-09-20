@@ -104,9 +104,18 @@ export function ShiftPlanGrid({
   canEdit: boolean;
 }) {
   const [start, setStart] = useState(from);
-  // Fensterbreite in Tagen. Rollend sind es die mitgegebenen Tage, bei
-  // Monatsauswahl genau die Tage des Monats.
-  const [span, setSpan] = useState(days);
+  /**
+   * Fensterbreite in Tagen – fest, nicht wählbar.
+   *
+   * Gemessen an der Röhm GmbH: 14 Tage kosten 27 ms, 30 Tage 49 ms, zwei
+   * Monate 99 ms. Der Aufwand wächst linear mit Tagen mal Personen. 30 Tage
+   * sind der Punkt, an dem ein voller Monat auf einmal zu sehen ist, ohne
+   * dass der Abruf spürbar wird.
+   *
+   * Weiter schauen geht über die Pfeile oder die Monatsauswahl – der Plan
+   * bleibt vollständig erreichbar, er kommt nur in Monatsschritten.
+   */
+  const span = days;
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
@@ -412,33 +421,15 @@ export function ShiftPlanGrid({
             </button>
           ) : null}
 
-          {/* Wie viele Tage nebeneinander? Höchstens 30.
-              Die Datenbank gäbe 62 her, aber ein Abruf über zwei Monate
-              kostet rund 100 ms, und der Aufwand wächst mit jedem Tag und
-              jeder Person. Bei 30 Tagen ist er etwa halb so groß – und ein
-              Monat ist das, womit tatsächlich geplant wird. Wer weiter
-              schauen will, blättert mit den Pfeilen oder springt über die
-              Monatsauswahl. */}
-          <select
-            value={span}
-            onChange={(e) => setSpan(Number(e.target.value))}
-            aria-label="Anzahl der Tage"
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
-          >
-            <option value={14}>14 Tage</option>
-            <option value={30}>30 Tage</option>
-          </select>
-
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
               zu klicken – bei Jahresplanung der schnellste Weg. */}
           <select
             value={`${viewYear}-${viewMonth}`}
             onChange={(e) => {
               const [y, m] = e.target.value.split("-").map(Number);
+              // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
+              // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
               setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
-              // Auf 30 begrenzt, sonst hebelt ein 31-Tage-Monat die
-              // Obergrenze wieder aus.
-              setSpan(Math.min(new Date(y, m + 1, 0).getDate(), 30));
             }}
             aria-label="Monat auswählen"
             className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
@@ -459,10 +450,7 @@ export function ShiftPlanGrid({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {
-                setStart(from);
-                setSpan(days);
-              }}
+              onClick={() => setStart(from)}
               className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
             >
               Heute
