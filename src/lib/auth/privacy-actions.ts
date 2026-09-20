@@ -6,8 +6,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import type { FormState } from "./form-state";
 
-const NOTICE_VERSION = "1.0";
-
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
@@ -56,5 +54,3 @@ export async function savePrivacySettings(
   revalidatePath("/dashboard");
   return { success: "Datenschutzeinstellungen gespeichert." };
 }
-
-export { NOTICE_VERSION };

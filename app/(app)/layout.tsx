@@ -6,6 +6,7 @@ import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
+import { PRIVACY_NOTICE_VERSION } from "@/lib/legal/privacy-notice";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -60,5 +61,5 @@ async function isPrivacyOnboardingRequired(userId: string): Promise<boolean> {
   // interpreted as an already completed privacy setup.
   if (error || !data) return true;
 
-  return data.privacy_notice_version !== "1.0" || !data.accepted_at;
+  return data.privacy_notice_version !== PRIVACY_NOTICE_VERSION || !data.accepted_at;
 }
