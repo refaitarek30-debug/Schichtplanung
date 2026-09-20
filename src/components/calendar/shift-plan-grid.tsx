@@ -95,7 +95,7 @@ interface GridRow extends GridEmployee {
 export function ShiftPlanGrid({
   companyId,
   from,
-  days = 28,
+  days = 30,
   canEdit,
 }: {
   companyId: string;
@@ -412,12 +412,13 @@ export function ShiftPlanGrid({
             </button>
           ) : null}
 
-          {/* Wie viele Tage nebeneinander?
-              Die Obergrenze ist keine willkürliche Zahl: `shift_plan_grid()`
-              weist in der Datenbank alles über 62 Tage ab, damit nicht mit
-              einem Aufruf der halbe Jahresplan herausgeht. 62 Tage sind
-              genau zwei volle Monate – mehr gibt die Schnittstelle nicht
-              her, und weniger wäre hier künstlich. */}
+          {/* Wie viele Tage nebeneinander? Höchstens 30.
+              Die Datenbank gäbe 62 her, aber ein Abruf über zwei Monate
+              kostet rund 100 ms, und der Aufwand wächst mit jedem Tag und
+              jeder Person. Bei 30 Tagen ist er etwa halb so groß – und ein
+              Monat ist das, womit tatsächlich geplant wird. Wer weiter
+              schauen will, blättert mit den Pfeilen oder springt über die
+              Monatsauswahl. */}
           <select
             value={span}
             onChange={(e) => setSpan(Number(e.target.value))}
@@ -425,9 +426,7 @@ export function ShiftPlanGrid({
             className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
           >
             <option value={14}>14 Tage</option>
-            <option value={28}>4 Wochen</option>
-            <option value={42}>6 Wochen</option>
-            <option value={62}>2 Monate</option>
+            <option value={30}>30 Tage</option>
           </select>
 
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
@@ -437,7 +436,9 @@ export function ShiftPlanGrid({
             onChange={(e) => {
               const [y, m] = e.target.value.split("-").map(Number);
               setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
-              setSpan(new Date(y, m + 1, 0).getDate());
+              // Auf 30 begrenzt, sonst hebelt ein 31-Tage-Monat die
+              // Obergrenze wieder aus.
+              setSpan(Math.min(new Date(y, m + 1, 0).getDate(), 30));
             }}
             aria-label="Monat auswählen"
             className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"

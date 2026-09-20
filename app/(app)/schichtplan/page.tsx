@@ -58,7 +58,7 @@ export default function ShiftPlanPage() {
             key={stand}
             companyId={company.id}
             from={TODAY}
-            days={28}
+            days={30}
             canEdit={canEdit}
           />
 
