@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { HolidaySettings } from "@/components/settings/holiday-settings";
 import { QualificationsCard } from "@/components/settings/qualifications-card";
 import { StaffingNeedsCard } from "@/components/settings/staffing-needs-card";
+import { LeaveQuotaCard } from "@/components/settings/leave-quota-card";
 import { HolidayWorkSetting } from "@/components/settings/holiday-work-setting";
 import { useSession } from "@/context/session";
 import { AdminViewHeader } from "./view-header";
@@ -70,6 +71,7 @@ export function RulesView() {
         <>
           <QualificationsCard canManage={role === "admin"} />
           <StaffingNeedsCard canManage={role === "admin"} />
+          <LeaveQuotaCard canManage={role === "admin"} />
           <HolidayWorkSetting canManage={role === "admin"} />
           <HolidaySettings canManage={role === "admin"} />
         </>

@@ -34,6 +34,14 @@ const cellStyles: Record<string, string> = {
   u: "bg-shift-urlaub/50 text-shift-urlaub-ink ring-1 ring-inset ring-shift-urlaub-ink/40",
   V: "bg-shift-vtag text-shift-vtag-ink",
   v: "bg-shift-vtag/50 text-shift-vtag-ink ring-1 ring-inset ring-shift-vtag-ink/40",
+  AF: "bg-shift-altersfrei text-shift-altersfrei-ink",
+  af: "bg-shift-altersfrei/50 text-shift-altersfrei-ink ring-1 ring-inset ring-shift-altersfrei-ink/40",
+  SU: "bg-shift-sonderurlaub text-shift-sonderurlaub-ink",
+  su: "bg-shift-sonderurlaub/50 text-shift-sonderurlaub-ink ring-1 ring-inset ring-shift-sonderurlaub-ink/40",
+  BU: "bg-shift-bildungsurlaub text-shift-bildungsurlaub-ink",
+  bu: "bg-shift-bildungsurlaub/50 text-shift-bildungsurlaub-ink ring-1 ring-inset ring-shift-bildungsurlaub-ink/40",
+  G: "bg-shift-gewerkschaft text-shift-gewerkschaft-ink",
+  g: "bg-shift-gewerkschaft/50 text-shift-gewerkschaft-ink ring-1 ring-inset ring-shift-gewerkschaft-ink/40",
   K: "bg-shift-krank text-shift-krank-ink",
   FB: "bg-shift-schulung text-shift-schulung-ink",
   A: "bg-surface-sunken text-ink-muted",
@@ -53,7 +61,7 @@ const legendExtra: Record<string, string> = {
  * Beantragt (kleines "u"/"v") zählt bewusst NICHT dazu – solange nichts
  * genehmigt ist, steht die Person im Plan und in der Besetzung.
  */
-const ABSENT_CODES = new Set(["U", "V", "K", "FB", "A"]);
+const ABSENT_CODES = new Set(["U", "V", "AF", "SU", "BU", "G", "K", "FB", "A"]);
 
 /** "Tarek Refai" -> "T. Refai". Spart auf dem Handy die halbe Namensspalte. */
 function shortName(name: string): string {
@@ -84,9 +92,11 @@ const legend = [
   { code: "S", label: "Spätschicht" },
   { code: "N", label: "Nachtschicht" },
   { code: "U", label: "Urlaub" },
-  { code: "u", label: "Urlaub beantragt" },
   { code: "V", label: "V-Tag" },
-  { code: "v", label: "V-Tag beantragt" },
+  { code: "AF", label: "Altersfreizeit" },
+  { code: "SU", label: "Sonderurlaub" },
+  { code: "BU", label: "Bildungsurlaub" },
+  { code: "G", label: "Gewerkschaftstag" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
   // "A" steht heute für jede weitere Abwesenheit und zugleich für eine
@@ -803,6 +813,10 @@ export function ShiftPlanGrid({
             <span className="truncate">{item.label}</span>
           </span>
         ))}
+        {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
+        <span className="col-span-3 pt-0.5 sm:col-span-6">
+          Kleingeschrieben heißt beantragt, noch nicht genehmigt.
+        </span>
       </div>
     </Card>
   );

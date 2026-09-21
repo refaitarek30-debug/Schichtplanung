@@ -61,6 +61,18 @@
   --c-krank-ink: 122 16 16;
   --c-schulung: 214 196 240;
   --c-schulung-ink: 66 34 122;
+  /* Die vier selteneren Abwesenheitsarten. Bewusst gedeckter als Früh,
+     Spät und Nacht: den Plan sollen weiterhin die Schichten tragen. Die
+     Unterscheidung leisten in erster Linie die Kürzel AF, SU, BU und G –
+     die Farbe ist nur die zweite Spur, nie die einzige. */
+  --c-altersfrei: 153 226 219;
+  --c-altersfrei-ink: 10 82 74;
+  --c-sonderurlaub: 247 194 224;
+  --c-sonderurlaub-ink: 124 26 86;
+  --c-bildungsurlaub: 214 211 205;
+  --c-bildungsurlaub-ink: 61 56 48;
+  --c-gewerkschaft: 210 196 150;
+  --c-gewerkschaft-ink: 88 70 14;
 }
 
 /*
@@ -126,6 +138,14 @@
     --c-krank-ink: 250 200 200;
     --c-schulung: 79 55 122;
     --c-schulung-ink: 224 210 248;
+    --c-altersfrei: 20 88 80;
+    --c-altersfrei-ink: 178 235 227;
+    --c-sonderurlaub: 117 41 88;
+    --c-sonderurlaub-ink: 250 208 232;
+    --c-bildungsurlaub: 78 74 68;
+    --c-bildungsurlaub-ink: 224 220 214;
+    --c-gewerkschaft: 96 80 34;
+    --c-gewerkschaft-ink: 236 222 178;
   }
 }
 
@@ -182,6 +202,14 @@
     --c-krank-ink: 250 200 200;
     --c-schulung: 79 55 122;
     --c-schulung-ink: 224 210 248;
+    --c-altersfrei: 20 88 80;
+    --c-altersfrei-ink: 178 235 227;
+    --c-sonderurlaub: 117 41 88;
+    --c-sonderurlaub-ink: 250 208 232;
+    --c-bildungsurlaub: 78 74 68;
+    --c-bildungsurlaub-ink: 224 220 214;
+    --c-gewerkschaft: 96 80 34;
+    --c-gewerkschaft-ink: 236 222 178;
 }
 
 html,

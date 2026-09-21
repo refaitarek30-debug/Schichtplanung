@@ -13,12 +13,14 @@ import { RowSkeleton } from "@/components/ui/skeleton";
 import { addDays, formatRange } from "@/lib/dates";
 import { DataError, fetchMyShiftLeave } from "@/lib/data/leave";
 import type { LiveShiftLeaveEntry } from "@/lib/types";
+import { leaveKindLabels } from "@/lib/types";
 
 /**
  * Zieht lückenlos aneinander grenzende Zeiträume derselben Person zusammen.
  *
  * Zusammengefasst wird nur, was sich in der Anzeige auch wirklich gleich
- * verhält: gleiche Person, gleiche Freigabe des Grundes und gleicher Stand.
+ * verhält: gleiche Person, gleiche Art, gleiche Freigabe des Grundes und
+ * gleicher Stand.
  * Ein genehmigter und ein noch offener Abschnitt bleiben deshalb getrennt –
  * sie zu einer Zeile zu verschmelzen würde den einen Stand über den anderen
  * behaupten. Überlappungen werden mitgenommen (`<=` statt `===`), damit zwei
@@ -40,6 +42,8 @@ function buendeln(eintraege: LiveShiftLeaveEntry[]): LiveShiftLeaveEntry[] {
       letzter.employeeId === eintrag.employeeId &&
       letzter.reasonVisible === eintrag.reasonVisible &&
       letzter.status === eintrag.status &&
+      // Urlaub und Sonderurlaub am Stück sind zwei Dinge, keine Spanne.
+      letzter.kind === eintrag.kind &&
       eintrag.startDate <= addDays(letzter.endDate, 1);
 
     if (anschluss) {
@@ -129,7 +133,9 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
               </span>
               {entry.reasonVisible ? (
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="text-[12px] text-ink-muted">Urlaub</span>
+                  <span className="text-[12px] text-ink-muted">
+                    {entry.kind ? leaveKindLabels[entry.kind] : "Abwesend"}
+                  </span>
                   <Badge tone={leaveStatusTone[entry.status]}>
                     {leaveStatusLabel[entry.status]}
                   </Badge>

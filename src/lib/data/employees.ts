@@ -32,6 +32,7 @@ function demoRecords(): EmployeeRecord[] {
     entryDate: null,
     exitDate: null,
     isApprentice: false,
+    bildungsurlaubErlaubt: false,
   }));
 }
 
@@ -48,7 +49,7 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
     supabase
       .from("employees")
       .select(
-        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, rotation_team, v_days, shift_worker, entry_date, exit_date, is_apprentice, shifts ( name )",
+        "id, company_id, personnel_number, first_name, last_name, email, phone, role, department, shift_id, vacation_days, active, rotation_team, v_days, shift_worker, entry_date, exit_date, is_apprentice, bildungsurlaub_erlaubt, shifts ( name )",
       )
       .order("last_name", { ascending: true })
       .returns<EmployeeWithShift[]>(),
@@ -115,6 +116,7 @@ export async function fetchEmployees(): Promise<EmployeeRecord[]> {
       entryDate: row.entry_date ?? null,
       exitDate: row.exit_date ?? null,
       isApprentice: row.is_apprentice ?? false,
+      bildungsurlaubErlaubt: row.bildungsurlaub_erlaubt ?? false,
     };
   });
 }

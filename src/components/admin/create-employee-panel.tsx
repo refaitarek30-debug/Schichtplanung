@@ -144,6 +144,22 @@ export function CreateEmployeePanel({
             </span>
           </label>
 
+          {/* Vorgabe: kein Bildungsurlaub. Wer ihn beantragen darf, bekommt
+              den Haken – hier oder später beim Bearbeiten. */}
+          <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">
+            <input
+              type="checkbox"
+              name="bildungsurlaub_erlaubt"
+              className="mt-0.5 h-4 w-4 rounded border-line accent-brand-500"
+            />
+            <span className="text-[13px] leading-snug">
+              <span className="block font-medium text-ink">Bildungsurlaub zulässig</span>
+              <span className="text-ink-muted">
+                Erst mit diesem Haken kann diese Person Bildungsurlaub beantragen.
+              </span>
+            </span>
+          </label>
+
           <QualificationCheckboxes />
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}

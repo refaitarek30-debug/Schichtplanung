@@ -89,6 +89,12 @@ export interface EmployeeRecord {
   exitDate: string | null;
   /** Auszubildende – eigener Block in der Ausbildungsplanung. */
   isApprentice: boolean;
+  /**
+   * Darf diese Person Bildungsurlaub beantragen? Vorgabe: nein.
+   * Ohne Haken steht die Art im Antragsformular nicht zur Wahl, und die
+   * Datenbank weist einen Antrag ab.
+   */
+  bildungsurlaubErlaubt: boolean;
 }
 
 export interface ShiftAssignment {
@@ -284,7 +290,47 @@ export interface LiveShiftLeaveEntry {
    * warum er fehlt, nicht.
    */
   reasonVisible: boolean;
+  /**
+   * Welche Art von Abwesenheit. Kommt nur mit, wenn der Grund freigegeben
+   * ist – sonst wäre die Art genau die Auskunft, die die Maskierung
+   * verhindern soll.
+   */
+  kind: LeaveKind | null;
 }
+/** Die sechs Antragsarten. "auto" ist keine Art, sondern eine Verteilung. */
+export type LeaveKind =
+  | "urlaub"
+  | "v_tag"
+  | "altersfreizeit"
+  | "sonderurlaub"
+  | "bildungsurlaub"
+  | "gewerkschaftstag";
+
+export const leaveKindLabels: Record<LeaveKind, string> = {
+  urlaub: "Urlaub",
+  v_tag: "V-Tag",
+  altersfreizeit: "Altersfreizeit",
+  sonderurlaub: "Sonderurlaub",
+  bildungsurlaub: "Bildungsurlaub",
+  gewerkschaftstag: "Gewerkschaftstag",
+};
+
+/**
+ * Jahreskontingent einer Art ohne eigenes Urlaubskonto.
+ *
+ * `erlaubt` heisst: die Art steht dieser Person überhaupt zur Wahl. Bei
+ * Bildungsurlaub hängt das am Haken in der Verwaltung, bei Altersfreizeit
+ * daran, ob für das Jahr etwas festgelegt wurde. Die Anzeige richtet sich
+ * danach; verbindlich entscheidet die Datenbank.
+ */
+export interface LiveLeaveKindQuota {
+  kind: LeaveKind;
+  anspruch: number;
+  verbraucht: number;
+  rest: number;
+  erlaubt: boolean;
+}
+
 export interface LiveShiftPlanDay {
   date: string;
   shiftId: string | null;

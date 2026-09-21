@@ -291,6 +291,7 @@ export default function AuswertungPage() {
                       <Kopf>Sonderurl.</Kopf>
                       <Kopf>Altersfrz.</Kopf>
                       <Kopf>Bildungsurl.</Kopf>
+                      <Kopf>Gew.-Tag</Kopf>
                       <Kopf>Seminar</Kopf>
                       <Kopf>Sonstige</Kopf>
                       <Kopf>Ausfall</Kopf>
@@ -310,6 +311,7 @@ export default function AuswertungPage() {
                         <Zahl>{g.sonderurlaubTage}</Zahl>
                         <Zahl>{g.altersfreizeitTage}</Zahl>
                         <Zahl>{g.bildungsurlaubTage}</Zahl>
+                        <Zahl>{g.gewerkschaftstagTage}</Zahl>
                         <Zahl>{g.seminarTage}</Zahl>
                         <Zahl>{g.sonstigeTage}</Zahl>
                         <Zahl betont={g.ausfallTage > 0}>{g.ausfallTage}</Zahl>
@@ -342,7 +344,8 @@ export default function AuswertungPage() {
           <p className="text-center text-[12px] text-ink-faint">
             Gesundheitsrate = Anwesenheit ÷ (Anwesenheit + Ausfall). Seminar zählt als
             Anwesenheit. Urlaub, V-Tage, Sonderurlaub, Altersfreizeit und Bildungsurlaub sind
-            geplante Abwesenheiten und gehen in keine der beiden Größen ein.
+            geplante Abwesenheiten und gehen in keine der beiden Größen ein; der
+            Gewerkschaftstag ebenso.
           </p>
         </>
       )}

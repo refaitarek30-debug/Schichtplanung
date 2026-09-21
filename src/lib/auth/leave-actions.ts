@@ -19,6 +19,16 @@ const NOT_CONFIGURED: FormState = {
  * den Wert über den Trigger `leave_requests_compute_days` serverseitig neu
  * und verwirft, was der Client geschickt hat.
  */
+/** Die Arten, die ein Antrag tragen darf. "auto" wird vorher abgezweigt. */
+const ERLAUBTE_ARTEN = [
+  "urlaub",
+  "v_tag",
+  "altersfreizeit",
+  "sonderurlaub",
+  "bildungsurlaub",
+  "gewerkschaftstag",
+] as const;
+
 export async function submitLeaveRequest(
   _prev: FormState,
   formData: FormData,
@@ -29,12 +39,20 @@ export async function submitLeaveRequest(
   const endDate = String(formData.get("end_date") ?? "");
   const halfDayPeriod = String(formData.get("half_day_period") ?? "") || null;
   const reason = String(formData.get("reason") ?? "").trim();
-  // Zwei getrennte Konten: "urlaub" und "v_tag". Unbekannte Werte fallen
-  // bewusst auf Urlaub zurück, statt den Antrag scheitern zu lassen.
+  // Sechs Arten. Urlaub und V-Tag haben ein Konto in leave_balances_view,
+  // die vier übrigen ein Jahreskontingent (leave_kind_kontingent). Was
+  // davon reicht, prüft die Datenbank; hier wird nur übersetzt.
+  //
+  // Unbekannte Werte fallen bewusst auf Urlaub zurück, statt den Antrag
+  // scheitern zu lassen.
   const kindRaw = String(formData.get("kind") ?? "urlaub");
-  // "auto" überlässt der Datenbank die Verteilung auf beide Konten.
+  // "auto" überlässt der Datenbank die Verteilung – und zwar ausschliesslich
+  // auf Urlaub und V-Tage. Sonderurlaub, Bildungsurlaub, Altersfreizeit und
+  // Gewerkschaftstag entstehen dort nie von selbst; wer sie will, wählt sie.
   if (kindRaw === "auto") return submitLeaveAuto(_prev, formData);
-  const kind = kindRaw === "v_tag" ? "v_tag" : "urlaub";
+  const kind = (ERLAUBTE_ARTEN as readonly string[]).includes(kindRaw)
+    ? (kindRaw as (typeof ERLAUBTE_ARTEN)[number])
+    : "urlaub";
 
   if (!startDate || !endDate) {
     return { error: "Bitte Start- und Enddatum auswählen." };

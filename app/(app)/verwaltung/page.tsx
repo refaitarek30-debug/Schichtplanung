@@ -2,17 +2,18 @@
 
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Layers, Scale, Users } from "lucide-react";
+import { CakeSlice, Layers, Scale, Users } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert } from "@/components/ui/alert";
 import { EmployeesView } from "@/components/admin/employees-view";
 import { ShiftsView } from "@/components/admin/shifts-view";
 import { RulesView } from "@/components/admin/rules-view";
+import { AgeLeaveTable } from "../altersfreizeit/age-leave-table";
 import { useSession } from "@/context/session";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Bereich = "mitarbeiter" | "schichten" | "regeln";
+type Bereich = "mitarbeiter" | "schichten" | "regeln" | "altersfreizeit";
 
 const BEREICHE: {
   wert: Bereich;
@@ -23,6 +24,10 @@ const BEREICHE: {
   { wert: "mitarbeiter", label: "Mitarbeiter", icon: Users, roles: ["shift_leader", "admin"] },
   { wert: "schichten", label: "Schichten", icon: Layers, roles: ["admin"] },
   { wert: "regeln", label: "Regeln", icon: Scale, roles: ["admin"] },
+  // Die Menge der Altersfreizeit wird Person für Person festgelegt und
+  // gehört damit in die Verwaltung. Die eigene Seite /altersfreizeit
+  // bleibt bestehen – dieselbe Tabelle, nur ein zweiter Weg dorthin.
+  { wert: "altersfreizeit", label: "Altersfreizeit", icon: CakeSlice, roles: ["admin"] },
 ];
 
 /**
@@ -102,6 +107,8 @@ function VerwaltungInhalt() {
         <EmployeesView />
       ) : aktiv === "schichten" ? (
         <ShiftsView />
+      ) : aktiv === "altersfreizeit" ? (
+        <AgeLeaveTable jahr={new Date().getFullYear()} />
       ) : (
         <RulesView />
       )}

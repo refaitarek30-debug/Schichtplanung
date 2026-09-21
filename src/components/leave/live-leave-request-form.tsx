@@ -13,7 +13,11 @@ import { addDays as addDaysISO, formatDE, formatDays, fromISO as fromISOLocal } 
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
-import { fetchAutoPreview, fetchLeaveKindSuggestion } from "@/lib/data/leave";
+import {
+  fetchAutoPreview,
+  fetchLeaveKindSuggestion,
+  fetchMyLeaveKindQuotas,
+} from "@/lib/data/leave";
 import { fetchBlockedDays, fetchMyShiftPlan } from "@/lib/data/rotation";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
@@ -22,19 +26,40 @@ import type {
   LiveAutoDay,
   LiveLeaveBalance,
   LiveLeaveImpact,
+  LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
 } from "@/lib/types";
+import { leaveKindLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const initialState: FormState = {};
 
-type LeaveKind = "auto" | "urlaub" | "v_tag";
+type LeaveKind =
+  | "auto"
+  | "urlaub"
+  | "v_tag"
+  | "altersfreizeit"
+  | "sonderurlaub"
+  | "bildungsurlaub"
+  | "gewerkschaftstag";
 
 const kindLabels: Record<LeaveKind, { plural: string; action: string }> = {
   auto: { plural: "Tage", action: "Zeitraum einreichen" },
   urlaub: { plural: "Urlaubstage", action: "Urlaub beantragen" },
   v_tag: { plural: "V-Tage", action: "V-Tag beantragen" },
+  altersfreizeit: { plural: "Tage Altersfreizeit", action: "Altersfreizeit beantragen" },
+  sonderurlaub: { plural: "Tage Sonderurlaub", action: "Sonderurlaub beantragen" },
+  bildungsurlaub: { plural: "Tage Bildungsurlaub", action: "Bildungsurlaub beantragen" },
+  gewerkschaftstag: { plural: "Gewerkschaftstage", action: "Gewerkschaftstag beantragen" },
 };
+
+/** Die vier Arten mit Jahreskontingent, in der Reihenfolge der Auswahl. */
+const KONTINGENT_ARTEN = [
+  "altersfreizeit",
+  "sonderurlaub",
+  "bildungsurlaub",
+  "gewerkschaftstag",
+] as const;
 
 /** Schichtname auf das Kürzel bringen, wie im Schichtplan. */
 function shiftCode(name: string | null): string | null {
@@ -65,6 +90,8 @@ export function LiveLeaveRequestForm({
   /** Sobald selbst umgestellt wurde, überschreibt die Empfehlung nichts mehr. */
   const [kindTouched, setKindTouched] = useState(false);
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
+  /** Jahreskontingente der vier Arten ohne Urlaubskonto. */
+  const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
   /** Eigene Schicht je Tag für den Kalender – F, S, N oder null (frei). */
   const [shiftDays, setShiftDays] = useState<Map<string, string | null>>(new Map());
   /** Vorschau der automatischen Verteilung. */
@@ -77,6 +104,22 @@ export function LiveLeaveRequestForm({
   // Echte Feiertage des Unternehmens statt der Demo-Feiertage aus Phase 1 –
   // sonst kann die Vorschau von dem abweichen, was der Server (Trigger
   // leave_requests_compute_days) am Ende tatsächlich speichert.
+  // Die Kontingente hängen am Jahr des Startdatums: ein Antrag im Januar
+  // greift auf ein anderes Jahr zu als einer im Dezember.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMyLeaveKindQuotas(Number(startDate.slice(0, 4)))
+      .then((result) => {
+        if (!cancelled) setKontingente(result);
+      })
+      .catch(() => {
+        if (!cancelled) setKontingente([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [startDate]);
+
   useEffect(() => {
     let cancelled = false;
     fetchHolidays()
@@ -241,13 +284,17 @@ export function LiveLeaveRequestForm({
   const autoUrlaub = (autoDays ?? []).filter((d) => d.kind === "urlaub").length;
   const autoVTage = (autoDays ?? []).filter((d) => d.kind === "v_tag").length;
   const autoOffen = (autoDays ?? []).filter((d) => d.kind === "keins").length;
-  // Zwei getrennte Konten: Urlaub und V-Tage. Geprüft wird immer das Konto,
-  // das zur gewählten Art gehört.
-  const accountRemaining = balance
-    ? kind === "v_tag"
-      ? balance.vRemainingDays
-      : balance.remainingDays
-    : null;
+  // Urlaub und V-Tage haben je ein Konto, die vier übrigen Arten ein
+  // Jahreskontingent. Geprüft wird immer das, was zur gewählten Art gehört –
+  // sonst stünde bei einer Altersfreizeit der Urlaubsrest da.
+  const accountRemaining =
+    kind === "auto"
+      ? null
+      : kind === "urlaub"
+        ? (balance?.remainingDays ?? null)
+        : kind === "v_tag"
+          ? (balance?.vRemainingDays ?? null)
+          : (kontingente.find((q) => q.kind === kind)?.rest ?? null);
 
   const remainingAfter = accountRemaining !== null ? accountRemaining - days : null;
   const insufficientBalance = remainingAfter !== null && remainingAfter < 0;
@@ -343,8 +390,41 @@ export function LiveLeaveRequestForm({
               <option value="v_tag">
                 V-Tag{balance ? ` · ${formatDays(balance.vRemainingDays)} übrig` : ""}
               </option>
+              {/* Die vier übrigen Arten kommen nur in die Auswahl, wenn für
+                  diese Person etwas übrig ist: bei Bildungsurlaub braucht
+                  es den Haken in der Verwaltung, bei Altersfreizeit eine
+                  Festlegung. Die Datenbank prüft es noch einmal. */}
+              {KONTINGENT_ARTEN.map((art) => {
+                const k = kontingente.find((q) => q.kind === art);
+                if (!k?.erlaubt) return null;
+                return (
+                  <option key={art} value={art}>
+                    {leaveKindLabels[art]} · {formatDays(Math.max(k.rest, 0))} von{" "}
+                    {formatDays(k.anspruch)} übrig
+                  </option>
+                );
+              })}
             </select>
           </Field>
+
+          {/* Warum eine Art fehlt, soll man nachlesen können – sonst sucht
+              man im Formular nach etwas, das gar nicht auftauchen kann. */}
+          {kontingente.some((k) => !k.erlaubt) ? (
+            <p className="-mt-2 text-[12px] leading-snug text-ink-faint">
+              Nicht in der Auswahl:{" "}
+              {kontingente
+                .filter((k) => !k.erlaubt)
+                .map((k) =>
+                  k.kind === "bildungsurlaub"
+                    ? "Bildungsurlaub (in der Verwaltung nicht freigegeben)"
+                    : k.kind === "altersfreizeit"
+                      ? "Altersfreizeit (für dieses Jahr nichts festgelegt)"
+                      : `${leaveKindLabels[k.kind]} (keine Tage vorgesehen)`,
+                )
+                .join(", ")}
+              .
+            </p>
+          ) : null}
 
           {suggestion && kind !== "auto" ? (
             <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted">

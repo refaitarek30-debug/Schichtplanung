@@ -193,6 +193,26 @@ export function EditEmployeePanel({
             </span>
           </label>
 
+
+          {/* Bildungsurlaub hängt an der einzelnen Person. Ohne Haken steht
+              die Art im Antragsformular gar nicht zur Wahl, und die
+              Datenbank weist einen Antrag ab. */}
+          <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">
+            <input
+              type="checkbox"
+              name="bildungsurlaub_erlaubt"
+              defaultChecked={employee.bildungsurlaubErlaubt}
+              className="mt-0.5 h-4 w-4 rounded border-line accent-brand-500"
+            />
+            <span className="text-[13px] leading-snug">
+              <span className="block font-medium text-ink">Bildungsurlaub zulässig</span>
+              <span className="text-ink-muted">
+                Erst mit diesem Haken kann diese Person Bildungsurlaub beantragen. Wie viele
+                Tage im Jahr möglich sind, steht unter Verwaltung → Regeln.
+              </span>
+            </span>
+          </label>
+
           <QualificationCheckboxes defaultValues={employee.qualifications} />
 
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}

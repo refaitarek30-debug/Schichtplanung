@@ -128,6 +128,8 @@ export interface EmployeeRow {
   entry_date?: string | null;
   exit_date?: string | null;
   is_apprentice?: boolean;
+  /** Darf diese Person Bildungsurlaub beantragen? Vorgabe: nein. */
+  bildungsurlaub_erlaubt?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -341,6 +343,16 @@ export interface Database {
           bestaetigt_am: string | null;
         }[];
       };
+      my_leave_kind_quotas: {
+        Args: { p_year: number };
+        Returns: {
+          kind: string;
+          anspruch: number;
+          verbraucht: number;
+          rest: number;
+          erlaubt: boolean;
+        }[];
+      };
       team_birth_dates: {
         Args: Record<string, never>;
         Returns: {
@@ -366,8 +378,10 @@ export interface Database {
           end_date: string;
           status: LeaveStatusDb;
           is_me: boolean;
-          /** Darf der Grund (Urlaub/V-Tag) gezeigt werden? Entscheidet die betroffene Person. */
+          /** Darf der Grund gezeigt werden? Entscheidet die betroffene Person. */
           reason_visible: boolean;
+          /** Die Art; nur gefüllt, wenn der Grund freigegeben ist. */
+          kind: string | null;
         }[];
       };
       setup_state: {
