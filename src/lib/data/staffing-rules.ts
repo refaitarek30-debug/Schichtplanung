@@ -54,7 +54,7 @@ const VORGABE: CompanyRules = {
   // Startwerte, kein Rechtsrat: massgeblich ist, was der Betrieb einträgt.
   sonderurlaubTageJahr: 3,
   bildungsurlaubTageJahr: 5,
-  gewerkschaftstagTageJahr: 3,
+  gewerkschaftstagTageJahr: 1,
 };
 
 /**
