@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, MessageCircle, X } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 
 /**
@@ -18,13 +18,27 @@ export function InviteLinkCard({
   link,
   tone = "ok",
   onClose,
+  name,
 }: {
   message: string;
   link?: string;
   tone?: "ok" | "error";
   onClose: () => void;
+  /** Für die Anrede im vorbereiteten WhatsApp-Text. Optional. */
+  name?: string;
 }) {
   const [kopiert, setKopiert] = useState(false);
+
+  // Vorbereiteter Text. Wer ihn bekommt, soll wissen, worum es geht und
+  // dass der Link nur für ihn ist – ein nackter Link in einer Nachricht
+  // sieht aus wie etwas, das man besser nicht anklickt.
+  const waText = [
+    name ? `Hallo ${name},` : "Hallo,",
+    "hier ist dein Zugang zur Schichtplanung.",
+    "Der Link gilt 24 Stunden und ist nur für dich – beim Öffnen vergibst du dein eigenes Passwort.",
+    link ?? "",
+  ].join("\n\n");
+  const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
 
   async function kopieren() {
     if (!link) return;
@@ -64,19 +78,37 @@ export function InviteLinkCard({
                 readOnly
                 value={link}
                 onFocus={(e) => e.currentTarget.select()}
-                aria-label="Einladungslink"
+                aria-label="Zugangslink"
                 className="min-w-0 flex-1 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 font-mono text-[12px]"
               />
-              <button
-                onClick={kopieren}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
-              >
-                {kopiert ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {kopiert ? "Kopiert" : "Link kopieren"}
-              </button>
+              <div className="flex gap-2">
+                {/*
+                  wa.me öffnet WhatsApp mit vorbereitetem Text und lässt den
+                  Empfänger auswählen – am Handy die App, am Rechner WhatsApp
+                  Web. Der Link wird dabei nicht an Dritte gegeben: die
+                  Adresse wird nur lokal zusammengesetzt und geöffnet.
+                */}
+                <a
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-ok-dot px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 sm:flex-none"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  WhatsApp
+                </a>
+                <button
+                  onClick={kopieren}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:flex-none"
+                >
+                  {kopiert ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {kopiert ? "Kopiert" : "Kopieren"}
+                </button>
+              </div>
             </div>
             <p className="text-[12px] leading-snug text-ink-muted">
-              Der Link gilt 24 Stunden und richtet genau diesen einen Zugang ein.
+              Es wird keine Mail verschickt – dieser Link ist der Zugang.
+              Er gilt 24 Stunden und richtet genau diesen einen Zugang ein.
               Nur an die betreffende Person weitergeben – wer ihn hat, kommt in
               das Konto. Nach dem Öffnen wird zuerst ein eigenes Passwort
               gesetzt.
