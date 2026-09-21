@@ -15,18 +15,29 @@ import { DataError, fetchMyShiftLeave } from "@/lib/data/leave";
 import type { LiveShiftLeaveEntry } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 
+/** Eine Zeile der Liste: ein Zeitraum am Stück, mit allen Arten darin. */
+interface LeaveBlock extends Omit<LiveShiftLeaveEntry, "kind"> {
+  /** Jede vorkommende Art einmal, in der Reihenfolge des Auftretens. */
+  arten: LiveShiftLeaveEntry["kind"][];
+}
+
 /**
  * Zieht lückenlos aneinander grenzende Zeiträume derselben Person zusammen.
  *
- * Zusammengefasst wird nur, was sich in der Anzeige auch wirklich gleich
- * verhält: gleiche Person, gleiche Art, gleiche Freigabe des Grundes und
- * gleicher Stand.
- * Ein genehmigter und ein noch offener Abschnitt bleiben deshalb getrennt –
- * sie zu einer Zeile zu verschmelzen würde den einen Stand über den anderen
- * behaupten. Überlappungen werden mitgenommen (`<=` statt `===`), damit zwei
- * sich überschneidende Anträge nicht doppelt dastehen.
+ * Über die Art hinweg, mit Absicht. Ein Urlaubsantrag wird beim Einreichen
+ * automatisch in Urlaubstage und V-Tage zerlegt; wer vom 16. bis 18. frei
+ * hat, steht dann als "16.–17. V-Tag" und "18. Urlaub" da. Für die Frage,
+ * wer aus der Schicht wann fehlt, ist das eine einzige Abwesenheit – die
+ * Aufteilung auf die Konten gehört ins eigene Urlaubskonto, nicht hierher.
+ * Welche Arten in der Spanne stecken, nennt die Zeile trotzdem.
+ *
+ * Nicht zusammengefasst wird, was sich unterschiedlich verhält: ein
+ * genehmigter und ein noch offener Abschnitt bleiben getrennt, sonst würde
+ * die Zeile den einen Stand über den anderen behaupten. Dasselbe gilt für
+ * die Freigabe des Grundes. Überlappungen werden mitgenommen (`<=` statt
+ * `===`), damit zwei sich überschneidende Anträge nicht doppelt dastehen.
  */
-function buendeln(eintraege: LiveShiftLeaveEntry[]): LiveShiftLeaveEntry[] {
+function buendeln(eintraege: LiveShiftLeaveEntry[]): LeaveBlock[] {
   const sortiert = [...eintraege].sort(
     (a, b) =>
       a.employeeId.localeCompare(b.employeeId) ||
@@ -34,7 +45,7 @@ function buendeln(eintraege: LiveShiftLeaveEntry[]): LiveShiftLeaveEntry[] {
       a.endDate.localeCompare(b.endDate),
   );
 
-  const bloecke: LiveShiftLeaveEntry[] = [];
+  const bloecke: LeaveBlock[] = [];
   for (const eintrag of sortiert) {
     const letzter = bloecke[bloecke.length - 1];
     const anschluss =
@@ -42,16 +53,16 @@ function buendeln(eintraege: LiveShiftLeaveEntry[]): LiveShiftLeaveEntry[] {
       letzter.employeeId === eintrag.employeeId &&
       letzter.reasonVisible === eintrag.reasonVisible &&
       letzter.status === eintrag.status &&
-      // Urlaub und Sonderurlaub am Stück sind zwei Dinge, keine Spanne.
-      letzter.kind === eintrag.kind &&
       eintrag.startDate <= addDays(letzter.endDate, 1);
 
     if (anschluss) {
       // Der spätere Zeitraum kann ganz im schon erfassten liegen.
       if (eintrag.endDate > letzter.endDate) letzter.endDate = eintrag.endDate;
+      if (!letzter.arten.includes(eintrag.kind)) letzter.arten.push(eintrag.kind);
     } else {
       // Kopie, damit das Verlängern oben nicht den geladenen Datensatz ändert.
-      bloecke.push({ ...eintrag });
+      const { kind, ...rest } = eintrag;
+      bloecke.push({ ...rest, arten: [kind] });
     }
   }
 
@@ -133,8 +144,16 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
               </span>
               {entry.reasonVisible ? (
                 <span className="flex shrink-0 items-center gap-2">
+                  {/* Steckt mehr als eine Art in der Spanne, stehen beide
+                      da. "Urlaub" allein wäre für eine Spanne, die zur
+                      Hälfte aus V-Tagen besteht, schlicht falsch. */}
                   <span className="text-[12px] text-ink-muted">
-                    {entry.kind ? leaveKindLabels[entry.kind] : "Abwesend"}
+                    {entry.arten.every((a) => a === null)
+                      ? "Abwesend"
+                      : entry.arten
+                          .filter((a): a is NonNullable<typeof a> => a !== null)
+                          .map((a) => leaveKindLabels[a])
+                          .join(" + ")}
                   </span>
                   <Badge tone={leaveStatusTone[entry.status]}>
                     {leaveStatusLabel[entry.status]}
