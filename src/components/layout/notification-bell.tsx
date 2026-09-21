@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { useSession } from "@/context/session";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,6 +27,7 @@ export function NotificationBell() {
   const { mode } = useSession();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LiveNotification[] | null>(null);
+  const wurzel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     if (mode !== "live") return;
@@ -53,6 +54,25 @@ export function NotificationBell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Schließen, wenn daneben getippt oder Escape gedrückt wird. Auf dem
+  // Handy deckt das Feld sonst den halben Bildschirm ab und es gibt keinen
+  // offensichtlichen Weg zurück.
+  useEffect(() => {
+    if (!open) return;
+    function beiKlick(e: MouseEvent) {
+      if (!wurzel.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function beiTaste(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", beiKlick);
+    document.addEventListener("keydown", beiTaste);
+    return () => {
+      document.removeEventListener("mousedown", beiKlick);
+      document.removeEventListener("keydown", beiTaste);
+    };
+  }, [open]);
+
   if (mode !== "live") {
     return (
       <button
@@ -68,7 +88,7 @@ export function NotificationBell() {
   const unreadCount = (items ?? []).filter((n) => !n.readAt).length;
 
   return (
-    <div className="relative">
+    <div className="relative" ref={wurzel}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="relative rounded-xl p-2 text-ink-muted hover:bg-surface-muted"
@@ -82,7 +102,13 @@ export function NotificationBell() {
       </button>
 
       {open ? (
-        <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-line bg-surface p-2 shadow-pop">
+        // Auf dem Handy sass das Feld rechtsbuendig an der Glocke -- und die
+        // steht nicht am Bildschirmrand, sondern links vom Benutzerknopf.
+        // Bei 320 px Breite ragte es dadurch 30 px links aus dem Bild;
+        // gemessen auf einem 390 px breiten Geraet. Deshalb spannt es sich
+        // dort jetzt fest zwischen beide Raender, statt an der Glocke zu
+        // haengen. Ab sm bleibt alles wie gehabt.
+        <div className="fixed inset-x-2 top-[60px] z-30 rounded-2xl border border-line bg-surface p-2 shadow-pop sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
           <p className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
             Benachrichtigungen
           </p>

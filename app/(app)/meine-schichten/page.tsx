@@ -6,10 +6,11 @@ import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { TODAY, employeesOfShift } from "@/lib/demo-data";
-import { formatDays } from "@/lib/dates";
+import { formatDE, formatDays } from "@/lib/dates";
 import { fetchTeamBalances } from "@/lib/data/leave";
 import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchEmployees } from "@/lib/data/employees";
+import { fetchTeamBirthDates } from "@/lib/data/age-leave";
 import type { EmployeeRecord, LiveTeamBalance } from "@/lib/types";
 
 export default function MyShiftsPage() {
@@ -29,7 +30,7 @@ function DemoView({ userId, shiftId }: { userId: string; shiftId: string | null 
       <PageHeader
         eyebrow="Mein Plan"
         title="Meine Schichten"
-        description="Wer aus deiner Schicht Urlaub hat und wer zu deinem Team gehört."
+        description="Wer zu deinem Team gehört und wer aus deiner Schicht schon frei hat."
       />
 
       <Card className="lg:max-w-[420px]">
@@ -54,15 +55,18 @@ function LiveView({ role }: { role: string }) {
   const [colleagues, setColleagues] = useState<EmployeeRecord[] | null>(null);
   /** Rest-Urlaub und Rest-V-Tage je Mitarbeiter – nur für die Führung. */
   const [balances, setBalances] = useState<Map<string, LiveTeamBalance>>(new Map());
+  /** Freiwillig hinterlegte Geburtsdaten. Wer nichts einträgt, fehlt hier. */
+  const [geburtstage, setGeburtstage] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (role === "employee") return;
     setError(null);
 
-    const [people, teamBalances] = await Promise.allSettled([
+    const [people, teamBalances, geburtsdaten] = await Promise.allSettled([
       fetchEmployees(),
       fetchTeamBalances(),
+      fetchTeamBirthDates(),
     ]);
 
     if (people.status === "fulfilled") {
@@ -76,6 +80,9 @@ function LiveView({ role }: { role: string }) {
       );
     }
     if (teamBalances.status === "fulfilled") setBalances(teamBalances.value);
+    // Fehlende Geburtsdaten sind kein Grund, die Seite scheitern zu lassen –
+    // sie sind eine freiwillige Zusatzangabe, keine Grundlage der Planung.
+    if (geburtsdaten.status === "fulfilled") setGeburtstage(geburtsdaten.value);
   }, [role]);
 
   useEffect(() => {
@@ -111,14 +118,16 @@ function LiveView({ role }: { role: string }) {
       <PageHeader
         eyebrow="Mein Plan"
         title="Meine Schichten"
-        description="Wer aus deiner Schicht Urlaub hat und wer zu deinem Team gehört."
+        description="Wer zu deinem Team gehört und wer aus deiner Schicht schon frei hat."
       />
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <ShiftLeaveList from={TODAY} days={45} />
-
+      {/* Das eigene Team steht oben. Wer hier landet, will zuerst wissen,
+          wer überhaupt dazugehört; die Abwesenheiten sind der zweite
+          Blick. Auf dem Handy entscheidet allein diese Reihenfolge, was
+          man ohne Scrollen sieht. */}
+      <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
         <Card className="h-fit">
           <CardHeader
             title="Mein Team"
@@ -130,7 +139,11 @@ function LiveView({ role }: { role: string }) {
                   : undefined
             }
           />
-          <CardBody className="max-h-[640px] space-y-4 overflow-y-auto">
+          {/* Auf dem Handy kein eigenes Scrollfeld: eine Karte, die in sich
+              scrollt, während die Seite darunter auch scrollt, trifft man
+              mit dem Daumen nie zuverlässig. Erst ab Tablet-Breite, wo die
+              Karte neben der Liste steht, wird die Höhe begrenzt. */}
+          <CardBody className="space-y-4 sm:max-h-[640px] sm:overflow-y-auto">
             {role === "employee" ? (
               <p className="text-sm text-ink-muted">
                 Die Teamübersicht mit allen Kolleginnen und Kollegen ist der Schichtleitung und
@@ -161,6 +174,13 @@ function LiveView({ role }: { role: string }) {
                       {/* Kontostände: wer plant, muss sehen, wie viel noch
                           offen ist – sonst genehmigt man Urlaub, den es
                           gar nicht mehr gibt. */}
+                      {/* Freiwillige Angabe: steht nur da, wenn die Person
+                          sie im Profil selbst eingetragen hat. */}
+                      {geburtstage.get(person.id) ? (
+                        <p className="tnum mt-1 text-[11px] text-ink-muted">
+                          geboren am {formatDE(geburtstage.get(person.id)!)}
+                        </p>
+                      ) : null}
                       {(() => {
                         const konto = balances.get(person.id);
                         if (!konto) return null;
@@ -204,6 +224,8 @@ function LiveView({ role }: { role: string }) {
             )}
           </CardBody>
         </Card>
+
+        <ShiftLeaveList from={TODAY} days={45} />
       </div>
     </div>
   );

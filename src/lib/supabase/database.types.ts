@@ -341,6 +341,13 @@ export interface Database {
           bestaetigt_am: string | null;
         }[];
       };
+      team_birth_dates: {
+        Args: Record<string, never>;
+        Returns: {
+          employee_id: string;
+          birth_date: string | null;
+        }[];
+      };
       who_is_absent: {
         Args: { p_date: string };
         Returns: {

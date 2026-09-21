@@ -74,3 +74,23 @@ export async function fetchMyAgeLeave(jahr: number): Promise<LiveMyAgeLeave | nu
     confirmedAt: zeile.bestaetigt_am,
   };
 }
+
+/**
+ * Freiwillig hinterlegte Geburtsdaten für die Teamübersicht.
+ *
+ * Wer nichts eingetragen hat, kommt in der Antwort gar nicht vor – die
+ * Karte zeigt dann schlicht kein Datum. Die Rollenprüfung steckt in
+ * `team_birth_dates()`; scheitert der Aufruf, bleibt die Übersicht ohne
+ * Geburtsdaten, statt die ganze Seite mit einem Fehler zu blockieren.
+ */
+export async function fetchTeamBirthDates(): Promise<Map<string, string>> {
+  if (!isSupabaseConfigured) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("team_birth_dates");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const ergebnis = new Map<string, string>();
+  for (const row of (data ?? []) as { employee_id: string; birth_date: string | null }[]) {
+    if (row.birth_date) ergebnis.set(row.employee_id, row.birth_date);
+  }
+  return ergebnis;
+}

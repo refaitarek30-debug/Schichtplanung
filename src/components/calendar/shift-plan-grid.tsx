@@ -45,6 +45,7 @@ const cellStyles: Record<string, string> = {
 /** In der Legende braucht Weiß eine Kontur, sonst ist das Feld unsichtbar. */
 const legendExtra: Record<string, string> = {
   FREI: "ring-1 ring-inset ring-line",
+  "": "bg-surface-muted/40 ring-1 ring-inset ring-line",
 };
 
 /**
@@ -66,17 +67,38 @@ function cellLabel(code: string): string {
   return code === "FREI" ? "⌂" : code;
 }
 
+/**
+ * Tageskopf: "21.9." statt nur "21".
+ *
+ * Ohne Monat ist eine "1" am Monatsanfang nicht einzuordnen – gerade auf
+ * dem Handy, wo der Zeitraum über der Tabelle beim Scrollen wegrutscht.
+ * Die führende Null entfällt; das spart je Spalte eine Zeichenbreite und
+ * liest sich genauso eindeutig.
+ */
+function dayHeader(iso: string): string {
+  return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
+}
+
 const legend = [
   { code: "F", label: "Frühschicht" },
   { code: "S", label: "Spätschicht" },
   { code: "N", label: "Nachtschicht" },
   { code: "U", label: "Urlaub" },
-  { code: "u", label: "beantragt" },
+  { code: "u", label: "Urlaub beantragt" },
   { code: "V", label: "V-Tag" },
-  { code: "v", label: "V beantragt" },
+  { code: "v", label: "V-Tag beantragt" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
-  { code: "FREI", label: "frei" },
+  // "A" steht heute für jede weitere Abwesenheit und zugleich für eine
+  // Abwesenheit, deren Grund nicht freigegeben ist. Der Text sagt genau
+  // das – "Altersfreizeit" wäre an dieser Stelle falsch, solange dasselbe
+  // Zeichen auch den verdeckten Fall abdeckt.
+  { code: "A", label: "Abwesend" },
+  { code: "FREI", label: "frei laut Muster" },
+  // Kein Eintrag: an dem Tag ist die Person nicht eingeplant. Stand vorher
+  // ein zweites Mal als "frei" da und war dadurch von der Zeile darüber
+  // nicht zu unterscheiden.
+  { code: "", label: "nicht eingeplant" },
 ];
 
 /** Eine Mitarbeiterzeile in der Matrix, Tag für Tag. */
@@ -553,10 +575,13 @@ export function ShiftPlanGrid({
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
-                <th className="sticky left-0 z-20 min-w-[84px] bg-surface px-2 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint sm:min-w-[180px] sm:px-4">
-                  <span className="sm:hidden">Name</span>
-                  <span className="hidden sm:inline">Mitarbeiter</span>
-                </th>
+                {/* Ohne Beschriftung: dass in der ersten Spalte die Namen
+                    stehen, sieht man an den Namen. Auf dem Handy sind die
+                    gesparten Zeichen eine halbe Spalte Plan mehr. */}
+                <th
+                  className="sticky left-0 z-20 min-w-[84px] bg-surface px-2 py-2 sm:min-w-[180px] sm:px-4"
+                  aria-label="Mitarbeiter"
+                />
                 {dates.map((iso) => {
                   const blockReason = blocked.get(iso);
                   const ferienName = ferien.get(iso);
@@ -573,7 +598,11 @@ export function ShiftPlanGrid({
                       key={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[24px] px-0.5 py-2 text-center sm:min-w-[42px] sm:px-1",
+                        "min-w-[30px] px-0.5 py-2 text-center sm:min-w-[42px] sm:px-1",
+                        // Der Monatswechsel bekommt eine senkrechte Linie.
+                        // Der Zeitraum über der Tabelle scrollt weg; die
+                        // Linie bleibt stehen, wo der Monat umspringt.
+                        iso.slice(8, 10) === "01" && "border-l-2 border-line",
                         isWeekend(iso) && "bg-surface-sunken/60",
                         ferienName && !blockReason && "bg-plan-bg/40",
                         blockReason && "bg-crit-bg",
@@ -590,7 +619,7 @@ export function ShiftPlanGrid({
                         </span>
                       </span>
                       <span className="tnum block text-[11px] text-ink-muted">
-                        <span className="sm:hidden">{Number(iso.slice(8, 10))}</span>
+                        <span className="sm:hidden">{dayHeader(iso)}</span>
                         <span className="hidden sm:inline">
                           {iso.slice(8, 10)}.{iso.slice(5, 7)}.
                         </span>
@@ -684,7 +713,15 @@ export function ShiftPlanGrid({
                           ? (cell.absenceCode ?? cell.shiftCode ?? "FREI")
                           : null;
                         return (
-                          <td key={iso} className="p-px text-center sm:p-0.5">
+                          <td
+                            key={iso}
+                            className={cn(
+                              "p-px text-center sm:p-0.5",
+                              // Dieselbe Linie wie im Kopf, damit der
+                              // Monatswechsel durch die ganze Tabelle geht.
+                              iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                            )}
+                          >
                             <button
                               disabled={!canEdit || !cell}
                               onClick={() => cell && setSelected(cell)}
@@ -747,27 +784,25 @@ export function ShiftPlanGrid({
         )}
       </div>
 
-      {/* Legende: auf dem Handy bewusst klein und eng – sie soll erklären,
-          nicht die halbe Ansicht belegen. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line px-2 py-1.5 text-[10px] text-ink-faint sm:gap-x-3 sm:gap-y-2 sm:px-4 sm:py-3 sm:text-[12px] sm:text-ink-muted">
+      {/* Legende in festen Spalten statt als umbrechende Reihe: so stehen
+          Kästchen und Text untereinander auf einer Linie, statt sich je
+          nach Wortlänge zu verschieben. Drei Spalten passen auf jedes
+          Handy, ohne dass ein Eintrag umbricht. */}
+      <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
         {legend.map((item) => (
-          <span key={item.code} className="inline-flex items-center gap-1">
+          <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
             <span
               className={cn(
-                "flex h-3.5 w-4 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-5 sm:w-6 sm:rounded sm:text-[11px]",
+                "flex h-3.5 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-4 sm:w-5 sm:text-[10px]",
                 cellStyles[item.code],
                 legendExtra[item.code],
               )}
             >
               {cellLabel(item.code)}
             </span>
-            {item.label}
+            <span className="truncate">{item.label}</span>
           </span>
         ))}
-        <span className="inline-flex items-center gap-1">
-          <span className="flex h-3.5 w-4 items-center justify-center rounded-sm bg-surface-muted/40 sm:h-5 sm:w-6 sm:rounded" />
-          frei
-        </span>
       </div>
     </Card>
   );

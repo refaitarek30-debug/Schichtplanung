@@ -390,13 +390,16 @@ export function LiveLeaveRequestForm({
             </select>
           </Field>
 
+          {/* Der Kommentar nennt Beispiele, damit klar ist, was hier
+              hingehört. Er ändert nichts an der Verrechnung: gebucht wird
+              weiterhin das, was oben unter "Art" steht. */}
           <Field label="Kommentar (optional)">
             <textarea
               name="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              placeholder="z. B. Familienurlaub"
+              placeholder="z. B. Familienurlaub, Gewerkschaftstag, Sonderurlaub, Bildungsurlaub oder Sonstiges"
               className="w-full resize-none rounded-xl border border-line bg-surface px-3 py-2 text-sm placeholder:text-ink-faint"
             />
           </Field>
