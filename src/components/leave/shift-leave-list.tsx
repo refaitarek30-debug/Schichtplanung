@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -15,6 +15,51 @@ import { DataError, fetchMyShiftLeave } from "@/lib/data/leave";
 import type { LiveShiftLeaveEntry } from "@/lib/types";
 
 /**
+ * Zieht lückenlos aneinander grenzende Zeiträume derselben Person zusammen.
+ *
+ * Zusammengefasst wird nur, was sich in der Anzeige auch wirklich gleich
+ * verhält: gleiche Person, gleiche Freigabe des Grundes und gleicher Stand.
+ * Ein genehmigter und ein noch offener Abschnitt bleiben deshalb getrennt –
+ * sie zu einer Zeile zu verschmelzen würde den einen Stand über den anderen
+ * behaupten. Überlappungen werden mitgenommen (`<=` statt `===`), damit zwei
+ * sich überschneidende Anträge nicht doppelt dastehen.
+ */
+function buendeln(eintraege: LiveShiftLeaveEntry[]): LiveShiftLeaveEntry[] {
+  const sortiert = [...eintraege].sort(
+    (a, b) =>
+      a.employeeId.localeCompare(b.employeeId) ||
+      a.startDate.localeCompare(b.startDate) ||
+      a.endDate.localeCompare(b.endDate),
+  );
+
+  const bloecke: LiveShiftLeaveEntry[] = [];
+  for (const eintrag of sortiert) {
+    const letzter = bloecke[bloecke.length - 1];
+    const anschluss =
+      letzter !== undefined &&
+      letzter.employeeId === eintrag.employeeId &&
+      letzter.reasonVisible === eintrag.reasonVisible &&
+      letzter.status === eintrag.status &&
+      eintrag.startDate <= addDays(letzter.endDate, 1);
+
+    if (anschluss) {
+      // Der spätere Zeitraum kann ganz im schon erfassten liegen.
+      if (eintrag.endDate > letzter.endDate) letzter.endDate = eintrag.endDate;
+    } else {
+      // Kopie, damit das Verlängern oben nicht den geladenen Datensatz ändert.
+      bloecke.push({ ...eintrag });
+    }
+  }
+
+  // Zurück in die Reihenfolge der Liste: nach Beginn, dann nach Name.
+  return bloecke.sort(
+    (a, b) =>
+      a.startDate.localeCompare(b.startDate) ||
+      a.employeeName.localeCompare(b.employeeName),
+  );
+}
+
+/**
  * Wer aus der eigenen Schicht wann fehlt – mit Namen. Für alle Rollen
  * gedacht (nicht nur Führung): jeder soll sehen, wer in seiner eigenen
  * Schicht schon frei hat, um selbst besser planen zu können.
@@ -25,6 +70,11 @@ import type { LiveShiftLeaveEntry } from "@/lib/types";
  * zeigt nur an, was der Server herausgibt. Ohne Freigabe kommt auch der
  * Status nicht mit: „offen“ oder „genehmigt“ würde sonst wieder verraten,
  * dass es um einen Urlaubsantrag geht.
+ *
+ * Direkt aneinander grenzende Zeiträume derselben Person stehen als eine
+ * Zeile da (siehe `buendeln`). Wer vom 16. bis 17. und dann noch am 18.
+ * frei hat, fehlt am Stück – das sind zwei Anträge, aber nur eine
+ * Abwesenheit, und genau die interessiert beim Planen.
  */
 export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: number }) {
   const [entries, setEntries] = useState<LiveShiftLeaveEntry[] | null>(null);
@@ -46,6 +96,8 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
     void load();
   }, [load]);
 
+  const bloecke = useMemo(() => (entries ? buendeln(entries) : null), [entries]);
+
   return (
     <Card>
       <CardHeader
@@ -58,12 +110,12 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
         </div>
       ) : null}
       <CardBody className="space-y-2 px-3 py-3">
-        {entries === null ? (
+        {bloecke === null ? (
           <RowSkeleton rows={3} />
-        ) : entries.length === 0 ? (
+        ) : bloecke.length === 0 ? (
           <EmptyState title="Aktuell fehlt niemand aus deiner Schicht." />
         ) : (
-          entries.map((entry) => (
+          bloecke.map((entry) => (
             <div
               key={`${entry.employeeId}-${entry.startDate}`}
               className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm"

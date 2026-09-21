@@ -106,7 +106,7 @@ export default function AuswertungPage() {
   if (mode !== "live") {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow="Führung" title="Auswertung" />
+        <PageHeader eyebrow="Verwaltung" title="Auswertung" />
         <Alert tone="info">
           Die Auswertung rechnet mit echten Abwesenheits- und Plandaten und gibt es deshalb nur
           im Live-Modus.
@@ -115,10 +115,13 @@ export default function AuswertungPage() {
     );
   }
 
-  if (role === "employee") {
+  // Nur die Administration. Die Auswertung schluesselt Kranktage je Person
+  // auf; die Schichtleitung plant damit nicht. Gesperrt wird in
+  // `absence_report()` -- diese Abfrage erspart nur den Fehlertext.
+  if (role !== "admin") {
     return (
       <div className="space-y-5">
-        <PageHeader eyebrow="Führung" title="Auswertung" />
+        <PageHeader eyebrow="Verwaltung" title="Auswertung" />
         <Alert tone="warning">Für diesen Bereich fehlt dir die Berechtigung.</Alert>
       </div>
     );
@@ -131,7 +134,7 @@ export default function AuswertungPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        eyebrow="Führung"
+        eyebrow="Verwaltung"
         title="Auswertung"
         description="Ausfall, Anwesenheit und Gesundheitsrate – gerechnet aus denselben Daten wie der Schichtplan und die Urlaubskonten."
       />
