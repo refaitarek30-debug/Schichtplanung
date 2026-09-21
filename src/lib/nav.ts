@@ -77,19 +77,24 @@ export const navItems: NavItem[] = [
     roles: ["shift_leader", "admin"],
   },
   {
+    // Nur Administration: die Auswertung zeigt Kranktage je Person. Die
+    // Schichtleitung plant damit nicht, deshalb steht ihr die Zahl auch
+    // nicht zu. Abgesichert wird das in `absence_report()`, nicht hier --
+    // diese Liste blendet nur aus.
     href: "/auswertung",
     label: "Auswertung",
     icon: BarChart3,
-    roles: ["shift_leader", "admin"],
+    roles: ["admin"],
   },
   {
-    // Prüfen und Festlegen der Altersfreizeit. Steht bei der Führung, weil
-    // nur dort entschieden wird – die eigene Lage sieht jede Person im
-    // Profil.
+    // Prüfen und Festlegen der Altersfreizeit – ausschließlich durch die
+    // Administration. Die eigene Lage sieht jede Person weiterhin im
+    // Profil. Verbindlich abgewiesen wird die Schichtleitung in
+    // `age_leave_overview()` und `confirm_age_leave()`.
     href: "/altersfreizeit",
     label: "Altersfreizeit",
     icon: CakeSlice,
-    roles: ["shift_leader", "admin"],
+    roles: ["admin"],
   },
   {
     // Mitteilungen und Urlaubssperren. Lagen vorher unter Verwaltung →

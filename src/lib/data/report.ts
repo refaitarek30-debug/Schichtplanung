@@ -18,6 +18,7 @@ export interface ReportRow {
   sonderurlaubTage: number;
   altersfreizeitTage: number;
   bildungsurlaubTage: number;
+  gewerkschaftstagTage: number;
   seminarTage: number;
   sonstigeTage: number;
   ausfallTage: number;
@@ -62,6 +63,7 @@ export async function fetchReport(year: number, month: number | null): Promise<R
     sonderurlaubTage: Number(row.sonderurlaub_tage),
     altersfreizeitTage: Number(row.altersfreizeit_tage),
     bildungsurlaubTage: Number(row.bildungsurlaub_tage),
+    gewerkschaftstagTage: Number(row.gewerkschaftstag_tage),
     seminarTage: Number(row.seminar_tage),
     sonstigeTage: Number(row.sonstige_tage),
     ausfallTage: Number(row.ausfall_tage),
@@ -85,6 +87,7 @@ export interface ReportSummary {
   sonderurlaubTage: number;
   altersfreizeitTage: number;
   bildungsurlaubTage: number;
+  gewerkschaftstagTage: number;
   sonstigeTage: number;
   ausfallTage: number;
   sollStunden: number;
@@ -98,7 +101,7 @@ export interface ReportSummary {
 const LEER = {
   sollTage: 0, anwesendTage: 0, seminarTage: 0, krankTage: 0, urlaubTage: 0,
   vTage: 0, sonderurlaubTage: 0, altersfreizeitTage: 0, bildungsurlaubTage: 0,
-  sonstigeTage: 0, ausfallTage: 0, sollStunden: 0, anwesendStunden: 0, ausfallStunden: 0,
+  gewerkschaftstagTage: 0, sonstigeTage: 0, ausfallTage: 0, sollStunden: 0, anwesendStunden: 0, ausfallStunden: 0,
 };
 
 /**
@@ -130,6 +133,7 @@ export function fassenZusammen(
     g.sonderurlaubTage += z.sonderurlaubTage;
     g.altersfreizeitTage += z.altersfreizeitTage;
     g.bildungsurlaubTage += z.bildungsurlaubTage;
+    g.gewerkschaftstagTage += z.gewerkschaftstagTage;
     g.sonstigeTage += z.sonstigeTage;
     g.ausfallTage += z.ausfallTage;
     g.sollStunden += z.sollStunden;

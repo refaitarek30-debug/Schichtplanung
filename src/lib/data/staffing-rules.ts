@@ -38,6 +38,12 @@ export interface CompanyRules {
   stundenProArbeitstag: number;
   /** Zielwert der Gesundheitsrate in Prozent. */
   gesundheitsrateZiel: number;
+  /** Jahresobergrenze Sonderurlaub, in Tagen je Person. */
+  sonderurlaubTageJahr: number;
+  /** Jahresobergrenze Bildungsurlaub, in Tagen je Person. */
+  bildungsurlaubTageJahr: number;
+  /** Jahresobergrenze Gewerkschaftstage, in Tagen je Person. */
+  gewerkschaftstagTageJahr: number;
 }
 
 const VORGABE: CompanyRules = {
@@ -45,6 +51,10 @@ const VORGABE: CompanyRules = {
   maxSchichtdauerStunden: 8,
   stundenProArbeitstag: 8,
   gesundheitsrateZiel: 96,
+  // Startwerte, kein Rechtsrat: massgeblich ist, was der Betrieb einträgt.
+  sonderurlaubTageJahr: 3,
+  bildungsurlaubTageJahr: 5,
+  gewerkschaftstagTageJahr: 3,
 };
 
 /**
@@ -90,5 +100,16 @@ export async function fetchCompanyRules(): Promise<CompanyRules> {
     ),
     stundenProArbeitstag: zahl("stunden_pro_arbeitstag", "stunden", VORGABE.stundenProArbeitstag),
     gesundheitsrateZiel: zahl("gesundheitsrate_ziel", "prozent", VORGABE.gesundheitsrateZiel),
+    sonderurlaubTageJahr: zahl("sonderurlaub_tage_jahr", "tage", VORGABE.sonderurlaubTageJahr),
+    bildungsurlaubTageJahr: zahl(
+      "bildungsurlaub_tage_jahr",
+      "tage",
+      VORGABE.bildungsurlaubTageJahr,
+    ),
+    gewerkschaftstagTageJahr: zahl(
+      "gewerkschaftstag_tage_jahr",
+      "tage",
+      VORGABE.gewerkschaftstagTageJahr,
+    ),
   };
 }

@@ -10,6 +10,7 @@ import type {
   LiveAutoDay,
   LiveTeamBalance,
   LiveLeaveBalance,
+  LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
   LiveLeaveRequest,
   LiveShiftLeaveEntry,
@@ -172,6 +173,7 @@ interface ShiftLeaveRow {
   status: string;
   is_me: boolean;
   reason_visible: boolean;
+  kind: string | null;
 }
 
 /**
@@ -207,6 +209,8 @@ export async function fetchMyShiftLeave(
     // Die Datenbank entscheidet, nicht der Browser. Fehlt das Feld (alter
     // Server), gilt die restriktive Annahme.
     reasonVisible: row.reason_visible === true,
+    // Die Art liefert der Server nur bei freigegebenem Grund.
+    kind: (row.kind ?? null) as LiveShiftLeaveEntry["kind"],
   }));
 }
 
@@ -267,4 +271,33 @@ export async function fetchTeamBalances(
     });
   }
   return map;
+}
+
+
+interface QuotaRow {
+  kind: string;
+  anspruch: number;
+  verbraucht: number;
+  rest: number;
+  erlaubt: boolean;
+}
+
+/**
+ * Die eigenen Jahreskontingente für Altersfreizeit, Sonderurlaub,
+ * Bildungsurlaub und Gewerkschaftstag.
+ *
+ * Urlaub und V-Tage stehen nicht darin – die haben ihr eigenes Konto.
+ */
+export async function fetchMyLeaveKindQuotas(jahr: number): Promise<LiveLeaveKindQuota[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_leave_kind_quotas", { p_year: jahr });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as QuotaRow[]).map((row) => ({
+    kind: row.kind as LiveLeaveKindQuota["kind"],
+    anspruch: Number(row.anspruch),
+    verbraucht: Number(row.verbraucht),
+    rest: Number(row.rest),
+    erlaubt: row.erlaubt === true,
+  }));
 }
