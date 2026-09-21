@@ -131,46 +131,17 @@ async function createInviteLink(
 }
 
 /**
- * Fehler der Verwaltungs-Schnittstelle in Klartext übersetzen. Die Ursachen
- * unterscheiden sich grundlegend – Schlüssel falsch, Postversand nicht
- * eingerichtet, Adresse schon vergeben – und jede braucht eine andere
- * Reaktion. Ein gemeinsames "hat nicht geklappt" hilft niemandem.
- */
-function inviteErrorMessage(
-  error: { message?: string; status?: number; code?: string },
-  email: string,
-): string {
-  const message = (error.message ?? "").toLowerCase();
-  const status = error.status ?? 0;
-
-  if (status === 401 || status === 403 || message.includes("invalid api key")) {
-    return "Der Server-Schlüssel für Einladungen (SUPABASE_SERVICE_ROLE_KEY) wird von Supabase abgelehnt. Vermutlich ist er veraltet oder gehört zu einem anderen Projekt – in Vercel neu hinterlegen und erneut bereitstellen.";
-  }
-  if (message.includes("already been registered") || message.includes("already exists")) {
-    return `Für ${email} gibt es bereits einen Zugang. Diese Person kann sich anmelden oder das Passwort über "Passwort vergessen" neu setzen.`;
-  }
-  if (status === 429 || message.includes("rate limit")) {
-    return "Supabase hat den Versand vorerst gesperrt: Ohne eigenen Postausgang sind nur wenige Mails pro Stunde erlaubt. Unter Authentication → Emails einen eigenen SMTP-Versand hinterlegen, dann fällt das Limit weg.";
-  }
-  if (message.includes("smtp") || message.includes("sending") || message.includes("mail")) {
-    return "Die Einladung konnte nicht verschickt werden – der Postversand in Supabase meldet einen Fehler. Unter Authentication → Emails prüfen.";
-  }
-  if (message.includes("invalid") && message.includes("email")) {
-    return `Die Adresse ${email} wird von Supabase nicht akzeptiert. Bitte die Schreibweise prüfen.`;
-  }
-  return `Die Einladung an ${email} ist fehlgeschlagen: ${error.message ?? "unbekannter Fehler"}`;
-}
-
-/**
- * Zugang einrichten: Konto anlegen, Mail versuchen, Link erzeugen.
+ * Zugang einrichten: Konto anlegen und Link erzeugen.
  *
- * Der eingebaute Postversand von Supabase ist ausdrücklich nur zum
- * Ausprobieren gedacht – wenige Mails pro Stunde, und je nach Projekt gehen
- * sie ausschließlich an Adressen des Projektteams. Genau das ist hier
- * passiert: an Kollegen kam nichts an. Deshalb hängt das Einrichten eines
- * Zugangs nicht mehr am Postversand. Es wird immer ein Link erzeugt, den die
- * Administration selbst weitergeben kann – über den eigenen Mailverteiler,
- * per Nachricht oder ausgedruckt.
+ * Es wird IMMER ein Link zurückgegeben und KEINE Mail verschickt. Der
+ * eingebaute Postversand von Supabase ist ausdrücklich nur zum Ausprobieren
+ * gedacht – wenige Mails pro Stunde, und je nach Projekt gehen sie
+ * ausschließlich an Adressen des Projektteams. An Kollegen kam nichts an.
+ *
+ * Der Link wird angezeigt und von Hand weitergegeben, über WhatsApp, den
+ * eigenen Verteiler oder ausgedruckt. Das ist kein Notbehelf, sondern der
+ * verlässlichere Weg: die Administration sieht sofort, dass der Zugang
+ * bereitsteht, statt auf eine Mail zu hoffen, die vielleicht nie ankommt.
  */
 export async function grantAccess(
   employee: {
@@ -204,44 +175,40 @@ export async function grantAccess(
     last_name: employee.last_name,
   };
 
-  // Erst der Versuch über den Postversand – wenn er läuft, ist das der
-  // bequemste Weg für die eingeladene Person.
-  const { error: mailError } = await admin.auth.admin.inviteUserByEmail(employee.email, {
-    redirectTo,
-    data: metadata,
-  });
-
-  // ACHTUNG, hier steckte ein Fehler: Supabase hinterlegt je Person und Art
-  // nur EIN gültiges Einmal-Token. `inviteUserByEmail` legt eines an und
-  // verschickt es; ein anschliessendes `generateLink` legt ein neues an und
-  // macht damit genau das Token unbrauchbar, das gerade per Mail unterwegs
-  // ist. Wer dann auf den Link in der Mail klickt, bekommt „abgelaufen“ zu
-  // sehen, obwohl der Link nie benutzt wurde.
+  // Es wird KEINE Mail mehr verschickt. Zwei Gründe, beide aus der Praxis:
   //
-  // Deshalb wird nur noch dann ein eigener Link erzeugt, wenn die Mail NICHT
-  // rausging. Dann gibt es kein verschicktes Token, das kaputtgehen könnte,
-  // und der erzeugte Link ist der einzige Weg.
-  const link = mailError
-    ? await createInviteLink(employee.email, origin, redirectTo, metadata, admin)
-    : null;
+  //  1. Der eingebaute Postversand von Supabase ist ausdrücklich zum
+  //     Ausprobieren gedacht – wenige Mails pro Stunde, und je nach Projekt
+  //     gehen sie ausschliesslich an Adressen des Projektteams. An Kollegen
+  //     kam nichts an.
+  //  2. Supabase hinterlegt je Person und Art nur EIN gültiges Einmal-Token.
+  //     Eine Mail zu verschicken und danach einen Link zu erzeugen machte
+  //     genau das Token unbrauchbar, das gerade unterwegs war – die Mail
+  //     führte dann auf „bereits eingelöst“, ohne je benutzt worden zu sein.
+  //
+  // Ein Weg, ein Token, kein Rennen. Der Link wird angezeigt und von Hand
+  // weitergegeben – über WhatsApp, den eigenen Verteiler oder ausgedruckt.
+  const link = await createInviteLink(
+    employee.email,
+    origin,
+    redirectTo,
+    metadata,
+    admin,
+  );
 
   revalidatePath("/verwaltung");
 
-  if (!mailError) {
-    return {
-      success:
-        `Einladung an ${employee.email} verschickt. Der Link in der Mail gilt ` +
-        `24 Stunden und lässt sich einmal einlösen.`,
-    };
-  }
-
   if (link) {
     return {
-      success: `Zugang für ${employee.email} eingerichtet. Die Mail konnte nicht verschickt werden – stattdessen diesen Link weitergeben. Er gilt 24 Stunden und ist nur für diese Person.`,
+      success: `Zugang für ${employee.email} eingerichtet. Diesen Link weitergeben – er gilt 24 Stunden und ist nur für diese Person.`,
       link,
     };
   }
 
-  return { error: inviteErrorMessage(mailError, employee.email) };
+  return {
+    error:
+      `Für ${employee.email} liess sich kein Zugangslink erzeugen. ` +
+      `Bitte die Schreibweise der Adresse prüfen und es erneut versuchen.`,
+  };
 }
 

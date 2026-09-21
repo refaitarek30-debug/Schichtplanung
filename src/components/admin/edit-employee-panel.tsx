@@ -30,13 +30,19 @@ export function EditEmployeePanel({
 }: {
   employee: EmployeeRecord;
   canEditRole: boolean;
-  onSaved: () => void;
+  /**
+   * Bekommt das Ergebnis, damit ein Zugangslink oben stehen bleibt. Ohne
+   * das verschwände er mit dem Formular, noch bevor ihn jemand kopieren
+   * kann – und ein neuer liesse sich nur erzeugen, indem man die Adresse
+   * erneut ändert.
+   */
+  onSaved: (ergebnis: FormState) => void;
   onCancel: () => void;
 }) {
   const [state, formAction] = useActionState(updateEmployee, initialState);
 
   useEffect(() => {
-    if (state.success) onSaved();
+    if (state.success) onSaved(state);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 

@@ -180,8 +180,12 @@ export function EmployeesView() {
         <EditEmployeePanel
           employee={editing}
           canEditRole={role === "admin"}
-          onSaved={() => {
+          onSaved={(ergebnis) => {
             setEditing(null);
+            // Nur anzeigen, wenn wirklich etwas mitkommt – nach einer
+            // Änderung ohne neue Adresse gibt es keinen Link, und eine
+            // leere Karte wäre nur Lärm.
+            if (ergebnis.link || ergebnis.error) setAccess(ergebnis);
             void load();
           }}
           onCancel={() => setEditing(null)}

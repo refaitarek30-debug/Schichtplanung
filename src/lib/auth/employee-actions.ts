@@ -295,6 +295,16 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
     ? await findActiveRotationPatternId(supabase, profile.company_id)
     : null;
 
+  // Die bisherige Adresse VOR dem Schreiben lesen – nur so lässt sich
+  // erkennen, ob sie sich geändert hat. Danach steht dort schon die neue.
+  const { data: vorher } = await supabase
+    .from("employees")
+    .select("email")
+    .eq("id", employeeId)
+    .eq("company_id", profile.company_id)
+    .returns<{ email: string | null }[]>()
+    .maybeSingle();
+
   const { error } = await supabase
     .from("employees")
     .update({
@@ -341,6 +351,43 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   }
 
   revalidatePath("/verwaltung");
+
+  // Neue oder geänderte Adresse: gleich einen frischen Zugangslink erzeugen.
+  //
+  // Ohne das stand die Administration nach einer Adressänderung mit leeren
+  // Händen da – die Person konnte sich unter der neuen Adresse nicht
+  // anmelden, und es gab keinen Weg, ihr einen zu geben, ausser den
+  // Mitarbeiter erneut zu "einladen". Da die App ohnehin keine Mail mehr
+  // verschickt, ist der Link hier der einzige Weg und gehört direkt ins
+  // Ergebnis.
+  const adresseGeaendert =
+    email.length > 0 && email.toLowerCase() !== (vorher?.email ?? "").toLowerCase();
+
+  if (adresseGeaendert) {
+    const zugang = await grantAccess(
+      {
+        id: employeeId,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+        company_id: profile.company_id,
+      },
+      await siteOrigin(),
+    );
+
+    if (zugang.error) {
+      return {
+        success: `${firstName} ${lastName} wurde aktualisiert.`,
+        error: `Ein Zugangslink für die neue Adresse liess sich nicht erzeugen: ${zugang.error}`,
+      };
+    }
+    return {
+      success: `${firstName} ${lastName} wurde aktualisiert. ${zugang.success ?? ""}`.trim(),
+      link: zugang.link,
+    };
+  }
+
   return { success: `${firstName} ${lastName} wurde aktualisiert.` };
 }
 
