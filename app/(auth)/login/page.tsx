@@ -19,6 +19,14 @@ export default async function LoginPage({
         Mit der E-Mail-Adresse, die dein Unternehmen hinterlegt hat.
       </p>
 
+      {params.fehler === "dienst" ? (
+        <Alert tone="error" className="mt-4">
+          Der Anmeldedienst antwortet gerade nicht. Das liegt nicht an deinen Zugangsdaten.
+          Bitte in ein bis zwei Minuten erneut versuchen – deine Sitzung bleibt so lange
+          erhalten.
+        </Alert>
+      ) : null}
+
       {params.fehler === "inaktiv" ? (
         <Alert tone="warning" className="mt-4">
           Du wurdest nach 30 Minuten ohne Aktivität automatisch abgemeldet. Bitte melde

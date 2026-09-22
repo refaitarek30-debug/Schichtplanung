@@ -82,7 +82,24 @@ export async function middleware(request: NextRequest) {
 
   if (!isSupabaseConfigured) return NextResponse.next();
 
-  const { response, user } = await updateSession(request);
+  const { response, user, dienstGestoert } = await updateSession(request);
+
+  // Antwortet Supabase nicht, ist unbekannt, wer da klopft. Geschützte
+  // Seiten bleiben deshalb zu – aber mit einer ehrlichen Begründung statt
+  // einer stillen Umleitung, die nach „falsches Passwort" aussieht. Die
+  // Cookies bleiben liegen: sobald der Dienst wieder da ist, läuft die
+  // bestehende Sitzung weiter, ohne erneute Anmeldung.
+  if (dienstGestoert) {
+    const isProtectedPath = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    if (!isProtectedPath) return response;
+
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("fehler", "dienst");
+    url.searchParams.set("weiter", pathname);
+    return NextResponse.redirect(url);
+  }
 
   if (user) {
     const zuletzt = Number(request.cookies.get(ACTIVITY_COOKIE)?.value);
