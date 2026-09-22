@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { RotationEditor } from "@/components/leave/rotation-editor";
@@ -9,9 +9,7 @@ import { useSession } from "@/context/session";
 import { AdminViewHeader } from "./view-header";
 import { employeesOfShift, shifts as demoShifts } from "@/lib/demo-data";
 import { WEEKDAY_SHORT } from "@/lib/dates";
-import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
-import { fetchEmployees, DataError } from "@/lib/data/employees";
-import type { EmployeeRecord } from "@/lib/types";
+import { ShiftStaffingCards } from "@/components/staffing/shift-staffing-cards";
 import { cn } from "@/lib/utils";
 
 export function ShiftsView() {
@@ -21,62 +19,15 @@ export function ShiftsView() {
     <div className="space-y-5">
       <AdminViewHeader description="Schichtmodelle, Zeiten und Besetzungsvorgaben. Änderungen wirken sich sofort auf alle Prüfungen aus." />
 
-      {mode === "live" ? <LiveShiftCards /> : <DemoShiftCards />}
+      {mode === "live" ? (
+        <ShiftStaffingCards canEdit={role === "admin" || role === "shift_leader"} />
+      ) : (
+        <DemoShiftCards />
+      )}
 
       {mode === "live" && role === "admin" ? <RotationPatternEditor /> : null}
 
       {mode === "live" ? <RotationEditor companyId={company.id} /> : null}
-    </div>
-  );
-}
-
-function LiveShiftCards() {
-  const [details, setDetails] = useState<ShiftDetail[] | null>(null);
-  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const [detailResult, employeeResult] = await Promise.all([
-        fetchShiftDetails(),
-        fetchEmployees(),
-      ]);
-      setDetails(detailResult);
-      setEmployees(employeeResult.filter((e) => e.active));
-    } catch (caught) {
-      setDetails([]);
-      setError(
-        caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  if (error) return <Alert tone="error">{error}</Alert>;
-  if (details === null) return <p className="text-sm text-ink-muted">wird geladen …</p>;
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {details.map((shift) => {
-        const assigned = employees.filter((e) => e.shiftName === shift.name).length;
-        return (
-          <Card key={shift.id}>
-            <CardHeader title={shift.name} hint={`${shift.startTime}–${shift.endTime} Uhr`} />
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <Metric label="Zugeordnet" value={assigned} />
-                <Metric label="Soll" value={shift.targetStaff} />
-                <Metric label="Mindest" value={shift.minimumStaff} />
-              </div>
-              <WeekdayRow weekdays={shift.weekdays} />
-            </CardBody>
-          </Card>
-        );
-      })}
     </div>
   );
 }

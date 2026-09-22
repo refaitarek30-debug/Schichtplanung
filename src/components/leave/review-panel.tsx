@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Check, Search, TriangleAlert, X } from "lucide-react";
+import { Check, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -15,10 +15,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { formatDays, formatRange } from "@/lib/dates";
-import { decideLeaveRequestAction } from "@/lib/auth/leave-actions";
-import { fetchLeaveImpact } from "@/lib/data/staffing";
+import { approveSafeLeaveRequests, decideLeaveRequestAction } from "@/lib/auth/leave-actions";
+import {
+  fetchLeaveImpact,
+  fetchLeaveStaffingDetail,
+  type LiveStaffingDetailDay,
+} from "@/lib/data/staffing";
 import type { LiveLeaveImpact, LiveLeaveRequest } from "@/lib/types";
 import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
+import { useSession } from "@/context/session";
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
 
@@ -39,6 +44,15 @@ export function ReviewPanel({
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [impacts, setImpacts] = useState<Record<string, LiveLeaveImpact | null>>({});
+  /** Warum wird es knapp? Nur für die Anträge, die tatsächlich knapp sind. */
+  const [details, setDetails] = useState<Record<string, LiveStaffingDetailDay[]>>({});
+  const [hinweis, setHinweis] = useState<string | null>(null);
+  const { role } = useSession();
+  const darfEntscheiden = role === "admin" || role === "shift_leader";
+  const offeneAnzahl = useMemo(
+    () => gruppiereAntraege(requests ?? []).filter((r) => r.status === "pending").length,
+    [requests],
+  );
 
   /**
    * Ein Zeitraum ist ein Antrag – auch wenn er in der Datenbank aus
@@ -66,7 +80,17 @@ export function ReviewPanel({
     openOnes.forEach((request) => {
       fetchLeaveImpact(request.employeeId, request.startDate, request.endDate)
         .then((result) => {
-          if (!cancelled) setImpacts((current) => ({ ...current, [request.id]: result }));
+          if (cancelled) return;
+          setImpacts((current) => ({ ...current, [request.id]: result }));
+          // Das Detail kostet je Tag eine Qualifikationsprüfung. Es wird
+          // deshalb nur dort geholt, wo überhaupt etwas knapp ist – für
+          // einen unbedenklichen Antrag gibt es nichts zu erklären.
+          if (result.worstStatus === "ok") return;
+          fetchLeaveStaffingDetail(request.employeeId, request.startDate, request.endDate)
+            .then((tage) => {
+              if (!cancelled) setDetails((current) => ({ ...current, [request.id]: tage }));
+            })
+            .catch(() => {});
         })
         .catch(() => {
           if (!cancelled) setImpacts((current) => ({ ...current, [request.id]: null }));
@@ -84,6 +108,28 @@ export function ReviewPanel({
     startTransition(async () => {
       const result = await decideLeaveRequestAction(id, "approved");
       if (result.error) setError(result.error);
+      setBusyId(null);
+      onChanged();
+    });
+  }
+
+  /**
+   * Alles genehmigen, was niemanden in Bedrängnis bringt.
+   *
+   * Entschieden wird ausschliesslich in der Datenbank: dort laufen
+   * dieselbe Besetzungsrechnung und dieselben Qualifikationsanforderungen
+   * wie in der Warnung an jedem einzelnen Antrag, und zwar Antrag für
+   * Antrag nacheinander – zwei einzeln unbedenkliche Anträge dürfen die
+   * Schicht nicht gemeinsam leerräumen.
+   */
+  function sammelGenehmigen() {
+    setError(null);
+    setHinweis(null);
+    setBusyId("sammel");
+    startTransition(async () => {
+      const result = await approveSafeLeaveRequests();
+      if (result.error) setError(result.error);
+      else setHinweis(result.success ?? null);
       setBusyId(null);
       onChanged();
     });
@@ -112,6 +158,28 @@ export function ReviewPanel({
         title="Urlaubsanträge"
         hint={requests ? `${visible.length} Anträge` : "wird geladen …"}
       />
+
+      {/* Sammelgenehmigung nur für die Führung und nur, wenn es überhaupt
+          etwas zu entscheiden gibt. Die Rollenprüfung hier ist
+          Bequemlichkeit – verbindlich weist
+          approve_safe_leave_requests() in der Datenbank ab. */}
+      {darfEntscheiden && offeneAnzahl > 0 ? (
+        <div className="border-b border-line px-5 py-3">
+          <Button variant="secondary" disabled={pending} onClick={sammelGenehmigen}>
+            <ShieldCheck className="h-4 w-4" strokeWidth={2} />
+            {busyId === "sammel" ? "wird geprüft …" : "Alle sicheren Anträge genehmigen"}
+          </Button>
+          <p className="mt-1.5 text-[12px] leading-snug text-ink-faint">
+            Genehmigt nur, wo danach Soll- und Mindestbesetzung stehen und alle geforderten
+            Qualifikationen besetzt bleiben. Alles andere bleibt ausstehend.
+          </p>
+          {hinweis ? (
+            <div className="mt-2">
+              <Alert tone="success">{hinweis}</Alert>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2 border-b border-line px-5 py-3 sm:flex-row">
         <div className="relative flex-1">
@@ -184,7 +252,7 @@ export function ReviewPanel({
               </div>
 
               {request.status === "pending" && impacts[request.id] ? (
-                <ImpactHint impact={impacts[request.id]!} />
+                <ImpactHint impact={impacts[request.id]!} tage={details[request.id]} />
               ) : null}
 
               {request.status === "pending" ? (
@@ -243,27 +311,80 @@ export function ReviewPanel({
 }
 
 /** Besetzungsprüfung zu einem einzelnen offenen Antrag – vor der Entscheidung sichtbar. */
-function ImpactHint({ impact }: { impact: LiveLeaveImpact }) {
+/**
+ * Warum ist es knapp?
+ *
+ * Unterschieden wird ausdrücklich zwischen zwei Lagen, weil sie
+ * unterschiedlich schwer wiegen:
+ *
+ *   „Mindestbesetzung gefährdet"  – unter der harten Untergrenze
+ *   „Sollbesetzung unterschritten" – noch über der Untergrenze, aber
+ *                                    unter der gewünschten Stärke
+ *
+ * Die Qualifikationen darunter kommen aus `shift_qualification_needs`,
+ * also aus der Konfiguration in der Verwaltung. Im Frontend steht keine
+ * einzige Anforderung fest verdrahtet.
+ */
+function ImpactHint({
+  impact,
+  tage,
+}: {
+  impact: LiveLeaveImpact;
+  tage?: LiveStaffingDetailDay[];
+}) {
   if (impact.worstStatus === "ok" && impact.overlappingEmployees === 0) return null;
+
+  const kritisch = impact.worstStatus === "critical";
+
+  // Über alle betroffenen Tage: was fehlt, und wie oft höchstens.
+  const luecken = new Map<string, number>();
+  for (const tag of tage ?? []) {
+    for (const g of tag.gaps) {
+      luecken.set(g.label, Math.max(luecken.get(g.label) ?? 0, g.fehlt));
+    }
+  }
+  const sollTage = (tage ?? []).filter((t) => t.status === "warn").length;
+  const mindestTage = (tage ?? []).filter((t) => t.status === "critical").length;
 
   return (
     <div className="mt-3 flex items-start gap-2 rounded-lg bg-surface-muted px-3 py-2.5 text-[13px] leading-snug text-ink-muted">
       <TriangleAlert
         className={
-          impact.worstStatus === "critical"
+          kritisch
             ? "mt-0.5 h-4 w-4 shrink-0 text-crit-fg"
             : "mt-0.5 h-4 w-4 shrink-0 text-warn-fg"
         }
         strokeWidth={2}
       />
-      <div className="space-y-0.5">
-        <p>
+      <div className="space-y-1">
+        <p className="flex flex-wrap items-center gap-1.5">
           <Badge tone={staffingTone[impact.worstStatus]}>
-            {impact.worstStatus === "critical"
-              ? `Mindestbesetzung an ${impact.criticalDays === 1 ? "einem Tag" : `${impact.criticalDays} Tagen`} unterschritten`
-              : "Besetzung knapp"}
+            {kritisch ? "Mindestbesetzung gefährdet" : "Sollbesetzung unterschritten"}
           </Badge>
+          {mindestTage > 0 || sollTage > 0 ? (
+            <span className="tnum text-[12px]">
+              {kritisch
+                ? `an ${mindestTage === 1 ? "einem Tag" : `${mindestTage} Tagen`}`
+                : `an ${sollTage === 1 ? "einem Tag" : `${sollTage} Tagen`}`}
+            </span>
+          ) : null}
         </p>
+
+        {luecken.size > 0 ? (
+          <div>
+            <p className="font-medium text-ink">Gefährdet:</p>
+            <ul className="tnum mt-0.5 space-y-0.5">
+              {[...luecken.entries()]
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([label, fehlt]) => (
+                  <li key={label}>
+                    – {fehlt}× {label}
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ) : null}
+
         {impact.overlappingEmployees > 0 ? (
           <p>
             {impact.overlappingEmployees}{" "}

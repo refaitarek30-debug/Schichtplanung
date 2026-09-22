@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "./notification-bell";
@@ -16,6 +16,34 @@ const roles: Role[] = ["employee", "shift_leader", "admin"];
 export function Topbar() {
   const { mode, role, setRole, profile, company, shift } = useSession();
   const [open, setOpen] = useState(false);
+  const wurzel = useRef<HTMLDivElement>(null);
+
+  /**
+   * Das Menü schließt von selbst: nach einem Klick daneben, mit Escape und
+   * spätestens nach zehn Sekunden.
+   *
+   * Auf dem Handy bleibt ein offenes Menü sonst über der Ansicht stehen,
+   * wenn man daneben tippt und der Tipp auf einem Element landet, das ihn
+   * schluckt. Die Zeitgrenze ist der letzte Ausweg, kein Ersatz für die
+   * beiden anderen Wege.
+   */
+  useEffect(() => {
+    if (!open) return;
+    function beiKlick(e: MouseEvent) {
+      if (!wurzel.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function beiTaste(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    const uhr = window.setTimeout(() => setOpen(false), 10_000);
+    document.addEventListener("mousedown", beiKlick);
+    document.addEventListener("keydown", beiTaste);
+    return () => {
+      window.clearTimeout(uhr);
+      document.removeEventListener("mousedown", beiKlick);
+      document.removeEventListener("keydown", beiTaste);
+    };
+  }, [open]);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
@@ -27,11 +55,15 @@ export function Topbar() {
       <div className="ml-auto flex items-center gap-2">
         <NotificationBell />
 
-        <div className="relative">
+        <div className="relative" ref={wurzel}>
           <button
             onClick={() => setOpen((v) => !v)}
             className="flex items-center gap-2.5 rounded-xl border border-line py-1.5 pl-1.5 pr-2.5 hover:bg-surface-muted"
             aria-expanded={open}
+            // Auf dem Handy ist vom Knopf nur das Bild und der Pfeil zu
+            // sehen – ohne Beschriftung hätte ihn eine Vorlesehilfe nur
+            // als „Schaltfläche" angesagt.
+            aria-label="Profilmenü"
           >
             <Avatar employee={profile} className="h-8 w-8" />
             <span className="hidden text-left leading-tight sm:block">

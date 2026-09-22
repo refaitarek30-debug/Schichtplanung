@@ -1,0 +1,76 @@
+-- Korrektur zur vorigen Migration: max(uuid) gibt es in Postgres nicht.
+-- Die Mitarbeiter-Id einer Gruppe ist ohnehin fuer alle Zeilen dieselbe,
+-- deshalb reicht der erste Wert aus dem sortierten Array.
+create or replace function public.approve_safe_leave_requests()
+returns table (genehmigt int, uebersprungen int, geprueft int)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_firma uuid := auth_company_id();
+  r record;
+  v_sicher boolean;
+  v_genehmigt int := 0;
+  v_uebersprungen int := 0;
+  v_geprueft int := 0;
+begin
+  if not is_leadership() then
+    raise exception 'Du hast keine Berechtigung für diesen Bereich.';
+  end if;
+  if v_firma is null then
+    raise exception 'Kein aktives Benutzerprofil gefunden.';
+  end if;
+
+  for r in
+    select coalesce(lr.request_group_id, lr.id) as gruppe,
+           (array_agg(lr.id order by lr.start_date))[1] as erste_id,
+           (array_agg(lr.employee_id order by lr.start_date))[1] as employee_id,
+           min(lr.start_date) as von,
+           max(lr.end_date) as bis
+    from leave_requests lr
+    where lr.company_id = v_firma
+      and lr.status = 'pending'
+    group by coalesce(lr.request_group_id, lr.id)
+    order by min(lr.created_at), min(lr.start_date)
+  loop
+    v_geprueft := v_geprueft + 1;
+
+    -- Besetzung: kein Tag darf unter Soll oder Mindest fallen.
+    select not exists (
+      select 1 from public.check_leave_staffing_impact(r.employee_id, r.von, r.bis) i
+      where i.status <> 'ok'
+    ) into v_sicher;
+
+    -- Qualifikationen: an keinem Tag darf eine Anforderung reissen.
+    if v_sicher then
+      select not exists (
+        select 1
+        from generate_series(r.von, r.bis, interval '1 day') d
+        cross join lateral public.shift_qualification_gaps(
+          effective_shift_id(r.employee_id, d::date), d::date, r.employee_id) g
+        where effective_shift_id(r.employee_id, d::date) is not null
+          and g.fehlt > 0
+      ) into v_sicher;
+    end if;
+
+    if v_sicher then
+      begin
+        perform public.decide_leave_request(r.erste_id, 'approved');
+        v_genehmigt := v_genehmigt + 1;
+      exception when others then
+        -- Zum Beispiel ein nicht ausreichendes Urlaubskonto. Der Antrag
+        -- bleibt ausstehend; die Sammelaktion laeuft weiter.
+        v_uebersprungen := v_uebersprungen + 1;
+      end;
+    else
+      v_uebersprungen := v_uebersprungen + 1;
+    end if;
+  end loop;
+
+  return query select v_genehmigt, v_uebersprungen, v_geprueft;
+end;
+$$;
+
+revoke all on function public.approve_safe_leave_requests() from public, anon;
+grant execute on function public.approve_safe_leave_requests() to authenticated;
