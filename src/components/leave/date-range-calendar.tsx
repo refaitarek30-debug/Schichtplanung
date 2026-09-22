@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   WEEKDAY_SHORT,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/dates";
 import type { Holiday } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { gemerkteAnsicht, merkeAnsicht } from "@/lib/view-state";
 
 /** Farbe je Schichtkürzel – dieselben wie im Schichtplan. */
 const SHIFT_TONE: Record<string, string> = {
@@ -35,6 +36,7 @@ export function DateRangeCalendar({
   minDate,
   holidays = [],
   shifts,
+  belegt,
   onMonthChange,
 }: {
   startDate: string;
@@ -48,12 +50,41 @@ export function DateRangeCalendar({
    * man Urlaub für Tage, an denen man ohnehin frei hat.
    */
   shifts?: Map<string, string | null>;
+  /**
+   * Tage, an denen für diese Person schon Urlaub steht: "genehmigt" oder
+   * "beantragt". Damit sieht man beim Planen sofort, wo schon etwas liegt,
+   * statt es erst bei der Fehlermeldung nach dem Absenden zu erfahren.
+   */
+  belegt?: Map<string, "genehmigt" | "beantragt">;
   /** Meldet den angezeigten Monat, damit die Schichten nachgeladen werden. */
   onMonthChange?: (year: number, month: number) => void;
 }) {
   const start = fromISO(startDate);
   const [year, setYear] = useState(start.getFullYear());
   const [month, setMonth] = useState(start.getMonth());
+
+  /**
+   * Angesehenen Monat über einen Bereichswechsel hinweg halten.
+   *
+   * Nur solange der gewählte Zeitraum noch der Vorgabewert ist – sobald
+   * jemand Tage ausgewählt hat, gilt deren Monat. Sonst zöge der gemerkte
+   * Monat die Ansicht von der eigenen Auswahl weg.
+   */
+  useEffect(() => {
+    const gemerkt = gemerkteAnsicht("urlaub-monat", (w) => /^\d{4}-\d{1,2}$/.test(w));
+    if (!gemerkt) return;
+    const [j, m] = gemerkt.split("-").map(Number);
+    if (j < 2000 || j > 2100 || m < 0 || m > 11) return;
+    if (j === start.getFullYear() && m === start.getMonth()) return;
+    setYear(j);
+    setMonth(m);
+    // Nur beim ersten Rendern.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    merkeAnsicht("urlaub-monat", `${year}-${month}`);
+  }, [year, month]);
   const [pendingStart, setPendingStart] = useState<string | null>(null);
 
   const grid = useMemo(() => monthGrid(year, month), [year, month]);
@@ -129,6 +160,7 @@ export function DateRangeCalendar({
             const feiertag = holidayName(iso, holidays);
             const today = toISO(new Date());
             const schichtKuerzel = shifts?.get(iso) ?? null;
+            const schonBelegt = belegt?.get(iso) ?? null;
             const schichtFarbe = SHIFT_TONE[schichtKuerzel ?? ""] ?? "bg-surface-sunken text-ink-muted";
 
             return (
@@ -137,7 +169,12 @@ export function DateRangeCalendar({
                 key={iso}
                 disabled={disabled}
                 onClick={() => handleClick(iso)}
-                title={feiertag}
+                title={
+                  [feiertag, schonBelegt === "genehmigt" ? "Urlaub bereits genehmigt"
+                    : schonBelegt === "beantragt" ? "Urlaub bereits beantragt" : null]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
                 className={cn(
                   "relative flex aspect-square flex-col items-center justify-center rounded-xl text-[17px] transition-colors sm:text-base",
                   !inMonth && "text-ink-faint/50",
@@ -148,6 +185,11 @@ export function DateRangeCalendar({
                   isEdge && "bg-brand-500 font-semibold text-white",
                   !inRange && !disabled && "hover:bg-surface-muted",
                   iso === today && !isEdge && "font-bold ring-1 ring-inset ring-brand-500/40",
+                  // Schon belegte Tage bleiben anklickbar – die Datenbank
+                  // weist eine Überschneidung ohnehin ab, und ein stiller
+                  // toter Tag wäre schwerer zu verstehen als ein sichtbarer
+                  // Hinweis.
+                  schonBelegt && !isEdge && "opacity-60",
                 )}
               >
                 <span className="tnum leading-none">{Number(iso.slice(8, 10))}</span>
@@ -155,7 +197,20 @@ export function DateRangeCalendar({
                     rutscht die Zahl in Tagen ohne Schicht nach unten und die
                     Zahlen stehen im Monat nicht mehr auf einer Linie. */}
                 <span className="mt-0.5 flex h-[15px] items-center">
-                  {schichtKuerzel ? (
+                  {schonBelegt ? (
+                    <span
+                      className={cn(
+                        "rounded px-1 text-[11px] font-semibold leading-[15px]",
+                        isEdge
+                          ? "bg-white/25 text-white"
+                          : schonBelegt === "genehmigt"
+                            ? "bg-shift-urlaub text-shift-urlaub-ink"
+                            : "bg-shift-urlaub/50 text-shift-urlaub-ink ring-1 ring-inset ring-shift-urlaub-ink/40",
+                      )}
+                    >
+                      {schonBelegt === "genehmigt" ? "U" : "u"}
+                    </span>
+                  ) : schichtKuerzel ? (
                     <span
                       className={cn(
                         "rounded px-1 text-[11px] font-semibold leading-[15px]",
@@ -188,6 +243,12 @@ export function DateRangeCalendar({
             <Legend className="bg-shift-frueh" label="Frühschicht" />
             <Legend className="bg-shift-spaet" label="Spätschicht" />
             <Legend className="bg-shift-nacht" label="Nachtschicht" />
+          </>
+        ) : null}
+        {belegt && belegt.size > 0 ? (
+          <>
+            <Legend className="bg-shift-urlaub" label="Urlaub genehmigt" />
+            <Legend className="bg-shift-urlaub/50" label="Urlaub beantragt" />
           </>
         ) : null}
       </div>

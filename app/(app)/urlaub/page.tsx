@@ -73,6 +73,7 @@ export default function LeavePage() {
             balance={balance}
             today={TODAY}
             onSubmitted={load}
+            meineAntraege={requests}
           />
         ) : (
           <LeaveRequestForm employee={user} today={TODAY} />

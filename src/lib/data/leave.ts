@@ -34,11 +34,14 @@ function mapRequest(row: LeaveRequestWithEmployee): LiveLeaveRequest {
     rejectionReason: row.rejection_reason,
     reviewedAt: row.reviewed_at,
     createdAt: row.created_at,
+    kind: (row.kind ?? "urlaub") as LiveLeaveRequest["kind"],
+    // Klammer um die Zeilen einer Einreichung. NULL heisst: steht allein.
+    groupId: row.request_group_id ?? null,
   };
 }
 
 const SELECT_WITH_EMPLOYEE =
-  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, employees ( first_name, last_name, shift_id, shifts ( name ) )";
+  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, kind, request_group_id, employees ( first_name, last_name, shift_id, shifts ( name ) )";
 
 /** Eigene Anträge – Reihenfolge neueste zuerst. */
 export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {

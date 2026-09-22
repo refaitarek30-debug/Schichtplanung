@@ -18,6 +18,7 @@ import { formatDays, formatRange } from "@/lib/dates";
 import { decideLeaveRequestAction } from "@/lib/auth/leave-actions";
 import { fetchLeaveImpact } from "@/lib/data/staffing";
 import type { LiveLeaveImpact, LiveLeaveRequest } from "@/lib/types";
+import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
 
@@ -39,13 +40,21 @@ export function ReviewPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [impacts, setImpacts] = useState<Record<string, LiveLeaveImpact | null>>({});
 
+  /**
+   * Ein Zeitraum ist ein Antrag – auch wenn er in der Datenbank aus
+   * mehreren Zeilen besteht. Genehmigt und abgelehnt wird immer der ganze
+   * Zeitraum; eine Teilentscheidung über einzelne Tage oder über Urlaub
+   * gegen V-Tag gibt es nicht. Die Datenbank setzt das durch, hier wird es
+   * nur so dargestellt, wie es gilt.
+   */
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return (requests ?? [])
+    return gruppiereAntraege(requests ?? [])
       .filter((r) => (statusFilter === "all" ? r.status !== "withdrawn" : r.status === statusFilter))
       .filter(
         (r) => term.length === 0 || (r.employeeName ?? "").toLowerCase().includes(term),
-      );
+      )
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
   }, [requests, statusFilter, search]);
 
   // Besetzungsprüfung für offene Anträge nachladen (Spezifikationspunkt 15:
@@ -158,7 +167,7 @@ export function ReviewPanel({
                   </p>
                   <p className="tnum text-[13px] text-ink-muted">
                     {formatRange(request.startDate, request.endDate)} ·{" "}
-                    {formatDays(request.requestedDays)} Urlaubstage
+                    {formatDays(request.requestedDays)} Tage · {artenText(request.kinds)}
                   </p>
                   {request.reason ? (
                     <p className="mt-1 text-[13px] italic text-ink-muted">„{request.reason}“</p>
@@ -191,7 +200,7 @@ export function ReviewPanel({
                       <Button
                         variant="danger"
                         disabled={pending && busyId === request.id}
-                        onClick={() => reject(request.id)}
+                        onClick={() => reject(request.actionId)}
                       >
                         Ablehnung bestätigen
                       </Button>
@@ -211,7 +220,7 @@ export function ReviewPanel({
                   <div className="mt-3 flex items-center gap-2">
                     <Button
                       disabled={pending && busyId === request.id}
-                      onClick={() => approve(request.id)}
+                      onClick={() => approve(request.actionId)}
                     >
                       <Check className="h-4 w-4" /> Genehmigen
                     </Button>
