@@ -151,3 +151,52 @@ export async function updateShift(_prev: FormState, formData: FormData): Promise
   revalidatePath("/schichtplan");
   return { success: `${input.name} wurde gespeichert.` };
 }
+
+/**
+ * Soll- und Mindestbesetzung einer Schicht setzen.
+ *
+ * Bewusst über `set_shift_staffing()` statt über einen direkten Schreibzugriff
+ * auf `shifts`: die Tabellenrichtlinie dort bleibt bei „nur Admin", diese
+ * Funktion fasst genau ein Feldpaar an, prüft `is_leadership()` und
+ * protokolliert die Änderung. Besetzungsvorgaben steuern jede
+ * Urlaubsentscheidung – wer sie ändert, soll nachvollziehbar sein.
+ */
+export async function saveShiftStaffing(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+
+  const shiftId = String(formData.get("shift_id") ?? "");
+  const target = Number.parseInt(String(formData.get("target_staff") ?? ""), 10);
+  const minimum = Number.parseInt(String(formData.get("minimum_staff") ?? ""), 10);
+
+  if (!shiftId) return { error: "Schicht fehlt." };
+  if (!Number.isFinite(target) || target < 0) {
+    return { error: "Die Sollbesetzung muss eine Zahl ab 0 sein." };
+  }
+  if (!Number.isFinite(minimum) || minimum < 0) {
+    return { error: "Die Mindestbesetzung muss eine Zahl ab 0 sein." };
+  }
+  if (minimum > target) {
+    return { error: "Die Mindestbesetzung darf nicht über der Sollbesetzung liegen." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_shift_staffing", {
+    p_shift_id: shiftId,
+    p_target: target,
+    p_minimum: minimum,
+  });
+
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Besetzungsvorgaben konnten nicht gespeichert werden." };
+  }
+
+  revalidatePath("/verwaltung");
+  revalidatePath("/besetzung");
+  revalidatePath("/schichtplan");
+  revalidatePath("/urlaub");
+  revalidatePath("/urlaubsantraege");
+  return { success: "Besetzungsvorgaben gespeichert." };
+}

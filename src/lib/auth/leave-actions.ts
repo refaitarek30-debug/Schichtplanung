@@ -229,3 +229,50 @@ export async function submitLeaveAuto(
     success: `Eingereicht: ${teile.join(" und ")} in ${result.antraege} Antrag/Anträgen – Status: Ausstehend.`,
   };
 }
+
+/**
+ * Alle Anträge genehmigen, bei denen nichts reisst.
+ *
+ * Die Prüfung liegt vollständig in `approve_safe_leave_requests()`: dort
+ * werden dieselbe Besetzungsrechnung (`check_leave_staffing_impact`) und
+ * dieselben Qualifikationsanforderungen (`shift_qualification_gaps`)
+ * benutzt wie in der Warnung am einzelnen Antrag – und genehmigt wird über
+ * `decide_leave_request`, also mit Kontoprüfung, Protokoll und
+ * Benachrichtigung. Hier steht bewusst keine zweite Logik.
+ */
+export async function approveSafeLeaveRequests(): Promise<
+  FormState & { genehmigt?: number; uebersprungen?: number; geprueft?: number }
+> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("approve_safe_leave_requests");
+
+  if (error) {
+    return {
+      error: dataErrorMessage(error) ?? "Die Sammelgenehmigung ist fehlgeschlagen.",
+    };
+  }
+
+  const zeile = ((data ?? []) as { genehmigt: number; uebersprungen: number; geprueft: number }[])[0];
+  const genehmigt = zeile?.genehmigt ?? 0;
+  const uebersprungen = zeile?.uebersprungen ?? 0;
+  const geprueft = zeile?.geprueft ?? 0;
+
+  revalidatePath("/urlaubsantraege");
+  revalidatePath("/urlaub");
+  revalidatePath("/dashboard");
+  revalidatePath("/schichtplan");
+
+  return {
+    success:
+      genehmigt === 0
+        ? geprueft === 0
+          ? "Es liegen keine offenen Anträge vor."
+          : `Kein Antrag war ohne Weiteres genehmigungsfähig. ${uebersprungen} bleiben ausstehend.`
+        : `${genehmigt} Antrag/Anträge genehmigt, ${uebersprungen} bleiben ausstehend.`,
+    genehmigt,
+    uebersprungen,
+    geprueft,
+  };
+}

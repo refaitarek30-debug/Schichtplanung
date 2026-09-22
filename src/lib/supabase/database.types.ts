@@ -362,6 +362,53 @@ export interface Database {
           birth_date: string | null;
         }[];
       };
+      shift_qualification_gaps: {
+        Args: { p_shift_id: string; p_date: string; p_zusaetzlich_abwesend?: string | null };
+        Returns: {
+          qualification_id: string;
+          label: string;
+          benoetigt: number;
+          vorhanden: number;
+          fehlt: number;
+        }[];
+      };
+      leave_staffing_detail: {
+        Args: { p_employee_id: string; p_start_date: string; p_end_date: string };
+        Returns: {
+          tag: string;
+          shift_name: string | null;
+          present: number;
+          target: number;
+          minimum: number;
+          status: StaffingStatusDb;
+          /** [{ label, fehlt }] – leer, wenn keine Qualifikation reisst. */
+          luecken: { label: string; fehlt: number }[] | null;
+        }[];
+      };
+      approve_safe_leave_requests: {
+        Args: Record<string, never>;
+        Returns: {
+          genehmigt: number;
+          uebersprungen: number;
+          geprueft: number;
+        }[];
+      };
+      set_shift_staffing: {
+        Args: { p_shift_id: string; p_target: number; p_minimum: number };
+        Returns: null;
+      };
+      shift_staffing_overview: {
+        Args: { p_date: string | null };
+        Returns: {
+          shift_id: string;
+          shift_name: string;
+          short_name: string | null;
+          target: number;
+          minimum: number;
+          zugeordnet: number;
+          laeuft_heute: boolean;
+        }[];
+      };
       who_is_absent: {
         Args: { p_date: string };
         Returns: {

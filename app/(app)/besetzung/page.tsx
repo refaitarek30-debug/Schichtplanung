@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CoverageStrip } from "@/components/dashboard/coverage-strip";
 import { LiveCoverageStrip } from "@/components/dashboard/live-coverage-strip";
 import { CoverageGaps } from "@/components/staffing/coverage-gaps";
+import { ShiftStaffingCards } from "@/components/staffing/shift-staffing-cards";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
@@ -28,7 +29,7 @@ export default function StaffingPage() {
 }
 
 function LiveStaffingSection() {
-  const { company } = useSession();
+  const { company, role } = useSession();
   const [range, setRange] = useState<LiveStaffingSnapshot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +54,12 @@ function LiveStaffingSection() {
   return (
     <>
       {error ? <Alert tone="error">{error}</Alert> : null}
+
+      {/* Soll und Mindest je Schicht. Sie steuern jede Warnung auf dieser
+          Seite und jede Urlaubsentscheidung – deshalb stehen sie hier,
+          nicht in einem Verwaltungsuntermenü, zu dem die Schichtleitung
+          gar keinen Zugang hat. */}
+      <ShiftStaffingCards canEdit={role === "admin" || role === "shift_leader"} />
 
       <LiveCoverageStrip
         dates={strip14}

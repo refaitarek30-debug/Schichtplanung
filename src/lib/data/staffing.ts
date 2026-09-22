@@ -115,3 +115,98 @@ export async function fetchWhoIsAbsent(dateISO: string): Promise<LiveAbsentToday
     reason: row.reason,
   }));
 }
+
+/** Ein Tag aus der Besetzungsprüfung, mit Schichtname und Qualifikationslücken. */
+export interface LiveStaffingDetailDay {
+  date: string;
+  shiftName: string | null;
+  present: number;
+  target: number;
+  minimum: number;
+  status: "ok" | "warn" | "critical";
+  /** Was an diesem Tag fehlt – kommt aus `shift_qualification_needs`. */
+  gaps: { label: string; fehlt: number }[];
+}
+
+interface StaffingDetailRow {
+  tag: string;
+  shift_name: string | null;
+  present: number;
+  target: number;
+  minimum: number;
+  status: "ok" | "warn" | "critical";
+  luecken: { label: string; fehlt: number }[] | null;
+}
+
+/**
+ * Warum wird die Besetzung knapp? Tag für Tag, mit den konkreten
+ * Qualifikationen, die reissen.
+ *
+ * Dieselbe Rechnung wie `fetchLeaveImpact` – nur ausführlicher. Die
+ * Anforderungen kommen aus der Konfiguration in `shift_qualification_needs`,
+ * nichts davon steht im Frontend.
+ */
+export async function fetchLeaveStaffingDetail(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<LiveStaffingDetailDay[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("leave_staffing_detail", {
+    p_employee_id: employeeId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as StaffingDetailRow[]).map((row) => ({
+    date: row.tag,
+    shiftName: row.shift_name,
+    present: Number(row.present),
+    target: Number(row.target),
+    minimum: Number(row.minimum),
+    status: row.status,
+    gaps: (row.luecken ?? []).filter((g) => g.fehlt > 0),
+  }));
+}
+
+/** Zugeordnet, Soll und Mindest je Schicht – Zugeordnet aus dem echten Plan. */
+export interface LiveShiftStaffing {
+  shiftId: string;
+  shiftName: string;
+  shortName: string | null;
+  target: number;
+  minimum: number;
+  assigned: number;
+  runsToday: boolean;
+}
+
+export async function fetchShiftStaffingOverview(
+  dateISO?: string,
+): Promise<LiveShiftStaffing[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("shift_staffing_overview", {
+    p_date: dateISO ?? null,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return (
+    (data ?? []) as {
+      shift_id: string;
+      shift_name: string;
+      short_name: string | null;
+      target: number;
+      minimum: number;
+      zugeordnet: number;
+      laeuft_heute: boolean;
+    }[]
+  ).map((row) => ({
+    shiftId: row.shift_id,
+    shiftName: row.shift_name,
+    shortName: row.short_name,
+    target: Number(row.target),
+    minimum: Number(row.minimum),
+    assigned: Number(row.zugeordnet),
+    runsToday: row.laeuft_heute,
+  }));
+}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
+import { leaveKindLabels, type LeaveKind } from "@/lib/types";
 import type { FormState } from "./form-state";
 
 const NOT_CONFIGURED: FormState = {
@@ -72,7 +73,7 @@ export async function removeShiftAssignment(id: string): Promise<FormState> {
 export async function setLeaveForDay(
   employeeId: string,
   date: string,
-  mode: "urlaub" | "v_tag" | "clear",
+  mode: LeaveKind | "clear",
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
   const supabase = await createClient();
@@ -86,11 +87,7 @@ export async function setLeaveForDay(
   }
   return {
     success:
-      mode === "clear"
-        ? "Eintrag entfernt."
-        : mode === "v_tag"
-          ? "V-Tag eingetragen."
-          : "Urlaub eingetragen.",
+      mode === "clear" ? "Eintrag entfernt." : `${leaveKindLabels[mode]} eingetragen.`,
   };
 }
 

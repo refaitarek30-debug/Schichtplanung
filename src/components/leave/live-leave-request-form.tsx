@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
@@ -88,7 +88,6 @@ export function LiveLeaveRequestForm({
 }) {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
-  const [period, setPeriod] = useState<"" | "vormittag" | "nachmittag">("");
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
   const [kind, setKind] = useState<LeaveKind>("auto");
@@ -143,6 +142,24 @@ export function LiveLeaveRequestForm({
     }
     return karte;
   }, [meineAntraege]);
+
+  /**
+   * Die Datumsauswahl, nachdem sie kurz stillsteht.
+   *
+   * Einen Zeitraum wählt man mit zwei Klicks. Der erste erzeugt einen
+   * Zwischenstand (Start = Ende), der sofort vier Abfragen auslöst –
+   * Sperren, Besetzung, Automatikvorschau, Empfehlung –, die einen
+   * Wimpernschlag später alle überholt sind. Auf dem Handy über Mobilfunk
+   * war das der spürbare Hänger.
+   *
+   * 300 ms sind kurz genug, dass niemand wartet, und lang genug, dass der
+   * Zwischenstand nicht mehr über die Leitung geht.
+   */
+  const [stabil, setStabil] = useState({ von: startDate, bis: endDate });
+  useEffect(() => {
+    const uhr = window.setTimeout(() => setStabil({ von: startDate, bis: endDate }), 300);
+    return () => window.clearTimeout(uhr);
+  }, [startDate, endDate]);
 
   const startJahr = Number(startDate.slice(0, 4));
   const endJahr = Number(endDate.slice(0, 4));
@@ -206,7 +223,7 @@ export function LiveLeaveRequestForm({
       return;
     }
     let cancelled = false;
-    fetchBlockedDays(startDate, endDate)
+    fetchBlockedDays(stabil.von, stabil.bis)
       .then((result) => {
         if (!cancelled) setSperren(result);
       })
@@ -216,7 +233,7 @@ export function LiveLeaveRequestForm({
     return () => {
       cancelled = true;
     };
-  }, [startDate, endDate]);
+  }, [stabil]);
 
   /** Gesperrte Tage des Zeitraums, nach Datum sortiert. */
   const gesperrt = useMemo(
@@ -236,8 +253,11 @@ export function LiveLeaveRequestForm({
   const valid = endDate >= startDate;
   const days = useMemo(
     () =>
-      valid && holidays ? previewLeaveDays(startDate, endDate, holidays, period || null) : 0,
-    [startDate, endDate, period, valid, holidays],
+      // Halbe Tage gibt es im Antrag nicht mehr – ein Urlaubstag ist ein
+      // ganzer Tag. Die Datenbank kann weiterhin halbe Tage tragen, das
+      // Formular bietet sie nur nicht mehr an.
+      valid && holidays ? previewLeaveDays(startDate, endDate, holidays, null) : 0,
+    [startDate, endDate, valid, holidays],
   );
 
   useEffect(() => {
@@ -246,7 +266,7 @@ export function LiveLeaveRequestForm({
       return;
     }
     let cancelled = false;
-    fetchLeaveImpact(employeeId, startDate, endDate)
+    fetchLeaveImpact(employeeId, stabil.von, stabil.bis)
       .then((result) => {
         if (!cancelled) setImpact(result);
       })
@@ -256,15 +276,37 @@ export function LiveLeaveRequestForm({
     return () => {
       cancelled = true;
     };
-  }, [employeeId, startDate, endDate, valid]);
+  }, [employeeId, stabil, valid]);
 
-  // Eigene Schichten für den Kalender. Geladen wird großzügig um den
-  // angezeigten Monat herum, damit das Blättern nicht ruckelt.
+  /**
+   * Eigene Schichten für den Kalender.
+   *
+   * Drei Dinge, die vorher gefehlt haben und das Blättern zäh bis kaputt
+   * gemacht haben:
+   *
+   *   * Jeder Monatswechsel lud neu, auch ein schon geladener Monat.
+   *   * `setShiftDays(map)` ersetzte die ganze Karte – der vorige Monat
+   *     war danach weg und musste beim Zurückblättern wieder geholt werden.
+   *   * Ohne Abbruchlogik konnte eine ältere Antwort eine neuere
+   *     überschreiben. Wer schnell blätterte, sah dann die Schichten eines
+   *     Monats, den er längst verlassen hatte – oder gar keine.
+   *
+   * Jetzt: einmal je Monat, zusammenführen statt ersetzen, und nur die
+   * Antwort auf die zuletzt gestellte Frage wird übernommen.
+   */
+  const geladeneMonate = useRef(new Set<string>());
+  const letzteAnfrage = useRef(0);
+
   const loadShifts = useCallback((year: number, month: number) => {
+    const schluessel = `${year}-${month}`;
+    if (geladeneMonate.current.has(schluessel)) return;
+    geladeneMonate.current.add(schluessel);
+
     const von = new Date(year, month - 1, 1);
     const bis = new Date(year, month + 2, 0);
     const tage = Math.round((bis.getTime() - von.getTime()) / 86400000) + 1;
     const vonISO = `${von.getFullYear()}-${String(von.getMonth() + 1).padStart(2, "0")}-01`;
+    const meine = ++letzteAnfrage.current;
 
     // my_shift_plan gibt höchstens 62 Tage je Aufruf – in zwei Schritten holen.
     Promise.all([
@@ -272,13 +314,19 @@ export function LiveLeaveRequestForm({
       tage > 60 ? fetchMyShiftPlan(addDaysISO(vonISO, 60), tage - 60) : Promise.resolve([]),
     ])
       .then(([a, b]) => {
-        const map = new Map<string, string | null>();
-        for (const day of [...a, ...b]) {
-          map.set(day.date, day.isFree ? null : shiftCode(day.shiftName));
-        }
-        setShiftDays(map);
+        if (meine !== letzteAnfrage.current) return;
+        setShiftDays((bisher) => {
+          const map = new Map(bisher);
+          for (const day of [...a, ...b]) {
+            map.set(day.date, day.isFree ? null : shiftCode(day.shiftName));
+          }
+          return map;
+        });
       })
-      .catch(() => setShiftDays(new Map()));
+      .catch(() => {
+        // Nicht geladen heisst: beim naechsten Blick noch einmal versuchen.
+        geladeneMonate.current.delete(schluessel);
+      });
   }, []);
 
   useEffect(() => {
@@ -294,7 +342,7 @@ export function LiveLeaveRequestForm({
       return;
     }
     let cancelled = false;
-    fetchAutoPreview(startDate, endDate)
+    fetchAutoPreview(stabil.von, stabil.bis)
       .then((result) => {
         if (!cancelled) setAutoDays(result);
       })
@@ -304,7 +352,7 @@ export function LiveLeaveRequestForm({
     return () => {
       cancelled = true;
     };
-  }, [kind, employeeId, startDate, endDate, valid]);
+  }, [kind, employeeId, stabil, valid]);
 
   // Empfehlung Urlaub vs. V-Tag – hängt am Starttag, weil sich Zuschläge
   // (Sonntag, Feiertag, Nachtschicht) genau daran entscheiden.
@@ -314,7 +362,7 @@ export function LiveLeaveRequestForm({
       return;
     }
     let cancelled = false;
-    fetchLeaveKindSuggestion(employeeId, startDate)
+    fetchLeaveKindSuggestion(employeeId, stabil.von)
       .then((result) => {
         if (cancelled) return;
         setSuggestion(result);
@@ -332,7 +380,7 @@ export function LiveLeaveRequestForm({
     // kindTouched bewusst nicht in den Abhängigkeiten: das Umstellen von Hand
     // soll die Empfehlung nicht neu laden, nur ihre Übernahme verhindern.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId, startDate, valid]);
+  }, [employeeId, stabil, valid]);
 
   useEffect(() => {
     if (state.success) {
@@ -529,25 +577,6 @@ export function LiveLeaveRequestForm({
             </select>
           </Field>
 
-          {/* Warum eine Art fehlt, soll man nachlesen können – sonst sucht
-              man im Formular nach etwas, das gar nicht auftauchen kann. */}
-          {kontingente.some((k) => !k.erlaubt) ? (
-            <p className="-mt-2 text-[12px] leading-snug text-ink-faint">
-              Nicht in der Auswahl:{" "}
-              {kontingente
-                .filter((k) => !k.erlaubt)
-                .map((k) =>
-                  k.kind === "bildungsurlaub"
-                    ? "Bildungsurlaub (in der Verwaltung nicht freigegeben)"
-                    : k.kind === "altersfreizeit"
-                      ? "Altersfreizeit (für dieses Jahr nichts festgelegt)"
-                      : `${leaveKindLabels[k.kind]} (keine Tage vorgesehen)`,
-                )
-                .join(", ")}
-              .
-            </p>
-          ) : null}
-
           {suggestion && kind !== "auto" ? (
             <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted">
               <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
@@ -577,20 +606,6 @@ export function LiveLeaveRequestForm({
               </div>
             </div>
           ) : null}
-
-          <Field label="Tageszeit" hint="Nur bei einem einzelnen Tag wählbar.">
-            <select
-              name="half_day_period"
-              value={period}
-              disabled={startDate !== endDate}
-              onChange={(e) => setPeriod(e.target.value as typeof period)}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm disabled:bg-surface-muted disabled:text-ink-faint"
-            >
-              <option value="">Ganzer Tag</option>
-              <option value="vormittag">Halber Tag, vormittags</option>
-              <option value="nachmittag">Halber Tag, nachmittags</option>
-            </select>
-          </Field>
 
           {/* Der Kommentar nennt Beispiele, damit klar ist, was hier
               hingehört. Er ändert nichts an der Verrechnung: gebucht wird

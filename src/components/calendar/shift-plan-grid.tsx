@@ -4,7 +4,6 @@ import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } fr
 import {
   ArrowDown,
   ArrowUp,
-  Backpack,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -88,6 +87,38 @@ function dayHeader(iso: string): string {
   return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
 }
 
+/**
+ * Was die Führung direkt im Plan eintragen kann.
+ *
+ * Die Arten sind dieselben wie im Antrag (`leave_kind`) bzw. in der
+ * Abwesenheitserfassung (`absence_type`) – hier entsteht kein zweiter
+ * Statuswert. Die Farbe je Knopf ist dieselbe wie das Kürzel in der
+ * Tabelle, damit man vor dem Tippen sieht, was danach in der Zelle steht.
+ *
+ * Auch hier gelten alle Regeln der Datenbank weiter: eine Altersfreizeit
+ * ohne Festlegung oder ein Bildungsurlaub ohne Haken in der Verwaltung
+ * werden abgewiesen, mit Meldung.
+ */
+const LEAVE_AKTIONEN = [
+  "urlaub",
+  "v_tag",
+  "altersfreizeit",
+  "sonderurlaub",
+  "bildungsurlaub",
+  "gewerkschaftstag",
+] as const;
+
+type PlanAktion = "shift" | "absence" | "free" | "clear" | (typeof LEAVE_AKTIONEN)[number];
+
+const leaveKnoepfe: { aktion: (typeof LEAVE_AKTIONEN)[number]; label: string; code: string }[] = [
+  { aktion: "urlaub", label: "Urlaub", code: "U" },
+  { aktion: "v_tag", label: "V-Tag", code: "V" },
+  { aktion: "altersfreizeit", label: "Altersfreizeit", code: "AF" },
+  { aktion: "sonderurlaub", label: "Sonderurlaub", code: "SU" },
+  { aktion: "bildungsurlaub", label: "Bildungsurlaub", code: "BU" },
+  { aktion: "gewerkschaftstag", label: "Gewerkschaftstag", code: "G" },
+];
+
 const legend = [
   { code: "F", label: "Frühschicht" },
   { code: "S", label: "Spätschicht" },
@@ -169,6 +200,8 @@ export function ShiftPlanGrid({
    * bleibt vollständig erreichbar, er kommt nur in Monatsschritten.
    */
   const span = days;
+  /** Legende zu, bis jemand sie braucht. Spart auf dem Handy zwei Zeilen. */
+  const [legendeOffen, setLegendeOffen] = useState(false);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
@@ -401,10 +434,7 @@ export function ShiftPlanGrid({
     return list;
   }, [from, viewYear, viewMonth]);
 
-  function applyChange(
-    action: "shift" | "absence" | "free" | "urlaub" | "v_tag" | "clear",
-    value: string,
-  ) {
+  function applyChange(action: PlanAktion, value: string) {
     if (!selected) return;
     setError(null);
     startTransition(async () => {
@@ -421,10 +451,10 @@ export function ShiftPlanGrid({
         fd.set("shift_id", "");
         fd.set("date", selected.day);
         result = await assignShift({}, fd);
-      } else if (action === "urlaub" || action === "v_tag" || action === "clear") {
-        // Sofort genehmigt – wird automatisch vom jeweiligen Konto abgezogen.
-        // "clear" löst genau diesen einen Tag wieder heraus, ein mehrtägiger
-        // Antrag drumherum bleibt bestehen.
+      } else if (action !== "absence") {
+        // Sofort genehmigt – wird automatisch vom jeweiligen Konto bzw.
+        // Kontingent abgezogen. "clear" löst genau diesen einen Tag wieder
+        // heraus, ein mehrtägiger Antrag drumherum bleibt bestehen.
         result = await setLeaveForDay(selected.employeeId, selected.day, action);
       } else {
         const fd = new FormData();
@@ -559,22 +589,17 @@ export function ShiftPlanGrid({
             <Button variant="secondary" disabled={pending} onClick={() => applyChange("free", "")}>
               Frei
             </Button>
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => applyChange("urlaub", "")}
-              className="bg-shift-urlaub text-shift-urlaub-ink hover:brightness-95"
-            >
-              Urlaub
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => applyChange("v_tag", "")}
-              className="bg-shift-vtag text-shift-vtag-ink hover:brightness-95"
-            >
-              V-Tag
-            </Button>
+            {leaveKnoepfe.map((k) => (
+              <Button
+                key={k.aktion}
+                variant="secondary"
+                disabled={pending}
+                onClick={() => applyChange(k.aktion, "")}
+                className={cn(cellStyles[k.code], "hover:brightness-95")}
+              >
+                {k.label}
+              </Button>
+            ))}
             <Button variant="danger" disabled={pending} onClick={() => applyChange("absence", "krank")}>
               Krank
             </Button>
@@ -582,10 +607,16 @@ export function ShiftPlanGrid({
               variant="secondary"
               disabled={pending}
               onClick={() => applyChange("absence", "schulung")}
+              className={cn(cellStyles.FB, "hover:brightness-95")}
             >
               Schulung
             </Button>
-            {selected.absenceCode && "UuVv".includes(selected.absenceCode) ? (
+            {/* Nur anbieten, wenn wirklich ein Antrag auf dem Tag liegt –
+                sonst räumt der Knopf nichts weg und verwirrt bloß. */}
+            {selected.absenceCode &&
+            ["U", "u", "V", "v", "AF", "af", "SU", "su", "BU", "bu", "G", "g"].includes(
+              selected.absenceCode,
+            ) ? (
               <Button variant="ghost" disabled={pending} onClick={() => applyChange("clear", "")}>
                 Eintrag entfernen
               </Button>
@@ -655,10 +686,13 @@ export function ShiftPlanGrid({
                           {iso.slice(8, 10)}.{iso.slice(5, 7)}.
                         </span>
                       </span>
+                      {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
+                          Vorschrift und muss auffallen. Die Ferien tragen
+                          nur noch den Hintergrund durch die ganze Spalte;
+                          das Koffersymbol hat eine Zeile gekostet und nichts
+                          erklärt, was die Farbe nicht auch sagt. */}
                       {blockReason ? (
                         <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
-                      ) : ferienName ? (
-                        <Backpack className="mx-auto mt-0.5 h-3 w-3 text-plan-fg/70" />
                       ) : null}
                     </th>
                   );
@@ -751,6 +785,13 @@ export function ShiftPlanGrid({
                               // Dieselbe Linie wie im Kopf, damit der
                               // Monatswechsel durch die ganze Tabelle geht.
                               iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                              // Ferien als durchgehender Hintergrund der
+                              // Spalte. Dezent genug, dass die Kürzel in
+                              // den Zellen klar lesbar bleiben; die
+                              // Urlaubssperre sticht sie, sie ist wichtiger.
+                              blocked.has(iso)
+                                ? "bg-crit-bg/50"
+                                : ferien.has(iso) && "bg-plan-bg/40",
                             )}
                           >
                             <button
@@ -815,10 +856,23 @@ export function ShiftPlanGrid({
         )}
       </div>
 
-      {/* Legende in festen Spalten statt als umbrechende Reihe: so stehen
-          Kästchen und Text untereinander auf einer Linie, statt sich je
-          nach Wortlänge zu verschieben. Drei Spalten passen auf jedes
-          Handy, ohne dass ein Eintrag umbricht. */}
+      {/* Die Legende ist Nachschlagewerk, nicht Dauerinhalt: eingeklappt
+          gewinnt der Plan auf dem Handy zwei Zeilen. Die Besetzungszeile
+          bleibt davon unberührt – sie gehört zur Tabelle. */}
+      <button
+        type="button"
+        onClick={() => setLegendeOffen((v) => !v)}
+        aria-expanded={legendeOffen}
+        className="flex w-full items-center justify-between gap-2 border-t border-line px-3 py-2 text-[12px] text-ink-muted hover:bg-surface-muted sm:px-4"
+      >
+        <span>{legendeOffen ? "Legende ausblenden" : "Legende anzeigen"}</span>
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 transition-transform", legendeOffen && "rotate-180")}
+          strokeWidth={2}
+        />
+      </button>
+
+      {legendeOffen ? (
       <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
         {legend.map((item) => (
           <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
@@ -839,6 +893,7 @@ export function ShiftPlanGrid({
           Kleingeschrieben heißt beantragt, noch nicht genehmigt.
         </span>
       </div>
+      ) : null}
     </Card>
   );
 }
