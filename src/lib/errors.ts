@@ -27,6 +27,26 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
   if (message.includes("jwt") || error.status === 401) {
     return "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.";
   }
+  // Der Dienst selbst ist weg: Zeitüberschreitung, abgebrochene Verbindung
+  // oder ein 5xx vom Anbieter. Das ist kein Eingabefehler, und der
+  // Sammelsatz weiter unten liest sich sonst wie „du hast etwas falsch
+  // gemacht". Wer das hier sieht, soll wissen: nichts tun, kurz warten.
+  if (
+    (error.status !== undefined && error.status >= 500) ||
+    message.includes("fetch failed") ||
+    message.includes("network") ||
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("econnreset") ||
+    message.includes("upstream") ||
+    message.includes("service unavailable") ||
+    message.includes("gateway")
+  ) {
+    return (
+      "Der Anmeldedienst antwortet gerade nicht. Das liegt nicht an deinen " +
+      "Zugangsdaten – bitte in ein bis zwei Minuten erneut versuchen."
+    );
+  }
   // Supabase antwortet mit 500 "Error sending confirmation email", wenn die
   // Bestätigungsmail nicht zugestellt werden kann. Das Konto wird dann gar
   // nicht erst angelegt – die Registrierung ist also nicht "später noch mal
