@@ -125,7 +125,14 @@ export interface LiveLeaveRequest {
   status: LeaveStatus;
   rejectionReason: string | null;
   reviewedAt: string | null;
-  createdAt: string;
+  createdAt: string;  /** Art des Antrags. Steht seit den neuen Antragsarten in jeder Zeile. */
+  kind: LeaveKind;
+  /**
+   * Klammer um die Zeilen EINER Einreichung. Ein Zeitraum zerfällt in der
+   * Datenbank in Blöcke je Konto (Urlaub/V-Tag); fachlich ist es trotzdem
+   * ein Antrag. `null` heißt: dieser Antrag steht für sich.
+   */
+  groupId: string | null;
 }
 
 export interface LiveLeaveBalance {

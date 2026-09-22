@@ -24,6 +24,7 @@ import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { fetchSchoolHolidays } from "@/lib/data/holidays";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { gemerkteAnsicht, istPlausiblesDatum, merkeAnsicht } from "@/lib/view-state";
 
 /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
 const cellStyles: Record<string, string> = {
@@ -135,7 +136,27 @@ export function ShiftPlanGrid({
   days?: number;
   canEdit: boolean;
 }) {
+  /**
+   * Erster angezeigter Tag.
+   *
+   * Beim Öffnen gilt der zuletzt angesehene Zeitraum dieser Sitzung, sonst
+   * `from`. Sonst springt die Ansicht bei jedem Bereichswechsel zurück auf
+   * heute, und wer den März 2027 plant, muss sich jedes Mal neu
+   * dorthinblättern.
+   */
   const [start, setStart] = useState(from);
+
+  useEffect(() => {
+    const gemerkt = gemerkteAnsicht("schichtplan-start", istPlausiblesDatum);
+    if (gemerkt) setStart(gemerkt);
+    // Nur beim ersten Rendern: ein späteres Blättern soll sich nicht selbst
+    // überschreiben.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    merkeAnsicht("schichtplan-start", start);
+  }, [start]);
   /**
    * Fensterbreite in Tagen – fest, nicht wählbar.
    *

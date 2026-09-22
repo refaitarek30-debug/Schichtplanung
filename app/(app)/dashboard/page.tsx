@@ -364,6 +364,10 @@ export default function DashboardPage() {
               requests={liveMyRequests}
               loading={liveMyRequests === null}
               onChanged={loadLive}
+              // Auf der Startseite zugeklappt: wer hier landet, will den
+              // Plan und die Kacheln sehen, nicht die eigene Antragsliste.
+              einklappbar
+              standardOffen={false}
             />
           ) : (
             <RequestList

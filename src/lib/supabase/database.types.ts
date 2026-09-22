@@ -196,6 +196,8 @@ export interface LeaveRequestRow {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Klammer um die Zeilen einer Einreichung; null = steht allein. */
+  request_group_id?: string | null;
 }
 
 /** Antrag inklusive Name/Schicht der antragstellenden Person – für die Führungsansicht. */

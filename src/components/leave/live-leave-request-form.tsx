@@ -16,6 +16,7 @@ import { fetchLeaveImpact } from "@/lib/data/staffing";
 import {
   fetchAutoPreview,
   fetchLeaveKindSuggestion,
+  fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
 } from "@/lib/data/leave";
 import { fetchBlockedDays, fetchMyShiftPlan } from "@/lib/data/rotation";
@@ -28,6 +29,7 @@ import type {
   LiveLeaveImpact,
   LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
+  LiveLeaveRequest,
 } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -75,11 +77,14 @@ export function LiveLeaveRequestForm({
   balance,
   today,
   onSubmitted,
+  meineAntraege,
 }: {
   employeeId: string | null;
   balance: LiveLeaveBalance | null;
   today: string;
   onSubmitted: () => void;
+  /** Eigene Anträge, um belegte Tage im Kalender zu markieren. */
+  meineAntraege?: LiveLeaveRequest[] | null;
 }) {
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -92,6 +97,19 @@ export function LiveLeaveRequestForm({
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
   /** Jahreskontingente der vier Arten ohne Urlaubskonto. */
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
+  /**
+   * Urlaubskonto des Jahres, in dem der gewählte Zeitraum liegt.
+   *
+   * Das Konto aus der Seite (`balance`) hängt am Auswahlfeld der
+   * Kontokarte und kann auf einem ganz anderen Jahr stehen. Wer im Herbst
+   * 2026 einen Urlaub im März 2027 plant, wurde dadurch gegen das Konto
+   * 2026 geprüft – und der Antrag ließ sich nicht abschicken, obwohl das
+   * Konto 2027 voll war. Deshalb fragt das Formular das Jahr selbst.
+   *
+   * Geht der Zeitraum über den Jahreswechsel, werden beide Jahre geladen
+   * und jedes gegen seinen eigenen Teil geprüft.
+   */
+  const [konten, setKonten] = useState<Map<number, LiveLeaveBalance | null>>(new Map());
   /** Eigene Schicht je Tag für den Kalender – F, S, N oder null (frei). */
   const [shiftDays, setShiftDays] = useState<Map<string, string | null>>(new Map());
   /** Vorschau der automatischen Verteilung. */
@@ -104,6 +122,51 @@ export function LiveLeaveRequestForm({
   // Echte Feiertage des Unternehmens statt der Demo-Feiertage aus Phase 1 –
   // sonst kann die Vorschau von dem abweichen, was der Server (Trigger
   // leave_requests_compute_days) am Ende tatsächlich speichert.
+  /**
+   * Tage, an denen schon etwas steht. Genehmigt sticht beantragt – wer
+   * beides hat, soll das stärkere Signal sehen.
+   *
+   * Zurückgezogene und abgelehnte Anträge zählen bewusst nicht: die Tage
+   * sind wieder frei.
+   */
+  const belegteTage = useMemo(() => {
+    const karte = new Map<string, "genehmigt" | "beantragt">();
+    for (const antrag of meineAntraege ?? []) {
+      if (antrag.status !== "approved" && antrag.status !== "pending") continue;
+      const marke = antrag.status === "approved" ? "genehmigt" : "beantragt";
+      let tag = antrag.startDate;
+      // Obergrenze gegen eine Endlosschleife bei kaputten Datumsangaben.
+      for (let i = 0; tag <= antrag.endDate && i < 400; i++) {
+        if (marke === "genehmigt" || !karte.has(tag)) karte.set(tag, marke);
+        tag = addDaysISO(tag, 1);
+      }
+    }
+    return karte;
+  }, [meineAntraege]);
+
+  const startJahr = Number(startDate.slice(0, 4));
+  const endJahr = Number(endDate.slice(0, 4));
+
+  // Die Konten der berührten Jahre. fetchMyLeaveBalance legt das Konto des
+  // Jahres an, falls es noch fehlt – dieselbe Funktion nutzt auch die
+  // Kontokarte, die Zahlen können also nicht auseinanderlaufen.
+  useEffect(() => {
+    const jahre = startJahr === endJahr ? [startJahr] : [startJahr, endJahr];
+    if (jahre.some((j) => !Number.isInteger(j) || j < 2000 || j > 2100)) return;
+    let cancelled = false;
+    Promise.all(jahre.map((j) => fetchMyLeaveBalance(j).catch(() => null)))
+      .then((ergebnisse) => {
+        if (cancelled) return;
+        setKonten(new Map(jahre.map((j, i) => [j, ergebnisse[i] ?? null])));
+      })
+      .catch(() => {
+        if (!cancelled) setKonten(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [startJahr, endJahr]);
+
   // Die Kontingente hängen am Jahr des Startdatums: ein Antrag im Januar
   // greift auf ein anderes Jahr zu als einer im Dezember.
   useEffect(() => {
@@ -284,20 +347,70 @@ export function LiveLeaveRequestForm({
   const autoUrlaub = (autoDays ?? []).filter((d) => d.kind === "urlaub").length;
   const autoVTage = (autoDays ?? []).filter((d) => d.kind === "v_tag").length;
   const autoOffen = (autoDays ?? []).filter((d) => d.kind === "keins").length;
+  /**
+   * Wie viele Tage des Zeitraums fallen in welches Kalenderjahr?
+   *
+   * Ein Antrag über den Jahreswechsel belastet zwei Konten, und jedes
+   * muss für seinen eigenen Teil reichen. Für den Normalfall – ein Jahr –
+   * ist das genau eine Zeile.
+   */
+  const tageProJahr = useMemo(() => {
+    if (!valid || !holidays) return new Map<number, number>();
+    if (startJahr === endJahr) return new Map([[startJahr, days]]);
+    const grenze = `${startJahr}-12-31`;
+    return new Map([
+      [startJahr, previewLeaveDays(startDate, grenze, holidays, null)],
+      [endJahr, previewLeaveDays(`${endJahr}-01-01`, endDate, holidays, null)],
+    ]);
+  }, [valid, holidays, startJahr, endJahr, startDate, endDate, days]);
+
+  /** Das Konto des Startjahres – für Anzeige in der Auswahl und im Hinweis. */
+  const jahresKonto = konten.get(startJahr) ?? (balance?.year === startJahr ? balance : null);
+
+  /** Das Konto des jeweiligen Jahres, passend zur gewählten Art. */
+  const kontoRest = useCallback(
+    (jahr: number): number | null => {
+      // Beim ersten Rendern liegt das Jahreskonto noch nicht vor. Dann gilt
+      // das der Seite, aber nur wenn es dasselbe Jahr ist – sonst lieber
+      // nichts anzeigen als eine Zahl aus dem falschen Jahr.
+      const konto = konten.get(jahr) ?? (balance?.year === jahr ? balance : null);
+      if (kind === "urlaub") return konto?.remainingDays ?? null;
+      if (kind === "v_tag") return konto?.vRemainingDays ?? null;
+      return null;
+    },
+    [konten, balance, kind],
+  );
+
   // Urlaub und V-Tage haben je ein Konto, die vier übrigen Arten ein
   // Jahreskontingent. Geprüft wird immer das, was zur gewählten Art gehört –
   // sonst stünde bei einer Altersfreizeit der Urlaubsrest da.
   const accountRemaining =
     kind === "auto"
       ? null
-      : kind === "urlaub"
-        ? (balance?.remainingDays ?? null)
-        : kind === "v_tag"
-          ? (balance?.vRemainingDays ?? null)
-          : (kontingente.find((q) => q.kind === kind)?.rest ?? null);
+      : kind === "urlaub" || kind === "v_tag"
+        ? kontoRest(startJahr)
+        : (kontingente.find((q) => q.kind === kind)?.rest ?? null);
 
-  const remainingAfter = accountRemaining !== null ? accountRemaining - days : null;
-  const insufficientBalance = remainingAfter !== null && remainingAfter < 0;
+  const remainingAfter = accountRemaining !== null ? accountRemaining - (tageProJahr.get(startJahr) ?? days) : null;
+
+  /**
+   * Reicht das Konto? Für jedes berührte Jahr einzeln geprüft.
+   *
+   * Steht das Konto eines Jahres noch nicht zur Verfügung (null), wird
+   * nicht blockiert – blockieren würde sonst ein Ladezustand, und die
+   * verbindliche Prüfung sitzt ohnehin in decide_leave_request.
+   */
+  const insufficientBalance = useMemo(() => {
+    if (kind === "auto") return false;
+    if (kind !== "urlaub" && kind !== "v_tag") {
+      return remainingAfter !== null && remainingAfter < 0;
+    }
+    for (const [jahr, tage] of tageProJahr) {
+      const rest = kontoRest(jahr);
+      if (rest !== null && rest - tage < 0) return true;
+    }
+    return false;
+  }, [kind, tageProJahr, kontoRest, remainingAfter]);
   const suggestionDiffers =
     suggestion !== null &&
     (suggestion.kind === "urlaub" || suggestion.kind === "v_tag") &&
@@ -338,6 +451,7 @@ export function LiveLeaveRequestForm({
               endDate={endDate}
               minDate={today}
               holidays={holidays ?? []}
+              belegt={belegteTage}
               shifts={shiftDays}
               onMonthChange={loadShifts}
               onChange={(newStart, newEnd) => {
@@ -384,11 +498,19 @@ export function LiveLeaveRequestForm({
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
             >
               <option value="auto">Automatisch verteilen</option>
+              {/* Die Reste gehören zum Jahr des gewählten Zeitraums, nicht
+                  zum Jahr der Kontokarte daneben. */}
               <option value="urlaub">
-                Urlaubstag{balance ? ` · ${formatDays(balance.remainingDays)} übrig` : ""}
+                Urlaubstag
+                {jahresKonto
+                  ? ` · ${formatDays(jahresKonto.remainingDays)} übrig`
+                  : ""}
               </option>
               <option value="v_tag">
-                V-Tag{balance ? ` · ${formatDays(balance.vRemainingDays)} übrig` : ""}
+                V-Tag
+                {jahresKonto
+                  ? ` · ${formatDays(jahresKonto.vRemainingDays)} übrig`
+                  : ""}
               </option>
               {/* Die vier übrigen Arten kommen nur in die Auswahl, wenn für
                   diese Person etwas übrig ist: bei Bildungsurlaub braucht
@@ -550,10 +672,12 @@ export function LiveLeaveRequestForm({
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <PanelIcon className="h-4 w-4" strokeWidth={2} />
                 {insufficientBalance
-                  ? `Für diesen Zeitraum stehen nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${labels.plural} zur Verfügung.`
+                  ? `Für diesen Zeitraum stehen im Konto ${startJahr} nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${labels.plural} zur Verfügung.`
                   : staffingCritical
                     ? "Mindestbesetzung wird unterschritten."
-                    : `${formatDays(accountRemaining ?? 0)} ${labels.plural} verfügbar.`}
+                    : `${formatDays(accountRemaining ?? 0)} ${labels.plural} verfügbar${
+                      kind === "urlaub" || kind === "v_tag" ? ` (Konto ${startJahr})` : ""
+                    }.`}
               </p>
               <ul className="mt-2 space-y-1 text-[13px] leading-snug">
                 {remainingAfter !== null && !insufficientBalance ? (
@@ -594,6 +718,17 @@ export function LiveLeaveRequestForm({
                 : !valid || !holidays || days === 0 || insufficientBalance
             }
           />
+
+          {/* Ein ausgegrauter Knopf ohne Begründung ist eine Sackgasse: man
+              sieht nur, dass nichts geht. Deshalb steht hier, warum – und
+              was stattdessen hilft. */}
+          {insufficientBalance && kind !== "auto" ? (
+            <p className="text-[12px] leading-snug text-crit-fg">
+              Absenden nicht möglich: Der Zeitraum braucht mehr {labels.plural}, als im Konto{" "}
+              {startJahr} übrig sind. Kürzeren Zeitraum wählen, eine andere Art nehmen oder
+              „Automatisch verteilen“ – damit werden Urlaubstage und V-Tage gemischt.
+            </p>
+          ) : null}
         </form>
       </CardBody>
     </Card>
