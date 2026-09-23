@@ -13,6 +13,24 @@ const accents: Record<StaffingStatus | "neutral" | "plan", string> = {
 };
 
 /**
+ * Farbton der ganzen Kachel. Die Werte kommen aus den Statusfarben des
+ * Designs – dieselben, die überall für „gut", „Hinweis", „Achtung" stehen –
+ * und haben deshalb schon ihre Dunkelmodus-Fassung.
+ *
+ * Die Farbe ist Orientierung, keine Aussage: sie sagt „das ist die
+ * Urlaubskachel", nicht „hier ist etwas gut oder schlecht". Die Bewertung
+ * trägt weiterhin der Punkt vor dem Hinweistext.
+ */
+const toene = {
+  neutral: { kachel: "bg-surface", icon: "text-ink-faint" },
+  gruen: { kachel: "bg-ok-bg/60 border-ok-bg", icon: "text-ok-fg" },
+  blau: { kachel: "bg-info-bg/60 border-info-bg", icon: "text-info-fg" },
+  orange: { kachel: "bg-warn-bg/60 border-warn-bg", icon: "text-warn-fg" },
+  lila: { kachel: "bg-plan-bg/60 border-plan-bg", icon: "text-plan-fg" },
+  rot: { kachel: "bg-crit-bg/60 border-crit-bg", icon: "text-crit-fg" },
+} as const;
+
+/**
  * Eine Kennzahl auf dem Dashboard.
  *
  * Mit `href` wird die ganze Kachel zum Verweis: eine Zahl weckt immer die
@@ -28,6 +46,7 @@ export function KpiCard({
   accent = "neutral",
   icon,
   href,
+  ton = "neutral",
 }: {
   label: string;
   value: string | number;
@@ -37,12 +56,14 @@ export function KpiCard({
   icon?: ReactNode;
   /** Ziel beim Antippen. Fehlt es, ist die Kachel nicht anklickbar. */
   href?: string;
+  /** Hintergrundton der Kachel, zur schnellen Orientierung. */
+  ton?: keyof typeof toene;
 }) {
   const inhalt = (
     <>
       <div className="flex items-center justify-between">
         <p className="text-[13px] font-medium text-ink-muted">{label}</p>
-        <span className="flex items-center gap-1 text-ink-faint">
+        <span className={cn("flex items-center gap-1", toene[ton].icon)}>
           {icon}
           {href ? (
             <ChevronRight
@@ -68,7 +89,7 @@ export function KpiCard({
     </>
   );
 
-  const rahmen = "rounded-card border border-line bg-surface p-4 shadow-card";
+  const rahmen = cn("rounded-card border border-line p-4 shadow-card", toene[ton].kachel);
 
   if (!href) return <div className={rahmen}>{inhalt}</div>;
 
@@ -77,7 +98,7 @@ export function KpiCard({
       href={href}
       className={cn(
         rahmen,
-        "group block text-left transition-colors hover:bg-surface-muted",
+        "group block text-left transition-[filter] hover:brightness-[0.97]",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
       )}
     >

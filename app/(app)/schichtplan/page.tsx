@@ -43,7 +43,7 @@ export default function ShiftPlanPage() {
         description={
           canEdit
             ? "Eine Zeile je Person über vier Wochen. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
-            : "Eine Zeile je Person über vier Wochen – wer wann arbeitet, frei hat oder im Urlaub ist."
+            : "Eine Zeile je Person über vier Wochen. In deiner eigenen Zeile tippst du auf den ersten und letzten Tag, um Urlaub zu beantragen."
         }
       />
 
@@ -60,6 +60,7 @@ export default function ShiftPlanPage() {
             from={TODAY}
             days={30}
             canEdit={canEdit}
+            employeeId={profile.employeeId}
           />
 
           {canEdit ? (

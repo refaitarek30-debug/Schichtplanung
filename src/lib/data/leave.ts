@@ -163,6 +163,35 @@ export async function fetchLeaveKindSuggestion(
 }
 
 /**
+ * Wie viele Tage kostet dieser Zeitraum – genau so, wie der Server sie beim
+ * Speichern zählt.
+ *
+ * Früher rechnete das Formular selbst: Montag bis Freitag ohne Feiertage.
+ * Im Schichtbetrieb stimmt das nicht. Wer am Wochenende oder am Feiertag
+ * Schicht hat, bekam „0 Tage" angezeigt und konnte Urlaub von Hand gar
+ * nicht erst absenden – der Server hätte dieselben Tage aber korrekt
+ * gezählt (nachgemessen: 01.–03.01.2027 mit drei Nachtschichten, Vorschau
+ * 0, Server 3). Jetzt fragt das Formular dieselbe Funktion, die auch der
+ * Trigger beim Speichern benutzt.
+ */
+export async function fetchLeaveDayCount(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("calculate_leave_days_for_employee", {
+    p_employee_id: employeeId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+    p_half_day_period: null,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return Number(data ?? 0);
+}
+
+/**
  * Überschneidung mit Kolleginnen/Kollegen und Mindestbesetzung – ersetzt
  * durch `fetchLeaveImpact()` in `src/lib/data/staffing.ts`, das seit
  * Phase 4 auch den kritischen Status zurückgibt, nicht nur die Anzahl.

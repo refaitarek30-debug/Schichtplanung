@@ -393,6 +393,20 @@ export interface Database {
           geprueft: number;
         }[];
       };
+      calculate_leave_days_for_employee: {
+        Args: {
+          p_employee_id: string;
+          p_start_date: string;
+          p_end_date: string;
+          p_half_day_period: HalfDayPeriod | null;
+        };
+        Returns: number;
+      };
+      /** Grund, warum ein Antrag an einer Qualifikation scheitert – oder null. */
+      leave_qualification_block_reason: {
+        Args: { p_employee_id: string; p_start_date: string; p_end_date: string };
+        Returns: string | null;
+      };
       set_shift_staffing: {
         Args: { p_shift_id: string; p_target: number; p_minimum: number };
         Returns: null;

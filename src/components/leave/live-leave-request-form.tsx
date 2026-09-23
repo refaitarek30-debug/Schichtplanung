@@ -7,14 +7,15 @@ import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
 import { DateRangeCalendar } from "./date-range-calendar";
 import { addDays as addDaysISO, formatDE, formatDays, fromISO as fromISOLocal } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
-import { fetchLeaveImpact } from "@/lib/data/staffing";
+import { fetchLeaveBlockReason, fetchLeaveImpact } from "@/lib/data/staffing";
 import {
   fetchAutoPreview,
+  fetchLeaveDayCount,
   fetchLeaveKindSuggestion,
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
@@ -90,9 +91,8 @@ export function LiveLeaveRequestForm({
   const [endDate, setEndDate] = useState(today);
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
+  /** Immer "Automatisch", bis die Person selbst eine Art wählt. */
   const [kind, setKind] = useState<LeaveKind>("auto");
-  /** Sobald selbst umgestellt wurde, überschreibt die Empfehlung nichts mehr. */
-  const [kindTouched, setKindTouched] = useState(false);
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
   /** Jahreskontingente der vier Arten ohne Urlaubskonto. */
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
@@ -251,14 +251,60 @@ export function LiveLeaveRequestForm({
   );
 
   const valid = endDate >= startDate;
-  const days = useMemo(
-    () =>
-      // Halbe Tage gibt es im Antrag nicht mehr – ein Urlaubstag ist ein
-      // ganzer Tag. Die Datenbank kann weiterhin halbe Tage tragen, das
-      // Formular bietet sie nur nicht mehr an.
-      valid && holidays ? previewLeaveDays(startDate, endDate, holidays, null) : 0,
+
+  /**
+   * Tage je Kalenderjahr, gezählt vom Server – nach den eingeplanten
+   * Schichten dieser Person, nicht nach Montag bis Freitag.
+   *
+   * null = wird gerade gezählt. `zaehlFehler` = der Server hat nicht
+   * geantwortet; dann blockiert das Formular nicht, die verbindliche
+   * Zählung passiert beim Speichern ohnehin.
+   */
+  const [serverTage, setServerTage] = useState<Map<number, number> | null>(null);
+  const [zaehlFehler, setZaehlFehler] = useState(false);
+
+  useEffect(() => {
+    if (!employeeId || stabil.bis < stabil.von) {
+      setServerTage(null);
+      return;
+    }
+    let cancelled = false;
+    setServerTage(null);
+    setZaehlFehler(false);
+    const vonJahr = Number(stabil.von.slice(0, 4));
+    const bisJahr = Number(stabil.bis.slice(0, 4));
+    // Über den Jahreswechsel: jedes Jahr für sich, weil jedes Konto nur
+    // seinen eigenen Teil tragen muss.
+    const abschnitte: [number, string, string][] =
+      vonJahr === bisJahr
+        ? [[vonJahr, stabil.von, stabil.bis]]
+        : [
+            [vonJahr, stabil.von, `${vonJahr}-12-31`],
+            [bisJahr, `${bisJahr}-01-01`, stabil.bis],
+          ];
+    Promise.all(abschnitte.map(([, von, bis]) => fetchLeaveDayCount(employeeId, von, bis)))
+      .then((zahlen) => {
+        if (cancelled) return;
+        setServerTage(new Map(abschnitte.map(([jahr], i) => [jahr, zahlen[i] ?? 0])));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setZaehlFehler(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, stabil]);
+
+  /** Nur ohne Personalstammsatz oder wenn der Server schweigt: die alte Schätzung. */
+  const schaetzung = useMemo(
+    () => (valid && holidays ? previewLeaveDays(startDate, endDate, holidays, null) : 0),
     [startDate, endDate, valid, holidays],
   );
+  const zaehltNoch = Boolean(employeeId) && valid && serverTage === null && !zaehlFehler;
+  const days = serverTage
+    ? [...serverTage.values()].reduce((summe, n) => summe + n, 0)
+    : schaetzung;
 
   useEffect(() => {
     if (!employeeId || !valid) {
@@ -277,6 +323,32 @@ export function LiveLeaveRequestForm({
       cancelled = true;
     };
   }, [employeeId, stabil, valid]);
+
+  /**
+   * Fehlt durch diesen Antrag eine geforderte Qualifikation? Dann steht hier
+   * der Grund, und der Knopf wird gar nicht erst angeboten. Die Datenbank
+   * sperrt beim Speichern ohnehin mit derselben Regel.
+   */
+  const [sperrGrund, setSperrGrund] = useState<string | null>(null);
+  useEffect(() => {
+    if (!employeeId || stabil.bis < stabil.von) {
+      setSperrGrund(null);
+      return;
+    }
+    let cancelled = false;
+    fetchLeaveBlockReason(employeeId, stabil.von, stabil.bis)
+      .then((grund) => {
+        if (!cancelled) setSperrGrund(grund);
+      })
+      .catch(() => {
+        // Nicht blockieren, wenn die Abfrage scheitert – die Sperre beim
+        // Speichern greift trotzdem und meldet den Grund dann dort.
+        if (!cancelled) setSperrGrund(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, stabil]);
 
   /**
    * Eigene Schichten für den Kalender.
@@ -365,11 +437,12 @@ export function LiveLeaveRequestForm({
     fetchLeaveKindSuggestion(employeeId, stabil.von)
       .then((result) => {
         if (cancelled) return;
+        // Die Empfehlung wird nur angezeigt, nicht übernommen. Vorher
+        // stellte sie die Art still von "Automatisch" auf Urlaubstag oder
+        // V-Tag um – wer nichts anfasste, beantragte dadurch etwas anderes,
+        // als vorausgewählt war. Jetzt bleibt "Automatisch" stehen, bis
+        // jemand selbst umstellt.
         setSuggestion(result);
-        // Nur vorbelegen, solange nichts von Hand gewählt wurde.
-        if (result && !kindTouched && (result.kind === "urlaub" || result.kind === "v_tag")) {
-          setKind(result.kind);
-        }
       })
       .catch(() => {
         if (!cancelled) setSuggestion(null);
@@ -377,16 +450,15 @@ export function LiveLeaveRequestForm({
     return () => {
       cancelled = true;
     };
-    // kindTouched bewusst nicht in den Abhängigkeiten: das Umstellen von Hand
-    // soll die Empfehlung nicht neu laden, nur ihre Übernahme verhindern.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, stabil, valid]);
 
   useEffect(() => {
     if (state.success) {
       onSubmitted();
       setReason("");
-      setKindTouched(false);
+      // Nach dem Absenden wieder auf "Automatisch" – der nächste Antrag
+      // soll nicht die Art des vorigen erben.
+      setKind("auto");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
@@ -403,6 +475,7 @@ export function LiveLeaveRequestForm({
    * ist das genau eine Zeile.
    */
   const tageProJahr = useMemo(() => {
+    if (serverTage) return serverTage;
     if (!valid || !holidays) return new Map<number, number>();
     if (startJahr === endJahr) return new Map([[startJahr, days]]);
     const grenze = `${startJahr}-12-31`;
@@ -410,7 +483,7 @@ export function LiveLeaveRequestForm({
       [startJahr, previewLeaveDays(startDate, grenze, holidays, null)],
       [endJahr, previewLeaveDays(`${endJahr}-01-01`, endDate, holidays, null)],
     ]);
-  }, [valid, holidays, startJahr, endJahr, startDate, endDate, days]);
+  }, [serverTage, valid, holidays, startJahr, endJahr, startDate, endDate, days]);
 
   /** Das Konto des Startjahres – für Anzeige in der Auswahl und im Hinweis. */
   const jahresKonto = konten.get(startJahr) ?? (balance?.year === startJahr ? balance : null);
@@ -541,7 +614,6 @@ export function LiveLeaveRequestForm({
               value={kind}
               onChange={(e) => {
                 setKind(e.target.value as LeaveKind);
-                setKindTouched(true);
               }}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
             >
@@ -596,7 +668,6 @@ export function LiveLeaveRequestForm({
                     type="button"
                     onClick={() => {
                       setKind(suggestion.kind as LeaveKind);
-                      setKindTouched(true);
                     }}
                     className="mt-1 font-medium text-brand-600 hover:underline"
                   >
@@ -677,7 +748,7 @@ export function LiveLeaveRequestForm({
             <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
               <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
               <span className="tnum text-lg font-semibold">
-                {holidays ? formatDays(days) : "…"}
+                {zaehltNoch || (!employeeId && !holidays) ? "…" : formatDays(days)}
               </span>
             </div>
           )}
@@ -722,21 +793,35 @@ export function LiveLeaveRequestForm({
             </Alert>
           ) : null}
 
+          {sperrGrund ? <Alert tone="error">{sperrGrund}</Alert> : null}
+
           {state.error ? <Alert tone="error">{state.error}</Alert> : null}
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
           <SubmitButton
             label={labels.action}
             disabled={
-              kind === "auto"
+              Boolean(sperrGrund) ||
+              (kind === "auto"
                 ? !valid || autoDays === null || autoDays.length === 0 || autoOffen > 0
-                : !valid || !holidays || days === 0 || insufficientBalance
+                : !valid ||
+                  zaehltNoch ||
+                  // Schweigt der Server, blockiert die Schätzung nicht –
+                  // sie kennt die Schichten nicht und läge oft bei 0.
+                  (!zaehlFehler && days === 0) ||
+                  insufficientBalance)
             }
           />
 
           {/* Ein ausgegrauter Knopf ohne Begründung ist eine Sackgasse: man
               sieht nur, dass nichts geht. Deshalb steht hier, warum – und
               was stattdessen hilft. */}
+          {kind !== "auto" && valid && !zaehltNoch && !zaehlFehler && days === 0 ? (
+            <p className="text-[12px] leading-snug text-ink-muted">
+              In diesem Zeitraum hast du keine eingeplante Schicht – es gibt nichts zu beantragen.
+            </p>
+          ) : null}
+
           {insufficientBalance && kind !== "auto" ? (
             <p className="text-[12px] leading-snug text-crit-fg">
               Absenden nicht möglich: Der Zeitraum braucht mehr {labels.plural}, als im Konto{" "}

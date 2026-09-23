@@ -17,13 +17,27 @@ function mapNotification(row: NotificationRow): LiveNotification {
   return { id: row.id, title: row.title, body: row.body, readAt: row.read_at, createdAt: row.created_at };
 }
 
-/** Die letzten Benachrichtigungen der angemeldeten Person, neueste zuerst. */
-export async function fetchNotifications(limit = 15): Promise<LiveNotification[]> {
+/**
+ * Die letzten Benachrichtigungen der angemeldeten Person, neueste zuerst.
+ *
+ * Der Filter auf die eigene Person ist Pflicht, nicht Kür: die
+ * Leserichtlinie lässt den Admin ALLE Benachrichtigungen der Firma sehen.
+ * Ohne Filter bekam er jeden Antrag so oft angezeigt, wie es
+ * Führungskräfte gibt -- jede hat ihre eigene Kopie. Bei drei
+ * Führungskräften also dreimal. Und weil „gelesen markieren" nur die
+ * eigene Kopie ändern darf, blieben die beiden fremden für immer
+ * ungelesen; der rote Punkt ging nie weg.
+ */
+export async function fetchNotifications(
+  employeeId: string,
+  limit = 15,
+): Promise<LiveNotification[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
   const { data, error } = await supabase
     .from("notifications")
     .select("id, company_id, employee_id, type, title, body, related_entity, related_id, read_at, created_at")
+    .eq("employee_id", employeeId)
     .order("created_at", { ascending: false })
     .limit(limit)
     .returns<NotificationRow[]>();

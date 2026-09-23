@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } fr
 import {
   ArrowDown,
   ArrowUp,
+  CalendarPlus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +25,7 @@ import { fetchSchoolHolidays } from "@/lib/data/holidays";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { gemerkteAnsicht, istPlausiblesDatum, merkeAnsicht } from "@/lib/view-state";
+import { PlanLeaveRequest } from "./plan-leave-request";
 
 /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
 const cellStyles: Record<string, string> = {
@@ -35,7 +37,9 @@ const cellStyles: Record<string, string> = {
   V: "bg-shift-vtag text-shift-vtag-ink",
   v: "bg-shift-vtag/50 text-shift-vtag-ink ring-1 ring-inset ring-shift-vtag-ink/40",
   AF: "bg-shift-altersfrei text-shift-altersfrei-ink",
-  af: "bg-shift-altersfrei/50 text-shift-altersfrei-ink ring-1 ring-inset ring-shift-altersfrei-ink/40",
+  // Beantragt: helles Grün mit dunkelgrüner Schrift. Die helle Schrift der
+  // genehmigten Zelle wäre auf halb durchsichtigem Dunkelgrün kaum lesbar.
+  af: "bg-shift-altersfrei/15 text-shift-altersfrei-offen ring-1 ring-inset ring-shift-altersfrei-offen/60",
   SU: "bg-shift-sonderurlaub text-shift-sonderurlaub-ink",
   su: "bg-shift-sonderurlaub/50 text-shift-sonderurlaub-ink ring-1 ring-inset ring-shift-sonderurlaub-ink/40",
   BU: "bg-shift-bildungsurlaub text-shift-bildungsurlaub-ink",
@@ -161,11 +165,14 @@ export function ShiftPlanGrid({
   from,
   days = 30,
   canEdit,
+  employeeId = null,
 }: {
   companyId: string;
   from: string;
   days?: number;
   canEdit: boolean;
+  /** Eigener Personalstammsatz – ohne ihn gibt es keinen Antrag aus dem Plan. */
+  employeeId?: string | null;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -224,6 +231,52 @@ export function ShiftPlanGrid({
   const [ordnungFehler, setOrdnungFehler] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  /**
+   * Urlaub direkt aus der eigenen Zeile beantragen.
+   *
+   * Mitarbeiter können das immer – ihre Zeile ist sonst nicht antippbar.
+   * Die Führung tippt Zellen zum Bearbeiten an; für sie gibt es deshalb
+   * einen Schalter, sonst wüsste der Plan nicht, ob ein Tipp auf die eigene
+   * Zeile „bearbeiten" oder „beantragen" heißt.
+   *
+   * `?antrag=1` in der Adresse (Knopf auf der Startseite) schaltet ihn
+   * gleich ein.
+   */
+  const [antragsModus, setAntragsModus] = useState(false);
+  const [auswahl, setAuswahl] = useState<{ von: string; bis: string; fertig: boolean } | null>(
+    null,
+  );
+  const [antragMeldung, setAntragMeldung] = useState<string | null>(null);
+  const antragAktiv = Boolean(employeeId) && (!canEdit || antragsModus);
+  const [zurEigenenZeile, setZurEigenenZeile] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("antrag") === "1") {
+        setAntragsModus(true);
+        setZurEigenenZeile(true);
+      }
+    } catch {
+      // Ohne lesbare Adresse bleibt es beim normalen Plan.
+    }
+  }, []);
+
+  /** Tipp auf einen Tag der eigenen Zeile: erster Tipp Start, zweiter Ende. */
+  function tippeTag(iso: string) {
+    setAntragMeldung(null);
+    // Liegt die eigene Zeile so tief, dass die Leiste unten sie verdeckt,
+    // wandert sie nach oben – sonst trifft der zweite Tipp die Leiste.
+    const zeile = document.getElementById("eigene-zeile");
+    if (zeile && zeile.getBoundingClientRect().bottom > window.innerHeight - 200) {
+      zeile.scrollIntoView({ block: "center" });
+    }
+    setAuswahl((bisher) => {
+      if (!bisher || bisher.fertig) return { von: iso, bis: iso, fertig: false };
+      const [von, bis] = iso < bisher.von ? [iso, bisher.von] : [bisher.von, iso];
+      return { von, bis, fertig: true };
+    });
+  }
+
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -261,6 +314,17 @@ export function ShiftPlanGrid({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
+  // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.
+  useEffect(() => {
+    if (!zurEigenenZeile || !cells || cells.length === 0) return;
+    const zeile = document.getElementById("eigene-zeile");
+    if (zeile) {
+      zeile.scrollIntoView({ block: "center" });
+      setZurEigenenZeile(false);
+    }
+  }, [zurEigenenZeile, cells]);
 
   const dates = useMemo(
     () => Array.from({ length: span }, (_, i) => addDays(start, i)),
@@ -483,6 +547,27 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {canEdit && employeeId ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAntragsModus((v) => !v);
+                setAuswahl(null);
+                setSelected(null);
+              }}
+              aria-pressed={antragsModus}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                antragsModus
+                  ? "border-brand-500 bg-brand-500 text-white"
+                  : "border-line bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink",
+              )}
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={2} />
+              {antragsModus ? "Fertig" : "Urlaub beantragen"}
+            </button>
+          ) : null}
+
           {/* Die Reihenfolge im Plan ist Sache der Schichtleitung: wer seine
               Mannschaft nach Anlage oder Arbeitsplatz sortiert sehen will,
               stellt sie hier um. Die Pfeile erscheinen nur in diesem Modus,
@@ -552,6 +637,21 @@ export function ShiftPlanGrid({
       {error ? (
         <div className="px-4 pt-3">
           <Alert tone="error">{error}</Alert>
+        </div>
+      ) : null}
+
+      {antragAktiv && !auswahl ? (
+        <div className="px-4 pt-3">
+          <Alert tone="info">
+            Urlaub beantragen: in deiner Zeile auf den ersten und dann auf den letzten Tag
+            tippen.
+          </Alert>
+        </div>
+      ) : null}
+
+      {antragMeldung ? (
+        <div className="px-4 pt-3">
+          <Alert tone="success">{antragMeldung}</Alert>
         </div>
       ) : null}
 
@@ -731,7 +831,11 @@ export function ShiftPlanGrid({
                     </th>
                   </tr>
                   {offen && members.map((member, memberIndex) => (
-                    <tr key={member.employeeId} className="hover:bg-surface-muted/50">
+                    <tr
+                      key={member.employeeId}
+                      id={member.isMe ? "eigene-zeile" : undefined}
+                      className="hover:bg-surface-muted/50"
+                    >
                       <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-1 text-left text-[12px] font-normal sm:px-4 sm:text-[13px]">
                         <span className="flex items-center gap-1.5">
                           {sortieren && canEdit ? (
@@ -777,6 +881,11 @@ export function ShiftPlanGrid({
                         const code = cell
                           ? (cell.absenceCode ?? cell.shiftCode ?? "FREI")
                           : null;
+                        // In der eigenen Zeile: Tag für den Antrag wählen.
+                        // Vergangene Tage und Tage ohne Plan gehen nicht.
+                        const waehlbar = antragAktiv && member.isMe && Boolean(cell) && iso >= from;
+                        const gewaehlt =
+                          member.isMe && auswahl !== null && iso >= auswahl.von && iso <= auswahl.bis;
                         return (
                           <td
                             key={iso}
@@ -795,8 +904,16 @@ export function ShiftPlanGrid({
                             )}
                           >
                             <button
-                              disabled={!canEdit || !cell}
-                              onClick={() => cell && setSelected(cell)}
+                              disabled={waehlbar ? false : !canEdit || !cell}
+                              onClick={() => {
+                                if (waehlbar) {
+                                  setSelected(null);
+                                  tippeTag(iso);
+                                } else if (canEdit && cell) {
+                                  setSelected(cell);
+                                }
+                              }}
+                              aria-pressed={waehlbar ? gewaehlt : undefined}
                               title={
                                 cell
                                   ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}`
@@ -805,7 +922,8 @@ export function ShiftPlanGrid({
                               className={cn(
                                 "flex h-7 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-8 sm:text-[13px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
-                                canEdit && cell && "hover:ring-2 hover:ring-brand-500",
+                                (canEdit || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
+                                gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
                               )}
                             >
                               {code ? cellLabel(code) : ""}
@@ -855,6 +973,26 @@ export function ShiftPlanGrid({
           </table>
         )}
       </div>
+
+      {auswahl && employeeId ? (
+        <>
+          <PlanLeaveRequest
+            employeeId={employeeId}
+            von={auswahl.von}
+            bis={auswahl.bis}
+            fertig={auswahl.fertig}
+            onEinTag={() => setAuswahl((a) => (a ? { ...a, fertig: true } : a))}
+            onClose={() => setAuswahl(null)}
+            onDone={(meldung) => {
+              setAuswahl(null);
+              setAntragMeldung(meldung);
+              void load();
+            }}
+          />
+          {/* Platz, damit die Leiste unten die letzten Zeilen nicht verdeckt. */}
+          <div aria-hidden className="h-72" />
+        </>
+      ) : null}
 
       {/* Die Legende ist Nachschlagewerk, nicht Dauerinhalt: eingeklappt
           gewinnt der Plan auf dem Handy zwei Zeilen. Die Besetzungszeile

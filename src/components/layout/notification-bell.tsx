@@ -24,19 +24,26 @@ function timeAgo(iso: string): string {
 }
 
 export function NotificationBell() {
-  const { mode } = useSession();
+  const { mode, profile } = useSession();
+  const employeeId = profile.employeeId;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<LiveNotification[] | null>(null);
   const wurzel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     if (mode !== "live") return;
+    // Ohne verknüpften Mitarbeiter gibt es keine eigenen Benachrichtigungen
+    // -- sie werden je Mitarbeiter angelegt.
+    if (!employeeId) {
+      setItems([]);
+      return;
+    }
     try {
-      setItems(await fetchNotifications());
+      setItems(await fetchNotifications(employeeId));
     } catch {
       setItems([]);
     }
-  }, [mode]);
+  }, [mode, employeeId]);
 
   useEffect(() => {
     void load();
