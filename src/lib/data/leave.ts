@@ -7,8 +7,10 @@ import type {
   LeaveRequestWithEmployee,
 } from "@/lib/supabase/database.types";
 import type {
+  LiveAfKonto,
   LiveAutoDay,
   LiveTeamBalance,
+  LiveTeamSonderKonto,
   LiveLeaveBalance,
   LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
@@ -51,15 +53,28 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!ich) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
   if (!ich.employeeId) return [];
 
-  const { data, error } = await supabase
-    .from("leave_requests")
-    .select(SELECT_WITH_EMPLOYEE)
-    .eq("employee_id", ich.employeeId)
-    .order("start_date", { ascending: false })
-    .returns<LeaveRequestWithEmployee[]>();
+  const [antraege, pruefer] = await Promise.all([
+    supabase
+      .from("leave_requests")
+      .select(SELECT_WITH_EMPLOYEE)
+      .eq("employee_id", ich.employeeId)
+      .order("start_date", { ascending: false })
+      .returns<LeaveRequestWithEmployee[]>(),
+    // Wer entschieden hat. Die Profile der Führung darf ein Mitarbeiter
+    // nicht lesen – den Namen liefert deshalb eine eigene Funktion, und nur
+    // für die eigenen Anträge.
+    supabase.rpc("my_leave_reviewers"),
+  ]);
 
-  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-  return (data ?? []).map(mapRequest);
+  if (antraege.error) throw new DataError(dataErrorMessage(antraege.error) ?? "Unbekannter Fehler");
+  const namen = new Map<string, string>();
+  for (const row of (pruefer.data ?? []) as { request_id: string; reviewer_name: string }[]) {
+    namen.set(row.request_id, row.reviewer_name);
+  }
+  return (antraege.data ?? []).map((row) => ({
+    ...mapRequest(row),
+    reviewerName: namen.get(row.id) ?? null,
+  }));
 }
 
 /**
@@ -332,4 +347,91 @@ export async function fetchMyLeaveKindQuotas(jahr: number): Promise<LiveLeaveKin
     rest: Number(row.rest),
     erlaubt: row.erlaubt === true,
   }));
+}
+
+interface AfKontoRow {
+  freigeschaltet_ab: string | null;
+  arbeitstage: number;
+  stunden: number;
+  tage_erworben: number;
+  rest_stunden: number;
+  genommen: number;
+  beantragt: number;
+  verfuegbar: number;
+}
+
+/** Das eigene Altersfreizeit-Konto (Stunden und Tage). */
+export async function fetchMyAfKonto(): Promise<LiveAfKonto | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_af_konto");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const row = ((data ?? []) as AfKontoRow[])[0];
+  if (!row) return null;
+  return {
+    freigeschaltetAb: row.freigeschaltet_ab,
+    arbeitstage: Number(row.arbeitstage ?? 0),
+    stunden: Number(row.stunden ?? 0),
+    tageErworben: Number(row.tage_erworben ?? 0),
+    restStunden: Number(row.rest_stunden ?? 0),
+    genommen: Number(row.genommen ?? 0),
+    beantragt: Number(row.beantragt ?? 0),
+    verfuegbar: Number(row.verfuegbar ?? 0),
+  };
+}
+
+interface TeamSonderRow {
+  employee_id: string;
+  su_erlaubt: boolean;
+  su_anspruch: number;
+  su_rest: number;
+  af_freigeschaltet: boolean;
+  af_verfuegbar: number;
+  af_rest_stunden: number;
+}
+
+/** Sonderurlaub und Altersfreizeit je Mitarbeiter (nur Führung). */
+export async function fetchTeamSonderKonten(): Promise<Map<string, LiveTeamSonderKonto>> {
+  if (!isSupabaseConfigured) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("team_sonder_konten", { p_year: null });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const map = new Map<string, LiveTeamSonderKonto>();
+  for (const row of (data ?? []) as TeamSonderRow[]) {
+    map.set(row.employee_id, {
+      suErlaubt: row.su_erlaubt === true,
+      suAnspruch: Number(row.su_anspruch ?? 0),
+      suRest: Number(row.su_rest ?? 0),
+      afFreigeschaltet: row.af_freigeschaltet === true,
+      afVerfuegbar: Number(row.af_verfuegbar ?? 0),
+      afRestStunden: Number(row.af_rest_stunden ?? 0),
+    });
+  }
+  return map;
+}
+
+/**
+ * Offene Anträge für die Sammelgenehmigung, ältester Antrag zuerst –
+ * optional nur die eines Jahres (Beginn oder Ende im Jahr).
+ */
+export async function fetchSammelKandidaten(jahr: number | null): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("sammelgenehmigung_kandidaten", { p_jahr: jahr });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as { antrag_id: string }[]).map((r) => r.antrag_id);
+}
+
+/**
+ * Einen Antrag prüfen und, wenn nichts reisst, genehmigen. Die Prüfung
+ * (Besetzung, Qualifikationen, Konto) liegt vollständig in der Datenbank.
+ */
+export async function sicherGenehmigen(
+  antragId: string,
+): Promise<{ genehmigt: boolean; grund: string | null }> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("sicher_genehmigen", { p_request_id: antragId });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const zeile = ((data ?? []) as { ergebnis: string; grund: string | null }[])[0];
+  return { genehmigt: zeile?.ergebnis === "genehmigt", grund: zeile?.grund ?? null };
 }

@@ -35,6 +35,7 @@ export interface LeaveRequestGroup {
   reason: string | null;
   rejectionReason: string | null;
   reviewedAt: string | null;
+  reviewerName: string | null;
   createdAt: string;
   /** Die einzelnen Zeilen, falls jemand es genau wissen will. */
   parts: LiveLeaveRequest[];
@@ -94,6 +95,7 @@ export function gruppiereAntraege(requests: LiveLeaveRequest[]): LeaveRequestGro
       reason: erster.reason,
       rejectionReason: sortiert.find((t) => t.rejectionReason)?.rejectionReason ?? null,
       reviewedAt: erster.reviewedAt,
+      reviewerName: erster.reviewerName ?? null,
       createdAt: erster.createdAt,
       parts: sortiert,
     });

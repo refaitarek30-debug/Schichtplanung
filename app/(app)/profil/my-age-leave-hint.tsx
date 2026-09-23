@@ -3,55 +3,54 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { fetchMyAgeLeave } from "@/lib/data/age-leave";
-import type { LiveMyAgeLeave } from "@/lib/types";
+import { fetchMyAfKonto } from "@/lib/data/leave";
+import { formatDE, formatDays } from "@/lib/dates";
+import type { LiveAfKonto, LiveMyAgeLeave } from "@/lib/types";
 
 /**
  * Der eigene Stand zur Altersfreizeit.
  *
- * Bewusst zurückhaltend formuliert: solange nichts festgelegt ist, steht hier
- * ausdrücklich, dass es sich um keinen Anspruch handelt. Wer das anders liest,
- * wäre zu Recht verärgert, wenn die Führung später weniger festlegt.
- *
- * Die interne Begründung der Führung wird hier nicht angezeigt – sie kommt
- * gar nicht erst mit, `my_age_leave()` gibt sie nicht heraus.
+ * Freigeschaltet: der Stand des Stundenkontos. Sonst nur ein zurückhaltender
+ * Hinweis ab 50 – ausdrücklich kein Anspruch; freigeschaltet wird von der
+ * Administration.
  */
 export function MyAgeLeaveHint() {
   const [stand, setStand] = useState<LiveMyAgeLeave | null>(null);
+  const [konto, setKonto] = useState<LiveAfKonto | null>(null);
   const [geladen, setGeladen] = useState(false);
   const jahr = new Date().getFullYear();
 
   const laden = useCallback(async () => {
-    try {
-      setStand(await fetchMyAgeLeave(jahr));
-    } catch {
-      // Kein Fehlertext: der Hinweis ist eine Zugabe. Wenn er nicht lädt,
-      // soll er still verschwinden statt das Formular zu verstellen.
-      setStand(null);
-    } finally {
-      setGeladen(true);
-    }
+    const [hinweis, af] = await Promise.allSettled([fetchMyAgeLeave(jahr), fetchMyAfKonto()]);
+    // Kein Fehlertext: der Hinweis ist eine Zugabe.
+    setStand(hinweis.status === "fulfilled" ? hinweis.value : null);
+    setKonto(af.status === "fulfilled" ? af.value : null);
+    setGeladen(true);
   }, [jahr]);
 
   useEffect(() => {
     void laden();
   }, [laden]);
 
-  if (!geladen || !stand) return null;
+  if (!geladen) return null;
 
-  if (stand.confirmed) {
+  if (konto?.freigeschaltetAb) {
     return (
       <Alert tone="success">
-        Für {jahr} sind <strong>{stand.confirmedDays} Tage Altersfreizeit</strong> festgelegt.
+        Altersfreizeit ist seit {formatDE(konto.freigeschaltetAb)} freigeschaltet:{" "}
+        <strong>{formatDays(konto.verfuegbar)} AF-Tage verfügbar</strong>, dazu{" "}
+        {konto.restStunden.toLocaleString("de-DE", { maximumFractionDigits: 2 })} von 7,5 Std.
+        für den nächsten Tag angespart. Details stehen im Urlaubskonto.
       </Alert>
     );
   }
 
-  if (stand.autoPossible) {
+  if (stand?.autoPossible) {
     return (
       <Alert tone="info">
-        Du wirst {jahr} {stand.ageInYear} Jahre alt. Damit <strong>könnten</strong> rund{" "}
-        {stand.suggestedDays} zusätzliche Tage in Frage kommen. Das ist ein Hinweis und noch kein
-        Anspruch – Schichtleitung oder Administration prüfen und legen fest, was tatsächlich gilt.
+        Du wirst {jahr} {stand.ageInYear} Jahre alt. Damit <strong>könnte</strong> Altersfreizeit in
+        Frage kommen. Das ist ein Hinweis und noch kein Anspruch – freigeschaltet wird von der
+        Administration.
       </Alert>
     );
   }

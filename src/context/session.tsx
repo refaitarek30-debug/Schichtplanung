@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { company as demoCompany, demoAccounts, employees, getShift } from "@/lib/demo-data";
 import type {
   Company,
@@ -13,9 +13,20 @@ import type {
 
 interface SessionValue {
   mode: SessionMode;
-  /** Rolle der angemeldeten Person. Im Demo-Modus umschaltbar. */
+  /**
+   * Rolle, mit der die Oberfläche angezeigt wird. Im Demo-Modus umschaltbar;
+   * im Betrieb kann die Führung sich die App „als Mitarbeiter" ansehen.
+   */
   role: Role;
   setRole: (role: Role) => void;
+  /** Die tatsächliche Rolle aus der Datenbank – unabhängig von der Ansicht. */
+  echteRolle: Role;
+  /**
+   * Nur Anzeige: welche Rolle die Oberfläche spielt. `null` = die eigene.
+   * Rechte ändern sich dadurch nicht – die prüft allein die Datenbank.
+   */
+  ansicht: Role | null;
+  setAnsicht: (rolle: Role | null) => void;
   /** Echte Identität aus `profiles` – Name, Rolle, Unternehmen. */
   profile: SessionProfile;
   company: Company;
@@ -50,6 +61,13 @@ function demoProfile(person: Employee): SessionProfile {
   };
 }
 
+const RANG: Record<Role, number> = { employee: 0, shift_leader: 1, admin: 2 };
+
+/** Ansehen darf man nur eine Rolle unterhalb der eigenen. */
+function erlaubteAnsicht(echt: Role, ansicht: Role): boolean {
+  return RANG[ansicht] < RANG[echt];
+}
+
 export function SessionProvider({
   mode,
   profile,
@@ -62,9 +80,34 @@ export function SessionProvider({
   children: ReactNode;
 }) {
   const [demoRole, setDemoRole] = useState<Role>("employee");
+  const [ansicht, setAnsichtState] = useState<Role | null>(null);
+  const echteRolle: Role = mode === "live" && profile ? profile.role : demoRole;
+
+  // Die gewählte Ansicht gilt für diesen Tab, bis man zurückschaltet oder
+  // sich abmeldet. Nur eine Bequemlichkeit – ohne Speicher gilt die eigene.
+  useEffect(() => {
+    try {
+      const gemerkt = window.sessionStorage.getItem("sp_ansicht") as Role | null;
+      if (gemerkt && erlaubteAnsicht(echteRolle, gemerkt)) setAnsichtState(gemerkt);
+    } catch {
+      // kein Speicher: eigene Ansicht
+    }
+  }, [echteRolle]);
+
+  function setAnsicht(rolle: Role | null) {
+    const neu = rolle && rolle !== echteRolle && erlaubteAnsicht(echteRolle, rolle) ? rolle : null;
+    setAnsichtState(neu);
+    try {
+      if (neu) window.sessionStorage.setItem("sp_ansicht", neu);
+      else window.sessionStorage.removeItem("sp_ansicht");
+    } catch {
+      // egal
+    }
+  }
 
   const value = useMemo<SessionValue>(() => {
-    const role = mode === "live" && profile ? profile.role : demoRole;
+    const role =
+      mode === "live" && ansicht && erlaubteAnsicht(echteRolle, ansicht) ? ansicht : echteRolle;
     const persona =
       employees.find((e) => e.id === demoAccounts[role]) ?? employees[0];
 
@@ -72,12 +115,16 @@ export function SessionProvider({
       mode,
       role,
       setRole: mode === "demo" ? setDemoRole : () => {},
+      echteRolle,
+      ansicht: role === echteRolle ? null : role,
+      setAnsicht,
       profile: mode === "live" && profile ? profile : demoProfile(persona),
       company: mode === "live" && company ? company : demoCompany,
       user: persona,
       shift: getShift(persona.shiftId),
     };
-  }, [mode, profile, company, demoRole]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, profile, company, demoRole, ansicht, echteRolle]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

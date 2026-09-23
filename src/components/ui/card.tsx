@@ -1,15 +1,18 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { cn } from "@/lib/utils";
 
 export function Card({
   children,
   className,
+  ref,
 }: {
   children: ReactNode;
   className?: string;
+  ref?: Ref<HTMLElement>;
 }) {
   return (
     <section
+      ref={ref}
       className={cn(
         "rounded-card border border-line bg-surface shadow-card",
         className,

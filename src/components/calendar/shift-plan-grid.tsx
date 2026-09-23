@@ -311,7 +311,7 @@ export function ShiftPlanGrid({
     // wandert sie nach oben – sonst trifft der zweite Tipp die Leiste.
     const zeile = document.getElementById("eigene-zeile");
     if (zeile && zeile.getBoundingClientRect().bottom > window.innerHeight - 200) {
-      zeile.scrollIntoView({ block: "center" });
+      window.scrollBy({ top: zeile.getBoundingClientRect().top - window.innerHeight * 0.3 });
     }
     setAuswahl((bisher) => {
       if (!bisher || bisher.fertig) return { von: iso, bis: iso, fertig: false };
@@ -335,6 +335,8 @@ export function ShiftPlanGrid({
    * Antwort. Jetzt zählt nur die Antwort auf die zuletzt gestellte Frage.
    */
   const letzterAbruf = useRef(0);
+  /** Die Karte selbst – zum mittigen Einblenden beim Urlaubsantrag. */
+  const planRef = useRef<HTMLElement>(null);
 
   const load = useCallback(async () => {
     const meiner = ++letzterAbruf.current;
@@ -418,17 +420,6 @@ export function ShiftPlanGrid({
   // Schichttausch)? Dann neu laden – sonst nicht.
   useAktualisierung(["plan", "antraege", "abwesenheiten"], () => void load());
 
-  // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
-  // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.
-  useEffect(() => {
-    if (!zurEigenenZeile || !cells || cells.length === 0) return;
-    const zeile = document.getElementById("eigene-zeile");
-    if (zeile) {
-      zeile.scrollIntoView({ block: "center" });
-      setZurEigenenZeile(false);
-    }
-  }, [zurEigenenZeile, cells]);
-
   const dates = useMemo(
     () => Array.from({ length: span }, (_, i) => addDays(start, i)),
     [start, span],
@@ -493,6 +484,28 @@ export function ShiftPlanGrid({
   }, [groups, canEdit]);
 
   const offeneGruppen = aufgeklappt ?? standardOffen;
+
+  // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
+  // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.
+  useEffect(() => {
+    if (!zurEigenenZeile || !cells || cells.length === 0 || groups.length === 0) return;
+    // Nur die eigene Gruppe aufklappen: dann stehen Datumskopf und eigene
+    // Zeile zusammen im Bild, statt dass die Zeile tief unten liegt und die
+    // Tage oben aus dem Bild geschoben sind. Zuklappen lässt sich per Tipp.
+    const eigene = groups.find(([, members]) => members.some((m) => m.isMe));
+    if (eigene) setAufgeklappt(new Set([eigene[0]]));
+    setZurEigenenZeile(false);
+    // Erst nach dem Zuklappen messen – sonst stimmen die Abstände nicht.
+    window.setTimeout(() => {
+      planRef.current?.scrollIntoView({ block: "start" });
+      const zeile = document.getElementById("eigene-zeile");
+      const rect = zeile?.getBoundingClientRect();
+      if (rect && rect.bottom > window.innerHeight * 0.85) {
+        window.scrollBy({ top: rect.top - window.innerHeight * 0.4 });
+      }
+    }, 80);
+  }, [zurEigenenZeile, cells, groups]);
+
 
   function toggleGruppe(teamName: string) {
     setAufgeklappt((bisher) => {
@@ -640,8 +653,8 @@ export function ShiftPlanGrid({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+    <Card className="scroll-mt-16 overflow-hidden" ref={planRef}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">Schichtplan</h2>
           <p className="tnum text-[12px] text-ink-muted">
@@ -777,12 +790,19 @@ export function ShiftPlanGrid({
         </div>
       ) : null}
 
+      {/* Als Leiste unten, nicht über der Tabelle: vorher schob sich das
+          Feld beim Antippen über den Plan, und alles darunter sprang nach
+          unten – die angetippte Zelle war danach woanders. */}
       {selected && canEdit ? (
-        <div className="border-b border-line bg-surface-muted px-4 py-3">
+        <div
+          role="dialog"
+          aria-label="Tag bearbeiten"
+          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[50vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
+        >
           <p className="mb-2 text-[13px] font-medium">
             {selected.employeeName} · {formatDE(selected.day)}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
             {shiftDetails.map((shift) => (
               <Button
                 key={shift.id}
@@ -848,7 +868,7 @@ export function ShiftPlanGrid({
                     stehen, sieht man an den Namen. Auf dem Handy sind die
                     gesparten Zeichen eine halbe Spalte Plan mehr. */}
                 <th
-                  className="sticky left-0 z-20 min-w-[84px] bg-surface px-2 py-2 sm:min-w-[180px] sm:px-4"
+                  className="sticky left-0 z-20 min-w-[80px] bg-surface px-2 py-1 sm:min-w-[150px] sm:px-3"
                   aria-label="Mitarbeiter"
                 />
                 {dates.map((iso) => {
@@ -871,7 +891,7 @@ export function ShiftPlanGrid({
                       key={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[30px] px-0.5 py-2 text-center sm:min-w-[42px] sm:px-1",
+                        "min-w-[28px] px-0.5 py-1 text-center sm:min-w-[38px] sm:px-1",
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
@@ -930,7 +950,7 @@ export function ShiftPlanGrid({
                         type="button"
                         onClick={() => toggleGruppe(teamName)}
                         aria-expanded={offen}
-                        className="flex w-full items-center gap-1.5 px-4 py-2 text-[12px] font-semibold text-brand-700 hover:bg-brand-100"
+                        className="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] font-semibold text-brand-700 hover:bg-brand-100"
                       >
                         <ChevronDown
                           className={cn(
@@ -951,7 +971,7 @@ export function ShiftPlanGrid({
                       id={member.isMe ? "eigene-zeile" : undefined}
                       className="hover:bg-surface-muted/50"
                     >
-                      <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-1 text-left text-[12px] font-normal sm:px-4 sm:text-[13px]">
+                      <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-0.5 text-left text-[11px] font-normal sm:px-3 sm:text-[12px]">
                         <span className="flex items-center gap-1.5">
                           {sortieren && canEdit ? (
                             <span className="flex shrink-0 flex-col">
@@ -1035,7 +1055,7 @@ export function ShiftPlanGrid({
                                   : undefined
                               }
                               className={cn(
-                                "flex h-7 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-8 sm:text-[13px]",
+                                "flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:text-[12px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                                 (canEdit || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
@@ -1050,13 +1070,17 @@ export function ShiftPlanGrid({
                   ))}
                   {offen && (
                   <tr>
-                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-1 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-4 sm:text-[11px]">
+                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-0.5 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-3 sm:text-[11px]">
                       Besetzung
                     </th>
                     {dates.map((iso) => {
                       const day = coverage.get(teamName)?.get(iso);
                       const below =
                         day != null && day.minimum !== null && day.present < day.minimum;
+                      // Genau auf der Grenze: noch in Ordnung, aber fällt
+                      // noch jemand aus, wird es rot.
+                      const knapp =
+                        day != null && day.minimum !== null && day.present === day.minimum;
                       return (
                         <td
                           key={iso}
@@ -1069,11 +1093,17 @@ export function ShiftPlanGrid({
                               title={
                                 below
                                   ? `${day.present} anwesend – Mindestbesetzung unterschritten`
-                                  : `${day.present} anwesend`
+                                  : knapp
+                                    ? `${day.present} anwesend – genau Mindestbesetzung, fällt noch jemand aus, wird es kritisch`
+                                    : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum flex h-6 w-full items-center justify-center rounded text-[10px] font-semibold sm:text-[12px]",
-                                below ? "bg-crit-bg text-crit-fg" : "text-ink-muted",
+                                "tnum flex h-5 w-full items-center justify-center rounded text-[10px] font-semibold sm:h-6 sm:text-[12px]",
+                                below
+                                  ? "bg-crit-bg text-crit-fg"
+                                  : knapp
+                                    ? "bg-warn-bg text-warn-fg"
+                                    : "bg-ok-bg/60 text-ok-fg",
                               )}
                             >
                               {day.present}
@@ -1091,6 +1121,10 @@ export function ShiftPlanGrid({
           </table>
         )}
       </div>
+
+      {/* Platz unter der Tabelle, damit die Leiste unten die letzten
+          Zeilen nicht verdeckt – unten angefügt, damit oben nichts springt. */}
+      {selected && canEdit ? <div aria-hidden className="h-56" /> : null}
 
       {auswahl && employeeId ? (
         <>
@@ -1152,6 +1186,14 @@ export function ShiftPlanGrid({
         <span className="col-span-3 pt-0.5 sm:col-span-6">
           Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
           stehen dann zusätzlich klein da (u, v, g).
+        </span>
+        <span className="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-span-6">
+          Besetzung:
+          <span className="rounded bg-ok-bg px-1.5 text-ok-fg">genug</span>
+          <span className="rounded bg-warn-bg px-1.5 text-warn-fg">
+            genau Minimum – fällt noch jemand aus, wird es rot
+          </span>
+          <span className="rounded bg-crit-bg px-1.5 text-crit-fg">unterschritten</span>
         </span>
       </div>
       ) : null}

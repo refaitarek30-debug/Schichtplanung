@@ -523,7 +523,10 @@ export function LiveLeaveRequestForm({
    */
   const insufficientBalance = useMemo(() => {
     if (kind === "auto") return false;
-    if (kind !== "urlaub" && kind !== "v_tag") {
+    // V-Tage dürfen ins Minus – wer alles verbraucht hat, bekommt trotzdem
+    // noch einen V-Tag.
+    if (kind === "v_tag") return false;
+    if (kind !== "urlaub") {
       return remainingAfter !== null && remainingAfter < 0;
     }
     for (const [jahr, tage] of tageProJahr) {

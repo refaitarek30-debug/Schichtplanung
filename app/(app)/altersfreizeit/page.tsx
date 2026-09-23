@@ -16,16 +16,14 @@ export default async function AgeLeavePage() {
   if (!session) redirect("/login");
   if (session.profile.role !== "admin") redirect("/dashboard");
 
-  const jahr = new Date().getFullYear();
-
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Verwaltung"
         title="Altersfreizeit"
-        description="Die Anwendung weist nur hin, wo sich ein Blick lohnt. Verbindlich ist allein, was hier festgelegt wird."
+        description="Freischalten, wer Altersfreizeit bekommt. Angespart wird automatisch: 0,83 Std. je gearbeitetem Tag, je 7,5 Std. ein AF-Tag."
       />
-      <AgeLeaveTable jahr={jahr} />
+      <AgeLeaveTable />
     </div>
   );
 }

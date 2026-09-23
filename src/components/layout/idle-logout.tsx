@@ -25,7 +25,7 @@ function liesCookie(): number {
 }
 
 /**
- * Meldet nach 30 Minuten ohne Aktivität ab.
+ * Meldet nach 10 Minuten ohne Aktivität ab.
  *
  * Die Middleware prüft dasselbe bei jedem Seitenaufruf – die hier ist für den
  * Fall, dass die Seite einfach offen liegen bleibt und gar kein Aufruf mehr
