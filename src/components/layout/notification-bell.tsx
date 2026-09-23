@@ -11,6 +11,8 @@ import {
   type LiveNotification,
 } from "@/lib/data/notifications";
 import { cn } from "@/lib/utils";
+import { useAktualisierung } from "@/lib/live-refresh";
+import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -27,7 +29,12 @@ export function NotificationBell() {
   const { mode, profile } = useSession();
   const employeeId = profile.employeeId;
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState<LiveNotification[] | null>(null);
+  const speicherSchluessel = `${employeeId ?? "-"}:glocke`;
+  // Letzter Stand sofort, damit der Punkt beim Seitenwechsel nicht erst
+  // verschwindet und wieder auftaucht.
+  const [items, setItems] = useState<LiveNotification[] | null>(
+    () => ausZwischenspeicher<LiveNotification[]>(speicherSchluessel) ?? null,
+  );
   const wurzel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -39,15 +46,20 @@ export function NotificationBell() {
       return;
     }
     try {
-      setItems(await fetchNotifications(employeeId));
+      const neu = await fetchNotifications(employeeId);
+      setItems(neu);
+      inZwischenspeicher(`${employeeId}:glocke`, neu);
     } catch {
-      setItems([]);
+      setItems((bisher) => bisher ?? []);
     }
   }, [mode, employeeId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Neue Mitteilung eingegangen? Nur dann neu laden.
+  useAktualisierung(["benachrichtigungen"], () => void load());
 
   // Beim Öffnen die aktuell ungelesenen serverseitig als gelesen markieren.
   useEffect(() => {

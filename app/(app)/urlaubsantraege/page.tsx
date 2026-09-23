@@ -27,6 +27,8 @@ import { formatDays, formatRange } from "@/lib/dates";
 import { checkLeaveImpact } from "@/lib/staffing";
 import { DataError, fetchReviewLeaveRequests } from "@/lib/data/leave";
 import type { LeaveStatus, LiveLeaveRequest } from "@/lib/types";
+import { useAktualisierung } from "@/lib/live-refresh";
+import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 
 export default function RequestsPage() {
   const { mode, role, user } = useSession();
@@ -48,24 +50,36 @@ export default function RequestsPage() {
 }
 
 function LiveReviewSection() {
-  const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
+  const { profile } = useSession();
+  const speicherSchluessel = `${profile.id}:antraege-fuehrung`;
+  const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(
+    () => ausZwischenspeicher<LiveLeaveRequest[]>(speicherSchluessel) ?? null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setRequests(await fetchReviewLeaveRequests());
+      const neu = await fetchReviewLeaveRequests();
+      setRequests(neu);
+      inZwischenspeicher(speicherSchluessel, neu);
     } catch (caught) {
+      if (ausZwischenspeicher(speicherSchluessel)) return;
       setRequests([]);
       setError(
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, []);
+  }, [speicherSchluessel]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Neuer Antrag oder eine Entscheidung durch jemand anderes aus der
+  // Führung: Liste auffrischen. Die Besetzungsprüfung je Antrag wird dabei
+  // im ReviewPanel neu gerechnet.
+  useAktualisierung(["antraege", "abwesenheiten", "plan"], () => void load());
 
   return (
     <>

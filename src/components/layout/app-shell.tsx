@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { DataModeNotice } from "./data-mode-notice";
 import { InstallHint } from "./install-hint";
 import { LegalFooter } from "./legal-footer";
+import { LiveRefresh } from "./live-refresh";
 import { MobileNav } from "./mobile-nav";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
@@ -26,6 +27,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <LegalFooter className="border-t border-line px-5 pb-28 pt-4 text-[12px] text-ink-faint lg:pb-4" />
       </div>
       <MobileNav />
+      {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
+      <LiveRefresh />
     </div>
   );
 }

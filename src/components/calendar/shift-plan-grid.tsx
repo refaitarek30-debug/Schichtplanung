@@ -26,6 +26,17 @@ import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { gemerkteAnsicht, istPlausiblesDatum, merkeAnsicht } from "@/lib/view-state";
 import { PlanLeaveRequest } from "./plan-leave-request";
+import { useSession } from "@/context/session";
+import { useAktualisierung } from "@/lib/live-refresh";
+import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+
+/** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
+interface PlanStand {
+  grid: LiveShiftPlanCell[];
+  details: ShiftDetail[];
+  blocked: Map<string, string>;
+  ferien: Map<string, string>;
+}
 
 /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
 const cellStyles: Record<string, string> = {
@@ -277,8 +288,22 @@ export function ShiftPlanGrid({
     });
   }
 
+  const { profile } = useSession();
+  // Je Benutzer getrennt: die Führung sieht andere Zeilen als ein Mitarbeiter.
+  const speicherSchluessel = `${profile.id}:plan:${companyId}:${start}:${span}`;
+
   const load = useCallback(async () => {
     setError(null);
+    // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
+    // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
+    // Wartezeit da.
+    const gemerkt = ausZwischenspeicher<PlanStand>(speicherSchluessel);
+    if (gemerkt) {
+      setCells(gemerkt.grid);
+      setShiftDetails(gemerkt.details);
+      setBlocked(gemerkt.blocked);
+      setFerien(gemerkt.ferien);
+    }
     try {
       // Die Schichtdetails liefern Name und Id gleich mit – eine zweite
       // Abfrage nur für die Auswahlliste braucht es nicht.
@@ -303,17 +328,33 @@ export function ShiftPlanGrid({
         }
       }
       setFerien(tage);
+      inZwischenspeicher<PlanStand>(speicherSchluessel, {
+        grid,
+        details,
+        blocked: blockedDays,
+        ferien: tage,
+      });
     } catch (caught) {
+      // Steht schon ein gemerkter Stand da, bleibt er sichtbar – lieber der
+      // Plan von vor einer Minute als ein leerer Bildschirm.
+      if (gemerkt) {
+        setError("Der Plan konnte gerade nicht aufgefrischt werden – angezeigt wird der letzte Stand.");
+        return;
+      }
       setCells([]);
       setError(
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [companyId, start, span]);
+  }, [companyId, start, span, speicherSchluessel]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Hat jemand anderes etwas geändert (Antrag, Genehmigung, Krankmeldung,
+  // Schichttausch)? Dann neu laden – sonst nicht.
+  useAktualisierung(["plan", "antraege", "abwesenheiten"], () => void load());
 
   // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
   // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.

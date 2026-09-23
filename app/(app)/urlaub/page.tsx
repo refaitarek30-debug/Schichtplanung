@@ -18,6 +18,8 @@ import {
   fetchMyLeaveRequests,
 } from "@/lib/data/leave";
 import type { LiveLeaveBalance, LiveLeaveRequest } from "@/lib/types";
+import { useAktualisierung } from "@/lib/live-refresh";
+import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 
 export default function LeavePage() {
   const { mode, user, profile } = useSession();
@@ -30,10 +32,20 @@ export default function LeavePage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const speicherSchluessel = `${profile.id}:urlaub:${year}`;
 
   const load = useCallback(async () => {
     if (mode !== "live") return;
     setError(null);
+    // Letzter Stand sofort, dann auffrischen.
+    const gemerkt = ausZwischenspeicher<{
+      balance: LiveLeaveBalance | null;
+      requests: LiveLeaveRequest[];
+    }>(speicherSchluessel);
+    if (gemerkt) {
+      setBalance(gemerkt.balance);
+      setRequests(gemerkt.requests);
+    }
     try {
       const [balanceResult, requestsResult] = await Promise.all([
         fetchMyLeaveBalance(year),
@@ -41,17 +53,26 @@ export default function LeavePage() {
       ]);
       setBalance(balanceResult);
       setRequests(requestsResult);
+      inZwischenspeicher(speicherSchluessel, {
+        balance: balanceResult,
+        requests: requestsResult,
+      });
     } catch (caught) {
+      if (gemerkt) return;
       setRequests([]);
       setError(
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [mode, year]);
+  }, [mode, year, speicherSchluessel]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Entscheidet die Schichtleitung über einen Antrag, steht das hier von
+  // selbst – spätestens eine Minute später oder beim Zurückholen der App.
+  useAktualisierung(["antraege"], () => void load());
 
   const demoBalance = leaveBalance(user, staffingContext.leaveRequests, TODAY);
   const demoRequests = requestsOfEmployee(user.id);

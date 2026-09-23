@@ -50,6 +50,23 @@ import {
 import { dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
 import { addDays, formatDE, formatDays, fromISO, weekdayLong } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { useAktualisierung } from "@/lib/live-refresh";
+import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+
+/**
+ * Letzter Stand der Startseite. Wer vom Plan zurückkommt, sieht die Kacheln
+ * sofort statt erst Nullen; im Hintergrund wird aufgefrischt.
+ */
+interface StartStand {
+  balance: LiveLeaveBalance | null;
+  requests: LiveLeaveRequest[] | null;
+  pendingCount: number | null;
+  criticalDays: string[] | null;
+  sickDays: number | null;
+  announcements: LiveAnnouncement[] | null;
+  blocks: LiveLeaveBlock[];
+  shiftNames: Map<string, string>;
+}
 
 /** Nächster Tag, an dem überhaupt produziert wird – für Wochenenden und Feiertage. */
 function nextProductionDay(from: string): string {
@@ -82,18 +99,33 @@ export default function DashboardPage() {
   const reference = nextProductionDay(TODAY);
   const isToday = reference === TODAY;
 
-  const [liveBalance, setLiveBalance] = useState<LiveLeaveBalance | null>(null);
-  const [liveMyRequests, setLiveMyRequests] = useState<LiveLeaveRequest[] | null>(null);
-  const [livePendingCount, setLivePendingCount] = useState<number | null>(null);
+  const speicherSchluessel = `${profile.id}:startseite`;
+  const [gemerkt] = useState(() => ausZwischenspeicher<StartStand>(speicherSchluessel));
+
+  const [liveBalance, setLiveBalance] = useState<LiveLeaveBalance | null>(
+    gemerkt?.balance ?? null,
+  );
+  const [liveMyRequests, setLiveMyRequests] = useState<LiveLeaveRequest[] | null>(
+    gemerkt?.requests ?? null,
+  );
+  const [livePendingCount, setLivePendingCount] = useState<number | null>(
+    gemerkt?.pendingCount ?? null,
+  );
   // Für Führungskräfte: die kritischen Tage der nächsten zwei Wochen.
-  const [liveCriticalDays, setLiveCriticalDays] = useState<string[] | null>(null);
+  const [liveCriticalDays, setLiveCriticalDays] = useState<string[] | null>(
+    gemerkt?.criticalDays ?? null,
+  );
   /** Eigene Kranktage im laufenden Jahr – für die Kachel "Krank gesamt". */
-  const [liveSickDays, setLiveSickDays] = useState<number | null>(null);
+  const [liveSickDays, setLiveSickDays] = useState<number | null>(gemerkt?.sickDays ?? null);
   // Mitteilungen der Betriebsleitung und aktive Urlaubssperren. Beides wird
   // auf der Regeln-Seite gepflegt und erscheint hier zusammen.
-  const [liveAnnouncements, setLiveAnnouncements] = useState<LiveAnnouncement[] | null>(null);
-  const [liveBlocks, setLiveBlocks] = useState<LiveLeaveBlock[]>([]);
-  const [shiftNames, setShiftNames] = useState<Map<string, string>>(new Map());
+  const [liveAnnouncements, setLiveAnnouncements] = useState<LiveAnnouncement[] | null>(
+    gemerkt?.announcements ?? null,
+  );
+  const [liveBlocks, setLiveBlocks] = useState<LiveLeaveBlock[]>(gemerkt?.blocks ?? []);
+  const [shiftNames, setShiftNames] = useState<Map<string, string>>(
+    gemerkt?.shiftNames ?? new Map(),
+  );
 
   const loadLive = useCallback(async () => {
     if (mode !== "live") return;
@@ -121,29 +153,49 @@ export default function DashboardPage() {
         fuehrung ? fetchStaffingRange(company.id, TODAY, 14) : Promise.resolve(null),
       ]);
 
-    if (balance.status === "fulfilled") setLiveBalance(balance.value);
-    if (requests.status === "fulfilled") setLiveMyRequests(requests.value);
-    if (sick.status === "fulfilled") setLiveSickDays(sick.value);
-    setLiveAnnouncements(notices.status === "fulfilled" ? notices.value : []);
-    if (blocks.status === "fulfilled") setLiveBlocks(blocks.value);
-    if (shifts.status === "fulfilled") {
-      setShiftNames(new Map(shifts.value.map((o) => [o.id, o.name])));
-    }
-    if (review.status === "fulfilled" && review.value) {
-      setLivePendingCount(review.value.filter((r) => r.status === "pending").length);
-    }
-    if (range.status === "fulfilled" && range.value) {
-      setLiveCriticalDays(
-        [
-          ...new Set(range.value.filter((s) => s.status === "critical").map((s) => s.date)),
-        ].sort(),
-      );
-    }
-  }, [mode, role, company.id]);
+    // Was nicht geladen werden konnte, behält den letzten Stand.
+    const bisher = ausZwischenspeicher<StartStand>(speicherSchluessel);
+    const stand: StartStand = {
+      balance: balance.status === "fulfilled" ? balance.value : (bisher?.balance ?? null),
+      requests: requests.status === "fulfilled" ? requests.value : (bisher?.requests ?? null),
+      sickDays: sick.status === "fulfilled" ? sick.value : (bisher?.sickDays ?? null),
+      announcements:
+        notices.status === "fulfilled" ? notices.value : (bisher?.announcements ?? []),
+      blocks: blocks.status === "fulfilled" ? blocks.value : (bisher?.blocks ?? []),
+      shiftNames:
+        shifts.status === "fulfilled"
+          ? new Map(shifts.value.map((o) => [o.id, o.name]))
+          : (bisher?.shiftNames ?? new Map()),
+      pendingCount:
+        review.status === "fulfilled" && review.value
+          ? review.value.filter((r) => r.status === "pending").length
+          : (bisher?.pendingCount ?? null),
+      criticalDays:
+        range.status === "fulfilled" && range.value
+          ? [
+              ...new Set(range.value.filter((s) => s.status === "critical").map((s) => s.date)),
+            ].sort()
+          : (bisher?.criticalDays ?? null),
+    };
+
+    setLiveBalance(stand.balance);
+    setLiveMyRequests(stand.requests);
+    setLiveSickDays(stand.sickDays);
+    setLiveAnnouncements(stand.announcements);
+    setLiveBlocks(stand.blocks);
+    setShiftNames(stand.shiftNames);
+    setLivePendingCount(stand.pendingCount);
+    setLiveCriticalDays(stand.criticalDays);
+    inZwischenspeicher(speicherSchluessel, stand);
+  }, [mode, role, company.id, speicherSchluessel]);
 
   useEffect(() => {
     void loadLive();
   }, [loadLive]);
+
+  // Neuer Antrag, eine Entscheidung, eine Krankmeldung, eine neue
+  // Mitteilung der Leitung: dann die Kacheln auffrischen.
+  useAktualisierung(["antraege", "abwesenheiten", "mitteilungen"], () => void loadLive());
 
   const demoBalance = leaveBalance(user, staffingContext.leaveRequests, TODAY);
   const availableLeave =
