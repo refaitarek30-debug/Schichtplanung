@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { NextLeaveCard } from "@/components/dashboard/next-leave";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { RequestList } from "@/components/dashboard/request-list";
 import { LiveRequestList } from "@/components/leave/live-request-list";
@@ -263,6 +264,7 @@ export default function DashboardPage() {
       liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
     }
     if (hatVKonto) liste.push({ key: "vtage", label: "V-Tage gesamt" });
+    liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub" });
     return liste;
   }, [role, hatVKonto]);
 
@@ -404,6 +406,13 @@ export default function DashboardPage() {
           />
         ) : null}
       </div>
+
+      {/* Der eigene nächste Urlaub, direkt über dem Knopf zum Beantragen:
+          erst sehen, was schon steht, dann den nächsten planen.
+          Abwählbar wie die Kacheln. */}
+      {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
+        <NextLeaveCard antraege={liveMyRequests} heute={TODAY} />
+      ) : null}
 
       {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
           Ende antippt. Die Art steht dort auf „Automatisch". */}

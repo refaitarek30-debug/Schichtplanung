@@ -875,12 +875,12 @@ export function ShiftPlanGrid({
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
-                        iso.slice(8, 10) === "01" && !feiertag && "border-l-2 border-line",
+                        iso.slice(8, 10) === "01" && "border-l-2 border-line",
                         isWeekend(iso) && "bg-surface-sunken/60",
-                        // Feiertag: eine Umrandung, die durch die ganze
-                        // Spalte läuft. Keine Füllfarbe – die Zellen tragen
-                        // schon Schicht- und Ferienfarben.
-                        feiertag && "border-x-2 border-t-2 border-crit-dot",
+                        // Feiertag: nur der Tageskopf bekommt einen Rahmen.
+                        // Durch die ganze Spalte war es zu viel – die Zellen
+                        // tragen schon Schicht- und Ferienfarben.
+                        feiertag && "rounded-md ring-2 ring-inset ring-crit-dot",
                         ferienName && !blockReason && "bg-plan-bg/40",
                         blockReason && "bg-crit-bg",
                       )}
@@ -1008,8 +1008,7 @@ export function ShiftPlanGrid({
                               "p-px text-center sm:p-0.5",
                               // Dieselbe Linie wie im Kopf, damit der
                               // Monatswechsel durch die ganze Tabelle geht.
-                              iso.slice(8, 10) === "01" && !feiertage.has(iso) && "border-l-2 border-line",
-                              feiertage.has(iso) && "border-x-2 border-crit-dot",
+                              iso.slice(8, 10) === "01" && "border-l-2 border-line",
                               // Ferien als durchgehender Hintergrund der
                               // Spalte. Dezent genug, dass die Kürzel in
                               // den Zellen klar lesbar bleiben; die
@@ -1061,10 +1060,7 @@ export function ShiftPlanGrid({
                       return (
                         <td
                           key={iso}
-                          className={cn(
-                            "bg-surface-sunken/60 p-px text-center sm:p-0.5",
-                            feiertage.has(iso) && "border-x-2 border-crit-dot",
-                          )}
+                          className="bg-surface-sunken/60 p-px text-center sm:p-0.5"
                         >
                           {day == null || day.minimum === null ? (
                             <span className="text-[11px] text-ink-faint">–</span>
@@ -1135,8 +1131,8 @@ export function ShiftPlanGrid({
       {legendeOffen ? (
       <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
         <span className="flex min-w-0 items-center gap-1">
-          <span className="h-3.5 w-4 shrink-0 rounded-sm border-2 border-crit-dot sm:h-4 sm:w-5" />
-          <span className="truncate">Feiertag</span>
+          <span className="h-3.5 w-4 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot sm:h-4 sm:w-5" />
+          <span className="truncate">Feiertag (Rahmen am Tag)</span>
         </span>
         {legend.map((item) => (
           <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
