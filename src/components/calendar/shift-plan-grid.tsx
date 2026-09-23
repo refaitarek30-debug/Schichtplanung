@@ -85,9 +85,25 @@ function shortName(name: string): string {
   return `${teile[0]!.slice(0, 1)}. ${teile[teile.length - 1]}`;
 }
 
-/** Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe. */
+/**
+ * Beantragt, noch nicht genehmigt. Die Datenbank liefert dafür das Kürzel
+ * kleingeschrieben (u, v, g, su, af, bu).
+ */
+const BEANTRAGT = new Set(["u", "v", "g", "su", "af", "bu"]);
+
+/**
+ * Was im Kästchen steht. "frei" bekommt ein Haus statt Buchstabe.
+ *
+ * Die zweibuchstabigen Kürzel stehen auch beantragt groß da: „su" oder
+ * „af" war auf dem Handy nicht als Sonderurlaub bzw. Altersfreizeit zu
+ * erkennen. Dass der Tag erst beantragt ist, zeigt die Zelle weiterhin am
+ * hellen Hintergrund mit Rahmen. U, V und G bleiben beantragt klein, wie
+ * man es gewohnt ist.
+ */
 function cellLabel(code: string): string {
-  return code === "FREI" ? "⌂" : code;
+  if (code === "FREI") return "⌂";
+  if (code === "su" || code === "af" || code === "bu") return code.toUpperCase();
+  return code;
 }
 
 /**
@@ -957,7 +973,7 @@ export function ShiftPlanGrid({
                               aria-pressed={waehlbar ? gewaehlt : undefined}
                               title={
                                 cell
-                                  ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}`
+                                  ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}${code && BEANTRAGT.has(code) ? " · beantragt, noch nicht genehmigt" : ""}`
                                   : undefined
                               }
                               className={cn(
@@ -1069,7 +1085,8 @@ export function ShiftPlanGrid({
         ))}
         {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
         <span className="col-span-3 pt-0.5 sm:col-span-6">
-          Kleingeschrieben heißt beantragt, noch nicht genehmigt.
+          Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
+          stehen dann zusätzlich klein da (u, v, g).
         </span>
       </div>
       ) : null}
