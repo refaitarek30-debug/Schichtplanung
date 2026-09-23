@@ -6,8 +6,10 @@ import {
   CalendarClock,
   ClipboardList,
   Palmtree,
+  Plus,
   Thermometer,
 } from "lucide-react";
+import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
@@ -281,6 +283,7 @@ export default function DashboardPage() {
           unit="Tage"
           hint={`von ${formatDays(totalLeave)} übrig`}
           accent="plan"
+          ton="gruen"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />
         ) : null}
@@ -297,6 +300,7 @@ export default function DashboardPage() {
               : "warten auf deine Entscheidung"
           }
           accent="neutral"
+          ton="blau"
           icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
         />
         ) : null}
@@ -311,6 +315,7 @@ export default function DashboardPage() {
                 : "keine Engpässe erkannt"
             }
             accent={criticalDays.length > 0 ? "critical" : "ok"}
+            ton={criticalDays.length > 0 ? "rot" : "neutral"}
             icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
           />
         )}
@@ -322,6 +327,7 @@ export default function DashboardPage() {
           unit={sickDays === 1 ? "Tag" : "Tage"}
           hint={`im Jahr ${year}`}
           accent={sickDays > 0 ? "warn" : "ok"}
+          ton="orange"
           icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
         />
         ) : null}
@@ -341,10 +347,23 @@ export default function DashboardPage() {
             unit="Tage"
             hint={`von ${formatDays(vEntitlement)} übrig`}
             accent="plan"
+            ton="lila"
             icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
           />
         ) : null}
       </div>
+
+      {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
+          Ende antippt. Die Art steht dort auf „Automatisch". */}
+      {mode === "live" && profile.employeeId ? (
+        <Link
+          href="/schichtplan?antrag=1"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        >
+          <Plus className="h-5 w-5" strokeWidth={2.2} />
+          Urlaub beantragen
+        </Link>
+      ) : null}
 
       {/* Der Schichtplan steht für alle auf dem Dashboard – ändern darf ihn
           nur die Führung, gelesen wird er von allen. */}
@@ -354,6 +373,7 @@ export default function DashboardPage() {
           from={TODAY}
           days={14}
           canEdit={role === "admin" || role === "shift_leader"}
+          employeeId={profile.employeeId}
         />
       ) : null}
 

@@ -2,7 +2,6 @@
 
 
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
 import { RotationEditor } from "@/components/leave/rotation-editor";
 import { RotationPatternEditor } from "@/components/leave/rotation-pattern-editor";
 import { useSession } from "@/context/session";

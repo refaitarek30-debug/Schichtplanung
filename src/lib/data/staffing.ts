@@ -210,3 +210,26 @@ export async function fetchShiftStaffingOverview(
     runsToday: row.laeuft_heute,
   }));
 }
+
+/**
+ * Warum dieser Antrag nicht geht – oder null, wenn er geht.
+ *
+ * Dieselbe Funktion, die auch die Sperre beim Speichern auslöst
+ * (leave_qualification_block_reason). Die Anzeige im Formular kann dadurch
+ * nie von der echten Regel abweichen: was hier „frei" sagt, geht durch.
+ */
+export async function fetchLeaveBlockReason(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<string | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("leave_qualification_block_reason", {
+    p_employee_id: employeeId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return typeof data === "string" && data.length > 0 ? data : null;
+}

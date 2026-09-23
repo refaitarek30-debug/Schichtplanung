@@ -65,8 +65,12 @@
      Spät und Nacht: den Plan sollen weiterhin die Schichten tragen. Die
      Unterscheidung leisten in erster Linie die Kürzel AF, SU, BU und G –
      die Farbe ist nur die zweite Spur, nie die einzige. */
-  --c-altersfrei: 153 226 219;
-  --c-altersfrei-ink: 10 82 74;
+  /* Altersfreizeit auf Wunsch dunkelgrün: hebt sich klar vom hellgrünen
+     Spät ab, und die helle Schrift erreicht rund 7,5 : 1 Kontrast. */
+  --c-altersfrei: 21 94 52;
+  --c-altersfrei-ink: 240 253 244;
+  /* Beantragt, noch nicht genehmigt: Schrift auf hellem Grund. */
+  --c-altersfrei-offen: 21 94 52;
   --c-sonderurlaub: 247 194 224;
   --c-sonderurlaub-ink: 124 26 86;
   --c-bildungsurlaub: 214 211 205;
@@ -138,8 +142,9 @@
     --c-krank-ink: 250 200 200;
     --c-schulung: 79 55 122;
     --c-schulung-ink: 224 210 248;
-    --c-altersfrei: 20 88 80;
-    --c-altersfrei-ink: 178 235 227;
+    --c-altersfrei: 22 101 52;
+    --c-altersfrei-ink: 220 252 231;
+    --c-altersfrei-offen: 134 239 172;
     --c-sonderurlaub: 117 41 88;
     --c-sonderurlaub-ink: 250 208 232;
     --c-bildungsurlaub: 78 74 68;
@@ -202,8 +207,9 @@
     --c-krank-ink: 250 200 200;
     --c-schulung: 79 55 122;
     --c-schulung-ink: 224 210 248;
-    --c-altersfrei: 20 88 80;
-    --c-altersfrei-ink: 178 235 227;
+    --c-altersfrei: 22 101 52;
+    --c-altersfrei-ink: 220 252 231;
+    --c-altersfrei-offen: 134 239 172;
     --c-sonderurlaub: 117 41 88;
     --c-sonderurlaub-ink: 250 208 232;
     --c-bildungsurlaub: 78 74 68;
@@ -215,6 +221,43 @@
 html,
 body {
   height: 100%;
+}
+
+/*
+ * Handy: die Seite bleibt, wie sie ist.
+ *
+ *   - Schriftgröße nicht vom Browser aufblasen lassen (iOS vergrößert Text
+ *     sonst im Querformat eigenmächtig).
+ *   - Doppeltippen zoomt nicht mehr. Im Schichtplan tippt man schnell
+ *     hintereinander auf Zellen – das wurde als Doppeltipp gelesen und die
+ *     Seite sprang in die Vergrößerung.
+ *   - Nichts ragt seitlich hinaus. `clip` statt `hidden`: `hidden` würde
+ *     html/body zum Scroll-Container machen, und dann kleben die festen
+ *     Spalten und Kopfzeilen im Plan nicht mehr.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+/*
+ * iOS zoomt in jedes Eingabefeld, dessen Schrift kleiner als 16 px ist –
+ * und bleibt danach vergrößert stehen. Fast alle Felder hier hatten 14 px.
+ * Auf Handy und Tablet deshalb 16 px für alle Felder; ab dem
+ * Desktop-Layout wieder die kleinere Schrift.
+ */
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 body {

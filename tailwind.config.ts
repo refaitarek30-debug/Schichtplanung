@@ -54,6 +54,7 @@ const config: Config = {
           "schulung-ink": c("schulung-ink"),
           altersfrei: c("altersfrei"),
           "altersfrei-ink": c("altersfrei-ink"),
+          "altersfrei-offen": c("altersfrei-offen"),
           sonderurlaub: c("sonderurlaub"),
           "sonderurlaub-ink": c("sonderurlaub-ink"),
           bildungsurlaub: c("bildungsurlaub"),

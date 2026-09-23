@@ -52,6 +52,12 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // Auf Wunsch fest: kein Vergrößern, kein Verkleinern. Das automatische
+  // Zoomen beim Tippen in ein Feld verhindert bereits die 16-px-Regel in
+  // globals.css; diese Grenze hält zusätzlich Android davon ab, die Seite
+  // aufzuziehen. (iOS erlaubt das Zwei-Finger-Zoomen aus
+  // Barrierefreiheitsgründen trotzdem – das lässt sich dort nicht abstellen.)
+  maximumScale: 1,
   // Ohne das steht die App auf dem iPhone unter der Statusleiste.
   viewportFit: "cover",
 };
