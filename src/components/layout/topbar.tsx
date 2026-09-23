@@ -8,6 +8,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "./notification-bell";
 import { roleLabels } from "@/lib/nav";
 import { signOut } from "@/lib/auth/actions";
+import { vergissAenderungsstand } from "@/lib/live-refresh";
+import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -119,7 +121,17 @@ export function Topbar() {
                   </p>
                 </>
               ) : (
-                <form action={signOut} className="border-t border-line pt-1">
+                <form
+                  action={signOut}
+                  // Die Abmeldung endet mit einer weichen Umleitung – der
+                  // Arbeitsspeicher des Tabs bleibt dabei bestehen. Deshalb
+                  // hier ausdrücklich alles Zwischengespeicherte verwerfen.
+                  onSubmit={() => {
+                    leereZwischenspeicher();
+                    vergissAenderungsstand();
+                  }}
+                  className="border-t border-line pt-1"
+                >
                   <button
                     type="submit"
                     className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted"

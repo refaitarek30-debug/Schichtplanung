@@ -1,18 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { signIn } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { vergissAenderungsstand } from "@/lib/live-refresh";
+import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 
 const initialState: FormState = {};
 
 export function LoginForm({ next, disabled }: { next: string; disabled?: boolean }) {
   const [state, formAction] = useActionState(signIn, initialState);
+
+  // Wer auf der Anmeldeseite steht, ist abgemeldet – egal auf welchem Weg.
+  // Nichts vom vorigen Benutzer soll im Tab übrig bleiben.
+  useEffect(() => {
+    leereZwischenspeicher();
+    vergissAenderungsstand();
+  }, []);
 
   return (
     <form action={formAction} className="mt-6 space-y-4">

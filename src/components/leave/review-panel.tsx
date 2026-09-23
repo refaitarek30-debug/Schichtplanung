@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import { useAktualisierung } from "@/lib/live-refresh";
 import { Check, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
@@ -71,6 +72,18 @@ export function ReviewPanel({
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
   }, [requests, statusFilter, search]);
 
+  // Hat sich an Anträgen, Abwesenheiten oder dem Plan etwas geändert, gilt
+  // keine der bisher gerechneten Besetzungsprüfungen mehr sicher: eine
+  // andere Genehmigung kann genau die Lücke gerissen haben. Also alles
+  // verwerfen – die neue Liste, die gleich eintrifft, löst die Prüfung neu
+  // aus.
+  const [pruefRunde, setPruefRunde] = useState(0);
+  useAktualisierung(["antraege", "abwesenheiten", "plan"], () => {
+    setImpacts({});
+    setDetails({});
+    setPruefRunde((n) => n + 1);
+  });
+
   // Besetzungsprüfung für offene Anträge nachladen (Spezifikationspunkt 15:
   // "vor der Genehmigung erneut prüfen"). Nur für pending, nur einmal je Antrag.
   useEffect(() => {
@@ -100,7 +113,7 @@ export function ReviewPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
+  }, [visible, pruefRunde]);
 
   function approve(id: string) {
     setError(null);
