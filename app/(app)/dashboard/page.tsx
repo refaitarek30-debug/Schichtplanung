@@ -426,6 +426,8 @@ export default function DashboardPage() {
           days={14}
           canEdit={role === "admin" || role === "shift_leader"}
           employeeId={profile.employeeId}
+          // Auf der Startseite übernimmt der große Knopf über den Kacheln.
+          antragSchalter={false}
         />
       ) : null}
 
