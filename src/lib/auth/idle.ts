@@ -6,7 +6,7 @@
  * liest ihn bei jedem Seitenaufruf. Deshalb ist das Cookie bewusst nicht
  * httpOnly – es enthält nur eine Uhrzeit, kein Geheimnis.
  */
-export const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+export const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const ACTIVITY_COOKIE = "sp_letzte_aktivitaet";
 

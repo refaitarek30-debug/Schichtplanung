@@ -95,6 +95,8 @@ export interface EmployeeRecord {
    * Datenbank weist einen Antrag ab.
    */
   bildungsurlaubErlaubt: boolean;
+  /** Darf Sonderurlaub beantragen. */
+  sonderurlaubErlaubt: boolean;
 }
 
 export interface ShiftAssignment {
@@ -125,6 +127,8 @@ export interface LiveLeaveRequest {
   status: LeaveStatus;
   rejectionReason: string | null;
   reviewedAt: string | null;
+  /** Wer entschieden hat (Vor- und Nachname), sonst null. */
+  reviewerName?: string | null;
   createdAt: string;  /** Art des Antrags. Steht seit den neuen Antragsarten in jeder Zeile. */
   kind: LeaveKind;
   /**
@@ -167,6 +171,32 @@ export interface LiveTeamBalance {
   entitlement: number;
   vRemainingDays: number;
   vEntitlement: number;
+}
+
+/**
+ * Altersfreizeit als Stundenkonto: je tatsächlich gearbeitetem Tag 0,83
+ * Stunden, je 7,5 Stunden ein AF-Tag. Läuft über die Jahre weiter.
+ */
+export interface LiveAfKonto {
+  /** null = nicht freigeschaltet. */
+  freigeschaltetAb: string | null;
+  arbeitstage: number;
+  stunden: number;
+  tageErworben: number;
+  restStunden: number;
+  genommen: number;
+  beantragt: number;
+  verfuegbar: number;
+}
+
+/** Sonderurlaub und Altersfreizeit je Mitarbeiter – für die Führung. */
+export interface LiveTeamSonderKonto {
+  suErlaubt: boolean;
+  suAnspruch: number;
+  suRest: number;
+  afFreigeschaltet: boolean;
+  afVerfuegbar: number;
+  afRestStunden: number;
 }
 
 /**

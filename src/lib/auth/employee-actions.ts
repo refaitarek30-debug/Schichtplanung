@@ -149,6 +149,7 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
       exit_date: parseDate(formData, "exit_date"),
       is_apprentice: formData.get("is_apprentice") === "on",
       bildungsurlaub_erlaubt: formData.get("bildungsurlaub_erlaubt") === "on",
+      sonderurlaub_erlaubt: formData.get("sonderurlaub_erlaubt") === "on",
       // Steuert, ob Urlaub automatisch auf Urlaubstage und V-Tage verteilt
       // wird. Ohne Schichtsystem gibt es keine Zuschläge und damit nichts
       // zu optimieren – dann kostet jeder Tag einen Urlaubstag.
@@ -330,6 +331,7 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
       exit_date: parseDate(formData, "exit_date"),
       is_apprentice: formData.get("is_apprentice") === "on",
       bildungsurlaub_erlaubt: formData.get("bildungsurlaub_erlaubt") === "on",
+      sonderurlaub_erlaubt: formData.get("sonderurlaub_erlaubt") === "on",
     })
     .eq("id", employeeId)
     .eq("company_id", profile.company_id);

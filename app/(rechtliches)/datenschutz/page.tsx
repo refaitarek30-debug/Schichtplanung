@@ -269,7 +269,7 @@ export default function DatenschutzPage() {
             <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">
               sp_letzte_aktivitaet
             </code>{" "}
-            – Zeitpunkt der letzten Aktivität, damit die Sitzung nach 30 Minuten ohne
+            – Zeitpunkt der letzten Aktivität, damit die Sitzung nach 10 Minuten ohne
             Nutzung automatisch endet
           </li>
           <li>

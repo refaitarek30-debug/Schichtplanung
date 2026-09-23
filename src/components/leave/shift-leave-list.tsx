@@ -117,7 +117,7 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
     <Card>
       <CardHeader
         title="Abwesend in meiner Schicht"
-        hint="Kolleginnen und Kollegen der eigenen Schicht bzw. Rotationsgruppe"
+        hint="Deine Schicht bzw. Rotationsgruppe"
       />
       {error ? (
         <div className="px-5 pt-4">
@@ -133,17 +133,18 @@ export function ShiftLeaveList({ from, days = 60 }: { from: string; days?: numbe
           bloecke.map((entry) => (
             <div
               key={`${entry.employeeId}-${entry.startDate}`}
-              className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded-lg border border-line px-2.5 py-2 text-sm"
             >
-              <span className="min-w-0 truncate">
-                {entry.isMe ? "Du" : entry.employeeName}
-                <span className="tnum text-ink-faint">
-                  {" "}
-                  · {formatRange(entry.startDate, entry.endDate)}
+              <span className="min-w-0">
+                <span className="block truncate font-medium">
+                  {entry.isMe ? "Du" : entry.employeeName}
+                </span>
+                <span className="tnum block text-[12px] text-ink-muted">
+                  {formatRange(entry.startDate, entry.endDate)}
                 </span>
               </span>
               {entry.reasonVisible ? (
-                <span className="flex shrink-0 items-center gap-2">
+                <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
                   {/* Steckt mehr als eine Art in der Spanne, stehen beide
                       da. "Urlaub" allein wäre für eine Spanne, die zur
                       Hälfte aus V-Tagen besteht, schlicht falsch. */}

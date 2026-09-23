@@ -130,7 +130,8 @@ export function PlanLeaveRequest({
         : art === "auto"
           ? null
           : (kontingente.find((q) => q.kind === art)?.rest ?? null);
-  const reichtNicht = rest !== null && tage !== null && rest - tage < 0;
+  // V-Tage dürfen ins Minus.
+  const reichtNicht = art !== "v_tag" && rest !== null && tage !== null && rest - tage < 0;
 
   const gesperrt =
     sendet ||

@@ -108,7 +108,7 @@ function VerwaltungInhalt() {
       ) : aktiv === "schichten" ? (
         <ShiftsView />
       ) : aktiv === "altersfreizeit" ? (
-        <AgeLeaveTable jahr={new Date().getFullYear()} />
+        <AgeLeaveTable />
       ) : (
         <RulesView />
       )}

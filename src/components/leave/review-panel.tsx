@@ -16,7 +16,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { formatDays, formatRange } from "@/lib/dates";
-import { approveSafeLeaveRequests, decideLeaveRequestAction } from "@/lib/auth/leave-actions";
+import { decideLeaveRequestAction } from "@/lib/auth/leave-actions";
+import { fetchSammelKandidaten, sicherGenehmigen } from "@/lib/data/leave";
 import {
   fetchLeaveImpact,
   fetchLeaveStaffingDetail,
@@ -38,6 +39,10 @@ export function ReviewPanel({
   onChanged: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  /** Jahr des Antrags (Beginn oder Ende); null = alle Jahre. */
+  const [jahr, setJahr] = useState<number | null>(null);
+  /** Fortschritt der Sammelgenehmigung: geprüft von gesamt. */
+  const [fortschritt, setFortschritt] = useState<{ fertig: number; gesamt: number } | null>(null);
   const [search, setSearch] = useState("");
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -50,10 +55,24 @@ export function ReviewPanel({
   const [hinweis, setHinweis] = useState<string | null>(null);
   const { role } = useSession();
   const darfEntscheiden = role === "admin" || role === "shift_leader";
+  const imJahr = (r: { startDate: string; endDate: string }) =>
+    jahr === null ||
+    Number(r.startDate.slice(0, 4)) === jahr ||
+    Number(r.endDate.slice(0, 4)) === jahr;
   const offeneAnzahl = useMemo(
-    () => gruppiereAntraege(requests ?? []).filter((r) => r.status === "pending").length,
-    [requests],
+    () => gruppiereAntraege(requests ?? []).filter((r) => r.status === "pending" && imJahr(r)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [requests, jahr],
   );
+  /** Jahre, in denen es Anträge gibt – plus das laufende. */
+  const jahre = useMemo(() => {
+    const menge = new Set<number>([new Date().getFullYear()]);
+    for (const r of requests ?? []) {
+      menge.add(Number(r.startDate.slice(0, 4)));
+      menge.add(Number(r.endDate.slice(0, 4)));
+    }
+    return [...menge].sort((a, b) => a - b);
+  }, [requests]);
 
   /**
    * Ein Zeitraum ist ein Antrag – auch wenn er in der Datenbank aus
@@ -66,11 +85,13 @@ export function ReviewPanel({
     const term = search.trim().toLowerCase();
     return gruppiereAntraege(requests ?? [])
       .filter((r) => (statusFilter === "all" ? r.status !== "withdrawn" : r.status === statusFilter))
+      .filter(imJahr)
       .filter(
         (r) => term.length === 0 || (r.employeeName ?? "").toLowerCase().includes(term),
       )
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
-  }, [requests, statusFilter, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, statusFilter, search, jahr]);
 
   // Hat sich an Anträgen, Abwesenheiten oder dem Plan etwas geändert, gilt
   // keine der bisher gerechneten Besetzungsprüfungen mehr sicher: eine
@@ -140,9 +161,37 @@ export function ReviewPanel({
     setHinweis(null);
     setBusyId("sammel");
     startTransition(async () => {
-      const result = await approveSafeLeaveRequests();
-      if (result.error) setError(result.error);
-      else setHinweis(result.success ?? null);
+      // Antrag für Antrag, in der Reihenfolge des Eingangs. Jeder einzelne
+      // Aufruf prüft vollständig gegen den Stand NACH den vorigen
+      // Genehmigungen – zwei einzeln unbedenkliche Anträge können die
+      // Schicht so nicht gemeinsam leerräumen. Das darf bei vielen Anträgen
+      // ruhig eine halbe Minute dauern.
+      try {
+        const ids = await fetchSammelKandidaten(jahr);
+        setFortschritt({ fertig: 0, gesamt: ids.length });
+        let genehmigt = 0;
+        let uebersprungen = 0;
+        for (const [i, id] of ids.entries()) {
+          try {
+            const ergebnis = await sicherGenehmigen(id);
+            if (ergebnis.genehmigt) genehmigt++;
+            else uebersprungen++;
+          } catch {
+            uebersprungen++;
+          }
+          setFortschritt({ fertig: i + 1, gesamt: ids.length });
+        }
+        setHinweis(
+          ids.length === 0
+            ? "Es liegen keine offenen Anträge vor."
+            : genehmigt === 0
+              ? `Kein Antrag war ohne Weiteres genehmigungsfähig. ${uebersprungen} bleiben ausstehend.`
+              : `${genehmigt} ${genehmigt === 1 ? "Antrag" : "Anträge"} genehmigt, ${uebersprungen} ${uebersprungen === 1 ? "bleibt" : "bleiben"} ausstehend.`,
+        );
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Die Sammelgenehmigung ist fehlgeschlagen.");
+      }
+      setFortschritt(null);
       setBusyId(null);
       onChanged();
     });
@@ -178,13 +227,31 @@ export function ReviewPanel({
           approve_safe_leave_requests() in der Datenbank ab. */}
       {darfEntscheiden && offeneAnzahl > 0 ? (
         <div className="border-b border-line px-5 py-3">
-          <Button variant="secondary" disabled={pending} onClick={sammelGenehmigen}>
-            <ShieldCheck className="h-4 w-4" strokeWidth={2} />
-            {busyId === "sammel" ? "wird geprüft …" : "Alle sicheren Anträge genehmigen"}
-          </Button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={sammelGenehmigen}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 px-4 py-3 text-[15px] font-semibold text-white shadow-md ring-1 ring-emerald-700/30 transition hover:brightness-110 disabled:opacity-70 sm:w-auto"
+          >
+            <ShieldCheck className="h-5 w-5" strokeWidth={2.2} />
+            {busyId === "sammel"
+              ? fortschritt
+                ? `wird geprüft … ${fortschritt.fertig} von ${fortschritt.gesamt}`
+                : "wird geprüft …"
+              : `Alle sicheren Anträge genehmigen${jahr ? ` (${jahr})` : ""} · ${offeneAnzahl} offen`}
+          </button>
+          {fortschritt && fortschritt.gesamt > 0 ? (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted sm:max-w-sm">
+              <div
+                className="h-full rounded-full bg-emerald-600 transition-[width]"
+                style={{ width: `${Math.round((fortschritt.fertig / fortschritt.gesamt) * 100)}%` }}
+              />
+            </div>
+          ) : null}
           <p className="mt-1.5 text-[12px] leading-snug text-ink-faint">
-            Genehmigt nur, wo danach Soll- und Mindestbesetzung stehen und alle geforderten
-            Qualifikationen besetzt bleiben. Alles andere bleibt ausstehend.
+            Jeder Antrag wird einzeln geprüft: genehmigt nur, wo danach Soll- und Mindestbesetzung
+            stehen und alle geforderten Qualifikationen besetzt bleiben. Alles andere bleibt
+            ausstehend. Bei vielen Anträgen kann das bis zu einer halben Minute dauern.
           </p>
           {hinweis ? (
             <div className="mt-2">
@@ -205,6 +272,19 @@ export function ReviewPanel({
             aria-label="Mitarbeiter suchen"
           />
         </div>
+        <select
+          value={jahr ?? ""}
+          onChange={(e) => setJahr(e.target.value ? Number(e.target.value) : null)}
+          aria-label="Nach Jahr filtern"
+          className="tnum rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
+        >
+          <option value="">Alle Jahre</option>
+          {jahre.map((j) => (
+            <option key={j} value={j}>
+              {j}
+            </option>
+          ))}
+        </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}

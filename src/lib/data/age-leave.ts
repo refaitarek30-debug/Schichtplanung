@@ -94,3 +94,42 @@ export async function fetchTeamBirthDates(): Promise<Map<string, string>> {
   }
   return ergebnis;
 }
+
+export interface LiveAfUebersichtZeile {
+  employeeId: string;
+  employeeName: string;
+  rotationTeam: string | null;
+  birthDate: string | null;
+  alterHeute: number | null;
+  freigeschaltetAb: string | null;
+  arbeitstage: number;
+  stunden: number;
+  tageErworben: number;
+  restStunden: number;
+  genommen: number;
+  beantragt: number;
+  verfuegbar: number;
+}
+
+/** Altersfreizeit aller aktiven Mitarbeiter als Stundenkonto (nur Admin). */
+export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
+  if (!isSupabaseConfigured) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("af_uebersicht");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    employeeId: String(r.employee_id),
+    employeeName: String(r.employee_name ?? ""),
+    rotationTeam: (r.rotation_team as string | null) ?? null,
+    birthDate: (r.birth_date as string | null) ?? null,
+    alterHeute: r.alter_heute === null || r.alter_heute === undefined ? null : Number(r.alter_heute),
+    freigeschaltetAb: (r.freigeschaltet_ab as string | null) ?? null,
+    arbeitstage: Number(r.arbeitstage ?? 0),
+    stunden: Number(r.stunden ?? 0),
+    tageErworben: Number(r.tage_erworben ?? 0),
+    restStunden: Number(r.rest_stunden ?? 0),
+    genommen: Number(r.genommen ?? 0),
+    beantragt: Number(r.beantragt ?? 0),
+    verfuegbar: Number(r.verfuegbar ?? 0),
+  }));
+}

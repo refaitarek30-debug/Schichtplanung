@@ -130,6 +130,10 @@ export interface EmployeeRow {
   is_apprentice?: boolean;
   /** Darf diese Person Bildungsurlaub beantragen? Vorgabe: nein. */
   bildungsurlaub_erlaubt?: boolean;
+  /** Darf diese Person Sonderurlaub beantragen? Vorgabe: nein. */
+  sonderurlaub_erlaubt?: boolean;
+  /** Altersfreizeit freigeschaltet ab (null = nein). */
+  af_ab?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -14,10 +14,17 @@ import { TODAY, requestsOfEmployee, staffingContext } from "@/lib/demo-data";
 import { leaveBalance } from "@/lib/staffing";
 import {
   DataError,
+  fetchMyAfKonto,
   fetchMyLeaveBalance,
+  fetchMyLeaveKindQuotas,
   fetchMyLeaveRequests,
 } from "@/lib/data/leave";
-import type { LiveLeaveBalance, LiveLeaveRequest } from "@/lib/types";
+import type {
+  LiveAfKonto,
+  LiveLeaveBalance,
+  LiveLeaveKindQuota,
+  LiveLeaveRequest,
+} from "@/lib/types";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 
@@ -31,6 +38,8 @@ export default function LeavePage() {
    */
   const [year, setYear] = useState(new Date().getFullYear());
   const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
+  const [quoten, setQuoten] = useState<LiveLeaveKindQuota[] | null>(null);
+  const [afKonto, setAfKonto] = useState<LiveAfKonto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const speicherSchluessel = `${profile.id}:urlaub:${year}`;
 
@@ -41,21 +50,37 @@ export default function LeavePage() {
     const gemerkt = ausZwischenspeicher<{
       balance: LiveLeaveBalance | null;
       requests: LiveLeaveRequest[];
+      quoten: LiveLeaveKindQuota[] | null;
+      afKonto: LiveAfKonto | null;
     }>(speicherSchluessel);
     if (gemerkt) {
       setBalance(gemerkt.balance);
       setRequests(gemerkt.requests);
+      setQuoten(gemerkt.quoten);
+      setAfKonto(gemerkt.afKonto);
     }
     try {
       const [balanceResult, requestsResult] = await Promise.all([
         fetchMyLeaveBalance(year),
         fetchMyLeaveRequests(),
       ]);
+      // Sonderurlaub und AF sind Beiwerk: fehlen sie, bleibt das Konto
+      // trotzdem sichtbar.
+      const [quotenErgebnis, afErgebnis] = await Promise.allSettled([
+        fetchMyLeaveKindQuotas(year),
+        fetchMyAfKonto(),
+      ]);
+      const quotenWert = quotenErgebnis.status === "fulfilled" ? quotenErgebnis.value : null;
+      const afWert = afErgebnis.status === "fulfilled" ? afErgebnis.value : null;
       setBalance(balanceResult);
       setRequests(requestsResult);
+      setQuoten(quotenWert);
+      setAfKonto(afWert);
       inZwischenspeicher(speicherSchluessel, {
         balance: balanceResult,
         requests: requestsResult,
+        quoten: quotenWert,
+        afKonto: afWert,
       });
     } catch (caught) {
       if (gemerkt) return;
@@ -102,7 +127,13 @@ export default function LeavePage() {
 
         <div className="space-y-4">
           {mode === "live" ? (
-            <LiveBalanceCard balance={balance} year={year} onYearChange={setYear} />
+            <LiveBalanceCard
+              balance={balance}
+              year={year}
+              onYearChange={setYear}
+              quoten={quoten}
+              afKonto={afKonto}
+            />
           ) : (
             <BalanceCard balance={demoBalance} />
           )}

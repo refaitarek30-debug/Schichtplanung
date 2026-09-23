@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ChevronRight, Palmtree } from "lucide-react";
+import { Palmtree } from "lucide-react";
 import { addDays, formatDE, fromISO, WEEKDAY_SHORT, formatDays } from "@/lib/dates";
 import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
 import type { LeaveKind, LiveLeaveRequest } from "@/lib/types";
@@ -72,10 +71,7 @@ export function NextLeaveCard({
   const laeuft = zeitraum !== null && zeitraum.von <= heute;
 
   return (
-    <Link
-      href="/urlaub"
-      className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card transition-[filter] hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-    >
+    <div className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
       <span
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
@@ -95,9 +91,7 @@ export function NextLeaveCard({
         ) : (
           <>
             <span className="tnum block text-[15px] font-semibold leading-snug">
-              {laeuft
-                ? `bis ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`
-                : zeitraum.von === zeitraum.bis
+              {zeitraum.von === zeitraum.bis
                   ? `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)}`
                   : `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)} – ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`}
             </span>
@@ -117,11 +111,6 @@ export function NextLeaveCard({
           </>
         )}
       </span>
-      <ChevronRight
-        className="h-4 w-4 shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5"
-        strokeWidth={1.8}
-        aria-hidden
-      />
-    </Link>
+    </div>
   );
 }
