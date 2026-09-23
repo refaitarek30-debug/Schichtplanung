@@ -1,0 +1,127 @@
+import Link from "next/link";
+import { ChevronRight, Palmtree } from "lucide-react";
+import { addDays, formatDE, fromISO, WEEKDAY_SHORT, formatDays } from "@/lib/dates";
+import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
+import type { LeaveKind, LiveLeaveRequest } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+interface Zeitraum {
+  von: string;
+  bis: string;
+  tage: number;
+  arten: LeaveKind[];
+  /** true, sobald ein Teil erst beantragt ist. */
+  offen: boolean;
+}
+
+function wochentag(iso: string): string {
+  return WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7];
+}
+
+/**
+ * Der nächste eigene Urlaub – oder der laufende.
+ *
+ * Aus den eigenen Anträgen, genehmigt oder noch offen. Ein Zeitraum, der
+ * in der Datenbank in Urlaubs- und V-Tag-Zeilen zerfällt, erscheint als
+ * ein Block – ebenso zwei Anträge, die direkt aneinandergrenzen: wer
+ * Freitag Urlaub und ab Montag V-Tage hat, ist durchgehend weg.
+ */
+export function naechsterUrlaub(
+  antraege: LiveLeaveRequest[],
+  heute: string,
+): Zeitraum | null {
+  const gruppen = gruppiereAntraege(
+    antraege.filter(
+      (a) => (a.status === "approved" || a.status === "pending") && a.endDate >= heute,
+    ),
+  ).sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  let block: Zeitraum | null = null;
+  for (const g of gruppen) {
+    if (!block) {
+      block = {
+        von: g.startDate,
+        bis: g.endDate,
+        tage: g.requestedDays,
+        arten: [...g.kinds],
+        offen: g.status === "pending",
+      };
+      continue;
+    }
+    // Schließt direkt an (oder überlappt): gehört zum selben Urlaub.
+    if (g.startDate <= addDays(block.bis, 1)) {
+      if (g.endDate > block.bis) block.bis = g.endDate;
+      block.tage += g.requestedDays;
+      for (const k of g.kinds) if (!block.arten.includes(k)) block.arten.push(k);
+      block.offen = block.offen || g.status === "pending";
+    } else {
+      break;
+    }
+  }
+  return block;
+}
+
+export function NextLeaveCard({
+  antraege,
+  heute,
+}: {
+  antraege: LiveLeaveRequest[] | null;
+  heute: string;
+}) {
+  const zeitraum = antraege ? naechsterUrlaub(antraege, heute) : null;
+  const laeuft = zeitraum !== null && zeitraum.von <= heute;
+
+  return (
+    <Link
+      href="/urlaub"
+      className="group flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card transition-[filter] hover:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+    >
+      <span
+        className={cn(
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+          zeitraum ? "bg-ok-bg text-ok-fg" : "bg-surface-muted text-ink-faint",
+        )}
+      >
+        <Palmtree className="h-5 w-5" strokeWidth={1.8} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13px] font-medium text-ink-muted">
+          {laeuft ? "Du bist im Urlaub" : "Dein nächster Urlaub"}
+        </span>
+        {antraege === null ? (
+          <span className="block text-sm text-ink-faint">wird geladen …</span>
+        ) : zeitraum === null ? (
+          <span className="block text-sm text-ink-muted">Noch kein Urlaub eingetragen.</span>
+        ) : (
+          <>
+            <span className="tnum block text-[15px] font-semibold leading-snug">
+              {laeuft
+                ? `bis ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`
+                : zeitraum.von === zeitraum.bis
+                  ? `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)}`
+                  : `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)} – ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`}
+            </span>
+            <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-muted">
+              <span className="tnum">
+                {formatDays(zeitraum.tage)} {zeitraum.tage === 1 ? "Tag" : "Tage"} · {artenText(zeitraum.arten)}
+              </span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  zeitraum.offen ? "bg-warn-bg text-warn-fg" : "bg-ok-bg text-ok-fg",
+                )}
+              >
+                {zeitraum.offen ? "noch beantragt" : "genehmigt"}
+              </span>
+            </span>
+          </>
+        )}
+      </span>
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-ink-faint transition-transform group-hover:translate-x-0.5"
+        strokeWidth={1.8}
+        aria-hidden
+      />
+    </Link>
+  );
+}
