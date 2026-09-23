@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -21,7 +21,7 @@ import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rota
 import { assignShift, setEmployeeOrder, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
-import { fetchSchoolHolidays } from "@/lib/data/holidays";
+import { fetchHolidays, fetchSchoolHolidays } from "@/lib/data/holidays";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { gemerkteAnsicht, istPlausiblesDatum, merkeAnsicht } from "@/lib/view-state";
@@ -193,6 +193,7 @@ export function ShiftPlanGrid({
   days = 30,
   canEdit,
   employeeId = null,
+  antragSchalter = true,
 }: {
   companyId: string;
   from: string;
@@ -200,6 +201,11 @@ export function ShiftPlanGrid({
   canEdit: boolean;
   /** Eigener Personalstammsatz – ohne ihn gibt es keinen Antrag aus dem Plan. */
   employeeId?: string | null;
+  /**
+   * Schalter „Urlaub beantragen" für die Führung. Auf der Startseite aus –
+   * dort führt der große Knopf über den Kacheln zum Antrag.
+   */
+  antragSchalter?: boolean;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -213,7 +219,15 @@ export function ShiftPlanGrid({
 
   useEffect(() => {
     const gemerkt = gemerkteAnsicht("schichtplan-start", istPlausiblesDatum);
-    if (gemerkt) setStart(gemerkt);
+    // Kommt man zum Beantragen (?antrag=1), soll der Plan nicht in einem
+    // vergangenen Monat stehen – dort ist kein Tag mehr wählbar.
+    let zumAntrag = false;
+    try {
+      zumAntrag = new URLSearchParams(window.location.search).get("antrag") === "1";
+    } catch {
+      // ohne lesbare Adresse wie gewohnt
+    }
+    if (gemerkt && !(zumAntrag && gemerkt < from)) setStart(gemerkt);
     // Nur beim ersten Rendern: ein späteres Blättern soll sich nicht selbst
     // überschreiben.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -242,6 +256,8 @@ export function ShiftPlanGrid({
   /** Ferientag → Name des Zeitraums, für die dezente Markierung im Kopf. */
   const [ferien, setFerien] = useState<Map<string, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  /** Gesetzliche Feiertage: Tag → Name. Einmal geladen, sie ändern sich nicht. */
+  const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
   const [aufgeklappt, setAufgeklappt] = useState<Set<string> | null>(null);
   /**
@@ -308,7 +324,20 @@ export function ShiftPlanGrid({
   // Je Benutzer getrennt: die Führung sieht andere Zeilen als ein Mitarbeiter.
   const speicherSchluessel = `${profile.id}:plan:${companyId}:${start}:${span}`;
 
+  /**
+   * Nummer des zuletzt gestellten Abrufs.
+   *
+   * Beim Öffnen laufen zwei Abrufe los: einer für heute und einer für den
+   * gemerkten Monat. Kam die Antwort für heute ZULETZT an (auf dem Handy
+   * über Mobilfunk gut möglich), standen die Zellen von heute unter dem
+   * Kopf des gemerkten Monats – nichts passte, alle Zellen blieben leer und
+   * nichts war antippbar. Nachgestellt mit einer um 2,5 s verzögerten
+   * Antwort. Jetzt zählt nur die Antwort auf die zuletzt gestellte Frage.
+   */
+  const letzterAbruf = useRef(0);
+
   const load = useCallback(async () => {
+    const meiner = ++letzterAbruf.current;
     setError(null);
     // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
     // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
@@ -330,6 +359,8 @@ export function ShiftPlanGrid({
         fetchBlockedDays(start, bis),
         fetchSchoolHolidays(start, bis),
       ]);
+      // Inzwischen wurde weitergeblättert: diese Antwort ist überholt.
+      if (meiner !== letzterAbruf.current) return;
       setCells(grid);
       setShiftDetails(details);
       setBlocked(blockedDays);
@@ -351,6 +382,7 @@ export function ShiftPlanGrid({
         ferien: tage,
       });
     } catch (caught) {
+      if (meiner !== letzterAbruf.current) return;
       // Steht schon ein gemerkter Stand da, bleibt er sichtbar – lieber der
       // Plan von vor einer Minute als ein leerer Bildschirm.
       if (gemerkt) {
@@ -367,6 +399,20 @@ export function ShiftPlanGrid({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let abgebrochen = false;
+    fetchHolidays()
+      .then((liste) => {
+        if (!abgebrochen) setFeiertage(new Map(liste.map((h) => [h.date, h.name])));
+      })
+      .catch(() => {
+        // Ohne Feiertage fehlt nur die Umrandung – der Plan geht trotzdem.
+      });
+    return () => {
+      abgebrochen = true;
+    };
+  }, []);
 
   // Hat jemand anderes etwas geändert (Antrag, Genehmigung, Krankmeldung,
   // Schichttausch)? Dann neu laden – sonst nicht.
@@ -604,7 +650,7 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canEdit && employeeId ? (
+          {canEdit && employeeId && antragSchalter ? (
             <button
               type="button"
               onClick={() => {
@@ -613,11 +659,14 @@ export function ShiftPlanGrid({
                 setSelected(null);
               }}
               aria-pressed={antragsModus}
+              // Gefüllt in der Farbe des großen Knopfs auf der Startseite –
+              // es ist dieselbe Handlung. Eingeschaltet wird er hell, damit
+              // „Fertig" als Rückweg erkennbar ist.
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
                 antragsModus
-                  ? "border-brand-500 bg-brand-500 text-white"
-                  : "border-line bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink",
+                  ? "border-brand-600 bg-brand-50 text-brand-700"
+                  : "border-brand-600 bg-brand-600 text-white shadow-card hover:bg-brand-700",
               )}
             >
               <CalendarPlus className="h-4 w-4" strokeWidth={2} />
@@ -625,26 +674,6 @@ export function ShiftPlanGrid({
             </button>
           ) : null}
 
-          {/* Die Reihenfolge im Plan ist Sache der Schichtleitung: wer seine
-              Mannschaft nach Anlage oder Arbeitsplatz sortiert sehen will,
-              stellt sie hier um. Die Pfeile erscheinen nur in diesem Modus,
-              sonst verstellen sie bei fünfzig Zeilen jede Namensspalte. */}
-          {canEdit ? (
-            <button
-              type="button"
-              onClick={() => setSortieren((v) => !v)}
-              aria-pressed={sortieren}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-medium transition-colors",
-                sortieren
-                  ? "border-brand-500 bg-brand-500 text-white"
-                  : "border-line bg-surface text-ink-muted hover:bg-surface-muted hover:text-ink",
-              )}
-            >
-              <ListOrdered className="h-4 w-4" strokeWidth={2} />
-              {sortieren ? "Fertig" : "Reihenfolge"}
-            </button>
-          ) : null}
 
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
               zu klicken – bei Jahresplanung der schnellste Weg. */}
@@ -688,6 +717,27 @@ export function ShiftPlanGrid({
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+
+          {/* Reihenfolge: selten gebraucht, deshalb nur ein kleines Symbol
+              ganz rechts. Die Pfeile erscheinen erst in diesem Modus, sonst
+              verstellen sie jede Namensspalte. */}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => setSortieren((v) => !v)}
+              aria-pressed={sortieren}
+              aria-label={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
+              title={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
+              className={cn(
+                "ml-auto rounded-md p-1 transition-colors",
+                sortieren
+                  ? "bg-brand-500 text-white"
+                  : "text-ink-faint hover:bg-surface-muted hover:text-ink",
+              )}
+            >
+              <ListOrdered className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -807,11 +857,15 @@ export function ShiftPlanGrid({
                   // Eine Urlaubssperre ist das stärkere Signal und sticht
                   // die Ferien -- die sind nur ein Hinweis und dürfen den
                   // Plan nicht überfärben.
-                  const hinweis = blockReason
-                    ? `Urlaubssperre: ${blockReason}`
-                    : ferienName
-                      ? `${ferienName} (Schulferien)`
-                      : undefined;
+                  const feiertag = feiertage.get(iso);
+                  const hinweis =
+                    [
+                      feiertag ? `Feiertag: ${feiertag}` : null,
+                      blockReason ? `Urlaubssperre: ${blockReason}` : null,
+                      !blockReason && ferienName ? `${ferienName} (Schulferien)` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || undefined;
                   return (
                     <th
                       key={iso}
@@ -821,8 +875,12 @@ export function ShiftPlanGrid({
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
-                        iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                        iso.slice(8, 10) === "01" && !feiertag && "border-l-2 border-line",
                         isWeekend(iso) && "bg-surface-sunken/60",
+                        // Feiertag: eine Umrandung, die durch die ganze
+                        // Spalte läuft. Keine Füllfarbe – die Zellen tragen
+                        // schon Schicht- und Ferienfarben.
+                        feiertag && "border-x-2 border-t-2 border-crit-dot",
                         ferienName && !blockReason && "bg-plan-bg/40",
                         blockReason && "bg-crit-bg",
                       )}
@@ -950,7 +1008,8 @@ export function ShiftPlanGrid({
                               "p-px text-center sm:p-0.5",
                               // Dieselbe Linie wie im Kopf, damit der
                               // Monatswechsel durch die ganze Tabelle geht.
-                              iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                              iso.slice(8, 10) === "01" && !feiertage.has(iso) && "border-l-2 border-line",
+                              feiertage.has(iso) && "border-x-2 border-crit-dot",
                               // Ferien als durchgehender Hintergrund der
                               // Spalte. Dezent genug, dass die Kürzel in
                               // den Zellen klar lesbar bleiben; die
@@ -1000,7 +1059,13 @@ export function ShiftPlanGrid({
                       const below =
                         day != null && day.minimum !== null && day.present < day.minimum;
                       return (
-                        <td key={iso} className="bg-surface-sunken/60 p-px text-center sm:p-0.5">
+                        <td
+                          key={iso}
+                          className={cn(
+                            "bg-surface-sunken/60 p-px text-center sm:p-0.5",
+                            feiertage.has(iso) && "border-x-2 border-crit-dot",
+                          )}
+                        >
                           {day == null || day.minimum === null ? (
                             <span className="text-[11px] text-ink-faint">–</span>
                           ) : (
@@ -1069,6 +1134,10 @@ export function ShiftPlanGrid({
 
       {legendeOffen ? (
       <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="h-3.5 w-4 shrink-0 rounded-sm border-2 border-crit-dot sm:h-4 sm:w-5" />
+          <span className="truncate">Feiertag</span>
+        </span>
         {legend.map((item) => (
           <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
             <span
