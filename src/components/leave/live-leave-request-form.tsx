@@ -544,7 +544,9 @@ export function LiveLeaveRequestForm({
 
   let tone: "ok" | "warn" | "critical" = "ok";
   if (insufficientBalance || staffingCritical) tone = "critical";
-  else if (staffingWarn || (impact !== null && impact.overlappingEmployees > 0)) tone = "warn";
+  // Dass andere aus der Schicht auch frei haben, ist allein kein Grund zur
+  // Warnung – erst wenn die Sollbesetzung wirklich unterschritten wird.
+  else if (staffingWarn) tone = "warn";
 
   const panelTone = {
     ok: "border-ok-bg bg-ok-bg/60 text-ok-fg",

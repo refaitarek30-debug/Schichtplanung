@@ -166,7 +166,17 @@ function LiveView({ role }: { role: string }) {
             ) : colleagues.length === 0 ? (
               <p className="text-sm text-ink-muted">Keine Mitarbeiter gefunden.</p>
             ) : (
-              teamGroups.map(([groupName, members]) => (
+              <>
+              {/* Das Geburtsdatum trägt jede Person nur selbst ein – solange
+                  das niemand getan hat, bleibt die Liste ohne Geburtstage. */}
+              {geburtstage.size === 0 ? (
+                <p className="rounded-lg bg-surface-muted px-3 py-2 text-[12px] leading-snug text-ink-muted">
+                  🎂 Geburtstage erscheinen hier, sobald jemand sein Geburtsdatum unter{" "}
+                  <span className="font-medium text-ink">Profil → Persönliche Angaben</span>{" "}
+                  einträgt. Bisher hat das noch niemand getan.
+                </p>
+              ) : null}
+              {teamGroups.map(([groupName, members]) => (
                 <div key={groupName} className="space-y-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
                     {groupName} · {members.length}
@@ -265,7 +275,8 @@ function LiveView({ role }: { role: string }) {
                     </div>
                   ))}
                 </div>
-              ))
+              ))}
+              </>
             )}
           </CardBody>
         </Card>

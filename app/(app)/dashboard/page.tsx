@@ -26,7 +26,7 @@ import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
-import { TileSettings, type TileOption } from "@/components/dashboard/tile-settings";
+import { TileSettings, kachelSichtbar, type TileOption } from "@/components/dashboard/tile-settings";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -96,7 +96,11 @@ export default function DashboardPage() {
   const [versteckt, setVersteckt] = useState<Set<string>>(
     () => new Set(profile.hiddenDashboardTiles ?? []),
   );
-  const zeige = useCallback((key: string) => !versteckt.has(key), [versteckt]);
+  // „Nächster Urlaub" ist standardmäßig aus – jeder schaltet ihn selbst ein.
+  const zeige = useCallback(
+    (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub"),
+    [versteckt],
+  );
   const reference = nextProductionDay(TODAY);
   const isToday = reference === TODAY;
 
@@ -264,7 +268,7 @@ export default function DashboardPage() {
       liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
     }
     if (hatVKonto) liste.push({ key: "vtage", label: "V-Tage gesamt" });
-    liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub" });
+    liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub", optIn: true });
     return liste;
   }, [role, hatVKonto]);
 
@@ -435,8 +439,10 @@ export default function DashboardPage() {
           days={14}
           canEdit={role === "admin" || role === "shift_leader"}
           employeeId={profile.employeeId}
-          // Auf der Startseite übernimmt der große Knopf über den Kacheln.
+          // Auf der Startseite nur ansehen – zum Beantragen der große Knopf
+          // darüber, zum Bearbeiten die Seite „Plan".
           antragSchalter={false}
+          nurLesen
         />
       ) : null}
 

@@ -10,6 +10,16 @@ export interface TileOption {
   /** Stabiler Schlüssel – wird in `profiles.hidden_dashboard_tiles` gespeichert. */
   key: string;
   label: string;
+  /**
+   * Standardmäßig aus – jeder schaltet die Kachel selbst ein. Gespeichert
+   * wird dann `zeige:<key>` in derselben Liste.
+   */
+  optIn?: boolean;
+}
+
+/** Ist die Kachel sichtbar – nach der gespeicherten Liste? */
+export function kachelSichtbar(gespeichert: Set<string>, key: string, optIn = false): boolean {
+  return optIn ? gespeichert.has(`zeige:${key}`) : !gespeichert.has(key);
 }
 
 /**
@@ -58,10 +68,11 @@ export function TileSettings({
     };
   }, [offen]);
 
-  function umschalten(key: string) {
+  function umschalten(key: string, optIn = false) {
     const naechste = new Set(versteckt);
-    if (naechste.has(key)) naechste.delete(key);
-    else naechste.add(key);
+    const eintrag = optIn ? `zeige:${key}` : key;
+    if (naechste.has(eintrag)) naechste.delete(eintrag);
+    else naechste.add(eintrag);
 
     const vorher = new Set(versteckt);
     onChange(naechste);
@@ -83,7 +94,7 @@ export function TileSettings({
     });
   }
 
-  const sichtbar = optionen.length - versteckt.size;
+  const sichtbar = optionen.filter((o) => kachelSichtbar(versteckt, o.key, o.optIn)).length;
 
   return (
     <div className="relative" ref={box}>
@@ -107,7 +118,7 @@ export function TileSettings({
             Auf meinem Dashboard
           </p>
           {optionen.map((o) => {
-            const an = !versteckt.has(o.key);
+            const an = kachelSichtbar(versteckt, o.key, o.optIn);
             return (
               <label
                 key={o.key}
@@ -119,7 +130,7 @@ export function TileSettings({
                 <input
                   type="checkbox"
                   checked={an}
-                  onChange={() => umschalten(o.key)}
+                  onChange={() => umschalten(o.key, o.optIn)}
                   className="h-4 w-4 rounded border-line accent-brand-500"
                 />
                 <span>{o.label}</span>
