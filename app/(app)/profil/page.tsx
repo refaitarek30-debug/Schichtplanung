@@ -31,6 +31,11 @@ export default function ProfilePage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <ProfileForm profile={profile} readOnly={mode === "demo"} />
+        {/* Geburtsdatum – freiwillig, nur selbst pflegbar. War importiert,
+            stand aber nie auf der Seite; deshalb konnte es niemand eintragen. */}
+        <div className="lg:col-start-1">
+          <PersonalDetailsForm readOnly={mode === "demo"} />
+        </div>
         <div className="lg:col-span-2">
           <a
             href="/profil/datenschutz"

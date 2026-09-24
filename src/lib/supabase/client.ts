@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "./config";
+import { installiereLadesperre } from "@/lib/ladesperre";
 
 /**
  * Supabase-Client für Client Components – bewusst nur EINER pro Browser-Tab.
@@ -22,6 +23,9 @@ export function createClient() {
     throw new Error("Supabase ist nicht konfiguriert.");
   }
   if (!browserClient) {
+    // Vor dem Anlegen: der Client merkt sich fetch – so zählt die
+    // Ladesperre auch seine schreibenden Aufrufe.
+    installiereLadesperre();
     browserClient = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
   return browserClient;

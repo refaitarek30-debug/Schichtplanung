@@ -173,7 +173,11 @@ export async function inviteEmployee(
     .returns<Pick<ProfileRow, "role" | "company_id">[]>()
     .maybeSingle();
 
-  if (!profile || profile.role !== "admin") {
+  // Einladen darf die Administration und die Schichtleitung. Die
+  // Schichtleitung aber nur für normale Mitarbeiter: ein Zugangslink für ein
+  // Admin- oder Schichtleitungskonto wäre ein Weg zu Rechten, die sie selbst
+  // nicht hat.
+  if (!profile || (profile.role !== "admin" && profile.role !== "shift_leader")) {
     return { error: "Du hast keine Berechtigung für diesen Bereich." };
   }
 
@@ -191,6 +195,11 @@ export async function inviteEmployee(
   }
   if (employee.company_id !== profile.company_id) {
     return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  }
+  if (profile.role === "shift_leader" && employee.role !== "employee") {
+    return {
+      error: "Zugänge für Schichtleitung und Administration richtet nur die Administration ein.",
+    };
   }
 
   return grantAccess(employee, await siteOrigin());

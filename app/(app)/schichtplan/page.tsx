@@ -43,7 +43,7 @@ export default function ShiftPlanPage() {
         description={
           canEdit
             ? "Eine Zeile je Person über vier Wochen. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
-            : "Eine Zeile je Person über vier Wochen. In deiner eigenen Zeile tippst du auf den ersten und letzten Tag, um Urlaub zu beantragen."
+            : "Deine Schicht über vier Wochen. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag."
         }
       />
 
