@@ -194,6 +194,7 @@ export function ShiftPlanGrid({
   canEdit,
   employeeId = null,
   antragSchalter = true,
+  nurLesen = false,
 }: {
   companyId: string;
   from: string;
@@ -206,6 +207,11 @@ export function ShiftPlanGrid({
    * dort führt der große Knopf über den Kacheln zum Antrag.
    */
   antragSchalter?: boolean;
+  /**
+   * Nur ansehen: keine Zelle antippbar, kein Antrag. So auf der Startseite –
+   * zum Beantragen gibt es dort den großen Knopf darüber.
+   */
+  nurLesen?: boolean;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -248,6 +254,44 @@ export function ShiftPlanGrid({
    * bleibt vollständig erreichbar, er kommt nur in Monatsschritten.
    */
   const span = days;
+
+  /**
+   * Wischen blättert: nach links die nächsten Tage, nach rechts die
+   * vorigen. Passt der Plan nicht ganz aufs Handy, scrollt er erst bis zum
+   * Rand; erst ein Wischen am Rand blättert weiter.
+   */
+  const wischStart = useRef<{ x: number; y: number; links: number } | null>(null);
+  const scrollBox = useRef<HTMLDivElement>(null);
+  function wischBeginn(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (!t) return;
+    wischStart.current = { x: t.clientX, y: t.clientY, links: scrollBox.current?.scrollLeft ?? 0 };
+  }
+  function wischEnde(e: React.TouchEvent) {
+    const anfang = wischStart.current;
+    wischStart.current = null;
+    const t = e.changedTouches[0];
+    const box = scrollBox.current;
+    if (!anfang || !t || !box) return;
+    const dx = t.clientX - anfang.x;
+    const dy = t.clientY - anfang.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const maxLinks = box.scrollWidth - box.clientWidth;
+    // Stand der Plan beim Anfassen schon am Rand – oder ein kräftiger
+    // Wisch hat ihn bis an den Rand gebracht –, wird geblättert.
+    const kraeftig = Math.abs(dx) > 150;
+    const amEnde = (links: number) => links >= maxLinks - 2;
+    const amAnfang = (links: number) => links <= 2;
+    if (dx < 0 && (amEnde(anfang.links) || (kraeftig && amEnde(box.scrollLeft)))) {
+      setStart((s) => addDays(s, span));
+      box.scrollLeft = 0;
+    } else if (dx > 0 && (amAnfang(anfang.links) || (kraeftig && amAnfang(box.scrollLeft)))) {
+      setStart((s) => addDays(s, -span));
+      requestAnimationFrame(() => {
+        box.scrollLeft = box.scrollWidth;
+      });
+    }
+  }
   /** Legende zu, bis jemand sie braucht. Spart auf dem Handy zwei Zeilen. */
   const [legendeOffen, setLegendeOffen] = useState(false);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
@@ -290,7 +334,7 @@ export function ShiftPlanGrid({
     null,
   );
   const [antragMeldung, setAntragMeldung] = useState<string | null>(null);
-  const antragAktiv = Boolean(employeeId) && (!canEdit || antragsModus);
+  const antragAktiv = !nurLesen && Boolean(employeeId) && (!canEdit || antragsModus);
   const [zurEigenenZeile, setZurEigenenZeile] = useState(false);
 
   useEffect(() => {
@@ -663,7 +707,7 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canEdit && employeeId && antragSchalter ? (
+          {!nurLesen && canEdit && employeeId && antragSchalter ? (
             <button
               type="button"
               onClick={() => {
@@ -734,7 +778,7 @@ export function ShiftPlanGrid({
           {/* Reihenfolge: selten gebraucht, deshalb nur ein kleines Symbol
               ganz rechts. Die Pfeile erscheinen erst in diesem Modus, sonst
               verstellen sie jede Namensspalte. */}
-          {canEdit ? (
+          {canEdit && !nurLesen ? (
             <button
               type="button"
               onClick={() => setSortieren((v) => !v)}
@@ -855,7 +899,12 @@ export function ShiftPlanGrid({
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto overscroll-x-contain"
+        ref={scrollBox}
+        onTouchStart={wischBeginn}
+        onTouchEnd={wischEnde}
+      >
         {cells === null ? (
           <RowSkeleton rows={6} />
         ) : groups.length === 0 ? (
@@ -1039,12 +1088,12 @@ export function ShiftPlanGrid({
                             )}
                           >
                             <button
-                              disabled={waehlbar ? false : !canEdit || !cell}
+                              disabled={waehlbar ? false : nurLesen || !canEdit || !cell}
                               onClick={() => {
                                 if (waehlbar) {
                                   setSelected(null);
                                   tippeTag(iso);
-                                } else if (canEdit && cell) {
+                                } else if (!nurLesen && canEdit && cell) {
                                   setSelected(cell);
                                 }
                               }}
@@ -1057,7 +1106,7 @@ export function ShiftPlanGrid({
                               className={cn(
                                 "flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:text-[12px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
-                                (canEdit || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
+                                ((!nurLesen && canEdit) || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
                               )}
                             >

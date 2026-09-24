@@ -7,6 +7,7 @@ import type {
   LeaveRequestWithEmployee,
 } from "@/lib/supabase/database.types";
 import type {
+  LeaveKind,
   LiveAfKonto,
   LiveAutoDay,
   LiveTeamBalance,
@@ -434,4 +435,43 @@ export async function sicherGenehmigen(
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   const zeile = ((data ?? []) as { ergebnis: string; grund: string | null }[])[0];
   return { genehmigt: zeile?.ergebnis === "genehmigt", grund: zeile?.grund ?? null };
+}
+
+export interface LiveNaechsterUrlaub {
+  von: string;
+  bis: string;
+  /** Urlaubs-, V- und sonstige Tage, die es kostet. */
+  tage: number;
+  /** Frei am Stück, vom ersten bis zum letzten Tag. */
+  kalendertage: number;
+  arten: LeaveKind[];
+  offen: boolean;
+}
+
+/**
+ * Der nächste eigene Urlaub am Stück: Anträge, zwischen denen nur freie
+ * Tage laut Plan liegen, zählen als ein Urlaub.
+ */
+export async function fetchNaechsterUrlaub(): Promise<LiveNaechsterUrlaub | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("mein_naechster_urlaub");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const row = ((data ?? []) as {
+    von: string;
+    bis: string;
+    tage: number;
+    kalendertage: number;
+    arten: string[];
+    offen: boolean;
+  }[])[0];
+  if (!row) return null;
+  return {
+    von: row.von,
+    bis: row.bis,
+    tage: Number(row.tage ?? 0),
+    kalendertage: Number(row.kalendertage ?? 0),
+    arten: (row.arten ?? []) as LeaveKind[],
+    offen: row.offen === true,
+  };
 }

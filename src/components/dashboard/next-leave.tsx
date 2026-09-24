@@ -1,65 +1,28 @@
-import { Palmtree } from "lucide-react";
-import { addDays, formatDE, fromISO, WEEKDAY_SHORT, formatDays } from "@/lib/dates";
-import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
-import type { LeaveKind, LiveLeaveRequest } from "@/lib/types";
-import { cn } from "@/lib/utils";
+"use client";
 
-interface Zeitraum {
-  von: string;
-  bis: string;
-  tage: number;
-  arten: LeaveKind[];
-  /** true, sobald ein Teil erst beantragt ist. */
-  offen: boolean;
-}
+import { useEffect, useState } from "react";
+import { Palmtree } from "lucide-react";
+import { formatDE, fromISO, WEEKDAY_SHORT, formatDays } from "@/lib/dates";
+import { artenText } from "@/lib/leave-groups";
+import { fetchNaechsterUrlaub, type LiveNaechsterUrlaub } from "@/lib/data/leave";
+import type { LiveLeaveRequest } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 function wochentag(iso: string): string {
   return WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7];
 }
 
 /**
- * Der nächste eigene Urlaub – oder der laufende.
+ * Der nächste eigene Urlaub – oder der laufende – als reiner Kasten.
  *
- * Aus den eigenen Anträgen, genehmigt oder noch offen. Ein Zeitraum, der
- * in der Datenbank in Urlaubs- und V-Tag-Zeilen zerfällt, erscheint als
- * ein Block – ebenso zwei Anträge, die direkt aneinandergrenzen: wer
- * Freitag Urlaub und ab Montag V-Tage hat, ist durchgehend weg.
+ * Zeitraum „am Stück": Anträge, zwischen denen laut Plan nur freie Tage
+ * liegen, gehören zusammen (Urlaub am Donnerstag, zwei freie Tage, dann
+ * V-Tage = ein Urlaub). Das rechnet die Datenbank, weil nur sie den Plan
+ * jedes Tages kennt.
+ *
+ * `antraege` dient nur als Auslöser: ändern sich die eigenen Anträge, wird
+ * neu gefragt.
  */
-export function naechsterUrlaub(
-  antraege: LiveLeaveRequest[],
-  heute: string,
-): Zeitraum | null {
-  const gruppen = gruppiereAntraege(
-    antraege.filter(
-      (a) => (a.status === "approved" || a.status === "pending") && a.endDate >= heute,
-    ),
-  ).sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-  let block: Zeitraum | null = null;
-  for (const g of gruppen) {
-    if (!block) {
-      block = {
-        von: g.startDate,
-        bis: g.endDate,
-        tage: g.requestedDays,
-        arten: [...g.kinds],
-        offen: g.status === "pending",
-      };
-      continue;
-    }
-    // Schließt direkt an (oder überlappt): gehört zum selben Urlaub.
-    if (g.startDate <= addDays(block.bis, 1)) {
-      if (g.endDate > block.bis) block.bis = g.endDate;
-      block.tage += g.requestedDays;
-      for (const k of g.kinds) if (!block.arten.includes(k)) block.arten.push(k);
-      block.offen = block.offen || g.status === "pending";
-    } else {
-      break;
-    }
-  }
-  return block;
-}
-
 export function NextLeaveCard({
   antraege,
   heute,
@@ -67,8 +30,19 @@ export function NextLeaveCard({
   antraege: LiveLeaveRequest[] | null;
   heute: string;
 }) {
-  const zeitraum = antraege ? naechsterUrlaub(antraege, heute) : null;
-  const laeuft = zeitraum !== null && zeitraum.von <= heute;
+  const [zeitraum, setZeitraum] = useState<LiveNaechsterUrlaub | null | undefined>(undefined);
+
+  useEffect(() => {
+    let abgebrochen = false;
+    fetchNaechsterUrlaub()
+      .then((z) => !abgebrochen && setZeitraum(z))
+      .catch(() => !abgebrochen && setZeitraum(null));
+    return () => {
+      abgebrochen = true;
+    };
+  }, [antraege]);
+
+  const laeuft = zeitraum ? zeitraum.von <= heute : false;
 
   return (
     <div className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
@@ -84,7 +58,7 @@ export function NextLeaveCard({
         <span className="block text-[13px] font-medium text-ink-muted">
           {laeuft ? "Du bist im Urlaub" : "Dein nächster Urlaub"}
         </span>
-        {antraege === null ? (
+        {zeitraum === undefined ? (
           <span className="block text-sm text-ink-faint">wird geladen …</span>
         ) : zeitraum === null ? (
           <span className="block text-sm text-ink-muted">Noch kein Urlaub eingetragen.</span>
@@ -92,12 +66,14 @@ export function NextLeaveCard({
           <>
             <span className="tnum block text-[15px] font-semibold leading-snug">
               {zeitraum.von === zeitraum.bis
-                  ? `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)}`
-                  : `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)} – ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`}
+                ? `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)}`
+                : `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)} – ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`}
             </span>
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-muted">
               <span className="tnum">
-                {formatDays(zeitraum.tage)} {zeitraum.tage === 1 ? "Tag" : "Tage"} · {artenText(zeitraum.arten)}
+                {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei ·{" "}
+                {formatDays(zeitraum.tage)} {zeitraum.tage === 1 ? "Tag" : "Tage"}{" "}
+                {artenText(zeitraum.arten)}
               </span>
               <span
                 className={cn(

@@ -425,7 +425,10 @@ function ImpactHint({
   impact: LiveLeaveImpact;
   tage?: LiveStaffingDetailDay[];
 }) {
-  if (impact.worstStatus === "ok" && impact.overlappingEmployees === 0) return null;
+  // Nur wenn tatsächlich etwas unterschritten wird. Dass noch jemand aus
+  // der Schicht frei hat, ist allein kein Grund zur Warnung – solange die
+  // Sollbesetzung steht, ist der Antrag unbedenklich.
+  if (impact.worstStatus === "ok") return null;
 
   const kritisch = impact.worstStatus === "critical";
 
