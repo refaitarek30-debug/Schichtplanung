@@ -367,12 +367,12 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   const adresseGeaendert =
     email.length > 0 && email.toLowerCase() !== (vorher?.email ?? "").toLowerCase();
 
-  // Zugangslinks gibt nur die Administration aus – wie beim Anlegen und bei
-  // „Neuer Zugangslink". Sonst könnte die Schichtleitung über eine
-  // Adressänderung an einen Anmeldelink für fremde Zugänge kommen.
-  if (adresseGeaendert && profile.role !== "admin") {
+  // Die Schichtleitung bekommt einen Zugangslink nur für normale
+  // Mitarbeiter – nie für Admin- oder Schichtleitungskonten, sonst käme sie
+  // über eine Adressänderung an Rechte, die sie selbst nicht hat.
+  if (adresseGeaendert && profile.role !== "admin" && role !== "employee") {
     return {
-      success: `${firstName} ${lastName} wurde aktualisiert. Den Zugangslink für die neue Adresse erzeugt die Administration.`,
+      success: `${firstName} ${lastName} wurde aktualisiert. Den Zugangslink für ein Konto mit Führungsrolle erzeugt die Administration.`,
     };
   }
 

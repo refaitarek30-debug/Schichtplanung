@@ -302,6 +302,22 @@ export function EmployeesView() {
                       Bearbeiten
                     </Button>
                   ) : null}
+                  {/* Einladen: Administration immer, Schichtleitung für
+                      normale Mitarbeiter. Die Datenbank-seitige Prüfung
+                      steckt in inviteEmployee(). */}
+                  {role === "shift_leader" && mode === "live" && row.role === "employee" ? (
+                    <Button
+                      variant="secondary"
+                      disabled={!row.email || (pending && busyId === row.id)}
+                      onClick={() => invite(row)}
+                    >
+                      {pending && busyId === row.id
+                        ? "…"
+                        : row.hasAccount
+                          ? "Neuer Zugangslink"
+                          : "Einladen"}
+                    </Button>
+                  ) : null}
                   {role === "admin" ? (
                     <div className="flex items-center gap-2">
                       {mode === "live" ? (

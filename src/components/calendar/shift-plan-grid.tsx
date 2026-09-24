@@ -334,7 +334,10 @@ export function ShiftPlanGrid({
     null,
   );
   const [antragMeldung, setAntragMeldung] = useState<string | null>(null);
-  const antragAktiv = !nurLesen && Boolean(employeeId) && (!canEdit || antragsModus);
+  // Eintragen erst nach einem Tipp auf „Urlaub beantragen" – für alle,
+  // nicht nur für die Führung. So löst ein versehentlicher Tipp in die
+  // eigene Zeile nichts aus.
+  const antragAktiv = !nurLesen && Boolean(employeeId) && antragsModus;
   const [zurEigenenZeile, setZurEigenenZeile] = useState(false);
 
   useEffect(() => {
@@ -502,8 +505,16 @@ export function ShiftPlanGrid({
         return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
       });
     }
-    return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [cells, ordnung]);
+    const alle = [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    // Ohne Führungsrechte nur die eigene Schicht. Die Datenbank liefert
+    // Mitarbeitern ohnehin nichts anderes; das greift zusätzlich in der
+    // Ansicht „als Mitarbeiter", die die Führung sich anzeigen lassen kann.
+    if (!canEdit) {
+      const eigene = alle.filter(([, members]) => members.some((m) => m.isMe));
+      if (eigene.length > 0) return eigene;
+    }
+    return alle;
+  }, [cells, ordnung, canEdit]);
 
   /**
    * Welche Schichtgruppen aufgeklappt sind. `null` heißt: noch nichts von Hand
@@ -707,7 +718,7 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!nurLesen && canEdit && employeeId && antragSchalter ? (
+          {!nurLesen && employeeId && antragSchalter ? (
             <button
               type="button"
               onClick={() => {

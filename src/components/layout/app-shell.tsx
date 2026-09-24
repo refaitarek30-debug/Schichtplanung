@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { DataModeNotice } from "./data-mode-notice";
 import { InstallHint } from "./install-hint";
 import { LegalFooter } from "./legal-footer";
+import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
 import { MobileNav } from "./mobile-nav";
 import { Sidebar } from "./sidebar";
@@ -29,6 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MobileNav />
       {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
       <LiveRefresh />
+      {/* Blockiert Klicks, solange etwas gespeichert wird. */}
+      <LadeSperre />
     </div>
   );
 }
