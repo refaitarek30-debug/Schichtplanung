@@ -151,6 +151,8 @@ export interface LiveLeaveBalance {
   vEntitlement: number;
   /** Übertrag aus dem Vorjahr, verfällt am 31.03. */
   vCarriedOver: number;
+  /** Von der Führung hinzugefügte (+) oder abgezogene (−) V-Tage. */
+  vKorrektur: number;
   vUsedDays: number;
   vPendingDays: number;
   vRemainingDays: number;
@@ -196,23 +198,6 @@ export interface LiveAfKonto {
   restStunden: number;
 }
 
-/**
- * V-Tage als Stundenkonto: Stand zum Stichtag, danach je gearbeiteter
- * Schicht +0,75 Std., je V-Tag −7,5 Std. Darf ins Minus.
- */
-export interface LiveVKonto {
-  stichtag: string | null;
-  startStunden: number;
-  arbeitstage: number;
-  angespart: number;
-  genommen: number;
-  verplant: number;
-  standHeute: number;
-  /** V-Tage, die noch gehen, bevor es ins Minus geht. */
-  nochMoeglich: number;
-  restStunden: number;
-}
-
 /** Sonderurlaub und Altersfreizeit je Mitarbeiter – für die Führung. */
 export interface LiveTeamSonderKonto {
   suErlaubt: boolean;
@@ -222,9 +207,6 @@ export interface LiveTeamSonderKonto {
   afVerfuegbar: number;
   afRestStunden: number;
   afStand: number;
-  vStunden: boolean;
-  vStand: number;
-  vMoeglich: number;
 }
 
 /**

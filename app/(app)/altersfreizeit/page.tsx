@@ -22,8 +22,8 @@ export default async function AgeLeavePage() {
     <div className="space-y-5">
       <PageHeader
         eyebrow="Verwaltung"
-        title="AF- & V-Stunden"
-        description="Aktuellen Stundenstand für Altersfreizeit und V-Tage eintragen – darauf wird aufgebaut."
+        title="AF-Stunden & V-Tage"
+        description="Altersfreizeit als Stundenstand eintragen, V-Tage hinzufügen oder abziehen."
       />
       <AgeLeaveTable />
     </div>

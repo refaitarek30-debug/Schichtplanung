@@ -18,7 +18,6 @@ import { RequestList } from "@/components/dashboard/request-list";
 import { LiveRequestList } from "@/components/leave/live-request-list";
 import {
   fetchMyLeaveBalance,
-  fetchMyVKonto,
   fetchMyLeaveRequests,
   fetchReviewLeaveRequests,
 } from "@/lib/data/leave";
@@ -32,7 +31,6 @@ import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
 import type {
-  LiveVKonto,
   LiveAnnouncement,
   LiveLeaveBalance,
   LiveLeaveBlock,
@@ -203,20 +201,6 @@ export default function DashboardPage() {
   // Neuer Antrag, eine Entscheidung, eine Krankmeldung, eine neue
   // Mitteilung der Leitung: dann die Kacheln auffrischen.
   useAktualisierung(["antraege", "abwesenheiten", "mitteilungen"], () => void loadLive());
-
-  // V-Stundenkonto, falls eines eingetragen ist – dann zeigt die Kachel,
-  // wie viele V-Tage noch gehen, bevor es ins Minus geht.
-  const [vKonto, setVKonto] = useState<LiveVKonto | null>(null);
-  useEffect(() => {
-    if (mode !== "live") return;
-    let abgebrochen = false;
-    fetchMyVKonto()
-      .then((k) => !abgebrochen && setVKonto(k))
-      .catch(() => {});
-    return () => {
-      abgebrochen = true;
-    };
-  }, [mode, liveMyRequests]);
 
   const demoBalance = leaveBalance(user, staffingContext.leaveRequests, TODAY);
   const availableLeave =
@@ -413,17 +397,13 @@ export default function DashboardPage() {
           zeigeAnfragen={zeige("ersatz")}
         />
 
-        {(hatVKonto || vKonto) && zeige("vtage") ? (
+        {hatVKonto && zeige("vtage") ? (
           <KpiCard
-            label={vKonto ? "V-Tage noch möglich" : "V-Tage gesamt"}
+            label="V-Tage gesamt"
             href="/urlaub"
-            value={formatDays(vKonto ? Math.max(vKonto.nochMoeglich, 0) : vRemaining)}
+            value={formatDays(vRemaining)}
             unit="Tage"
-            hint={
-              vKonto
-                ? `Stand ${vKonto.standHeute.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std.`
-                : `von ${formatDays(vEntitlement)} übrig`
-            }
+            hint={`von ${formatDays(vEntitlement)} übrig`}
             accent="plan"
             ton="lila"
             icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}

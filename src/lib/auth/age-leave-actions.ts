@@ -56,9 +56,8 @@ export async function confirmAgeLeave(
 }
 
 /**
- * Stundenstand eintragen (Administration und Schichtleitung) – für die
- * Altersfreizeit (art = "af") oder die V-Tage (art = "v"). Ab dem Folgetag
- * rechnet die Datenbank weiter. „Aufheben" nimmt das Konto zurück.
+ * AF-Stundenstand eintragen (Administration und Schichtleitung). Ab dem
+ * Folgetag rechnet die Datenbank weiter. „Aufheben" nimmt das Konto zurück.
  */
 export async function setStundenstand(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) {
@@ -71,7 +70,7 @@ export async function setStundenstand(_prev: FormState, formData: FormData): Pro
   const stunden = Number(String(formData.get("stunden") ?? "").replace(",", "."));
 
   if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
-  if (art !== "af" && art !== "v") return { error: "Unbekanntes Konto." };
+  if (art !== "af") return { error: "Unbekanntes Konto." };
   if (!aufheben) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(stichtag)) {
       return { error: "Bitte das Datum angeben, zu dem der Stand gilt." };
@@ -94,8 +93,50 @@ export async function setStundenstand(_prev: FormState, formData: FormData): Pro
 
   revalidatePath("/altersfreizeit");
   revalidatePath("/urlaub");
-  const name = art === "af" ? "AF" : "V";
-  return { success: aufheben ? `${name}-Stundenkonto aufgehoben.` : `${name}-Stand gespeichert.` };
+  return { success: aufheben ? "AF-Stundenkonto aufgehoben." : "AF-Stand gespeichert." };
+}
+
+/**
+ * V-Tage hinzufügen oder abziehen (Administration, Schichtleitung für die
+ * eigene Schicht). Wer darf, prüft `v_tage_buchen()` in der Datenbank.
+ */
+export async function vTageBuchen(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!isSupabaseConfigured) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  const employeeId = String(formData.get("employee_id") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const jahr = Number(formData.get("jahr"));
+  const richtung = formData.get("richtung") === "ab" ? -1 : 1;
+  const tage = Number(String(formData.get("tage") ?? "").replace(",", "."));
+  const grund = String(formData.get("grund") ?? "").trim();
+
+  if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
+  if (!Number.isInteger(jahr)) return { error: "Ungültiges Jahr." };
+  if (!Number.isFinite(tage) || tage <= 0 || tage > 100 || !Number.isInteger(tage * 2)) {
+    return { error: "Bitte eine Anzahl Tage angeben, z. B. 1, 2 oder 0,5." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("v_tage_buchen", {
+    p_employee_id: employeeId,
+    p_year: jahr,
+    p_tage: richtung * tage,
+    p_grund: grund || null,
+  });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die V-Tage konnten nicht geändert werden." };
+  }
+
+  revalidatePath("/verwaltung");
+  revalidatePath("/urlaub");
+  const tageText = tage.toLocaleString("de-DE");
+  const rest = Number(data ?? 0).toLocaleString("de-DE");
+  return {
+    success: `${name ? `${name}: ` : ""}${tageText} V-${tage === 1 ? "Tag" : "Tage"} ${
+      richtung > 0 ? "hinzugefügt" : "abgezogen"
+    }. Neuer Stand ${rest} Tage.`,
+  };
 }
 
 /** Geburtsdatum korrigieren – nur Administration. */

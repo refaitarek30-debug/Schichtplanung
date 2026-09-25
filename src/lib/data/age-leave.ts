@@ -115,17 +115,16 @@ export interface LiveAfUebersichtZeile {
   alterHeute: number | null;
   hatProfil: boolean;
   af: LiveStundenkontoKurz;
-  v: LiveStundenkontoKurz;
 }
 
-/** AF- und V-Stundenkonten aller aktiven Mitarbeiter (Führung). */
+/** AF-Stundenkonten aller aktiven Mitarbeiter (Führung). */
 export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
   const { data, error } = await supabase.rpc("af_uebersicht");
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   const z = (v: unknown) => Number(v ?? 0);
-  const konto = (r: Record<string, unknown>, p: "af" | "v"): LiveStundenkontoKurz => ({
+  const konto = (r: Record<string, unknown>, p: "af"): LiveStundenkontoKurz => ({
     ab: (r[`${p}_ab`] as string | null) ?? null,
     start: z(r[`${p}_start`]),
     arbeitstage: z(r[`${p}_arbeitstage`]),
@@ -143,6 +142,40 @@ export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
     alterHeute: r.alter_heute === null || r.alter_heute === undefined ? null : Number(r.alter_heute),
     hatProfil: r.hat_profil === true,
     af: konto(r, "af"),
-    v: konto(r, "v"),
   }));
+}
+
+/** V-Tage-Konto einer Person für ein Jahr – für die Verwaltung. */
+export interface LiveVTageZeile {
+  anspruch: number;
+  uebertrag: number;
+  /** Von Hand hinzugefügt (+) oder abgezogen (−). */
+  korrektur: number;
+  genommen: number;
+  beantragt: number;
+  rest: number;
+  /** Darf die angemeldete Person hier Tage hinzufügen oder abziehen? */
+  darfBuchen: boolean;
+}
+
+/** V-Tage aller aktiven Mitarbeiter eines Jahres (Führung). */
+export async function fetchVTageUebersicht(jahr: number): Promise<Map<string, LiveVTageZeile>> {
+  if (!isSupabaseConfigured) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("v_tage_uebersicht", { p_year: jahr });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const z = (v: unknown) => Number(v ?? 0);
+  const map = new Map<string, LiveVTageZeile>();
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    map.set(String(r.employee_id), {
+      anspruch: z(r.anspruch),
+      uebertrag: z(r.uebertrag),
+      korrektur: z(r.korrektur),
+      genommen: z(r.genommen),
+      beantragt: z(r.beantragt),
+      rest: z(r.rest),
+      darfBuchen: r.darf_buchen === true,
+    });
+  }
+  return map;
 }
