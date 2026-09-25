@@ -80,20 +80,28 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
 }
 
 /**
- * Anträge zur Entscheidung / Übersicht für Führungskräfte.
- * RLS liefert automatisch nur, was die Rolle sehen darf.
+ * Anträge zur Entscheidung / Übersicht für Führungskräfte – nur die, über
+ * die man auch entscheiden darf.
  */
 export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from("leave_requests")
-    .select(SELECT_WITH_EMPLOYEE)
-    .order("start_date", { ascending: true })
-    .returns<LeaveRequestWithEmployee[]>();
+  const [antraege, erlaubt] = await Promise.all([
+    supabase
+      .from("leave_requests")
+      .select(SELECT_WITH_EMPLOYEE)
+      .order("start_date", { ascending: true })
+      .returns<LeaveRequestWithEmployee[]>(),
+    // Nur, worüber man entscheiden darf: die Schichtleitung sieht die
+    // eigene Schicht (ohne die eigenen Anträge), die Administration alles.
+    // Die Regel steht in der Datenbank (darf_urlaub_entscheiden).
+    supabase.rpc("entscheidbare_mitarbeiter"),
+  ]);
 
-  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-  return (data ?? []).map(mapRequest);
+  if (antraege.error) throw new DataError(dataErrorMessage(antraege.error) ?? "Unbekannter Fehler");
+  if (erlaubt.error) throw new DataError(dataErrorMessage(erlaubt.error) ?? "Unbekannter Fehler");
+  const ids = new Set(((erlaubt.data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
+  return (antraege.data ?? []).filter((r) => ids.has(r.employee_id)).map(mapRequest);
 }
 
 /** Urlaubskonto des angemeldeten Benutzers für ein Jahr (Standard: laufendes Jahr). */
