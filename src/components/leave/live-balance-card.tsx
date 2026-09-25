@@ -123,25 +123,39 @@ export function LiveBalanceCard({
             farbe="altersfrei"
             titel="Altersfreizeit"
             untertitel="AF"
-            kopf={`seit ${formatDE(afFrei.freigeschaltetAb!)} · ${afFrei.arbeitstage} Arbeitstage`}
+            kopf={`Stand ${formatStunden(afFrei.standStunden)} Std.`}
             wert={formatDays(afFrei.verfuegbar)}
             einheit={afFrei.verfuegbar < 0 ? "AF-Tage im Minus" : "AF-Tage verfügbar"}
             minus={afFrei.verfuegbar < 0}
             felder={[
-              { label: "Angespart", wert: `${formatStunden(afFrei.stunden)} Std.` },
-              { label: "Tage erworben", wert: formatDays(afFrei.tageErworben) },
-              { label: "Genommen", wert: formatDays(afFrei.genommen) },
-              { label: "Beantragt", wert: formatDays(afFrei.beantragt) },
+              {
+                label: `Stand ${formatDE(afFrei.freigeschaltetAb!)}`,
+                wert: `${formatStunden(afFrei.startStunden)} Std.`,
+              },
+              {
+                label: `+ ${afFrei.arbeitstage} Arbeitstage`,
+                wert: `${formatStunden(afFrei.stundenAngespart)} Std.`,
+              },
+              {
+                label: "− AF-Tage",
+                wert: `${formatDays(afFrei.genommen + afFrei.beantragt)} × 8`,
+              },
             ]}
             fuss={
               <>
-                Je gearbeitetem Tag 0,83 Std. – je 7,5 Std. ein AF-Tag. Bis zum nächsten AF-Tag
-                fehlen noch{" "}
-                <span className="tnum font-semibold">
-                  {formatStunden(Math.max(7.5 - afFrei.restStunden, 0))} Std.
-                </span>{" "}
-                ({formatStunden(afFrei.restStunden)} von 7,5 Std. angespart). Urlaub, Krankheit
-                und alle anderen freien Tage zählen nicht.
+                Je gearbeitetem Tag kommen 0,83 Std. dazu, je AF-Tag gehen 8 Std. ab. Urlaub,
+                Krankheit und alle anderen freien Tage zählen nicht.
+                {afFrei.verfuegbar >= 0 ? (
+                  <>
+                    {" "}Bis zum nächsten AF-Tag fehlen noch{" "}
+                    <span className="tnum font-semibold">
+                      {formatStunden(Math.max(8 - afFrei.restStunden, 0))} Std.
+                    </span>
+                  </>
+                ) : null}
+                {afFrei.beantragt > 0
+                  ? ` Davon ${formatDays(afFrei.beantragt)} AF-Tag(e) noch beantragt.`
+                  : ""}
               </>
             }
           />

@@ -174,19 +174,23 @@ export interface LiveTeamBalance {
 }
 
 /**
- * Altersfreizeit als Stundenkonto: je tatsächlich gearbeitetem Tag 0,83
- * Stunden, je 7,5 Stunden ein AF-Tag. Läuft über die Jahre weiter.
+ * Altersfreizeit als Stundenkonto: eingetragener Stand zum Stichtag, danach
+ * je tatsächlich gearbeitetem Tag +0,83 Std., je AF-Tag −8 Std.
  */
 export interface LiveAfKonto {
-  /** null = nicht freigeschaltet. */
+  /** Stichtag des eingetragenen Stands; null = nicht freigeschaltet. */
   freigeschaltetAb: string | null;
+  startStunden: number;
   arbeitstage: number;
-  stunden: number;
-  tageErworben: number;
-  restStunden: number;
+  stundenAngespart: number;
   genommen: number;
   beantragt: number;
+  /** Aktueller Stand in Stunden (nach genommenen und beantragten Tagen). */
+  standStunden: number;
+  /** Volle AF-Tage, die noch gehen (je 8 Std.). */
   verfuegbar: number;
+  /** Stunden über die vollen Tage hinaus. */
+  restStunden: number;
 }
 
 /** Sonderurlaub und Altersfreizeit je Mitarbeiter – für die Führung. */

@@ -23,6 +23,11 @@ function lesbar(err: unknown, ersatz: string): string {
 
 export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
   const [birthDate, setBirthDate] = useState("");
+  /**
+   * Schon gespeichert? Dann ist das Feld gesperrt: davon hängen Sonderurlaub
+   * und Altersfreizeit ab, ändern kann es nur noch die Administration.
+   */
+  const [festgelegt, setFestgelegt] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -47,7 +52,10 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
           .maybeSingle();
 
         if (loadError) throw loadError;
-        if (active) setBirthDate(data?.birth_date ?? "");
+        if (active) {
+          setBirthDate(data?.birth_date ?? "");
+          setFestgelegt(Boolean(data?.birth_date));
+        }
       } catch (err) {
         if (active) setError(lesbar(err, "Persönliche Angaben konnten nicht geladen werden."));
       } finally {
@@ -81,6 +89,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
 
       if (saveError) throw saveError;
       setMessage("Persönliche Angaben gespeichert.");
+      if (birthDate) setFestgelegt(true);
     } catch (err) {
       setError(lesbar(err, "Speichern fehlgeschlagen."));
     } finally {
@@ -92,7 +101,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
     <Card>
       <CardHeader
         title="Persönliche Angaben"
-        hint="Freiwillig. Das Geburtsdatum kannst nur du selbst hinzufügen, ändern oder wieder löschen."
+        hint="Freiwillig. Das Geburtsdatum trägst du einmal selbst ein. Ab dem Jahr nach deinem 55. Geburtstag gibt es 4 Tage Sonderurlaub im Jahr."
       />
       <CardBody className="space-y-4">
         <div className="max-w-sm">
@@ -104,19 +113,25 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
             type="date"
             value={birthDate}
             onChange={(event) => setBirthDate(event.target.value)}
-            disabled={readOnly || loading || saving}
+            disabled={readOnly || loading || saving || festgelegt}
             max={new Date().toISOString().slice(0, 10)}
             className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
           />
           <p className="mt-1.5 text-[12px] text-ink-faint">
-            Keine Pflichtangabe. Wenn du das Feld leer lässt, wird kein Geburtsdatum gespeichert.
+            {festgelegt
+              ? "Eingetragen. Ändern kann es nur noch die Administration – davon hängen Sonderurlaub und Altersfreizeit ab."
+              : "Keine Pflichtangabe. Bitte genau prüfen: nach dem Speichern kann es nur noch die Administration ändern."}
           </p>
         </div>
 
         {error ? <Alert tone="error">{error}</Alert> : null}
         {message ? <Alert tone="success">{message}</Alert> : null}
 
-        <Button type="button" onClick={() => void save()} disabled={readOnly || loading || saving}>
+        <Button
+          type="button"
+          onClick={() => void save()}
+          disabled={readOnly || loading || saving || festgelegt || !birthDate}
+        >
           {saving ? "Wird gespeichert …" : "Persönliche Angaben speichern"}
         </Button>
 

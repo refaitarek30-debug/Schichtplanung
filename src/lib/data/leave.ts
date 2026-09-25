@@ -352,13 +352,14 @@ export async function fetchMyLeaveKindQuotas(jahr: number): Promise<LiveLeaveKin
 
 interface AfKontoRow {
   freigeschaltet_ab: string | null;
+  start_stunden: number;
   arbeitstage: number;
-  stunden: number;
-  tage_erworben: number;
-  rest_stunden: number;
+  stunden_angespart: number;
   genommen: number;
   beantragt: number;
+  stand_stunden: number;
   verfuegbar: number;
+  rest_stunden: number;
 }
 
 /** Das eigene Altersfreizeit-Konto (Stunden und Tage). */
@@ -371,13 +372,14 @@ export async function fetchMyAfKonto(): Promise<LiveAfKonto | null> {
   if (!row) return null;
   return {
     freigeschaltetAb: row.freigeschaltet_ab,
+    startStunden: Number(row.start_stunden ?? 0),
     arbeitstage: Number(row.arbeitstage ?? 0),
-    stunden: Number(row.stunden ?? 0),
-    tageErworben: Number(row.tage_erworben ?? 0),
-    restStunden: Number(row.rest_stunden ?? 0),
+    stundenAngespart: Number(row.stunden_angespart ?? 0),
     genommen: Number(row.genommen ?? 0),
     beantragt: Number(row.beantragt ?? 0),
+    standStunden: Number(row.stand_stunden ?? 0),
     verfuegbar: Number(row.verfuegbar ?? 0),
+    restStunden: Number(row.rest_stunden ?? 0),
   };
 }
 

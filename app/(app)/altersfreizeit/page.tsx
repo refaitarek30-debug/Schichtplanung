@@ -5,7 +5,7 @@ import { AgeLeaveTable } from "./age-leave-table";
 
 /**
  * Altersfreizeit prüfen und festlegen – ausschließlich für die
- * Administration. Die Schichtleitung entscheidet hier nicht mit.
+ * Administration und Schichtleitung tragen hier den AF-Stundenstand ein.
  *
  * Die Rolle wird hier ein zweites Mal geprüft, obwohl `age_leave_overview()`
  * in der Datenbank ohnehin abweist. Das ist kein Ersatz, sondern spart der
@@ -14,14 +14,16 @@ import { AgeLeaveTable } from "./age-leave-table";
 export default async function AgeLeavePage() {
   const session = await getAppSession();
   if (!session) redirect("/login");
-  if (session.profile.role !== "admin") redirect("/dashboard");
+  if (session.profile.role !== "admin" && session.profile.role !== "shift_leader") {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="space-y-5">
       <PageHeader
         eyebrow="Verwaltung"
         title="Altersfreizeit"
-        description="Freischalten, wer Altersfreizeit bekommt. Angespart wird automatisch: 0,83 Std. je gearbeitetem Tag, je 7,5 Std. ein AF-Tag."
+        description="Aktuellen Stundenstand eintragen – darauf wird aufgebaut: +0,83 Std. je gearbeitetem Tag, −8 Std. je AF-Tag."
       />
       <AgeLeaveTable />
     </div>
