@@ -95,47 +95,54 @@ export async function fetchTeamBirthDates(): Promise<Map<string, string>> {
   return ergebnis;
 }
 
+export interface LiveStundenkontoKurz {
+  /** Stichtag des eingetragenen Stands; null = kein Konto. */
+  ab: string | null;
+  start: number;
+  arbeitstage: number;
+  angespart: number;
+  genommen: number;
+  verplant: number;
+  stand: number;
+  moeglich: number;
+}
+
 export interface LiveAfUebersichtZeile {
   employeeId: string;
   employeeName: string;
   rotationTeam: string | null;
   birthDate: string | null;
   alterHeute: number | null;
-  /** Stichtag des eingetragenen Stands; null = nicht freigeschaltet. */
-  freigeschaltetAb: string | null;
-  startStunden: number;
-  arbeitstage: number;
-  stundenAngespart: number;
-  genommen: number;
-  beantragt: number;
-  standStunden: number;
-  verfuegbar: number;
-  restStunden: number;
   hatProfil: boolean;
+  af: LiveStundenkontoKurz;
+  v: LiveStundenkontoKurz;
 }
 
-/** Altersfreizeit aller aktiven Mitarbeiter als Stundenkonto (Führung). */
+/** AF- und V-Stundenkonten aller aktiven Mitarbeiter (Führung). */
 export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
   const { data, error } = await supabase.rpc("af_uebersicht");
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-  const zahl = (v: unknown) => Number(v ?? 0);
+  const z = (v: unknown) => Number(v ?? 0);
+  const konto = (r: Record<string, unknown>, p: "af" | "v"): LiveStundenkontoKurz => ({
+    ab: (r[`${p}_ab`] as string | null) ?? null,
+    start: z(r[`${p}_start`]),
+    arbeitstage: z(r[`${p}_arbeitstage`]),
+    angespart: z(r[`${p}_angespart`]),
+    genommen: z(r[`${p}_genommen`]),
+    verplant: z(r[`${p}_verplant`]),
+    stand: z(r[`${p}_stand`]),
+    moeglich: z(r[`${p}_moeglich`]),
+  });
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     employeeId: String(r.employee_id),
     employeeName: String(r.employee_name ?? ""),
     rotationTeam: (r.rotation_team as string | null) ?? null,
     birthDate: (r.birth_date as string | null) ?? null,
     alterHeute: r.alter_heute === null || r.alter_heute === undefined ? null : Number(r.alter_heute),
-    freigeschaltetAb: (r.freigeschaltet_ab as string | null) ?? null,
-    startStunden: zahl(r.start_stunden),
-    arbeitstage: zahl(r.arbeitstage),
-    stundenAngespart: zahl(r.stunden_angespart),
-    genommen: zahl(r.genommen),
-    beantragt: zahl(r.beantragt),
-    standStunden: zahl(r.stand_stunden),
-    verfuegbar: zahl(r.verfuegbar),
-    restStunden: zahl(r.rest_stunden),
     hatProfil: r.hat_profil === true,
+    af: konto(r, "af"),
+    v: konto(r, "v"),
   }));
 }

@@ -219,13 +219,24 @@ function LiveView({ role }: { role: string }) {
                             wert: `${formatDays(Math.max(konto.remainingDays, 0))}/${formatDays(konto.entitlement)}`,
                             klasse: "bg-shift-urlaub/15 text-ink",
                           });
+                          // V als Stundenkonto, sobald ein Stand eingetragen ist.
+                          if (!s?.vStunden) {
+                            chips.push({
+                              label: "V",
+                              wert: `${formatDays(konto.vRemainingDays)}/${formatDays(konto.vEntitlement)}`,
+                              klasse:
+                                konto.vRemainingDays < 0
+                                  ? "bg-crit-bg text-crit-fg"
+                                  : "bg-shift-vtag/15 text-ink",
+                            });
+                          }
+                        }
+                        if (s?.vStunden) {
                           chips.push({
                             label: "V",
-                            wert: `${formatDays(konto.vRemainingDays)}/${formatDays(konto.vEntitlement)}`,
+                            wert: `${s.vStand.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. · noch ${formatDays(Math.max(s.vMoeglich, 0))}`,
                             klasse:
-                              konto.vRemainingDays < 0
-                                ? "bg-crit-bg text-crit-fg"
-                                : "bg-shift-vtag/15 text-ink",
+                              s.vMoeglich < 0 ? "bg-crit-bg text-crit-fg" : "bg-shift-vtag/15 text-ink",
                           });
                         }
                         if (s?.suErlaubt) {
@@ -238,11 +249,13 @@ function LiveView({ role }: { role: string }) {
                         if (s?.afFreigeschaltet) {
                           chips.push({
                             label: "AF",
-                            wert: `${formatDays(s.afVerfuegbar)} · ${s.afRestStunden.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std.`,
+                            wert: `${s.afStand.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. · noch ${formatDays(Math.max(s.afVerfuegbar, 0))}`,
                             klasse:
-                              s.afVerfuegbar < 0
+                              s.afStand < 0
                                 ? "bg-crit-bg text-crit-fg"
-                                : "bg-shift-altersfrei/15 text-ink",
+                                : s.afVerfuegbar < 0
+                                  ? "bg-warn-bg text-warn-fg"
+                                  : "bg-shift-altersfrei/15 text-ink",
                           });
                         }
                         if (chips.length === 0) return null;

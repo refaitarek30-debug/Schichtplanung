@@ -1,7 +1,7 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDE, formatDays } from "@/lib/dates";
-import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
+import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota, LiveVKonto } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,6 +21,7 @@ export function LiveBalanceCard({
   onYearChange,
   quoten,
   afKonto,
+  vKonto,
 }: {
   balance: LiveLeaveBalance | null;
   /** Angezeigtes Urlaubsjahr – für die Planung des kommenden Jahres. */
@@ -30,6 +31,8 @@ export function LiveBalanceCard({
   quoten?: LiveLeaveKindQuota[] | null;
   /** Altersfreizeit als Stundenkonto; null = nicht freigeschaltet. */
   afKonto?: LiveAfKonto | null;
+  /** V-Tage als Stundenkonto; null = V in Tagen geführt. */
+  vKonto?: LiveVKonto | null;
 }) {
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
@@ -87,8 +90,48 @@ export function LiveBalanceCard({
           ]}
         />
 
-        {/* V-Tage dürfen ins Minus – deshalb steht hier auch ein negativer
-            Stand, nicht 0. */}
+        {vKonto ? (
+          <Kontoblock
+            farbe="vtag"
+            titel="V-Tage"
+            untertitel="Stunden"
+            kopf={`Stand heute ${formatStunden(vKonto.standHeute)} Std.`}
+            wert={formatDays(Math.max(vKonto.nochMoeglich, 0))}
+            einheit="V-Tage noch möglich"
+            felder={[
+              {
+                label: `Stand ${formatDE(vKonto.stichtag!)}`,
+                wert: `${formatStunden(vKonto.startStunden)} Std.`,
+              },
+              {
+                label: `+ ${vKonto.arbeitstage} Schichten`,
+                wert: `${formatStunden(vKonto.angespart)} Std.`,
+              },
+              { label: "Genommen", wert: `${formatDays(vKonto.genommen)} × 7,5` },
+              { label: "Eingeplant", wert: `${formatDays(vKonto.verplant)} × 7,5` },
+            ]}
+            fuss={
+              <>
+                Je gearbeiteter Schicht +0,75 Std., je V-Tag −7,5 Std.{" "}
+                {vKonto.nochMoeglich >= 0 ? (
+                  <>
+                    Nach allen eingeplanten V-Tagen gehen noch{" "}
+                    <span className="font-semibold">{formatDays(vKonto.nochMoeglich)}</span> V-Tage,
+                    bevor es ins Minus geht.
+                  </>
+                ) : (
+                  <span className="font-medium text-crit-fg">
+                    Die eingeplanten V-Tage liegen{" "}
+                    {formatStunden(vKonto.verplant * 7.5 - vKonto.standHeute)} Std. über dem
+                    heutigen Stand – weitere V-Tage gehen ins Minus.
+                  </span>
+                )}
+              </>
+            }
+          />
+        ) : (
+          // V-Tage dürfen ins Minus – deshalb steht hier auch ein negativer
+          // Stand, nicht 0.
         <Kontoblock
           farbe="vtag"
           titel="V-Tage"
@@ -104,6 +147,7 @@ export function LiveBalanceCard({
             { label: "Beantragt", wert: formatDays(balance.vPendingDays) },
           ]}
         />
+        )}
 
         {sonderurlaub ? (
           <Kontoblock
@@ -123,39 +167,39 @@ export function LiveBalanceCard({
             farbe="altersfrei"
             titel="Altersfreizeit"
             untertitel="AF"
-            kopf={`Stand ${formatStunden(afFrei.standStunden)} Std.`}
-            wert={formatDays(afFrei.verfuegbar)}
-            einheit={afFrei.verfuegbar < 0 ? "AF-Tage im Minus" : "AF-Tage verfügbar"}
-            minus={afFrei.verfuegbar < 0}
+            kopf={`Stand heute ${formatStunden(afFrei.standStunden)} Std.`}
+            wert={formatDays(Math.max(afFrei.verfuegbar, 0))}
+            einheit="AF-Tage noch möglich"
             felder={[
               {
                 label: `Stand ${formatDE(afFrei.freigeschaltetAb!)}`,
                 wert: `${formatStunden(afFrei.startStunden)} Std.`,
               },
               {
-                label: `+ ${afFrei.arbeitstage} Arbeitstage`,
+                label: `+ ${afFrei.arbeitstage} Schichten`,
                 wert: `${formatStunden(afFrei.stundenAngespart)} Std.`,
               },
-              {
-                label: "− AF-Tage",
-                wert: `${formatDays(afFrei.genommen + afFrei.beantragt)} × 8`,
-              },
+              { label: "Genommen", wert: `${formatDays(afFrei.genommen)} × 8` },
+              { label: "Eingeplant", wert: `${formatDays(afFrei.verplant)} × 8` },
             ]}
             fuss={
               <>
-                Je gearbeitetem Tag kommen 0,83 Std. dazu, je AF-Tag gehen 8 Std. ab. Urlaub,
-                Krankheit und alle anderen freien Tage zählen nicht.
+                Je gearbeiteter Schicht +0,83 Std., je AF-Tag −8 Std. Es zählt nur, was schon
+                angespart ist.{" "}
                 {afFrei.verfuegbar >= 0 ? (
                   <>
-                    {" "}Bis zum nächsten AF-Tag fehlen noch{" "}
+                    Bis zum nächsten AF-Tag fehlen noch{" "}
                     <span className="tnum font-semibold">
                       {formatStunden(Math.max(8 - afFrei.restStunden, 0))} Std.
                     </span>
                   </>
-                ) : null}
-                {afFrei.beantragt > 0
-                  ? ` Davon ${formatDays(afFrei.beantragt)} AF-Tag(e) noch beantragt.`
-                  : ""}
+                ) : (
+                  <span className="font-medium text-warn-fg">
+                    Die eingeplanten AF-Tage brauchen{" "}
+                    {formatStunden(afFrei.verplant * 8 - afFrei.standStunden)} Std. mehr, als heute
+                    angespart sind – neue AF-Tage gehen erst, wenn genug dazugekommen ist.
+                  </span>
+                )}
               </>
             }
           />

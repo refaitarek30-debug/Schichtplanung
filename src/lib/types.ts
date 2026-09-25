@@ -183,13 +183,33 @@ export interface LiveAfKonto {
   startStunden: number;
   arbeitstage: number;
   stundenAngespart: number;
+  /** Schon genommene Tage (vor heute). */
   genommen: number;
   beantragt: number;
-  /** Aktueller Stand in Stunden (nach genommenen und beantragten Tagen). */
+  /** Eingeplante Tage ab heute (genehmigt oder beantragt). */
+  verplant: number;
+  /** Stand heute in Stunden – nur Angespartes, ohne eingeplante Tage. */
   standStunden: number;
-  /** Volle AF-Tage, die noch gehen (je 8 Std.). */
+  /** Tage, die nach allen eingeplanten noch gehen (negativ = überplant). */
   verfuegbar: number;
   /** Stunden über die vollen Tage hinaus. */
+  restStunden: number;
+}
+
+/**
+ * V-Tage als Stundenkonto: Stand zum Stichtag, danach je gearbeiteter
+ * Schicht +0,75 Std., je V-Tag −7,5 Std. Darf ins Minus.
+ */
+export interface LiveVKonto {
+  stichtag: string | null;
+  startStunden: number;
+  arbeitstage: number;
+  angespart: number;
+  genommen: number;
+  verplant: number;
+  standHeute: number;
+  /** V-Tage, die noch gehen, bevor es ins Minus geht. */
+  nochMoeglich: number;
   restStunden: number;
 }
 
@@ -201,6 +221,10 @@ export interface LiveTeamSonderKonto {
   afFreigeschaltet: boolean;
   afVerfuegbar: number;
   afRestStunden: number;
+  afStand: number;
+  vStunden: boolean;
+  vStand: number;
+  vMoeglich: number;
 }
 
 /**
