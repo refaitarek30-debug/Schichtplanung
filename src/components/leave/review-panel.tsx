@@ -223,8 +223,8 @@ export function ReviewPanel({
 
       {role === "shift_leader" ? (
         <p className="border-b border-line bg-surface-muted px-5 py-2 text-[12px] leading-snug text-ink-muted">
-          Du siehst und entscheidest nur die Anträge deiner eigenen Schicht. Deine eigenen Anträge
-          entscheidet die Administration.
+          Du siehst und entscheidest nur die Anträge deiner eigenen Schicht, deine eigenen
+          eingeschlossen.
         </p>
       ) : null}
 

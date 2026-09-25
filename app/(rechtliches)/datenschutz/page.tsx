@@ -207,26 +207,21 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <strong>Vercel</strong> (Vercel, Inc.) – Auslieferung der Anwendung. Die
-            Serverfunktionen dieses Projekts laufen derzeit in der Region{" "}
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">iad1</code>{" "}
-            (Washington, D.C., USA). Dabei werden die zur Beantwortung einer Anfrage
-            nötigen Daten in den USA verarbeitet.
+            Serverfunktionen dieses Projekts laufen in der Region{" "}
+            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">dub1</code>{" "}
+            (Dublin, Irland, Europäische Union), direkt neben der Datenbank. Vercel
+            speichert selbst keine Stamm-, Planungs- oder Abwesenheitsdaten, sondern nur
+            übliche Zugriffsprotokolle.
           </li>
         </Liste>
         <Absatz>
-          <strong>Übermittlung in die USA:</strong> Die Verarbeitung durch Vercel stützt
-          sich auf einen Angemessenheitsbeschluss der Europäischen Kommission
-          (EU-US Data Privacy Framework) beziehungsweise auf Standardvertragsklauseln
-          nach Art. 46 Abs. 2 lit. c DSGVO.
+          <strong>Bezug zu den USA:</strong> Beide Dienstleister sind Unternehmen mit Sitz
+          in den USA. Die Daten werden in der EU verarbeitet; soweit ein Zugriff aus den
+          USA nicht ausgeschlossen werden kann, stützt er sich auf einen
+          Angemessenheitsbeschluss der Europäischen Kommission (EU-US Data Privacy
+          Framework) beziehungsweise auf Standardvertragsklauseln nach Art. 46 Abs. 2
+          lit. c DSGVO.
         </Absatz>
-        <Hinweis titel="Anmerkung an den Betreiber">
-          <p>
-            Die Region der Serverfunktionen lässt sich in Vercel auf{" "}
-            <code>fra1</code> (Frankfurt) umstellen. Dann findet keine Übermittlung in
-            ein Drittland mehr statt und dieser Abschnitt kann entfallen – das ist für
-            deutsche Kunden mit Betriebsrat regelmäßig ein Thema.
-          </p>
-        </Hinweis>
       </Abschnitt>
 
       <Abschnitt titel="8. Speicherdauer">

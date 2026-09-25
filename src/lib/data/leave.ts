@@ -93,7 +93,7 @@ export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
       .order("start_date", { ascending: true })
       .returns<LeaveRequestWithEmployee[]>(),
     // Nur, worüber man entscheiden darf: die Schichtleitung sieht die
-    // eigene Schicht (ohne die eigenen Anträge), die Administration alles.
+    // eigene Schicht (die eigenen Anträge eingeschlossen), die Administration alles.
     // Die Regel steht in der Datenbank (darf_urlaub_entscheiden).
     supabase.rpc("entscheidbare_mitarbeiter"),
   ]);
