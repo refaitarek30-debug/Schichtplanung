@@ -101,22 +101,26 @@ export interface LiveAfUebersichtZeile {
   rotationTeam: string | null;
   birthDate: string | null;
   alterHeute: number | null;
+  /** Stichtag des eingetragenen Stands; null = nicht freigeschaltet. */
   freigeschaltetAb: string | null;
+  startStunden: number;
   arbeitstage: number;
-  stunden: number;
-  tageErworben: number;
-  restStunden: number;
+  stundenAngespart: number;
   genommen: number;
   beantragt: number;
+  standStunden: number;
   verfuegbar: number;
+  restStunden: number;
+  hatProfil: boolean;
 }
 
-/** Altersfreizeit aller aktiven Mitarbeiter als Stundenkonto (nur Admin). */
+/** Altersfreizeit aller aktiven Mitarbeiter als Stundenkonto (Führung). */
 export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
   const { data, error } = await supabase.rpc("af_uebersicht");
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const zahl = (v: unknown) => Number(v ?? 0);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     employeeId: String(r.employee_id),
     employeeName: String(r.employee_name ?? ""),
@@ -124,12 +128,14 @@ export async function fetchAfUebersicht(): Promise<LiveAfUebersichtZeile[]> {
     birthDate: (r.birth_date as string | null) ?? null,
     alterHeute: r.alter_heute === null || r.alter_heute === undefined ? null : Number(r.alter_heute),
     freigeschaltetAb: (r.freigeschaltet_ab as string | null) ?? null,
-    arbeitstage: Number(r.arbeitstage ?? 0),
-    stunden: Number(r.stunden ?? 0),
-    tageErworben: Number(r.tage_erworben ?? 0),
-    restStunden: Number(r.rest_stunden ?? 0),
-    genommen: Number(r.genommen ?? 0),
-    beantragt: Number(r.beantragt ?? 0),
-    verfuegbar: Number(r.verfuegbar ?? 0),
+    startStunden: zahl(r.start_stunden),
+    arbeitstage: zahl(r.arbeitstage),
+    stundenAngespart: zahl(r.stunden_angespart),
+    genommen: zahl(r.genommen),
+    beantragt: zahl(r.beantragt),
+    standStunden: zahl(r.stand_stunden),
+    verfuegbar: zahl(r.verfuegbar),
+    restStunden: zahl(r.rest_stunden),
+    hatProfil: r.hat_profil === true,
   }));
 }

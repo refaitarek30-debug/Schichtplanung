@@ -87,14 +87,12 @@ export const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
-    // Prüfen und Festlegen der Altersfreizeit – ausschließlich durch die
-    // Administration. Die eigene Lage sieht jede Person weiterhin im
-    // Profil. Verbindlich abgewiesen wird die Schichtleitung in
-    // `age_leave_overview()` und `confirm_age_leave()`.
+    // AF-Stundenstand eintragen – Administration und Schichtleitung. Das
+    // Geburtsdatum korrigiert dort nur die Administration (set_birth_date).
     href: "/altersfreizeit",
     label: "Altersfreizeit",
     icon: CakeSlice,
-    roles: ["admin"],
+    roles: ["shift_leader", "admin"],
   },
   {
     // Mitteilungen und Urlaubssperren. Lagen vorher unter Verwaltung →

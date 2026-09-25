@@ -56,35 +56,64 @@ export async function confirmAgeLeave(
 }
 
 /**
- * Altersfreizeit freischalten (mit Datum) oder die Freischaltung aufheben.
- * Ab dem Datum sammelt die Person je gearbeitetem Tag 0,83 Stunden.
+ * AF-Stundenstand eintragen (Administration und Schichtleitung): Stunden zum
+ * Stichtag. Ab dem Folgetag rechnet die Datenbank weiter. „Aufheben" nimmt
+ * die Freischaltung zurück.
  */
-export async function setAfFreischaltung(
-  _prev: FormState,
-  formData: FormData,
-): Promise<FormState> {
+export async function setAfStand(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) {
     return { error: "Supabase ist nicht konfiguriert." };
   }
   const employeeId = String(formData.get("employee_id") ?? "");
   const aufheben = formData.get("aufheben") === "1";
-  const ab = String(formData.get("ab") ?? "").trim();
+  const stichtag = String(formData.get("stichtag") ?? "").trim();
+  const stunden = Number(String(formData.get("stunden") ?? "").replace(",", "."));
 
   if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
-  if (!aufheben && !/^\d{4}-\d{2}-\d{2}$/.test(ab)) {
-    return { error: "Bitte ein Datum angeben, ab dem die Altersfreizeit gilt." };
+  if (!aufheben) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(stichtag)) {
+      return { error: "Bitte das Datum angeben, zu dem der Stand gilt." };
+    }
+    if (!Number.isFinite(stunden)) {
+      return { error: "Bitte den Stundenstand als Zahl angeben, z. B. 34 oder 12,5." };
+    }
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("set_af_freischaltung", {
+  const { error } = await supabase.rpc("set_af_stand", {
     p_employee_id: employeeId,
-    p_ab: aufheben ? null : ab,
+    p_stunden: aufheben ? 0 : stunden,
+    p_stichtag: aufheben ? null : stichtag,
   });
   if (error) {
-    return { error: dataErrorMessage(error) ?? "Die Freischaltung konnte nicht gespeichert werden." };
+    return { error: dataErrorMessage(error) ?? "Der Stand konnte nicht gespeichert werden." };
   }
 
   revalidatePath("/altersfreizeit");
   revalidatePath("/urlaub");
-  return { success: aufheben ? "Freischaltung aufgehoben." : "Altersfreizeit freigeschaltet." };
+  return { success: aufheben ? "Altersfreizeit aufgehoben." : "AF-Stand gespeichert." };
+}
+
+/** Geburtsdatum korrigieren – nur Administration. */
+export async function setBirthDate(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!isSupabaseConfigured) {
+    return { error: "Supabase ist nicht konfiguriert." };
+  }
+  const employeeId = String(formData.get("employee_id") ?? "");
+  const datum = String(formData.get("birth_date") ?? "").trim();
+  if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
+  if (datum && !/^\d{4}-\d{2}-\d{2}$/.test(datum)) {
+    return { error: "Bitte ein gültiges Datum angeben." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_birth_date", {
+    p_employee_id: employeeId,
+    p_birth_date: datum || null,
+  });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Das Geburtsdatum konnte nicht gespeichert werden." };
+  }
+  revalidatePath("/altersfreizeit");
+  revalidatePath("/meine-schichten");
+  return { success: "Geburtsdatum gespeichert." };
 }

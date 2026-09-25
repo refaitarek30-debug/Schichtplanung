@@ -37,10 +37,10 @@ export function MyAgeLeaveHint() {
   if (konto?.freigeschaltetAb) {
     return (
       <Alert tone="success">
-        Altersfreizeit ist seit {formatDE(konto.freigeschaltetAb)} freigeschaltet:{" "}
-        <strong>{formatDays(konto.verfuegbar)} AF-Tage verfügbar</strong>, dazu{" "}
-        {konto.restStunden.toLocaleString("de-DE", { maximumFractionDigits: 2 })} von 7,5 Std.
-        für den nächsten Tag angespart. Details stehen im Urlaubskonto.
+        Altersfreizeit: Stand{" "}
+        {konto.standStunden.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. –{" "}
+        <strong>{formatDays(konto.verfuegbar)} AF-Tage verfügbar</strong> (je Tag 8 Std.). Grundlage
+        ist der Stand vom {formatDE(konto.freigeschaltetAb)}. Details stehen im Urlaubskonto.
       </Alert>
     );
   }

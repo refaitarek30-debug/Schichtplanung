@@ -7,10 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RowSkeleton } from "@/components/ui/skeleton";
-import { setAfFreischaltung } from "@/lib/auth/age-leave-actions";
+import { setAfStand, setBirthDate } from "@/lib/auth/age-leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { DataError } from "@/lib/data/leave";
 import { fetchAfUebersicht, type LiveAfUebersichtZeile } from "@/lib/data/age-leave";
+import { useSession } from "@/context/session";
 import { formatDE, formatDays } from "@/lib/dates";
 
 function std(wert: number): string {
@@ -20,15 +21,20 @@ function std(wert: number): string {
 /**
  * Altersfreizeit als Stundenkonto.
  *
- * Die Administration schaltet frei (mit Datum). Ab dann gibt es je
- * tatsächlich gearbeitetem Tag 0,83 Stunden, je 7,5 Stunden einen AF-Tag.
- * Urlaub, V-Tage, Krankheit, Schulung und alle anderen freien Tage zählen
- * nicht. Das Konto läuft über den Jahreswechsel weiter.
+ * Eingetragen wird der aktuelle Stand in Stunden mit Datum (z. B. aus der
+ * Lohnabrechnung). Darauf baut die Datenbank auf: je tatsächlich
+ * gearbeitetem Tag danach +0,83 Std., je AF-Tag −8 Std.
+ *
+ * Eintragen dürfen Administration und Schichtleitung; das Geburtsdatum
+ * korrigiert nur die Administration.
  */
 export function AgeLeaveTable() {
+  const { role } = useSession();
+  const istAdmin = role === "admin";
   const [zeilen, setZeilen] = useState<LiveAfUebersichtZeile[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
-  const [state, action] = useActionState(setAfFreischaltung, {} as FormState);
+  const [state, action] = useActionState(setAfStand, {} as FormState);
+  const [gebState, gebAction] = useActionState(setBirthDate, {} as FormState);
 
   const laden = useCallback(async () => {
     setFehler(null);
@@ -44,43 +50,41 @@ export function AgeLeaveTable() {
 
   useEffect(() => {
     void laden();
-  }, [laden, state.success]);
+  }, [laden, state.success, gebState.success]);
 
   const freigeschaltet = (zeilen ?? []).filter((z) => z.freigeschaltetAb).length;
-  const ab50 = (zeilen ?? []).filter((z) => (z.alterHeute ?? 0) >= 50 && !z.freigeschaltetAb).length;
-  const heute = new Date();
-  const jahresbeginn = `${heute.getFullYear()}-01-01`;
+  const heute = new Date().toISOString().slice(0, 10);
+
+  const meldung = state.error ?? gebState.error;
+  const erfolg = state.success ?? gebState.success;
 
   return (
     <div className="space-y-4">
       <Alert tone="info">
-        Je <strong>tatsächlich gearbeitetem</strong> Tag gibt es 0,83 Stunden, ab 7,5 Stunden
-        einen AF-Tag. Urlaub, V-Tage, Krankheit und alle anderen freien Tage zählen nicht. Der
-        Rest läuft ins nächste Jahr weiter.
+        Trage den <strong>aktuellen Stand in Stunden</strong> ein, mit dem Datum, zu dem er gilt
+        (z. B. aus der Lohnabrechnung). Ab dem Folgetag kommen je tatsächlich gearbeitetem Tag
+        0,83 Std. dazu, je AF-Tag gehen 8 Std. ab. Auch schon eingeplante AF-Tage nach dem Datum
+        werden abgezogen.
       </Alert>
 
       <Card>
         <CardHeader
           title="Altersfreizeit"
-          hint={
-            zeilen === null
-              ? undefined
-              : `${freigeschaltet} freigeschaltet${ab50 > 0 ? ` · ${ab50} ab 50 ohne Freischaltung` : ""}`
-          }
+          hint={zeilen === null ? undefined : `${freigeschaltet} mit Stundenkonto`}
         />
         {fehler ? (
           <div className="px-5 pt-4">
             <Alert tone="error">{fehler}</Alert>
           </div>
         ) : null}
-        {state.error ? (
+        {meldung ? (
           <div className="px-5 pt-4">
-            <Alert tone="error">{state.error}</Alert>
+            <Alert tone="error">{meldung}</Alert>
           </div>
         ) : null}
-        {state.success ? (
+        {erfolg ? (
           <div className="px-5 pt-4">
-            <Alert tone="success">{state.success}</Alert>
+            <Alert tone="success">{erfolg}</Alert>
           </div>
         ) : null}
 
@@ -110,45 +114,53 @@ export function AgeLeaveTable() {
                     <p className="tnum text-[12px] text-ink-muted">
                       {z.birthDate
                         ? `geb. ${formatDE(z.birthDate)} · ${z.alterHeute} Jahre`
-                        : "Geburtsdatum nicht hinterlegt"}
-                      {(z.alterHeute ?? 0) >= 50 && !z.freigeschaltetAb ? (
-                        <Badge tone="info" className="ml-2">
-                          ab 50 – prüfen
-                        </Badge>
-                      ) : null}
+                        : "Geburtsdatum nicht eingetragen"}
                     </p>
                   </div>
                   {z.freigeschaltetAb ? (
                     <Badge tone={z.verfuegbar < 0 ? "critical" : "ok"}>
-                      {formatDays(z.verfuegbar)} AF-Tage verfügbar
+                      {std(z.standStunden)} Std. · {formatDays(z.verfuegbar)} AF-Tage
                     </Badge>
                   ) : (
-                    <Badge tone="neutral">nicht freigeschaltet</Badge>
+                    <Badge tone="neutral">kein Stand eingetragen</Badge>
                   )}
                 </div>
 
                 {z.freigeschaltetAb ? (
                   <p className="tnum mt-1.5 text-[12px] text-ink-muted">
-                    seit {formatDE(z.freigeschaltetAb)}: {z.arbeitstage} Arbeitstage ={" "}
-                    {std(z.stunden)} Std. → {formatDays(z.tageErworben)} Tage erworben ·{" "}
-                    {formatDays(z.genommen)} genommen · {formatDays(z.beantragt)} beantragt · Rest{" "}
-                    {std(z.restStunden)} von 7,50 Std.
+                    {std(z.startStunden)} Std. am {formatDE(z.freigeschaltetAb)} + {z.arbeitstage}{" "}
+                    Arbeitstage ({std(z.stundenAngespart)} Std.) − {formatDays(z.genommen)} genommene
+                    {z.beantragt > 0 ? ` und ${formatDays(z.beantragt)} beantragte` : ""} AF-Tage × 8
+                    Std. = <span className="font-semibold text-ink">{std(z.standStunden)} Std.</span>
                   </p>
                 ) : null}
 
                 <form action={action} className="mt-2 flex flex-wrap items-center gap-2">
                   <input type="hidden" name="employee_id" value={z.employeeId} />
-                  <label className="text-[12px] text-ink-muted" htmlFor={`ab-${z.employeeId}`}>
-                    freigeschaltet ab
+                  <label className="text-[12px] text-ink-muted" htmlFor={`std-${z.employeeId}`}>
+                    Stand
                   </label>
                   <input
-                    id={`ab-${z.employeeId}`}
-                    name="ab"
+                    id={`std-${z.employeeId}`}
+                    name="stunden"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Std."
+                    defaultValue={z.freigeschaltetAb ? String(z.startStunden).replace(".", ",") : ""}
+                    className="w-20 rounded-lg border border-line bg-surface px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                  />
+                  <label className="text-[12px] text-ink-muted" htmlFor={`am-${z.employeeId}`}>
+                    Std. am
+                  </label>
+                  <input
+                    id={`am-${z.employeeId}`}
+                    name="stichtag"
                     type="date"
-                    defaultValue={z.freigeschaltetAb ?? jahresbeginn}
+                    max={heute}
+                    defaultValue={z.freigeschaltetAb ?? heute}
                     className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm outline-none focus:border-brand-500"
                   />
-                  <SpeichernKnopf text={z.freigeschaltetAb ? "Ändern" : "Freischalten"} />
+                  <SpeichernKnopf text="Speichern" />
                   {z.freigeschaltetAb ? (
                     <button
                       type="submit"
@@ -160,6 +172,28 @@ export function AgeLeaveTable() {
                     </button>
                   ) : null}
                 </form>
+
+                {/* Geburtsdatum korrigieren: nur Administration, und nur wer
+                    schon einen Zugang hat – das Datum hängt am Zugang. */}
+                {istAdmin && z.hatProfil ? (
+                  <details className="mt-1.5">
+                    <summary className="cursor-pointer text-[12px] text-ink-faint hover:text-ink">
+                      Geburtsdatum korrigieren
+                    </summary>
+                    <form action={gebAction} className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <input type="hidden" name="employee_id" value={z.employeeId} />
+                      <input
+                        name="birth_date"
+                        type="date"
+                        max={heute}
+                        defaultValue={z.birthDate ?? ""}
+                        aria-label={`Geburtsdatum von ${z.employeeName}`}
+                        className="rounded-lg border border-line bg-surface px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                      />
+                      <SpeichernKnopf text="Übernehmen" />
+                    </form>
+                  </details>
+                ) : null}
               </div>
             ))
           )}
@@ -167,8 +201,10 @@ export function AgeLeaveTable() {
       </Card>
 
       <p className="text-[12px] leading-snug text-ink-faint">
-        Direkt im Schichtplan eingetragene AF-Tage zählen als genommen. Jede Freischaltung und
-        jede Änderung wird mit Person, Zeitpunkt und altem Wert protokolliert.
+        Sonderurlaub: 4 Tage im Jahr ab dem Jahr nach dem 55. Geburtstag – automatisch aus dem
+        Geburtsdatum. Das Geburtsdatum trägt jede Person einmal selbst ein, danach kann es nur
+        die Administration ändern. Jede Änderung wird mit Person, Zeitpunkt und altem Wert
+        protokolliert.
       </p>
     </div>
   );

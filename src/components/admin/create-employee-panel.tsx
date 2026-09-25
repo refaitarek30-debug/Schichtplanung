@@ -167,10 +167,10 @@ export function CreateEmployeePanel({
               className="mt-0.5 h-4 w-4 rounded border-line accent-brand-500"
             />
             <span className="text-[13px] leading-snug">
-              <span className="block font-medium text-ink">Sonderurlaub berechtigt</span>
+              <span className="block font-medium text-ink">Sonderurlaub auch unter 55</span>
               <span className="text-ink-muted">
-                Erst mit diesem Haken kann diese Person Sonderurlaub beantragen und sieht ihn im
-                Urlaubskonto.
+                Ab dem Jahr nach dem 55. Geburtstag gibt es 4 Tage automatisch. Mit dem Haken
+                bekommt auch eine jüngere Person Sonderurlaub.
               </span>
             </span>
           </label>
