@@ -90,7 +90,7 @@ export const navItems: NavItem[] = [
     // AF-Stundenstand eintragen – Administration und Schichtleitung. Das
     // Geburtsdatum korrigiert dort nur die Administration (set_birth_date).
     href: "/altersfreizeit",
-    label: "Altersfreizeit",
+    label: "AF- & V-Stunden",
     icon: CakeSlice,
     roles: ["shift_leader", "admin"],
   },

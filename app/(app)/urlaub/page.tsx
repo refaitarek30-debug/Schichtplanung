@@ -18,12 +18,14 @@ import {
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
   fetchMyLeaveRequests,
+  fetchMyVKonto,
 } from "@/lib/data/leave";
 import type {
   LiveAfKonto,
   LiveLeaveBalance,
   LiveLeaveKindQuota,
   LiveLeaveRequest,
+  LiveVKonto,
 } from "@/lib/types";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
@@ -40,6 +42,7 @@ export default function LeavePage() {
   const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
   const [quoten, setQuoten] = useState<LiveLeaveKindQuota[] | null>(null);
   const [afKonto, setAfKonto] = useState<LiveAfKonto | null>(null);
+  const [vKonto, setVKonto] = useState<LiveVKonto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const speicherSchluessel = `${profile.id}:urlaub:${year}`;
 
@@ -52,12 +55,14 @@ export default function LeavePage() {
       requests: LiveLeaveRequest[];
       quoten: LiveLeaveKindQuota[] | null;
       afKonto: LiveAfKonto | null;
+      vKonto: LiveVKonto | null;
     }>(speicherSchluessel);
     if (gemerkt) {
       setBalance(gemerkt.balance);
       setRequests(gemerkt.requests);
       setQuoten(gemerkt.quoten);
       setAfKonto(gemerkt.afKonto);
+      setVKonto(gemerkt.vKonto);
     }
     try {
       const [balanceResult, requestsResult] = await Promise.all([
@@ -66,10 +71,13 @@ export default function LeavePage() {
       ]);
       // Sonderurlaub und AF sind Beiwerk: fehlen sie, bleibt das Konto
       // trotzdem sichtbar.
-      const [quotenErgebnis, afErgebnis] = await Promise.allSettled([
+      const [quotenErgebnis, afErgebnis, vErgebnis] = await Promise.allSettled([
         fetchMyLeaveKindQuotas(year),
         fetchMyAfKonto(),
+        fetchMyVKonto(),
       ]);
+      const vWert = vErgebnis.status === "fulfilled" ? vErgebnis.value : null;
+      setVKonto(vWert);
       const quotenWert = quotenErgebnis.status === "fulfilled" ? quotenErgebnis.value : null;
       const afWert = afErgebnis.status === "fulfilled" ? afErgebnis.value : null;
       setBalance(balanceResult);
@@ -81,6 +89,7 @@ export default function LeavePage() {
         requests: requestsResult,
         quoten: quotenWert,
         afKonto: afWert,
+        vKonto: vWert,
       });
     } catch (caught) {
       if (gemerkt) return;
@@ -133,6 +142,7 @@ export default function LeavePage() {
               onYearChange={setYear}
               quoten={quoten}
               afKonto={afKonto}
+              vKonto={vKonto}
             />
           ) : (
             <BalanceCard balance={demoBalance} />

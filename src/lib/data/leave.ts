@@ -12,6 +12,7 @@ import type {
   LiveAutoDay,
   LiveTeamBalance,
   LiveTeamSonderKonto,
+  LiveVKonto,
   LiveLeaveBalance,
   LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
@@ -357,6 +358,7 @@ interface AfKontoRow {
   stunden_angespart: number;
   genommen: number;
   beantragt: number;
+  verplant: number;
   stand_stunden: number;
   verfuegbar: number;
   rest_stunden: number;
@@ -377,6 +379,7 @@ export async function fetchMyAfKonto(): Promise<LiveAfKonto | null> {
     stundenAngespart: Number(row.stunden_angespart ?? 0),
     genommen: Number(row.genommen ?? 0),
     beantragt: Number(row.beantragt ?? 0),
+    verplant: Number(row.verplant ?? 0),
     standStunden: Number(row.stand_stunden ?? 0),
     verfuegbar: Number(row.verfuegbar ?? 0),
     restStunden: Number(row.rest_stunden ?? 0),
@@ -391,6 +394,10 @@ interface TeamSonderRow {
   af_freigeschaltet: boolean;
   af_verfuegbar: number;
   af_rest_stunden: number;
+  af_stand: number;
+  v_stunden: boolean;
+  v_stand: number;
+  v_moeglich: number;
 }
 
 /** Sonderurlaub und Altersfreizeit je Mitarbeiter (nur Führung). */
@@ -408,6 +415,10 @@ export async function fetchTeamSonderKonten(): Promise<Map<string, LiveTeamSonde
       afFreigeschaltet: row.af_freigeschaltet === true,
       afVerfuegbar: Number(row.af_verfuegbar ?? 0),
       afRestStunden: Number(row.af_rest_stunden ?? 0),
+      afStand: Number(row.af_stand ?? 0),
+      vStunden: row.v_stunden === true,
+      vStand: Number(row.v_stand ?? 0),
+      vMoeglich: Number(row.v_moeglich ?? 0),
     });
   }
   return map;
@@ -475,5 +486,27 @@ export async function fetchNaechsterUrlaub(): Promise<LiveNaechsterUrlaub | null
     kalendertage: Number(row.kalendertage ?? 0),
     arten: (row.arten ?? []) as LeaveKind[],
     offen: row.offen === true,
+  };
+}
+
+/** Das eigene V-Stundenkonto; null, wenn V in Tagen geführt wird. */
+export async function fetchMyVKonto(): Promise<LiveVKonto | null> {
+  if (!isSupabaseConfigured) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("my_v_konto");
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const row = ((data ?? []) as Record<string, unknown>[])[0];
+  if (!row || !row.stichtag) return null;
+  const z = (v: unknown) => Number(v ?? 0);
+  return {
+    stichtag: String(row.stichtag),
+    startStunden: z(row.start_stunden),
+    arbeitstage: z(row.arbeitstage),
+    angespart: z(row.angespart),
+    genommen: z(row.genommen),
+    verplant: z(row.verplant),
+    standHeute: z(row.stand_heute),
+    nochMoeglich: z(row.noch_moeglich),
+    restStunden: z(row.rest_stunden),
   };
 }

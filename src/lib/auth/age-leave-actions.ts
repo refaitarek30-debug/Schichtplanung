@@ -56,32 +56,35 @@ export async function confirmAgeLeave(
 }
 
 /**
- * AF-Stundenstand eintragen (Administration und Schichtleitung): Stunden zum
- * Stichtag. Ab dem Folgetag rechnet die Datenbank weiter. „Aufheben" nimmt
- * die Freischaltung zurück.
+ * Stundenstand eintragen (Administration und Schichtleitung) – für die
+ * Altersfreizeit (art = "af") oder die V-Tage (art = "v"). Ab dem Folgetag
+ * rechnet die Datenbank weiter. „Aufheben" nimmt das Konto zurück.
  */
-export async function setAfStand(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function setStundenstand(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) {
     return { error: "Supabase ist nicht konfiguriert." };
   }
   const employeeId = String(formData.get("employee_id") ?? "");
+  const art = String(formData.get("art") ?? "");
   const aufheben = formData.get("aufheben") === "1";
   const stichtag = String(formData.get("stichtag") ?? "").trim();
   const stunden = Number(String(formData.get("stunden") ?? "").replace(",", "."));
 
   if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
+  if (art !== "af" && art !== "v") return { error: "Unbekanntes Konto." };
   if (!aufheben) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(stichtag)) {
       return { error: "Bitte das Datum angeben, zu dem der Stand gilt." };
     }
     if (!Number.isFinite(stunden)) {
-      return { error: "Bitte den Stundenstand als Zahl angeben, z. B. 34 oder 12,5." };
+      return { error: "Bitte den Stundenstand als Zahl angeben, z. B. 34,27." };
     }
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("set_af_stand", {
+  const { error } = await supabase.rpc("set_stundenstand", {
     p_employee_id: employeeId,
+    p_art: art,
     p_stunden: aufheben ? 0 : stunden,
     p_stichtag: aufheben ? null : stichtag,
   });
@@ -91,7 +94,8 @@ export async function setAfStand(_prev: FormState, formData: FormData): Promise<
 
   revalidatePath("/altersfreizeit");
   revalidatePath("/urlaub");
-  return { success: aufheben ? "Altersfreizeit aufgehoben." : "AF-Stand gespeichert." };
+  const name = art === "af" ? "AF" : "V";
+  return { success: aufheben ? `${name}-Stundenkonto aufgehoben.` : `${name}-Stand gespeichert.` };
 }
 
 /** Geburtsdatum korrigieren – nur Administration. */

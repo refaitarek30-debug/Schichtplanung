@@ -27,7 +27,7 @@ const BEREICHE: {
   // Die Menge der Altersfreizeit wird Person für Person festgelegt und
   // gehört damit in die Verwaltung. Die eigene Seite /altersfreizeit
   // bleibt bestehen – dieselbe Tabelle, nur ein zweiter Weg dorthin.
-  { wert: "altersfreizeit", label: "Altersfreizeit", icon: CakeSlice, roles: ["shift_leader", "admin"] },
+  { wert: "altersfreizeit", label: "AF- & V-Stunden", icon: CakeSlice, roles: ["shift_leader", "admin"] },
 ];
 
 /**
