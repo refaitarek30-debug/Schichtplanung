@@ -221,6 +221,13 @@ export function ReviewPanel({
         hint={requests ? `${visible.length} Anträge` : "wird geladen …"}
       />
 
+      {role === "shift_leader" ? (
+        <p className="border-b border-line bg-surface-muted px-5 py-2 text-[12px] leading-snug text-ink-muted">
+          Du siehst und entscheidest nur die Anträge deiner eigenen Schicht. Deine eigenen Anträge
+          entscheidet die Administration.
+        </p>
+      ) : null}
+
       {/* Sammelgenehmigung nur für die Führung und nur, wenn es überhaupt
           etwas zu entscheiden gibt. Die Rollenprüfung hier ist
           Bequemlichkeit – verbindlich weist
