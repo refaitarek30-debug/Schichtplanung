@@ -219,24 +219,13 @@ function LiveView({ role }: { role: string }) {
                             wert: `${formatDays(Math.max(konto.remainingDays, 0))}/${formatDays(konto.entitlement)}`,
                             klasse: "bg-shift-urlaub/15 text-ink",
                           });
-                          // V als Stundenkonto, sobald ein Stand eingetragen ist.
-                          if (!s?.vStunden) {
-                            chips.push({
-                              label: "V",
-                              wert: `${formatDays(konto.vRemainingDays)}/${formatDays(konto.vEntitlement)}`,
-                              klasse:
-                                konto.vRemainingDays < 0
-                                  ? "bg-crit-bg text-crit-fg"
-                                  : "bg-shift-vtag/15 text-ink",
-                            });
-                          }
-                        }
-                        if (s?.vStunden) {
                           chips.push({
                             label: "V",
-                            wert: `${s.vStand.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. · noch ${formatDays(Math.max(s.vMoeglich, 0))}`,
+                            wert: `${formatDays(konto.vRemainingDays)}/${formatDays(konto.vEntitlement)}`,
                             klasse:
-                              s.vMoeglich < 0 ? "bg-crit-bg text-crit-fg" : "bg-shift-vtag/15 text-ink",
+                              konto.vRemainingDays < 0
+                                ? "bg-crit-bg text-crit-fg"
+                                : "bg-shift-vtag/15 text-ink",
                           });
                         }
                         if (s?.suErlaubt) {

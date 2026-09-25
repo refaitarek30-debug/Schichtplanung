@@ -181,6 +181,8 @@ export interface LeaveBalanceViewRow {
   v_remaining_days: number;
   created_at: string;
   updated_at: string;
+  /** Von Hand hinzugefügte (+) oder abgezogene (−) V-Tage. */
+  v_korrektur: number;
 }
 
 export interface LeaveRequestRow {

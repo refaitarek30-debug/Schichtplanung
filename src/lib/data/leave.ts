@@ -12,7 +12,6 @@ import type {
   LiveAutoDay,
   LiveTeamBalance,
   LiveTeamSonderKonto,
-  LiveVKonto,
   LiveLeaveBalance,
   LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
@@ -125,7 +124,7 @@ export async function fetchMyLeaveBalance(
   const { data, error } = await supabase
     .from("leave_balances_view")
     .select(
-      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_used_days, v_pending_days, v_remaining_days",
+      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_korrektur, v_used_days, v_pending_days, v_remaining_days",
     )
     .eq("employee_id", ich.employeeId)
     .eq("year", year)
@@ -145,6 +144,7 @@ export async function fetchMyLeaveBalance(
     remainingDays: data.remaining_days,
     vEntitlement: data.v_entitlement ?? 0,
     vCarriedOver: data.v_carried_over ?? 0,
+    vKorrektur: Number(data.v_korrektur ?? 0),
     vUsedDays: data.v_used_days ?? 0,
     vPendingDays: data.v_pending_days ?? 0,
     vRemainingDays: data.v_remaining_days ?? 0,
@@ -403,9 +403,6 @@ interface TeamSonderRow {
   af_verfuegbar: number;
   af_rest_stunden: number;
   af_stand: number;
-  v_stunden: boolean;
-  v_stand: number;
-  v_moeglich: number;
 }
 
 /** Sonderurlaub und Altersfreizeit je Mitarbeiter (nur Führung). */
@@ -424,9 +421,6 @@ export async function fetchTeamSonderKonten(): Promise<Map<string, LiveTeamSonde
       afVerfuegbar: Number(row.af_verfuegbar ?? 0),
       afRestStunden: Number(row.af_rest_stunden ?? 0),
       afStand: Number(row.af_stand ?? 0),
-      vStunden: row.v_stunden === true,
-      vStand: Number(row.v_stand ?? 0),
-      vMoeglich: Number(row.v_moeglich ?? 0),
     });
   }
   return map;
@@ -494,27 +488,5 @@ export async function fetchNaechsterUrlaub(): Promise<LiveNaechsterUrlaub | null
     kalendertage: Number(row.kalendertage ?? 0),
     arten: (row.arten ?? []) as LeaveKind[],
     offen: row.offen === true,
-  };
-}
-
-/** Das eigene V-Stundenkonto; null, wenn V in Tagen geführt wird. */
-export async function fetchMyVKonto(): Promise<LiveVKonto | null> {
-  if (!isSupabaseConfigured) return null;
-  const supabase = createClient();
-  const { data, error } = await supabase.rpc("my_v_konto");
-  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-  const row = ((data ?? []) as Record<string, unknown>[])[0];
-  if (!row || !row.stichtag) return null;
-  const z = (v: unknown) => Number(v ?? 0);
-  return {
-    stichtag: String(row.stichtag),
-    startStunden: z(row.start_stunden),
-    arbeitstage: z(row.arbeitstage),
-    angespart: z(row.angespart),
-    genommen: z(row.genommen),
-    verplant: z(row.verplant),
-    standHeute: z(row.stand_heute),
-    nochMoeglich: z(row.noch_moeglich),
-    restStunden: z(row.rest_stunden),
   };
 }

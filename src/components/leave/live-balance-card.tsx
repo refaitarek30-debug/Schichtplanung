@@ -1,7 +1,7 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDE, formatDays } from "@/lib/dates";
-import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota, LiveVKonto } from "@/lib/types";
+import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +21,6 @@ export function LiveBalanceCard({
   onYearChange,
   quoten,
   afKonto,
-  vKonto,
 }: {
   balance: LiveLeaveBalance | null;
   /** Angezeigtes Urlaubsjahr – für die Planung des kommenden Jahres. */
@@ -31,8 +30,6 @@ export function LiveBalanceCard({
   quoten?: LiveLeaveKindQuota[] | null;
   /** Altersfreizeit als Stundenkonto; null = nicht freigeschaltet. */
   afKonto?: LiveAfKonto | null;
-  /** V-Tage als Stundenkonto; null = V in Tagen geführt. */
-  vKonto?: LiveVKonto | null;
 }) {
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
@@ -90,11 +87,8 @@ export function LiveBalanceCard({
           ]}
         />
 
-        {vKonto ? (
-          <VStundenBlock konto={vKonto} />
-        ) : (
-          // V-Tage dürfen ins Minus – deshalb steht hier auch ein negativer
-          // Stand, nicht 0.
+        {/* V-Tage in Tagen. Sie dürfen ins Minus – deshalb steht hier auch
+            ein negativer Stand, nicht 0. */}
         <Kontoblock
           farbe="vtag"
           titel="V-Tage"
@@ -106,11 +100,18 @@ export function LiveBalanceCard({
           einheit={balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"}
           minus={balance.vRemainingDays < 0}
           felder={[
+            ...(balance.vKorrektur !== 0
+              ? [
+                  {
+                    label: balance.vKorrektur > 0 ? "Hinzugefügt" : "Abgezogen",
+                    wert: `${balance.vKorrektur > 0 ? "+" : "−"}${formatDays(Math.abs(balance.vKorrektur))}`,
+                  },
+                ]
+              : []),
             { label: "Verbraucht", wert: formatDays(balance.vUsedDays) },
             { label: "Beantragt", wert: formatDays(balance.vPendingDays) },
           ]}
         />
-        )}
 
         {sonderurlaub ? (
           <Kontoblock
@@ -178,117 +179,6 @@ export function LiveBalanceCard({
   );
 }
 
-const V_STUNDEN_JE_TAG = 7.5;
-
-/** Stunden in ganze V-Tage – im Minus wird auf den angebrochenen Tag gerundet. */
-function vTageAus(stunden: number): number {
-  return stunden >= 0
-    ? Math.floor(stunden / V_STUNDEN_JE_TAG + 1e-9)
-    : -Math.ceil(-stunden / V_STUNDEN_JE_TAG - 1e-9);
-}
-
-/**
- * V-Tage aus dem Stundenkonto – in Tagen gezeigt, Stunden nur als Zusatz.
- *
- * Die Leiste zeigt jeden V-Tag als Kästchen: frei, schon eingeplant oder
- * (wenn mehr eingeplant ist als da) im Minus.
- */
-function VStundenBlock({ konto }: { konto: LiveVKonto }) {
-  const guthabenTage = vTageAus(konto.standHeute);
-  const frei = konto.nochMoeglich;
-  const eingeplant = konto.verplant;
-  const imMinus = Math.max(eingeplant - Math.max(guthabenTage, 0), 0);
-  const kaestchen = Math.max(guthabenTage, 0) + imMinus;
-
-  return (
-    <Kontoblock
-      farbe="vtag"
-      titel="V-Tage"
-      untertitel="Freischichten"
-      kopf={`Guthaben ${formatStunden(konto.standHeute)} Std.`}
-      wert={formatDays(frei)}
-      einheit={frei < 0 ? "V-Tage im Minus" : frei === 1 ? "V-Tag frei" : "V-Tage frei"}
-      minus={frei < 0}
-      extra={
-        kaestchen > 0 && kaestchen <= 40 ? (
-          <div className="mt-2">
-            <div className="flex flex-wrap gap-1" aria-hidden>
-              {Array.from({ length: kaestchen }, (_, i) => {
-                const art =
-                  i < Math.max(guthabenTage - eingeplant, 0)
-                    ? "frei"
-                    : i < Math.max(guthabenTage, 0)
-                      ? "geplant"
-                      : "minus";
-                return (
-                  <span
-                    key={i}
-                    className={cn(
-                      "h-4 w-4 rounded-[3px] border",
-                      art === "frei" && "border-shift-vtag bg-shift-vtag",
-                      art === "geplant" && "border-shift-vtag bg-surface",
-                      art === "minus" && "border-crit-fg bg-crit-bg",
-                    )}
-                  />
-                );
-              })}
-            </div>
-            <p className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-ink-muted">
-              <span className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-[2px] bg-shift-vtag" /> frei
-              </span>
-              {eingeplant > 0 ? (
-                <span className="flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-[2px] border border-shift-vtag bg-surface" />{" "}
-                  eingeplant
-                </span>
-              ) : null}
-              {imMinus > 0 ? (
-                <span className="flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-[2px] border border-crit-fg bg-crit-bg" /> im
-                  Minus
-                </span>
-              ) : null}
-            </p>
-          </div>
-        ) : null
-      }
-      felder={[
-        {
-          label: "Guthaben heute",
-          wert: `${formatDays(guthabenTage)} ${Math.abs(guthabenTage) === 1 ? "Tag" : "Tage"}`,
-          unter: `${formatStunden(konto.standHeute)} Std.`,
-        },
-        {
-          label: "Eingeplant",
-          wert: `${formatDays(eingeplant)} ${eingeplant === 1 ? "Tag" : "Tage"}`,
-          unter: `${formatStunden(eingeplant * V_STUNDEN_JE_TAG)} Std.`,
-        },
-        {
-          label: "Genommen",
-          wert: `${formatDays(konto.genommen)} ${konto.genommen === 1 ? "Tag" : "Tage"}`,
-          unter: `seit ${formatDE(konto.stichtag!)}`,
-        },
-      ]}
-      fuss={
-        <>
-          Grundlage: {formatStunden(konto.startStunden)} Std. am {formatDE(konto.stichtag!)}, dazu{" "}
-          {konto.arbeitstage} Schichten × 0,75 Std. (+{formatStunden(konto.angespart)} Std.). Ein
-          V-Tag kostet 7,5 Std.
-          {frei < 0 ? (
-            <span className="font-medium text-crit-fg">
-              {" "}
-              Die eingeplanten V-Tage liegen{" "}
-              {formatStunden(eingeplant * V_STUNDEN_JE_TAG - konto.standHeute)} Std. über dem
-              Guthaben.
-            </span>
-          ) : null}
-        </>
-      }
-    />
-  );
-}
-
 function formatStunden(wert: number): string {
   return wert.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -317,7 +207,6 @@ function Kontoblock({
   einheit,
   minus = false,
   felder,
-  extra,
   fuss,
 }: {
   farbe: keyof typeof farben;
@@ -327,9 +216,7 @@ function Kontoblock({
   wert: string;
   einheit: string;
   minus?: boolean;
-  felder: { label: string; wert: string; unter?: string }[];
-  /** Steht zwischen der großen Zahl und den Feldern. */
-  extra?: React.ReactNode;
+  felder: { label: string; wert: string }[];
   fuss?: React.ReactNode;
 }) {
   const f = farben[farbe];
@@ -358,8 +245,6 @@ function Kontoblock({
         <span className="text-sm text-ink-muted">{einheit}</span>
       </p>
 
-      {extra}
-
       <dl
         className="mt-2.5 grid gap-2 text-center"
         style={{ gridTemplateColumns: `repeat(${Math.min(felder.length, 4)}, minmax(0, 1fr))` }}
@@ -368,9 +253,6 @@ function Kontoblock({
           <div key={feld.label} className="rounded-lg bg-surface/80 px-1.5 py-1.5">
             <dt className="text-[11px] leading-tight text-ink-muted">{feld.label}</dt>
             <dd className="tnum mt-0.5 text-[15px] font-semibold">{feld.wert}</dd>
-            {feld.unter ? (
-              <dd className="tnum text-[11px] leading-tight text-ink-muted">{feld.unter}</dd>
-            ) : null}
           </div>
         ))}
       </dl>
