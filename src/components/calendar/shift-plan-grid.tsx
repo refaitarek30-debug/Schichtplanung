@@ -207,6 +207,7 @@ export function ShiftPlanGrid({
   employeeId = null,
   antragSchalter = true,
   nurLesen = false,
+  personalnummern = false,
 }: {
   companyId: string;
   from: string;
@@ -224,6 +225,11 @@ export function ShiftPlanGrid({
    * zum Beantragen gibt es dort den großen Knopf darüber.
    */
   nurLesen?: boolean;
+  /**
+   * Spalte mit Personalnummern zeigen. Nur im Bereich „Plan" für die
+   * Schichtleitung – auf der Startseite nie, auch nicht für die Führung.
+   */
+  personalnummern?: boolean;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -579,13 +585,16 @@ export function ShiftPlanGrid({
   const offeneGruppen = aufgeklappt ?? standardOffen;
 
   /**
-   * Eigene Spalte für die Personalnummer – nur, wenn es welche gibt. Die
-   * Datenbank liefert sie ausschließlich der Führung; Mitarbeiter sehen
-   * keine Personalnummern von Kollegen und bekommen die Spalte gar nicht.
+   * Eigene Spalte für die Personalnummer – nur, wo sie gewünscht ist
+   * (`personalnummern`) und es welche gibt. Die Datenbank liefert sie
+   * ausschließlich der Führung; Mitarbeiter sehen keine Personalnummern
+   * von Kollegen und bekommen die Spalte gar nicht.
    */
   const mitNummer = useMemo(
-    () => groups.some(([, members]) => members.some((m) => Boolean(m.number))),
-    [groups],
+    () =>
+      personalnummern &&
+      groups.some(([, members]) => members.some((m) => Boolean(m.number))),
+    [groups, personalnummern],
   );
   /** Spalten vor den Tagen: Personalnummer (falls da) und Name. */
   const vorspalten = mitNummer ? 2 : 1;

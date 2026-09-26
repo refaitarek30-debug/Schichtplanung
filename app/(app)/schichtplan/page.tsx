@@ -61,6 +61,7 @@ export default function ShiftPlanPage() {
             days={30}
             canEdit={canEdit}
             employeeId={profile.employeeId}
+            personalnummern={canEdit}
           />
 
           {canEdit ? (
