@@ -12,6 +12,12 @@ type Props = {
   absenceVisibility: "minimal" | "shift";
   sicknessVisibility: "private" | "shift";
   acknowledged: boolean;
+  /**
+   * Betriebsschalter der Administration. Aus: Gründe sehen nur
+   * Schichtleitung und Administration – die Wahl hier wirkt erst wieder,
+   * wenn der Betrieb die Anzeige für Kollegen freigibt.
+   */
+  freigabeAktiv?: boolean;
 };
 
 const initialState: FormState = {};
@@ -20,6 +26,7 @@ export function PrivacySettingsForm({
   absenceVisibility: initialAbsence,
   sicknessVisibility: initialSickness,
   acknowledged,
+  freigabeAktiv = false,
 }: Props) {
   const [state, action] = useActionState(savePrivacySettings, initialState);
   const [absenceVisibility, setAbsenceVisibility] = useState(initialAbsence);
@@ -35,6 +42,14 @@ export function PrivacySettingsForm({
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="privacy_notice_acknowledged" value="on" />
+      {!freigabeAktiv ? (
+        <Alert tone="info">
+          Zurzeit sehen Kolleginnen und Kollegen bei allen nur „Abwesend“. Urlaub,
+          Krankheit und andere Gründe sehen nur Schichtleitung und Administration.
+          Deine Auswahl bleibt gespeichert und gilt, sobald der Betrieb die Anzeige
+          für Kollegen wieder freigibt.
+        </Alert>
+      ) : null}
       <Card>
         <CardHeader
           title="Meine Kollegen sehen"

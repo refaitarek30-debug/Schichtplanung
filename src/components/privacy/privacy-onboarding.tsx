@@ -1,13 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { savePrivacySettings } from "@/lib/auth/privacy-actions";
 import { signOut } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { fetchGruendeFuerKollegen } from "@/lib/data/notifications";
 
 export function PrivacyOnboarding() {
   const [state, action] = useActionState(savePrivacySettings, {} as FormState);
+  // Betriebsschalter: solange er aus ist, sehen Kollegen keine Gründe –
+  // die Wahl hier wird gespeichert, wirkt aber erst nach der Freigabe.
+  const [freigabeAktiv, setFreigabeAktiv] = useState(true);
+  useEffect(() => {
+    fetchGruendeFuerKollegen()
+      .then(setFreigabeAktiv)
+      .catch(() => setFreigabeAktiv(false));
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
@@ -31,6 +40,18 @@ export function PrivacyOnboarding() {
             Damit der Schichtplan übersichtlich bleibt, kannst du selbst festlegen,
             welche Informationen deine Kolleginnen und Kollegen sehen dürfen.
           </p>
+
+          {!freigabeAktiv ? (
+            <div className="rounded-xl border border-line p-4">
+              <p className="text-sm font-medium">Zurzeit gilt im Betrieb</p>
+              <p className="mt-1 text-[13px] leading-snug text-ink-muted">
+                Kolleginnen und Kollegen sehen bei allen nur „Abwesend“. Urlaub,
+                Krankheit und andere Gründe sehen nur Schichtleitung und
+                Administration. Deine Auswahl gilt, sobald der Betrieb die Anzeige
+                wieder freigibt.
+              </p>
+            </div>
+          ) : null}
 
           <div className="rounded-xl bg-surface-muted p-4">
             <p className="text-sm font-medium">Standard</p>

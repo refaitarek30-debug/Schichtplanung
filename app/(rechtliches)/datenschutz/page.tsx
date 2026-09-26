@@ -181,8 +181,11 @@ export default function DatenschutzPage() {
           <li>
             Beschäftigte sehen ihre eigenen Daten und den Schichtplan aller
             Schichtgruppen – bei Kolleginnen und Kollegen nur, dass jemand abwesend
-            ist; den Grund nur, wenn die Person ihn für ihre Schichtgruppe freigegeben
-            hat. Personalnummern sehen nur Schichtleitung und Administration
+            ist. Den Grund (etwa Urlaub oder Krankheit) sehen Kollegen nur, wenn der
+            Betrieb diese Anzeige zulässt und die Person den Grund für ihre
+            Schichtgruppe freigegeben hat; ohne diese Zulassung sehen Gründe nur
+            Schichtleitung und Administration. Personalnummern sehen nur
+            Schichtleitung und Administration
           </li>
           <li>
             die Schichtleitung sieht zusätzlich die Anträge und Abwesenheiten ihres
