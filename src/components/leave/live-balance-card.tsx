@@ -1,6 +1,6 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDE, formatDays } from "@/lib/dates";
+import { formatDays } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -131,40 +131,19 @@ export function LiveBalanceCard({
             farbe="altersfrei"
             titel="Altersfreizeit"
             untertitel="AF"
-            kopf={`Stand heute ${formatStunden(afFrei.standStunden)} Std.`}
+            kopf={`${formatStunden(afFrei.standStunden)} Std. angespart`}
             wert={formatDays(Math.max(afFrei.verfuegbar, 0))}
-            einheit="AF-Tage noch möglich"
+            einheit="Tage verfügbar"
             felder={[
-              {
-                label: `Stand ${formatDE(afFrei.freigeschaltetAb!)}`,
-                wert: `${formatStunden(afFrei.startStunden)} Std.`,
-              },
-              {
-                label: `+ ${afFrei.arbeitstage} Schichten`,
-                wert: `${formatStunden(afFrei.stundenAngespart)} Std.`,
-              },
-              { label: "Genommen", wert: `${formatDays(afFrei.genommen)} × 8` },
-              { label: "Eingeplant", wert: `${formatDays(afFrei.verplant)} × 8` },
+              { label: "Genommen", wert: formatDays(afFrei.genommen) },
+              { label: "Eingeplant", wert: formatDays(afFrei.verplant) },
             ]}
             fuss={
-              <>
-                Je gearbeiteter Schicht +0,83 Std., je AF-Tag −8 Std. Es zählt nur, was schon
-                angespart ist.{" "}
-                {afFrei.verfuegbar >= 0 ? (
-                  <>
-                    Bis zum nächsten AF-Tag fehlen noch{" "}
-                    <span className="tnum font-semibold">
-                      {formatStunden(Math.max(8 - afFrei.restStunden, 0))} Std.
-                    </span>
-                  </>
-                ) : (
-                  <span className="font-medium text-warn-fg">
-                    Die eingeplanten AF-Tage brauchen{" "}
-                    {formatStunden(afFrei.verplant * 8 - afFrei.standStunden)} Std. mehr, als heute
-                    angespart sind – neue AF-Tage gehen erst, wenn genug dazugekommen ist.
-                  </span>
-                )}
-              </>
+              afFrei.verfuegbar < 0 ? (
+                <span className="font-medium text-warn-fg">
+                  Es sind mehr AF-Tage eingeplant, als angespart ist.
+                </span>
+              ) : undefined
             }
           />
         ) : null}
