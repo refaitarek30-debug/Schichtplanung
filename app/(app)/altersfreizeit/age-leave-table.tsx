@@ -25,7 +25,7 @@ function std(wert: number): string {
 }
 
 const ARTEN = {
-  af: { titel: "AF", satz: "0,83", kosten: 8, kostenText: "8", farbe: "border-l-shift-altersfrei" },
+  af: { titel: "AF", farbe: "border-l-shift-altersfrei" },
 } as const;
 
 /**
@@ -207,11 +207,11 @@ function KontoZeile({
   return (
     <div className={cn("rounded-lg border border-l-4 border-line px-2.5 py-2", a.farbe)}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-semibold">{a.titel}-Stunden</span>
+        <span className="text-[13px] font-semibold">Altersfreizeit</span>
         {konto.ab ? (
           <span
             className={cn(
-              "tnum rounded-full px-2 py-0.5 text-[12px] font-medium",
+              "tnum rounded-full px-2.5 py-0.5 text-[15px] font-semibold",
               konto.stand < 0
                 ? "bg-crit-bg text-crit-fg"
                 : ueberplant
@@ -219,7 +219,7 @@ function KontoZeile({
                   : "bg-ok-bg text-ok-fg",
             )}
           >
-            {std(konto.stand)} Std. · noch {formatDays(Math.max(konto.moeglich, 0))} Tage
+            {formatDays(Math.max(konto.moeglich, 0))} Tage frei
           </span>
         ) : (
           <span className="text-[12px] text-ink-faint">kein Stand eingetragen</span>
@@ -227,13 +227,10 @@ function KontoZeile({
       </div>
       {konto.ab ? (
         <p className="tnum mt-1 text-[11px] leading-snug text-ink-muted">
-          {std(konto.start)} am {formatDE(konto.ab)} + {konto.arbeitstage} Schichten ×{" "}
-          {a.satz} ({std(konto.angespart)}) − {formatDays(konto.genommen)} genommen × {a.kostenText}
-          {" "}= <span className="font-semibold text-ink">{std(konto.stand)} Std. heute</span>
-          {konto.verplant > 0 ? ` · ${formatDays(konto.verplant)} Tage eingeplant` : ""}
-          {ueberplant
-            ? ` – eingeplant ist ${std(konto.verplant * a.kosten - konto.stand)} Std. mehr als da`
-            : ""}
+          {std(konto.stand)} Std. angespart
+          {konto.genommen > 0 ? ` · ${formatDays(konto.genommen)} genommen` : ""}
+          {konto.verplant > 0 ? ` · ${formatDays(konto.verplant)} eingeplant` : ""}
+          {ueberplant ? " · mehr eingeplant als angespart" : ""}
         </p>
       ) : null}
       <form action={action} className="mt-1.5 flex flex-wrap items-center gap-1.5">
