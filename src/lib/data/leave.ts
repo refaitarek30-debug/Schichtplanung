@@ -405,6 +405,22 @@ interface TeamSonderRow {
   af_stand: number;
 }
 
+/**
+ * Im Kalenderjahr schon genommene AF-Tage je Person (vergangene Tage).
+ * Die Führung bekommt alle, alle anderen nur sich selbst.
+ */
+export async function fetchAfGenommenJahr(jahr: number): Promise<Map<string, number>> {
+  if (!isSupabaseConfigured) return new Map();
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("af_genommen_jahr", { p_year: jahr });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as { employee_id: string; tage: number }[]) {
+    map.set(row.employee_id, Number(row.tage ?? 0));
+  }
+  return map;
+}
+
 /** Sonderurlaub und Altersfreizeit je Mitarbeiter (nur Führung). */
 export async function fetchTeamSonderKonten(): Promise<Map<string, LiveTeamSonderKonto>> {
   if (!isSupabaseConfigured) return new Map();

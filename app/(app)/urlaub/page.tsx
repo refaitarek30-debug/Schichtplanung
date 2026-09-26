@@ -14,6 +14,7 @@ import { TODAY, requestsOfEmployee, staffingContext } from "@/lib/demo-data";
 import { leaveBalance } from "@/lib/staffing";
 import {
   DataError,
+  fetchAfGenommenJahr,
   fetchMyAfKonto,
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
@@ -40,6 +41,7 @@ export default function LeavePage() {
   const [requests, setRequests] = useState<LiveLeaveRequest[] | null>(null);
   const [quoten, setQuoten] = useState<LiveLeaveKindQuota[] | null>(null);
   const [afKonto, setAfKonto] = useState<LiveAfKonto | null>(null);
+  const [afGenommen, setAfGenommen] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const speicherSchluessel = `${profile.id}:urlaub:${year}`;
 
@@ -52,12 +54,14 @@ export default function LeavePage() {
       requests: LiveLeaveRequest[];
       quoten: LiveLeaveKindQuota[] | null;
       afKonto: LiveAfKonto | null;
+      afGenommen?: number | null;
     }>(speicherSchluessel);
     if (gemerkt) {
       setBalance(gemerkt.balance);
       setRequests(gemerkt.requests);
       setQuoten(gemerkt.quoten);
       setAfKonto(gemerkt.afKonto);
+      setAfGenommen(gemerkt.afGenommen ?? null);
     }
     try {
       const [balanceResult, requestsResult] = await Promise.all([
@@ -66,21 +70,28 @@ export default function LeavePage() {
       ]);
       // Sonderurlaub und AF sind Beiwerk: fehlen sie, bleibt das Konto
       // trotzdem sichtbar.
-      const [quotenErgebnis, afErgebnis] = await Promise.allSettled([
+      const [quotenErgebnis, afErgebnis, genommenErgebnis] = await Promise.allSettled([
         fetchMyLeaveKindQuotas(year),
         fetchMyAfKonto(),
+        fetchAfGenommenJahr(new Date().getFullYear()),
       ]);
+      const genommenWert =
+        genommenErgebnis.status === "fulfilled"
+          ? (genommenErgebnis.value.get(profile.employeeId ?? "") ?? null)
+          : null;
       const quotenWert = quotenErgebnis.status === "fulfilled" ? quotenErgebnis.value : null;
       const afWert = afErgebnis.status === "fulfilled" ? afErgebnis.value : null;
       setBalance(balanceResult);
       setRequests(requestsResult);
       setQuoten(quotenWert);
       setAfKonto(afWert);
+      setAfGenommen(genommenWert);
       inZwischenspeicher(speicherSchluessel, {
         balance: balanceResult,
         requests: requestsResult,
         quoten: quotenWert,
         afKonto: afWert,
+        afGenommen: genommenWert,
       });
     } catch (caught) {
       if (gemerkt) return;
@@ -89,7 +100,7 @@ export default function LeavePage() {
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [mode, year, speicherSchluessel]);
+  }, [mode, year, speicherSchluessel, profile.employeeId]);
 
   useEffect(() => {
     void load();
@@ -133,6 +144,7 @@ export default function LeavePage() {
               onYearChange={setYear}
               quoten={quoten}
               afKonto={afKonto}
+              afGenommenJahr={afGenommen}
             />
           ) : (
             <BalanceCard balance={demoBalance} />

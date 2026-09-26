@@ -1,5 +1,6 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { afTageAusStand } from "@/lib/af";
 import { formatDays } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function LiveBalanceCard({
   onYearChange,
   quoten,
   afKonto,
+  afGenommenJahr,
 }: {
   balance: LiveLeaveBalance | null;
   /** Angezeigtes Urlaubsjahr – für die Planung des kommenden Jahres. */
@@ -30,6 +32,8 @@ export function LiveBalanceCard({
   quoten?: LiveLeaveKindQuota[] | null;
   /** Altersfreizeit als Stundenkonto; null = nicht freigeschaltet. */
   afKonto?: LiveAfKonto | null;
+  /** Im laufenden Jahr schon genommene AF-Tage; null = unbekannt. */
+  afGenommenJahr?: number | null;
 }) {
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
@@ -132,19 +136,14 @@ export function LiveBalanceCard({
             titel="Altersfreizeit"
             untertitel="AF"
             kopf={`${formatStunden(afFrei.standStunden)} Std. angespart`}
-            wert={formatDays(Math.max(afFrei.verfuegbar, 0))}
+            wert={formatDays(afTageAusStand(afFrei.standStunden))}
             einheit="Tage verfügbar"
             felder={[
-              { label: "Genommen", wert: formatDays(afFrei.genommen) },
-              { label: "Eingeplant", wert: formatDays(afFrei.verplant) },
+              {
+                label: `Genommen ${jetzt}`,
+                wert: afGenommenJahr === null || afGenommenJahr === undefined ? "–" : formatDays(afGenommenJahr),
+              },
             ]}
-            fuss={
-              afFrei.verfuegbar < 0 ? (
-                <span className="font-medium text-warn-fg">
-                  Es sind mehr AF-Tage eingeplant, als angespart ist.
-                </span>
-              ) : undefined
-            }
           />
         ) : null}
 
