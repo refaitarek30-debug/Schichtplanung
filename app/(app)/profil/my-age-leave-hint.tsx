@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { fetchMyAgeLeave } from "@/lib/data/age-leave";
 import { fetchMyAfKonto } from "@/lib/data/leave";
+import { afTageAusStand } from "@/lib/af";
 import { formatDE, formatDays } from "@/lib/dates";
 import type { LiveAfKonto, LiveMyAgeLeave } from "@/lib/types";
 
@@ -39,7 +40,7 @@ export function MyAgeLeaveHint() {
       <Alert tone="success">
         Altersfreizeit: Stand{" "}
         {konto.standStunden.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. –{" "}
-        <strong>{formatDays(konto.verfuegbar)} AF-Tage verfügbar</strong> (je Tag 8 Std.). Grundlage
+        <strong>{formatDays(afTageAusStand(konto.standStunden))} AF-Tage verfügbar</strong> (je Tag 8 Std.). Grundlage
         ist der Stand vom {formatDE(konto.freigeschaltetAb)}. Details stehen im Urlaubskonto.
       </Alert>
     );

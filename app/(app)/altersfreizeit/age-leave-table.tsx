@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { setBirthDate, setStundenstand, vTageBuchen } from "@/lib/auth/age-leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
-import { DataError } from "@/lib/data/leave";
+import { DataError, fetchAfGenommenJahr } from "@/lib/data/leave";
+import { afTageAusStand } from "@/lib/af";
 import {
   fetchAfUebersicht,
   fetchVTageUebersicht,
@@ -46,6 +47,7 @@ export function AgeLeaveTable() {
   const istAdmin = role === "admin";
   const [zeilen, setZeilen] = useState<LiveAfUebersichtZeile[] | null>(null);
   const [vTage, setVTage] = useState<Map<string, LiveVTageZeile>>(new Map());
+  const [afGenommen, setAfGenommen] = useState<Map<string, number>>(new Map());
   const jetzt = new Date().getFullYear();
   const [jahr, setJahr] = useState(jetzt);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -56,16 +58,21 @@ export function AgeLeaveTable() {
   const laden = useCallback(async () => {
     setFehler(null);
     try {
-      const [af, v] = await Promise.all([fetchAfUebersicht(), fetchVTageUebersicht(jahr)]);
+      const [af, v, genommen] = await Promise.all([
+        fetchAfUebersicht(),
+        fetchVTageUebersicht(jahr),
+        fetchAfGenommenJahr(jetzt),
+      ]);
       setZeilen(af);
       setVTage(v);
+      setAfGenommen(genommen);
     } catch (caught) {
       setZeilen([]);
       setFehler(
         caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, [jahr]);
+  }, [jahr, jetzt]);
 
   useEffect(() => {
     void laden();
@@ -141,6 +148,8 @@ export function AgeLeaveTable() {
                   <KontoZeile
                     art="af"
                     konto={z.af}
+                    genommenJahr={afGenommen.get(z.employeeId) ?? 0}
+                    jahr={jetzt}
                     employeeId={z.employeeId}
                     heute={heute}
                     action={action}
@@ -192,18 +201,21 @@ export function AgeLeaveTable() {
 function KontoZeile({
   art,
   konto,
+  genommenJahr,
+  jahr,
   employeeId,
   heute,
   action,
 }: {
   art: "af";
   konto: LiveStundenkontoKurz;
+  genommenJahr: number;
+  jahr: number;
   employeeId: string;
   heute: string;
   action: (form: FormData) => void;
 }) {
   const a = ARTEN[art];
-  const ueberplant = konto.ab !== null && konto.moeglich < 0;
   return (
     <div className={cn("rounded-lg border border-l-4 border-line px-2.5 py-2", a.farbe)}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -212,14 +224,10 @@ function KontoZeile({
           <span
             className={cn(
               "tnum rounded-full px-2.5 py-0.5 text-[15px] font-semibold",
-              konto.stand < 0
-                ? "bg-crit-bg text-crit-fg"
-                : ueberplant
-                  ? "bg-warn-bg text-warn-fg"
-                  : "bg-ok-bg text-ok-fg",
+              konto.stand < 0 ? "bg-crit-bg text-crit-fg" : "bg-ok-bg text-ok-fg",
             )}
           >
-            {formatDays(Math.max(konto.moeglich, 0))} Tage frei
+            {formatDays(afTageAusStand(konto.stand))} Tage verfügbar
           </span>
         ) : (
           <span className="text-[12px] text-ink-faint">kein Stand eingetragen</span>
@@ -227,10 +235,7 @@ function KontoZeile({
       </div>
       {konto.ab ? (
         <p className="tnum mt-1 text-[11px] leading-snug text-ink-muted">
-          {std(konto.stand)} Std. angespart
-          {konto.genommen > 0 ? ` · ${formatDays(konto.genommen)} genommen` : ""}
-          {konto.verplant > 0 ? ` · ${formatDays(konto.verplant)} eingeplant` : ""}
-          {ueberplant ? " · mehr eingeplant als angespart" : ""}
+          {std(konto.stand)} Std. angespart · {formatDays(genommenJahr)} genommen {jahr}
         </p>
       ) : null}
       <form action={action} className="mt-1.5 flex flex-wrap items-center gap-1.5">

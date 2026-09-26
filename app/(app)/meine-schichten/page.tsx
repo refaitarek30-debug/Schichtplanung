@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { TODAY, employeesOfShift } from "@/lib/demo-data";
 import { formatDE, formatDays } from "@/lib/dates";
+import { afTageAusStand } from "@/lib/af";
 import { fetchTeamBalances, fetchTeamSonderKonten } from "@/lib/data/leave";
 import { ShiftLeaveList } from "@/components/leave/shift-leave-list";
 import { fetchEmployees } from "@/lib/data/employees";
@@ -238,13 +239,12 @@ function LiveView({ role }: { role: string }) {
                         if (s?.afFreigeschaltet) {
                           chips.push({
                             label: "AF",
-                            wert: `${s.afStand.toLocaleString("de-DE", { maximumFractionDigits: 2 })} Std. · noch ${formatDays(Math.max(s.afVerfuegbar, 0))}`,
+                            // Nur der aktuelle Stand – eingeplante Tage zählen hier nicht.
+                            wert: `${formatDays(afTageAusStand(s.afStand))} Tage`,
                             klasse:
                               s.afStand < 0
                                 ? "bg-crit-bg text-crit-fg"
-                                : s.afVerfuegbar < 0
-                                  ? "bg-warn-bg text-warn-fg"
-                                  : "bg-shift-altersfrei/15 text-ink",
+                                : "bg-shift-altersfrei/15 text-ink",
                           });
                         }
                         if (chips.length === 0) return null;
