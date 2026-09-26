@@ -42,14 +42,12 @@ import {
   absences as demoAbsences,
   announcements as demoAnnouncements,
   allPendingRequests,
-  holidays,
   pendingRequestsForShift,
   requestsOfEmployee,
-  shifts,
   staffingContext,
 } from "@/lib/demo-data";
-import { dayStatus, leaveBalance, shiftRunsOn } from "@/lib/staffing";
-import { addDays, formatDE, formatDays, fromISO, weekdayLong } from "@/lib/dates";
+import { dayStatus, leaveBalance } from "@/lib/staffing";
+import { addDays, formatDE, formatDays, fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
@@ -67,18 +65,6 @@ interface StartStand {
   announcements: LiveAnnouncement[] | null;
   blocks: LiveLeaveBlock[];
   shiftNames: Map<string, string>;
-}
-
-/** Nächster Tag, an dem überhaupt produziert wird – für Wochenenden und Feiertage. */
-function nextProductionDay(from: string): string {
-  let cursor = from;
-  for (let i = 0; i < 10; i += 1) {
-    if (shifts.some((s) => s.code !== "FREI" && shiftRunsOn(s, cursor, holidays))) {
-      return cursor;
-    }
-    cursor = addDays(cursor, 1);
-  }
-  return from;
 }
 
 function greeting(): string {
@@ -101,8 +87,6 @@ export default function DashboardPage() {
     (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub"),
     [versteckt],
   );
-  const reference = nextProductionDay(TODAY);
-  const isToday = reference === TODAY;
 
   const speicherSchluessel = `${profile.id}:startseite`;
   const [gemerkt] = useState(() => ausZwischenspeicher<StartStand>(speicherSchluessel));
@@ -316,11 +300,6 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
             {greeting()}, {profile.firstName} 👋
           </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            {isToday
-              ? "Hier ist dein Überblick für heute."
-              : `Heute wird nicht produziert. Der Überblick zeigt den nächsten Produktionstag, ${weekdayLong(reference)}, den ${formatDE(reference)}.`}
-          </p>
         </div>
         {mode === "live" ? (
           <TileSettings
