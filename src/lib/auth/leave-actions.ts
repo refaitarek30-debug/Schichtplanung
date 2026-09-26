@@ -112,26 +112,43 @@ export async function submitLeaveRequest(
   };
 }
 
-export async function withdrawMyLeaveRequest(requestId: string): Promise<FormState> {
+/**
+ * Einen Antrag zurücknehmen – Urlaub, V-Tag, Sonderurlaub und alle anderen
+ * Antragsarten, als Ganzes, wie er gestellt wurde.
+ *
+ * Wer darf, entscheidet ausschließlich `antrag_zuruecknehmen()` in der
+ * Datenbank: die Person selbst (offen immer, genehmigt bis zum Beginn) und
+ * die Führung, die über sie entscheiden darf. Dort entsteht auch die
+ * Benachrichtigung – an die zuständige Führung bzw. an die Person. Konto,
+ * Plan und Besetzung rechnen nur mit offenen und genehmigten Anträgen und
+ * stimmen danach von selbst.
+ */
+export async function zuruecknehmenAction(requestId: string, grund?: string): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
   const supabase = await createClient();
   const { error } = await supabase
-    .rpc("withdraw_leave_request", { p_request_id: requestId })
+    .rpc("antrag_zuruecknehmen", {
+      p_request_id: requestId,
+      p_grund: grund?.trim() ? grund.trim() : null,
+    })
     .returns<LeaveRequestRow>();
 
   if (error) {
-    return {
-      error: error.message?.includes("nicht mehr zurückziehen")
-        ? "Dieser Antrag lässt sich nicht mehr zurückziehen."
-        : dataErrorMessage(error) ?? "Zurückziehen fehlgeschlagen.",
-    };
+    return { error: dataErrorMessage(error) ?? "Zurücknehmen fehlgeschlagen." };
   }
 
   revalidatePath("/urlaub");
   revalidatePath("/dashboard");
   revalidatePath("/urlaubsantraege");
-  return { success: "Antrag zurückgezogen." };
+  revalidatePath("/schichtplan");
+  return { success: "Zurückgenommen. Die Tage stehen wieder im Plan." };
+}
+
+/** Eigenen Antrag zurückziehen – derselbe Weg wie oben. */
+export async function withdrawMyLeaveRequest(requestId: string): Promise<FormState> {
+  const ergebnis = await zuruecknehmenAction(requestId);
+  return ergebnis.error ? ergebnis : { success: "Antrag zurückgezogen." };
 }
 
 export async function decideLeaveRequestAction(

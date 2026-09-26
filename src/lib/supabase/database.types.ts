@@ -204,6 +204,10 @@ export interface LeaveRequestRow {
   updated_at: string;
   /** Klammer um die Zeilen einer Einreichung; null = steht allein. */
   request_group_id?: string | null;
+  /** Rücknahme: nur bei status = withdrawn gesetzt. */
+  withdrawn_at?: string | null;
+  withdrawn_by?: string | null;
+  withdrawal_reason?: string | null;
 }
 
 /** Antrag inklusive Name/Schicht der antragstellenden Person – für die Führungsansicht. */

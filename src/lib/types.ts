@@ -129,7 +129,17 @@ export interface LiveLeaveRequest {
   reviewedAt: string | null;
   /** Wer entschieden hat (Vor- und Nachname), sonst null. */
   reviewerName?: string | null;
-  createdAt: string;  /** Art des Antrags. Steht seit den neuen Antragsarten in jeder Zeile. */
+  /** Zeitpunkt der Antragstellung (created_at, mit Uhrzeit). */
+  createdAt: string;
+  /** Zurückgenommen am – nur bei status = withdrawn und seit der Rücknahme-Funktion. */
+  withdrawnAt: string | null;
+  /** Profil, das zurückgenommen hat: die Person selbst oder die Führung. */
+  withdrawnBy: string | null;
+  /** Name dessen, der zurückgenommen hat (sofern lesbar). */
+  withdrawerName?: string | null;
+  /** Freiwilliger Grund der Rücknahme. */
+  withdrawalReason: string | null;
+  /** Art des Antrags. Steht seit den neuen Antragsarten in jeder Zeile. */
   kind: LeaveKind;
   /**
    * Klammer um die Zeilen EINER Einreichung. Ein Zeitraum zerfällt in der
@@ -279,6 +289,8 @@ export interface LiveShiftPlanCell {
   shiftCode: string | null;
   absenceCode: string | null;
   isMe: boolean;
+  /** Azubi – steht im Plan, zählt aber nicht zur Besetzung. */
+  isApprentice: boolean;
 }
 
 /**

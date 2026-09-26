@@ -69,8 +69,63 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
   return "Das hat nicht geklappt. Bitte später erneut versuchen.";
 }
 
+type FehlerInfo = { message?: string; code?: string; status?: number } | null | undefined;
+
+/**
+ * Meldung, wenn der Dienst tatsächlich überlastet oder nicht erreichbar ist.
+ * Ohne technische Einzelheiten – die helfen der Person vor dem Bildschirm
+ * nicht weiter.
+ */
+export const STOERUNG_MELDUNG =
+  "Der Dienst ist gerade überlastet oder nicht erreichbar. Bitte in einigen Minuten erneut versuchen.";
+
+/**
+ * Ist das eine echte, vorübergehende Kapazitäts- oder Verbindungsstörung?
+ *
+ * Nur dann soll „bitte später erneut versuchen“ erscheinen. Viele
+ * gleichzeitige Benutzer sind für sich kein Fehler – die App kennt keine
+ * eigene Benutzergrenze. Gezählt wird ausschließlich, was Datenbank,
+ * PostgREST oder das Netz selbst als Überlastung oder Ausfall melden:
+ *   * HTTP 429 (Rate-Limit), 502/503/504 (Gateway, Dienst weg, Zeitüberschreitung)
+ *   * PGRST000–003: keine Verbindung zur Datenbank, Verbindungspool erschöpft
+ *   * Postgres 53xxx (zu wenig Ressourcen, z. B. 53300 zu viele Verbindungen),
+ *     08xxx (Verbindung abgebrochen), 57014 (Zeitlimit), 57P01–03 (Neustart)
+ *   * Netzfehler des Browsers (Failed to fetch, Load failed …)
+ * Eine Geschäftsregel aus der Datenbank (P0001) ist nie eine Störung.
+ */
+export function istVoruebergehendeStoerung(error: FehlerInfo): boolean {
+  if (!error) return false;
+  const code = (error.code ?? "").toUpperCase();
+  if (code === "P0001") return false;
+  const status = error.status ?? 0;
+  if (status === 429 || status === 502 || status === 503 || status === 504) return true;
+  if (/^PGRST00[0-3]$/.test(code)) return true;
+  if (/^(53|08)/.test(code)) return true;
+  if (code === "57014" || /^57P0[1-3]$/.test(code)) return true;
+  const message = (error.message ?? "").toLowerCase();
+  return [
+    "failed to fetch",
+    "fetch failed",
+    "networkerror",
+    "network request failed",
+    "load failed",
+    "timed out",
+    "timeout",
+    "too many connections",
+    "too many requests",
+    "rate limit",
+    "service unavailable",
+    "bad gateway",
+    "gateway timeout",
+    "upstream",
+    "econnreset",
+    "econnrefused",
+    "socket hang up",
+  ].some((muster) => message.includes(muster));
+}
+
 /** Fehler bei Datenzugriffen – inklusive abgewiesener RLS-Zugriffe. */
-export function dataErrorMessage(error: { message?: string; code?: string } | null) {
+export function dataErrorMessage(error: FehlerInfo | null) {
   if (!error) return null;
   const code = error.code ?? "";
   const message = (error.message ?? "").toLowerCase();
@@ -80,6 +135,9 @@ export function dataErrorMessage(error: { message?: string; code?: string } | nu
   }
   if (code === "PGRST301" || message.includes("jwt expired")) {
     return "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.";
+  }
+  if (istVoruebergehendeStoerung(error)) {
+    return STOERUNG_MELDUNG;
   }
   if (code === "23505") {
     return "Dieser Eintrag existiert bereits.";

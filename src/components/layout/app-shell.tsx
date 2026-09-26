@@ -5,6 +5,7 @@ import { LegalFooter } from "./legal-footer";
 import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
 import { MobileNav } from "./mobile-nav";
+import { ShellMain } from "./shell-main";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 
@@ -17,11 +18,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-8 pt-6 sm:px-6">
+        <ShellMain>
           <InstallHint />
           <DataModeNotice />
           {children}
-        </main>
+        </ShellMain>
         {/* Impressum und Datenschutz aus jeder Seite erreichbar. Der
             untere Rand liegt über der Handy-Navigation, damit der Footer
             dort nicht darunter verschwindet. */}

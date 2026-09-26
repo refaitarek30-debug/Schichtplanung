@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useAktualisierung } from "@/lib/live-refresh";
-import { Check, Search, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { Check, Search, ShieldCheck, TriangleAlert, Undo2, X } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -15,9 +15,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { RowSkeleton } from "@/components/ui/skeleton";
-import { formatDays, formatRange } from "@/lib/dates";
-import { decideLeaveRequestAction } from "@/lib/auth/leave-actions";
-import { fetchSammelKandidaten, sicherGenehmigen } from "@/lib/data/leave";
+import { formatDays, formatRange, formatZeitpunkt, heuteInBerlin } from "@/lib/dates";
+import { decideLeaveRequestAction, zuruecknehmenAction } from "@/lib/auth/leave-actions";
+import { DataError, fetchSammelKandidaten, sicherGenehmigen } from "@/lib/data/leave";
+import { meldeEigeneAenderung } from "@/lib/live-refresh";
 import {
   fetchLeaveImpact,
   fetchLeaveStaffingDetail,
@@ -46,6 +47,10 @@ export function ReviewPanel({
   const [search, setSearch] = useState("");
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  /** Genehmigten Antrag zurücknehmen: welcher, und mit welchem Grund. */
+  const [zuruecknehmen, setZuruecknehmen] = useState<string | null>(null);
+  const [ruecknahmeGrund, setRuecknahmeGrund] = useState("");
+  const heute = heuteInBerlin();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -189,11 +194,36 @@ export function ReviewPanel({
               : `${genehmigt} ${genehmigt === 1 ? "Antrag" : "Anträge"} genehmigt, ${uebersprungen} ${uebersprungen === 1 ? "bleibt" : "bleiben"} ausstehend.`,
         );
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "Die Sammelgenehmigung ist fehlgeschlagen.");
+        // Nur die eigenen, verständlichen Meldungen durchreichen – nie einen
+        // technischen Fehlertext.
+        setError(
+          caught instanceof DataError ? caught.message : "Die Sammelgenehmigung ist fehlgeschlagen.",
+        );
       }
       setFortschritt(null);
       setBusyId(null);
       onChanged();
+    });
+  }
+
+  /**
+   * Einen genehmigten Antrag zurücknehmen. Die Datenbank prüft, ob man über
+   * die Person entscheiden darf und ob der Zeitraum noch nicht begonnen hat,
+   * setzt den Antrag auf „zurückgezogen“ und benachrichtigt die Person.
+   */
+  function ruecknahme(id: string) {
+    setError(null);
+    setHinweis(null);
+    setBusyId(id);
+    startTransition(async () => {
+      const result = await zuruecknehmenAction(id, ruecknahmeGrund);
+      if (result.error) setError(result.error);
+      else setHinweis(result.success ?? null);
+      setBusyId(null);
+      setZuruecknehmen(null);
+      setRuecknahmeGrund("");
+      onChanged();
+      if (!result.error) meldeEigeneAenderung(["antraege"]);
     });
   }
 
@@ -310,6 +340,11 @@ export function ReviewPanel({
           <Alert tone="error">{error}</Alert>
         </div>
       ) : null}
+      {hinweis && !(darfEntscheiden && offeneAnzahl > 0) ? (
+        <div className="px-5 pt-4">
+          <Alert tone="success">{hinweis}</Alert>
+        </div>
+      ) : null}
 
       <CardBody className="space-y-3 px-3 py-3">
         {loading ? (
@@ -345,6 +380,9 @@ export function ReviewPanel({
                       Grund: {request.rejectionReason}
                     </p>
                   ) : null}
+                  <p className="tnum mt-1 text-[12px] text-ink-faint">
+                    Antrag gestellt am {formatZeitpunkt(request.createdAt)}
+                  </p>
                 </div>
                 <Badge tone={leaveStatusTone[request.status]}>
                   {leaveStatusLabel[request.status]}
@@ -398,6 +436,47 @@ export function ReviewPanel({
                       onClick={() => setRejecting(request.id)}
                     >
                       <X className="h-4 w-4" /> Ablehnen
+                    </Button>
+                  </div>
+                )
+              ) : null}
+
+              {/* Genehmigt und noch nicht begonnen: zurücknehmen. Hat der
+                  Zeitraum schon begonnen, entfernt man einzelne Tage im
+                  Schichtplan. */}
+              {darfEntscheiden && request.status === "approved" && request.startDate > heute ? (
+                zuruecknehmen === request.id ? (
+                  <div className="mt-3 space-y-2">
+                    <Input
+                      value={ruecknahmeGrund}
+                      onChange={(e) => setRuecknahmeGrund(e.target.value)}
+                      placeholder="Grund (optional) – steht in der Mitteilung an die Person"
+                      maxLength={300}
+                      autoFocus
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="danger"
+                        disabled={pending && busyId === request.id}
+                        onClick={() => ruecknahme(request.actionId)}
+                      >
+                        Ja, zurücknehmen
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setZuruecknehmen(null);
+                          setRuecknahmeGrund("");
+                        }}
+                      >
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <Button variant="ghost" onClick={() => setZuruecknehmen(request.id)}>
+                      <Undo2 className="h-4 w-4" /> Zurücknehmen
                     </Button>
                   </div>
                 )

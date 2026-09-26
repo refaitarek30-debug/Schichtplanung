@@ -36,7 +36,13 @@ export interface LeaveRequestGroup {
   rejectionReason: string | null;
   reviewedAt: string | null;
   reviewerName: string | null;
+  /** Antrag gestellt am – der früheste Zeitpunkt der Teile. */
   createdAt: string;
+  /** Zurückgenommen am/von/weil – nur bei status = withdrawn. */
+  withdrawnAt: string | null;
+  withdrawnBy: string | null;
+  withdrawerName: string | null;
+  withdrawalReason: string | null;
   /** Die einzelnen Zeilen, falls jemand es genau wissen will. */
   parts: LiveLeaveRequest[];
 }
@@ -96,7 +102,16 @@ export function gruppiereAntraege(requests: LiveLeaveRequest[]): LeaveRequestGro
       rejectionReason: sortiert.find((t) => t.rejectionReason)?.rejectionReason ?? null,
       reviewedAt: erster.reviewedAt,
       reviewerName: erster.reviewerName ?? null,
-      createdAt: erster.createdAt,
+      // Die Teile einer Einreichung entstehen im selben Augenblick; der
+      // früheste Zeitpunkt ist der Moment der Antragstellung.
+      createdAt: sortiert.reduce(
+        (frueh, t) => (t.createdAt < frueh ? t.createdAt : frueh),
+        erster.createdAt,
+      ),
+      withdrawnAt: sortiert.find((t) => t.withdrawnAt)?.withdrawnAt ?? null,
+      withdrawnBy: sortiert.find((t) => t.withdrawnBy)?.withdrawnBy ?? null,
+      withdrawerName: sortiert.find((t) => t.withdrawerName)?.withdrawerName ?? null,
+      withdrawalReason: sortiert.find((t) => t.withdrawalReason)?.withdrawalReason ?? null,
       parts: sortiert,
     });
   }

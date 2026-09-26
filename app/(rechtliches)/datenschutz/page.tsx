@@ -179,8 +179,10 @@ export default function DatenschutzPage() {
         <Absatz>Innerhalb eines Unternehmens gilt:</Absatz>
         <Liste>
           <li>
-            Beschäftigte sehen ihre eigenen Daten und den Schichtplan ihrer eigenen
-            Schichtgruppe
+            Beschäftigte sehen ihre eigenen Daten und den Schichtplan aller
+            Schichtgruppen – bei Kolleginnen und Kollegen nur, dass jemand abwesend
+            ist; den Grund nur, wenn die Person ihn für ihre Schichtgruppe freigegeben
+            hat. Personalnummern sehen nur Schichtleitung und Administration
           </li>
           <li>
             die Schichtleitung sieht zusätzlich die Anträge und Abwesenheiten ihres
