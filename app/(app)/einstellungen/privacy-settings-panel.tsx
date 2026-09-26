@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PrivacySettingsForm } from "@/components/privacy/privacy-settings-form";
 import { createClient } from "@/lib/supabase/client";
 import { dataErrorMessage } from "@/lib/errors";
+import { fetchGruendeFuerKollegen } from "@/lib/data/notifications";
 
 export function PrivacySettingsPanel() {
   const [settings, setSettings] = useState<{
@@ -12,6 +13,7 @@ export function PrivacySettingsPanel() {
     accepted_at: string | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [freigabeAktiv, setFreigabeAktiv] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -25,7 +27,11 @@ export function PrivacySettingsPanel() {
           .maybeSingle();
 
         if (loadError) throw loadError;
-        if (active) setSettings(data);
+        const freigabe = await fetchGruendeFuerKollegen();
+        if (active) {
+          setSettings(data);
+          setFreigabeAktiv(freigabe);
+        }
       } catch (err) {
         if (active) {
           // Keine rohen Datenbanktexte auf den Bildschirm: die enthalten
@@ -64,6 +70,7 @@ export function PrivacySettingsPanel() {
       absenceVisibility={settings.absence_visibility}
       sicknessVisibility={settings.sickness_visibility}
       acknowledged={Boolean(settings.accepted_at)}
+      freigabeAktiv={freigabeAktiv}
     />
   );
 }

@@ -124,3 +124,16 @@ export async function fetchWorkOnHolidays(): Promise<boolean> {
   const row = (data ?? [])[0] as { work_on_holidays: boolean } | undefined;
   return row?.work_on_holidays ?? true;
 }
+
+/**
+ * Dürfen Kollegen Abwesenheitsgründe sehen (sofern die Person sie
+ * freigibt)? Betriebsschalter der Administration, Vorgabe „nein":
+ * dann sieht nur die Führung Urlaub, Krank & Co., Kollegen nur „Abwesend".
+ */
+export async function fetchGruendeFuerKollegen(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("gruende_fuer_kollegen_erlaubt");
+  if (error) return false;
+  return data === true;
+}

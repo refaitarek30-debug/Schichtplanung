@@ -64,3 +64,27 @@ export async function setWorkOnHolidays(value: boolean): Promise<FormState> {
       : "An Feiertagen wird nicht mehr geplant.",
   };
 }
+
+/**
+ * Abwesenheitsgründe für Kollegen freigeben oder sperren (nur Admin).
+ * Gesperrt sehen Beschäftigte bei anderen nur „Abwesend" – egal, was die
+ * Person in ihren Datenschutz-Einstellungen gewählt hat.
+ */
+export async function setGruendeFuerKollegen(value: boolean): Promise<FormState> {
+  if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_gruende_fuer_kollegen", { p_value: value });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Einstellung konnte nicht gespeichert werden." };
+  }
+
+  revalidatePath("/verwaltung");
+  revalidatePath("/schichtplan");
+  revalidatePath("/dashboard");
+  return {
+    success: value
+      ? "Kollegen sehen Abwesenheitsgründe jetzt wieder, wenn die Person sie freigegeben hat."
+      : "Abwesenheitsgründe sehen jetzt nur noch Schichtleitung und Administration.",
+  };
+}
