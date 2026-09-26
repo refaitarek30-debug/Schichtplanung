@@ -174,12 +174,24 @@ const legend = [
   { code: "", label: "nicht eingeplant" },
 ];
 
+/**
+ * Feste Breite der Personalnummern-Spalte und der Versatz der Namensspalte
+ * dahinter. Beide Spalten bleiben beim seitlichen Wischen stehen (sticky);
+ * dafür muss der Versatz exakt der Breite der ersten Spalte entsprechen.
+ * Bis sechs Ziffern passen ohne Kürzung, längere Nummern werden mit „…“
+ * abgeschnitten und stehen vollständig im Tooltip.
+ */
+const NUMMER_SPALTE = "w-[3.25rem] min-w-[3.25rem] max-w-[3.25rem] sm:w-[4.25rem] sm:min-w-[4.25rem] sm:max-w-[4.25rem]";
+const NAME_NACH_NUMMER = "left-[3.25rem] sm:left-[4.25rem]";
+
 /** Eine Mitarbeiterzeile in der Matrix, Tag für Tag. */
 interface GridEmployee {
   name: string;
   team: string | null;
   number: string | null;
   isMe: boolean;
+  /** Azubi: steht im Plan, zählt aber nicht zur Besetzung. */
+  isApprentice: boolean;
   cells: Map<string, LiveShiftPlanCell>;
 }
 
@@ -385,13 +397,28 @@ export function ShiftPlanGrid({
   /** Die Karte selbst – zum mittigen Einblenden beim Urlaubsantrag. */
   const planRef = useRef<HTMLElement>(null);
 
-  const load = useCallback(async () => {
+  /**
+   * Schichtdetails und Ferien des angezeigten Zeitraums. Sie ändern sich im
+   * laufenden Betrieb nicht durch Kollegen – geholt werden sie beim Öffnen
+   * und beim Blättern, nicht bei jeder Änderung im Plan.
+   */
+  const rahmen = useRef<{ schluessel: string; details: ShiftDetail[]; ferien: Map<string, string> } | null>(
+    null,
+  );
+
+  /**
+   * Plan laden. `nurDaten`: nur, was andere geändert haben können – Plan und
+   * Urlaubssperren. So kostet eine Aktualisierung zwei Abfragen statt vier,
+   * bei vielen gleichzeitig angemeldeten Mitarbeitern ein spürbarer
+   * Unterschied für die Datenbank.
+   */
+  const load = useCallback(async (nurDaten = false) => {
     const meiner = ++letzterAbruf.current;
     setError(null);
     // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
     // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
     // Wartezeit da.
-    const gemerkt = ausZwischenspeicher<PlanStand>(speicherSchluessel);
+    const gemerkt = nurDaten ? null : ausZwischenspeicher<PlanStand>(speicherSchluessel);
     if (gemerkt) {
       setCells(gemerkt.grid);
       setShiftDetails(gemerkt.details);
@@ -399,48 +426,56 @@ export function ShiftPlanGrid({
       setFerien(gemerkt.ferien);
     }
     try {
-      // Die Schichtdetails liefern Name und Id gleich mit – eine zweite
-      // Abfrage nur für die Auswahlliste braucht es nicht.
       const bis = addDays(start, span - 1);
-      const [grid, details, blockedDays, ferienZeitraeume] = await Promise.all([
+      const rahmenDa = nurDaten && rahmen.current?.schluessel === speicherSchluessel;
+      const [grid, blockedDays, neuerRahmen] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, span),
-        fetchShiftDetails(),
         fetchBlockedDays(start, bis),
-        fetchSchoolHolidays(start, bis),
+        rahmenDa
+          ? Promise.resolve(rahmen.current!)
+          : (async () => {
+              // Die Schichtdetails liefern Name und Id gleich mit – eine
+              // zweite Abfrage nur für die Auswahlliste braucht es nicht.
+              const [details, ferienZeitraeume] = await Promise.all([
+                fetchShiftDetails(),
+                fetchSchoolHolidays(start, bis),
+              ]);
+              // Zeiträume auf einzelne Tage aufziehen, damit der Tabellenkopf
+              // je Spalte nachschlagen kann, statt für jeden Tag alle
+              // Zeiträume zu durchsuchen.
+              const tage = new Map<string, string>();
+              for (const zeitraum of ferienZeitraeume) {
+                for (let tag = zeitraum.startDate; tag <= zeitraum.endDate; tag = addDays(tag, 1)) {
+                  tage.set(tag, zeitraum.name);
+                }
+              }
+              return { schluessel: speicherSchluessel, details, ferien: tage };
+            })(),
       ]);
       // Inzwischen wurde weitergeblättert: diese Antwort ist überholt.
       if (meiner !== letzterAbruf.current) return;
+      rahmen.current = neuerRahmen;
       setCells(grid);
-      setShiftDetails(details);
+      setShiftDetails(neuerRahmen.details);
       setBlocked(blockedDays);
-
-      // Zeiträume auf einzelne Tage aufziehen, damit der Tabellenkopf je
-      // Spalte nachschlagen kann, statt für jeden Tag alle Zeiträume zu
-      // durchsuchen.
-      const tage = new Map<string, string>();
-      for (const zeitraum of ferienZeitraeume) {
-        for (let tag = zeitraum.startDate; tag <= zeitraum.endDate; tag = addDays(tag, 1)) {
-          tage.set(tag, zeitraum.name);
-        }
-      }
-      setFerien(tage);
+      setFerien(neuerRahmen.ferien);
       inZwischenspeicher<PlanStand>(speicherSchluessel, {
         grid,
-        details,
+        details: neuerRahmen.details,
         blocked: blockedDays,
-        ferien: tage,
+        ferien: neuerRahmen.ferien,
       });
     } catch (caught) {
       if (meiner !== letzterAbruf.current) return;
-      // Steht schon ein gemerkter Stand da, bleibt er sichtbar – lieber der
-      // Plan von vor einer Minute als ein leerer Bildschirm.
-      if (gemerkt) {
+      // Steht schon ein Stand da, bleibt er sichtbar – lieber der Plan von
+      // vor einer Minute als ein leerer Bildschirm.
+      if (gemerkt || nurDaten) {
         setError("Der Plan konnte gerade nicht aufgefrischt werden – angezeigt wird der letzte Stand.");
         return;
       }
       setCells([]);
       setError(
-        caught instanceof DataError ? caught.message : "Die Daten konnten nicht geladen werden.",
+        caught instanceof DataError ? caught.message : "Der Schichtplan kann momentan nicht geladen werden. Bitte in einigen Minuten erneut versuchen.",
       );
     }
   }, [companyId, start, span, speicherSchluessel]);
@@ -465,7 +500,8 @@ export function ShiftPlanGrid({
 
   // Hat jemand anderes etwas geändert (Antrag, Genehmigung, Krankmeldung,
   // Schichttausch)? Dann neu laden – sonst nicht.
-  useAktualisierung(["plan", "antraege", "abwesenheiten"], () => void load());
+  // Nur die Daten, nicht Schichtdetails und Ferien.
+  useAktualisierung(["plan", "antraege", "abwesenheiten"], () => void load(true));
 
   const dates = useMemo(
     () => Array.from({ length: span }, (_, i) => addDays(start, i)),
@@ -482,6 +518,7 @@ export function ShiftPlanGrid({
           team: cell.rotationTeam,
           number: cell.personnelNumber,
           isMe: cell.isMe,
+          isApprentice: cell.isApprentice,
           cells: new Map(),
         });
       }
@@ -505,16 +542,12 @@ export function ShiftPlanGrid({
         return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
       });
     }
-    const alle = [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    // Ohne Führungsrechte nur die eigene Schicht. Die Datenbank liefert
-    // Mitarbeitern ohnehin nichts anderes; das greift zusätzlich in der
-    // Ansicht „als Mitarbeiter", die die Führung sich anzeigen lassen kann.
-    if (!canEdit) {
-      const eigene = alle.filter(([, members]) => members.some((m) => m.isMe));
-      if (eigene.length > 0) return eigene;
-    }
-    return alle;
-  }, [cells, ordnung, canEdit]);
+    // Alle Schichtgruppen für alle: jeder darf den ganzen Plan ansehen.
+    // Ansehen ist nicht Bearbeiten – geändert wird nur über die geprüften
+    // Funktionen der Führung. Welche Gruppe offen steht, regelt
+    // `standardOffen` weiter unten.
+    return [...teams.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [cells, ordnung]);
 
   /**
    * Welche Schichtgruppen aufgeklappt sind. `null` heißt: noch nichts von Hand
@@ -527,9 +560,14 @@ export function ShiftPlanGrid({
    * Betriebsleiterin damit in die Gruppe „Tagschicht“, und A, B, C und D
    * standen alle zugeklappt da.
    *
-   * Für Mitarbeiter bleibt es bei der eigenen Gruppe – mehr betrifft sie
-   * nicht. Findet sich keine eigene, wird alles gezeigt: lieber zu viel
-   * Plan als ein leerer Bildschirm.
+   * Mitarbeiter sehen alle Gruppen, aufgeklappt ist aber nur die eigene –
+   * die anderen stehen eingeklappt darunter und lassen sich per Tipp
+   * öffnen. Das ist nur die Voreinstellung der Ansicht, keine Sperre.
+   * Findet sich keine eigene Gruppe, ist alles offen: lieber zu viel Plan
+   * als ein leerer Bildschirm.
+   *
+   * Maßgeblich ist die Rolle aus der Sitzung (`canEdit` = Schichtleitung
+   * oder Administration laut Profil) – nicht ein Name oder eine Eingabe.
    */
   const standardOffen = useMemo(() => {
     const alle = () => new Set(groups.map(([teamName]) => teamName));
@@ -539,6 +577,18 @@ export function ShiftPlanGrid({
   }, [groups, canEdit]);
 
   const offeneGruppen = aufgeklappt ?? standardOffen;
+
+  /**
+   * Eigene Spalte für die Personalnummer – nur, wenn es welche gibt. Die
+   * Datenbank liefert sie ausschließlich der Führung; Mitarbeiter sehen
+   * keine Personalnummern von Kollegen und bekommen die Spalte gar nicht.
+   */
+  const mitNummer = useMemo(
+    () => groups.some(([, members]) => members.some((m) => Boolean(m.number))),
+    [groups],
+  );
+  /** Spalten vor den Tagen: Personalnummer (falls da) und Name. */
+  const vorspalten = mitNummer ? 2 : 1;
 
   // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
   // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.
@@ -616,6 +666,9 @@ export function ShiftPlanGrid({
       for (const iso of dates) {
         const counts = new Map<string, number>();
         for (const member of members) {
+          // Azubis zählen nicht zur Besetzung – auch nicht bei der Frage,
+          // welche Schicht die Gruppe an dem Tag fährt.
+          if (member.isApprentice) continue;
           const shiftName = member.cells.get(iso)?.shiftName;
           if (shiftName) counts.set(shiftName, (counts.get(shiftName) ?? 0) + 1);
         }
@@ -633,6 +686,7 @@ export function ShiftPlanGrid({
         }
         let present = 0;
         for (const member of members) {
+          if (member.isApprentice) continue;
           const cell = member.cells.get(iso);
           if (!cell || cell.shiftName !== dominant) continue;
           if (cell.absenceCode && ABSENT_CODES.has(cell.absenceCode)) continue;
@@ -703,7 +757,7 @@ export function ShiftPlanGrid({
       }
       if (result?.error) setError(result.error);
       setSelected(null);
-      void load();
+      void load(true);
     });
   }
 
@@ -918,19 +972,47 @@ export function ShiftPlanGrid({
       >
         {cells === null ? (
           <RowSkeleton rows={6} />
+        ) : groups.length === 0 && error ? (
+          // Plan kam nicht (Störung) – nicht „keine Mitarbeiter“ behaupten,
+          // sondern einen neuen Versuch anbieten.
+          <div className="flex justify-center px-4 py-6">
+            <Button variant="secondary" disabled={pending} onClick={() => void load()}>
+              Erneut versuchen
+            </Button>
+          </div>
         ) : groups.length === 0 ? (
           <EmptyState title="Keine Mitarbeiter gefunden." />
         ) : (
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
-                {/* Ohne Beschriftung: dass in der ersten Spalte die Namen
-                    stehen, sieht man an den Namen. Auf dem Handy sind die
-                    gesparten Zeichen eine halbe Spalte Plan mehr. */}
+                {/* Personalnummer in einer eigenen Spalte fester Breite:
+                    kurze und lange Nummern stehen bündig untereinander,
+                    nichts bricht um, und die Spalte verschiebt den Plan
+                    nicht. Sie bleibt beim Wischen stehen wie der Name. */}
+                {mitNummer ? (
+                  <th
+                    scope="col"
+                    title="Personalnummer"
+                    className={cn(
+                      "sticky left-0 z-20 whitespace-nowrap bg-surface px-1.5 py-1 text-left align-bottom text-[10px] font-medium uppercase tracking-[0.04em] text-ink-faint sm:px-2",
+                      NUMMER_SPALTE,
+                    )}
+                  >
+                    {/* Auf dem Handy ist die Spalte schmal – „Nr.“ passt in eine Zeile. */}
+                    <span className="sm:hidden">Nr.</span>
+                    <span className="hidden sm:inline">Pers.-Nr.</span>
+                  </th>
+                ) : null}
                 <th
-                  className="sticky left-0 z-20 min-w-[80px] bg-surface px-2 py-1 sm:min-w-[150px] sm:px-3"
-                  aria-label="Mitarbeiter"
-                />
+                  scope="col"
+                  className={cn(
+                    "sticky z-20 min-w-[80px] bg-surface px-2 py-1 text-left align-bottom text-[10px] font-medium uppercase tracking-[0.04em] text-ink-faint sm:min-w-[150px] sm:px-3 lg:min-w-[190px]",
+                    mitNummer ? NAME_NACH_NUMMER : "left-0",
+                  )}
+                >
+                  Mitarbeiter
+                </th>
                 {dates.map((iso) => {
                   const blockReason = blocked.get(iso);
                   const ferienName = ferien.get(iso);
@@ -951,7 +1033,7 @@ export function ShiftPlanGrid({
                       key={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[28px] px-0.5 py-1 text-center sm:min-w-[38px] sm:px-1",
+                        "min-w-[28px] px-0.5 py-1 text-center sm:min-w-[38px] sm:px-1 lg:min-w-[42px]",
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
@@ -965,7 +1047,7 @@ export function ShiftPlanGrid({
                         blockReason && "bg-crit-bg",
                       )}
                     >
-                      <span className="block text-[10px] font-medium text-ink-faint">
+                      <span className="block text-[10px] font-medium text-ink-faint lg:text-[11px]">
                         {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
                             passen keine zwei Wochen nebeneinander. */}
                         <span className="sm:hidden">
@@ -975,7 +1057,7 @@ export function ShiftPlanGrid({
                           {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
                         </span>
                       </span>
-                      <span className="tnum block text-[11px] text-ink-muted">
+                      <span className="tnum block text-[11px] text-ink-muted lg:text-[12px]">
                         <span className="sm:hidden">{dayHeader(iso)}</span>
                         <span className="hidden sm:inline">
                           {iso.slice(8, 10)}.{iso.slice(5, 7)}.
@@ -1001,7 +1083,7 @@ export function ShiftPlanGrid({
                 <Fragment key={teamName}>
                   <tr>
                     <th
-                      colSpan={dates.length + 1}
+                      colSpan={dates.length + vorspalten}
                       className="sticky left-0 bg-brand-50 p-0 text-left"
                     >
                       {/* Zusammenklappen: mit vier Gruppen passt sonst nichts
@@ -1010,7 +1092,7 @@ export function ShiftPlanGrid({
                         type="button"
                         onClick={() => toggleGruppe(teamName)}
                         aria-expanded={offen}
-                        className="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] font-semibold text-brand-700 hover:bg-brand-100"
+                        className="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] font-semibold text-brand-700 hover:bg-brand-100 lg:py-1.5 lg:text-[13px]"
                       >
                         <ChevronDown
                           className={cn(
@@ -1031,7 +1113,24 @@ export function ShiftPlanGrid({
                       id={member.isMe ? "eigene-zeile" : undefined}
                       className="hover:bg-surface-muted/50"
                     >
-                      <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-2 py-0.5 text-left text-[11px] font-normal sm:px-3 sm:text-[12px]">
+                      {mitNummer ? (
+                        <td
+                          title={member.number ?? undefined}
+                          className={cn(
+                            "tnum sticky left-0 z-10 overflow-hidden text-ellipsis whitespace-nowrap bg-surface px-1.5 py-0.5 text-left text-[11px] text-ink-muted sm:px-2 sm:text-[12px] lg:text-[13px]",
+                            NUMMER_SPALTE,
+                          )}
+                        >
+                          {member.number ?? ""}
+                        </td>
+                      ) : null}
+                      <th
+                        scope="row"
+                        className={cn(
+                          "sticky z-10 whitespace-nowrap bg-surface px-2 py-0.5 text-left text-[11px] font-normal sm:px-3 sm:text-[12px] lg:text-[13px]",
+                          mitNummer ? NAME_NACH_NUMMER : "left-0",
+                        )}
+                      >
                         <span className="flex items-center gap-1.5">
                           {sortieren && canEdit ? (
                             <span className="flex shrink-0 flex-col">
@@ -1055,15 +1154,20 @@ export function ShiftPlanGrid({
                               </button>
                             </span>
                           ) : null}
-                          <span className="min-w-0">
+                          <span className="flex min-w-0 items-center gap-1">
                             {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
                             <span className="block truncate sm:hidden">
                               {shortName(member.name)}
                             </span>
                             <span className="hidden truncate sm:block">{member.name}</span>
-                            {member.number ? (
-                              <span className="tnum hidden text-[10px] text-ink-faint sm:block">
-                                {member.number}
+                            {/* Azubis stehen im Plan, zählen aber nicht zur
+                                Besetzung – das soll man sehen. */}
+                            {member.isApprentice ? (
+                              <span
+                                title="Azubi – zählt nicht zur Besetzung"
+                                className="shrink-0 rounded bg-surface-sunken px-1 text-[9px] font-semibold uppercase tracking-[0.04em] text-ink-muted sm:text-[10px]"
+                              >
+                                Azubi
                               </span>
                             ) : null}
                           </span>
@@ -1115,7 +1219,7 @@ export function ShiftPlanGrid({
                                   : undefined
                               }
                               className={cn(
-                                "flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:text-[12px]",
+                                "flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:text-[12px] lg:h-8 lg:text-[13px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                                 ((!nurLesen && canEdit) || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
@@ -1130,7 +1234,12 @@ export function ShiftPlanGrid({
                   ))}
                   {offen && (
                   <tr>
-                    <th className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-0.5 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-3 sm:text-[11px]">
+                    <th
+                      scope="row"
+                      colSpan={vorspalten}
+                      title="Anwesend in der Schicht der Gruppe – Azubis zählen nicht mit"
+                      className="sticky left-0 z-10 whitespace-nowrap bg-surface-sunken px-2 py-0.5 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-ink-faint sm:px-3 sm:text-[11px]"
+                    >
                       Besetzung
                     </th>
                     {dates.map((iso) => {
@@ -1158,7 +1267,7 @@ export function ShiftPlanGrid({
                                     : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum flex h-5 w-full items-center justify-center rounded text-[10px] font-semibold sm:h-6 sm:text-[12px]",
+                                "tnum flex h-5 w-full items-center justify-center rounded text-[10px] font-semibold sm:h-6 sm:text-[12px] lg:h-7 lg:text-[13px]",
                                 below
                                   ? "bg-crit-bg text-crit-fg"
                                   : knapp

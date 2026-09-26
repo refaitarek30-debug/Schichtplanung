@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, istVoruebergehendeStoerung } from "@/lib/errors";
 import type {
   LiveRotationPattern,
   LiveShiftAssignment,
@@ -9,12 +9,6 @@ import type {
 } from "@/lib/types";
 
 export class DataError extends Error {}
-
-/**
- * Zeilen je Abfrage. Entspricht der Obergrenze, die PostgREST selbst
- * durchlässt – mehr anzufordern bringt nichts, weniger kostet Abfragen.
- */
-const SEITENGROESSE = 1000;
 
 /**
  * Tagesgenaue Ausnahmen von der festen Schichtzuordnung in einem Zeitraum.
@@ -121,21 +115,33 @@ interface RotationPatternRow {
   });
 }
 
-interface ShiftPlanGridRow {
+/** Eine Person aus `schichtplan_kompakt()`: die Tage als Liste. */
+interface SchichtplanKompaktZeile {
   employee_id: string;
   employee_name: string;
   rotation_team: string | null;
   personnel_number: string | null;
-  day: string;
-  shift_name: string | null;
-  shift_code: string | null;
-  absence_code: string | null;
   is_me: boolean;
+  is_apprentice: boolean;
+  /** Je Tag: [Tag, Schichtname, Schichtkürzel, Abwesenheitskürzel]. */
+  tage: [string, string | null, string | null, string | null][];
 }
+
+/** Meldung, wenn der Plan wegen einer echten Störung nicht kommt. */
+export const PLAN_STOERUNG =
+  "Der Schichtplan kann momentan nicht geladen werden. Bitte in einigen Minuten erneut versuchen.";
 
 /**
  * Komplette Schichtplan-Matrix (alle Mitarbeiter × Zeitraum) in einem
  * Aufruf – die Grundlage für die Excel-artige Übersichtsansicht.
+ *
+ * Früher kam je Person und Tag eine Zeile (bei 50 Personen über vier
+ * Wochen 1500) – mehr, als PostgREST auf einmal herausgibt. Der Plan wurde
+ * deshalb in Seiten zu 1000 Zeilen geholt, und jede Seite rechnete den
+ * ganzen Plan in der Datenbank neu. `schichtplan_kompakt()` liefert eine
+ * Zeile je Person mit allen Tagen: ein Aufruf, ein Rechengang, ein
+ * Bruchteil der Datenmenge. Dieselben Regeln – die Funktion fasst
+ * `shift_plan_grid()` nur zusammen.
  */
 export async function fetchShiftPlanGrid(
   companyId: string,
@@ -145,41 +151,35 @@ export async function fetchShiftPlanGrid(
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
 
-  // Der Plan liefert eine Zeile je Person und Tag – 50 Personen über vier
-  // Wochen sind 1400. PostgREST gibt aber höchstens 1000 Zeilen auf einmal
-  // heraus, und zwar ohne Fehlermeldung: der Rest fehlte einfach. Im
-  // Demobetrieb fielen dadurch Schicht D und die Tagschicht aus dem Plan.
-  // Deshalb seitenweise, bis eine Seite nicht mehr voll ist.
-  const rows: ShiftPlanGridRow[] = [];
-  for (let ab = 0; ; ab += SEITENGROESSE) {
-    const { data, error } = await supabase
-      .rpc("shift_plan_grid", {
-        p_company_id: companyId,
-        p_from: fromISO,
-        p_days: days,
-      })
-      .range(ab, ab + SEITENGROESSE - 1);
-    if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
-
-    const seite = (data ?? []) as ShiftPlanGridRow[];
-    rows.push(...seite);
-    if (seite.length < SEITENGROESSE) break;
-    // Notbremse: 62 Tage mal 500 Personen ist die Obergrenze, die die
-    // Datenbankfunktion überhaupt zulässt. Danach stimmt etwas nicht.
-    if (rows.length >= 31_000) break;
+  const { data, error, status } = await supabase.rpc("schichtplan_kompakt", {
+    p_company_id: companyId,
+    p_from: fromISO,
+    p_days: days,
+  });
+  if (error) {
+    // Überlastung oder Ausfall: eine klare Meldung statt Technik.
+    if (istVoruebergehendeStoerung({ ...error, status })) throw new DataError(PLAN_STOERUNG);
+    throw new DataError(dataErrorMessage(error) ?? "Der Schichtplan konnte nicht geladen werden.");
   }
 
-  return rows.map((row) => ({
-    employeeId: row.employee_id,
-    employeeName: row.employee_name,
-    rotationTeam: row.rotation_team,
-    personnelNumber: row.personnel_number,
-    day: row.day,
-    shiftName: row.shift_name,
-    shiftCode: row.shift_code,
-    absenceCode: row.absence_code,
-    isMe: row.is_me,
-  }));
+  const zellen: LiveShiftPlanCell[] = [];
+  for (const person of (data ?? []) as SchichtplanKompaktZeile[]) {
+    for (const [day, shiftName, shiftCode, absenceCode] of person.tage ?? []) {
+      zellen.push({
+        employeeId: person.employee_id,
+        employeeName: person.employee_name,
+        rotationTeam: person.rotation_team,
+        personnelNumber: person.personnel_number,
+        day,
+        shiftName,
+        shiftCode,
+        absenceCode,
+        isMe: person.is_me,
+        isApprentice: person.is_apprentice === true,
+      });
+    }
+  }
+  return zellen;
 }
 
 interface CurrentPatternRow {

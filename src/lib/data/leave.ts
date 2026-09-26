@@ -37,6 +37,9 @@ function mapRequest(row: LeaveRequestWithEmployee): LiveLeaveRequest {
     rejectionReason: row.rejection_reason,
     reviewedAt: row.reviewed_at,
     createdAt: row.created_at,
+    withdrawnAt: row.withdrawn_at ?? null,
+    withdrawnBy: row.withdrawn_by ?? null,
+    withdrawalReason: row.withdrawal_reason ?? null,
     kind: (row.kind ?? "urlaub") as LiveLeaveRequest["kind"],
     // Klammer um die Zeilen einer Einreichung. NULL heisst: steht allein.
     groupId: row.request_group_id ?? null,
@@ -44,7 +47,7 @@ function mapRequest(row: LeaveRequestWithEmployee): LiveLeaveRequest {
 }
 
 const SELECT_WITH_EMPLOYEE =
-  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, kind, request_group_id, employees ( first_name, last_name, shift_id, shifts ( name ) )";
+  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, kind, request_group_id, withdrawn_at, withdrawn_by, withdrawal_reason, employees ( first_name, last_name, shift_id, shifts ( name ) )";
 
 /** Eigene Anträge – Reihenfolge neueste zuerst. */
 export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
@@ -54,7 +57,7 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!ich) throw new DataError("Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.");
   if (!ich.employeeId) return [];
 
-  const [antraege, pruefer] = await Promise.all([
+  const [antraege, pruefer, zuruecknehmer] = await Promise.all([
     supabase
       .from("leave_requests")
       .select(SELECT_WITH_EMPLOYEE)
@@ -65,6 +68,8 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
     // nicht lesen – den Namen liefert deshalb eine eigene Funktion, und nur
     // für die eigenen Anträge.
     supabase.rpc("my_leave_reviewers"),
+    // Ebenso, wer einen Antrag zurückgenommen hat – man selbst oder die Führung.
+    supabase.rpc("my_leave_withdrawers"),
   ]);
 
   if (antraege.error) throw new DataError(dataErrorMessage(antraege.error) ?? "Unbekannter Fehler");
@@ -72,9 +77,14 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
   for (const row of (pruefer.data ?? []) as { request_id: string; reviewer_name: string }[]) {
     namen.set(row.request_id, row.reviewer_name);
   }
+  const zurueck = new Map<string, string>();
+  for (const row of (zuruecknehmer.data ?? []) as { request_id: string; withdrawer_name: string }[]) {
+    zurueck.set(row.request_id, row.withdrawer_name);
+  }
   return (antraege.data ?? []).map((row) => ({
     ...mapRequest(row),
     reviewerName: namen.get(row.id) ?? null,
+    withdrawerName: zurueck.get(row.id) ?? null,
   }));
 }
 

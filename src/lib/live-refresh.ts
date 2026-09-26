@@ -88,6 +88,25 @@ export async function pruefeAenderungen(): Promise<void> {
 }
 
 /**
+ * Eine eigene Änderung sofort melden – ohne auf den nächsten Takt zu warten.
+ *
+ * Wer selbst etwas zurücknimmt oder einträgt, soll das Ergebnis überall auf
+ * der Seite gleich sehen (Plan, Besetzung, Konto), nicht erst nach einer
+ * Minute. Die anderen Geräte erfahren es wie bisher über den Stempel.
+ */
+export function meldeEigeneAenderung(themen: Thema[]) {
+  const betroffen = new Set(themen);
+  for (const abonnent of abonnenten) {
+    for (const thema of abonnent.themen) {
+      if (betroffen.has(thema)) {
+        abonnent.rueckruf();
+        break;
+      }
+    }
+  }
+}
+
+/**
  * Einen Bereich für Themen anmelden: `rueckruf` läuft, sobald sich eines
  * davon geändert hat. Der Rückruf darf wechseln (neue Abhängigkeiten), ohne
  * dass neu angemeldet wird.

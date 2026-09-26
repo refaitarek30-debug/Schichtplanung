@@ -109,6 +109,45 @@ export function formatDEShort(iso: string): string {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.`;
 }
 
+/**
+ * Zeitpunkt aus der Datenbank (timestamptz) für Menschen:
+ * "2026-09-26T12:32:00Z" -> "26.09.2026 um 14:32 Uhr".
+ *
+ * Immer in deutscher Zeit – nicht in der Zeitzone des Geräts. Wer mit
+ * einem auf UTC gestellten Rechner oder aus dem Urlaub schaut, sieht sonst
+ * eine andere Uhrzeit als die Kollegen im Werk.
+ */
+const ZEITPUNKT_DATUM = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+const ZEITPUNKT_UHRZEIT = new Intl.DateTimeFormat("de-DE", {
+  timeZone: "Europe/Berlin",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Heutiges Datum in deutscher Zeit als "YYYY-MM-DD" – wie die Datenbank es für Fristen nimmt. */
+const TAG_IN_BERLIN = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function heuteInBerlin(): string {
+  return TAG_IN_BERLIN.format(new Date());
+}
+
+export function formatZeitpunkt(isoZeitstempel: string): string {
+  const zeitpunkt = new Date(isoZeitstempel);
+  if (Number.isNaN(zeitpunkt.getTime())) return "";
+  return `${ZEITPUNKT_DATUM.format(zeitpunkt)} um ${ZEITPUNKT_UHRZEIT.format(zeitpunkt)} Uhr`;
+}
+
 export function formatRange(startISO: string, endISO: string): string {
   return startISO === endISO
     ? formatDE(startISO)
