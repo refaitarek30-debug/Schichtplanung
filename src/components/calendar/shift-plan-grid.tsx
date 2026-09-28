@@ -107,10 +107,8 @@ function cellLabel(code: string): string {
 }
 
 /**
- * Tageskopf auf dem Handy: nur die Zahl ("21"), damit die schmalen Spalten
- * lesbar bleiben. Am Monatsersten steht der Monat dabei ("1.10."), sonst
- * wäre die "1" nicht einzuordnen, wenn der Zeitraum über der Tabelle
- * weggescrollt ist.
+ * Tageskopf: "28.9." an jedem Tag – Tag und Monat, ohne führende Nullen,
+ * damit es auch in den schmalen Spalten der Monatsansicht passt.
  */
 function tageImMonat(iso: string): number {
   const d = fromISO(iso);
@@ -118,8 +116,7 @@ function tageImMonat(iso: string): number {
 }
 
 function dayHeader(iso: string): string {
-  const tag = Number(iso.slice(8, 10));
-  return tag === 1 ? `1.${Number(iso.slice(5, 7))}.` : String(tag);
+  return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
 }
 
 /**
@@ -1119,7 +1116,7 @@ export function ShiftPlanGrid({
                       data-tag={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[24px] px-0 py-1 text-center sm:min-w-[30px] sm:px-0.5 lg:min-w-[32px]",
+                        "min-w-[24px] px-0 py-0.5 text-center sm:min-w-[30px] sm:px-0.5 lg:min-w-[32px]",
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
@@ -1133,7 +1130,7 @@ export function ShiftPlanGrid({
                         blockReason && "bg-crit-bg",
                       )}
                     >
-                      <span className="block text-[10px] font-medium text-ink-faint lg:text-[11px]">
+                      <span className="block text-[9px] font-medium leading-tight text-ink-faint sm:text-[10px] lg:text-[11px]">
                         {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
                             passen keine zwei Wochen nebeneinander. */}
                         <span className="sm:hidden">
@@ -1143,15 +1140,8 @@ export function ShiftPlanGrid({
                           {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
                         </span>
                       </span>
-                      <span className="tnum block text-[11px] text-ink-muted lg:text-[12px]">
-                        {/* In der Monatsansicht genügt die Tageszahl – der
-                            Monat steht oben. Sonst mit Monat. */}
-                        <span className={monatsansicht ? undefined : "sm:hidden"}>{dayHeader(iso)}</span>
-                        {monatsansicht ? null : (
-                          <span className="hidden sm:inline">
-                            {iso.slice(8, 10)}.{iso.slice(5, 7)}.
-                          </span>
-                        )}
+                      <span className="tnum block whitespace-nowrap text-[9px] leading-tight tracking-tight text-ink-muted sm:text-[10px] lg:text-[11px]">
+                        {dayHeader(iso)}
                       </span>
                       {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
                           Vorschrift und muss auffallen. Die Ferien tragen
@@ -1184,15 +1174,19 @@ export function ShiftPlanGrid({
                         aria-expanded={offen}
                         className="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] font-semibold text-brand-700 hover:bg-brand-100 lg:py-1.5 lg:text-[13px]"
                       >
-                        <ChevronDown
-                          className={cn(
-                            "h-3.5 w-3.5 shrink-0 transition-transform",
-                            !offen && "-rotate-90",
-                          )}
-                        />
-                        {teamName}
-                        <span className="font-normal text-brand-700/70">
-                          · {members.length}
+                        {/* Die Beschriftung bleibt links stehen, auch wenn
+                            der Plan zur Seite gescrollt ist. */}
+                        <span className="sticky left-3 flex items-center gap-1.5">
+                          <ChevronDown
+                            className={cn(
+                              "h-3.5 w-3.5 shrink-0 transition-transform",
+                              !offen && "-rotate-90",
+                            )}
+                          />
+                          {teamName}
+                          <span className="font-normal text-brand-700/70">
+                            · {members.length}
+                          </span>
                         </span>
                       </button>
                     </th>
