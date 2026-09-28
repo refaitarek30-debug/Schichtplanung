@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { BalanceCard } from "@/components/leave/balance-card";
-import { LeaveRequestForm } from "@/components/leave/leave-request-form";
 import { LiveBalanceCard } from "@/components/leave/live-balance-card";
-import { LiveLeaveRequestForm } from "@/components/leave/live-leave-request-form";
 import { LiveRequestList } from "@/components/leave/live-request-list";
 import { RequestList } from "@/components/dashboard/request-list";
 import { Alert } from "@/components/ui/alert";
@@ -118,48 +116,37 @@ export default function LeavePage() {
       <PageHeader
         eyebrow="Mein Urlaub"
         title="Urlaub"
-        description="Urlaubskonto, laufende Anträge und ein neuer Antrag mit direkter Prüfung gegen dein Kontingent."
+        description="Dein Urlaubskonto und deine Anträge. Beantragen geht im Schichtplan über „Urlaub beantragen“."
       />
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {/* Kein Antragsformular mehr: beantragt wird im Schichtplan über
+          „Urlaub beantragen“ direkt in der eigenen Zeile. Hier stehen
+          Konto und Anträge. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
         {mode === "live" ? (
-          <LiveLeaveRequestForm
-            employeeId={profile.employeeId}
+          <LiveBalanceCard
             balance={balance}
-            today={TODAY}
-            onSubmitted={load}
-            meineAntraege={requests}
+            year={year}
+            onYearChange={setYear}
+            quoten={quoten}
+            afKonto={afKonto}
+            afGenommenJahr={afGenommen}
           />
         ) : (
-          <LeaveRequestForm employee={user} today={TODAY} />
+          <BalanceCard balance={demoBalance} />
         )}
 
-        <div className="space-y-4">
-          {mode === "live" ? (
-            <LiveBalanceCard
-              balance={balance}
-              year={year}
-              onYearChange={setYear}
-              quoten={quoten}
-              afKonto={afKonto}
-              afGenommenJahr={afGenommen}
-            />
-          ) : (
-            <BalanceCard balance={demoBalance} />
-          )}
-
-          {mode === "live" ? (
-            <LiveRequestList requests={requests} loading={requests === null} onChanged={load} />
-          ) : (
-            <RequestList
-              title="Meine Anträge"
-              requests={demoRequests}
-              emptyMessage="Noch keine Anträge gestellt."
-            />
-          )}
-        </div>
+        {mode === "live" ? (
+          <LiveRequestList requests={requests} loading={requests === null} onChanged={load} />
+        ) : (
+          <RequestList
+            title="Meine Anträge"
+            requests={demoRequests}
+            emptyMessage="Noch keine Anträge gestellt."
+          />
+        )}
       </div>
     </div>
   );

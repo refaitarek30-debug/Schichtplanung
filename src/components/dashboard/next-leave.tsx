@@ -2,15 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Palmtree } from "lucide-react";
-import { formatDE, fromISO, WEEKDAY_SHORT, formatDays } from "@/lib/dates";
-import { artenText } from "@/lib/leave-groups";
+import { formatDE } from "@/lib/dates";
 import { fetchNaechsterUrlaub, type LiveNaechsterUrlaub } from "@/lib/data/leave";
 import type { LiveLeaveRequest } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function wochentag(iso: string): string {
-  return WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7];
-}
 
 /**
  * Der nächste eigene Urlaub – oder der laufende – als reiner Kasten.
@@ -73,12 +69,7 @@ export function NextLeaveCard({
             </span>
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-muted">
               <span className="tnum">
-                {zeitraum.von === zeitraum.bis
-                  ? wochentag(zeitraum.von)
-                  : `${wochentag(zeitraum.von)} – ${wochentag(zeitraum.bis)}`}{" "}
-                · {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei ·{" "}
-                {formatDays(zeitraum.tage)} {zeitraum.tage === 1 ? "Tag" : "Tage"}{" "}
-                {artenText(zeitraum.arten)}
+                {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei
               </span>
               {zeitraum.offen ? (
                 <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn-fg">
