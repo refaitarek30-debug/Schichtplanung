@@ -10,13 +10,15 @@ import {
   ChevronRight,
   ListOrdered,
   Lock,
+  MessageSquare,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { addDays, formatDE, fromISO, isWeekend, monthName, WEEKDAY_SHORT } from "@/lib/dates";
+import { addDays, formatDE, fromISO, isWeekend, WEEKDAY_SHORT } from "@/lib/dates";
 import { DataError, fetchShiftPlanGrid, fetchBlockedDays } from "@/lib/data/rotation";
 import { assignShift, setEmployeeOrder, setLeaveForDay } from "@/lib/auth/rotation-actions";
 import { createAbsence } from "@/lib/auth/absence-actions";
@@ -29,6 +31,8 @@ import { PlanLeaveRequest } from "./plan-leave-request";
 import { useSession } from "@/context/session";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+import { fetchPlanKommentare, type PlanKommentar } from "@/lib/data/plan-comments";
+import { addPlanKommentar, deletePlanKommentar } from "@/lib/auth/comment-actions";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -36,7 +40,24 @@ interface PlanStand {
   details: ShiftDetail[];
   blocked: Map<string, string>;
   ferien: Map<string, string>;
+  kommentare: PlanKommentar[];
 }
+
+/** Schlüssel einer Zelle für die Kommentare: Person und Tag. */
+function zellSchluessel(employeeId: string, tag: string): string {
+  return `${employeeId}|${tag}`;
+}
+
+/**
+ * Monatsauswahl kurz: „Sept. 2026“ statt „September 2026“ – sonst passt die
+ * Zeile mit dem Antragsknopf auf dem Handy nicht.
+ */
+function monatKurz(jahr: number, monat: number): string {
+  return new Date(jahr, monat, 1).toLocaleDateString("de-DE", { month: "short", year: "numeric" });
+}
+
+/** Ab so vielen Millisekunden Drücken gilt es als „lang gedrückt“. */
+const LANG_DRUECKEN_MS = 500;
 
 /** Farben wie im gewohnten Plan: Früh orange, Spät hellgrün, Nacht blau. */
 const cellStyles: Record<string, string> = {
@@ -201,6 +222,7 @@ export function ShiftPlanGrid({
   employeeId = null,
   antragSchalter = true,
   nurLesen = false,
+  merkName = "schichtplan-start",
 }: {
   companyId: string;
   from: string;
@@ -218,6 +240,12 @@ export function ShiftPlanGrid({
    * zum Beantragen gibt es dort den großen Knopf darüber.
    */
   nurLesen?: boolean;
+  /**
+   * Unter diesem Namen merkt sich der Plan in der Sitzung, wo man zuletzt
+   * war. Startseite und Bereich „Plan“ getrennt – Blättern auf der
+   * Startseite verschiebt nicht den Plan.
+   */
+  merkName?: string;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -228,9 +256,7 @@ export function ShiftPlanGrid({
    * dorthinblättern.
    */
   const [start, setStart] = useState(from);
-  // Startseite (14 Tage) und Plan (30 Tage) merken sich ihren Zeitraum
-  // getrennt – Blättern auf der Startseite verschiebt nicht den Plan.
-  const merkSchluessel = days === 30 ? "schichtplan-start" : `schichtplan-start-${days}`;
+  const merkSchluessel = merkName;
 
   useEffect(() => {
     const gemerkt = gemerkteAnsicht(merkSchluessel, istPlausiblesDatum);
@@ -264,7 +290,7 @@ export function ShiftPlanGrid({
    */
   /**
    * Die Pfeile springen immer um genau die angezeigte Zahl an Tagen weiter
-   * (Plan 30, Startseite 14) – nicht erst zum nächsten Monatsersten. Die
+   * (30 Tage) – nicht erst zum nächsten Monatsersten. Die
    * Monatsauswahl setzt den Start auf den Ersten, ab dort gilt dasselbe.
    */
   const span = days;
@@ -319,6 +345,24 @@ export function ShiftPlanGrid({
   /** Gesetzliche Feiertage: Tag → Name. Einmal geladen, sie ändern sich nicht. */
   const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
+  /** Kommentare im angezeigten Zeitraum. */
+  const [kommentare, setKommentare] = useState<PlanKommentar[]>([]);
+  /** Geöffnete Kommentarleiste: zu welcher Person an welchem Tag. */
+  const [kommentarZelle, setKommentarZelle] = useState<
+    { employeeId: string; name: string; tag: string } | null
+  >(null);
+  const [kommentarText, setKommentarText] = useState("");
+  const [kommentarFehler, setKommentarFehler] = useState<string | null>(null);
+  /** Kommentar beim Überfahren mit der Maus – schwebt unter der Zelle. */
+  const [schwebe, setSchwebe] = useState<{ x: number; y: number; liste: PlanKommentar[] } | null>(
+    null,
+  );
+  /**
+   * Langes Drücken: Zeitgeber, Startpunkt und ob es ausgelöst hat. Hat es,
+   * wird der folgende Klick verschluckt – sonst öffnete sich zusätzlich die
+   * Bearbeitung oder ein Urlaubstag würde gewählt.
+   */
+  const druck = useRef<{ zeit: number; x: number; y: number; ausgeloest: boolean } | null>(null);
   const [aufgeklappt, setAufgeklappt] = useState<Set<string> | null>(null);
   /**
    * Reihenfolge-Modus. Die Pfeile stehen nur dann in den Zeilen – sonst
@@ -428,13 +472,15 @@ export function ShiftPlanGrid({
       setShiftDetails(gemerkt.details);
       setBlocked(gemerkt.blocked);
       setFerien(gemerkt.ferien);
+      setKommentare(gemerkt.kommentare ?? []);
     }
     try {
       const bis = addDays(start, span - 1);
       const rahmenDa = nurDaten && rahmen.current?.schluessel === speicherSchluessel;
-      const [grid, blockedDays, neuerRahmen] = await Promise.all([
+      const [grid, blockedDays, neueKommentare, neuerRahmen] = await Promise.all([
         fetchShiftPlanGrid(companyId, start, span),
         fetchBlockedDays(start, bis),
+        fetchPlanKommentare(start, bis),
         rahmenDa
           ? Promise.resolve(rahmen.current!)
           : (async () => {
@@ -463,11 +509,13 @@ export function ShiftPlanGrid({
       setShiftDetails(neuerRahmen.details);
       setBlocked(blockedDays);
       setFerien(neuerRahmen.ferien);
+      setKommentare(neueKommentare);
       inZwischenspeicher<PlanStand>(speicherSchluessel, {
         grid,
         details: neuerRahmen.details,
         blocked: blockedDays,
         ferien: neuerRahmen.ferien,
+        kommentare: neueKommentare,
       });
     } catch (caught) {
       if (meiner !== letzterAbruf.current) return;
@@ -758,7 +806,7 @@ export function ShiftPlanGrid({
     const list: { value: string; label: string }[] = [];
     for (let y = base - 1; y <= base + 1; y += 1) {
       for (let m = 0; m < 12; m += 1) {
-        list.push({ value: `${y}-${m}`, label: `${monthName(m)} ${y}` });
+        list.push({ value: `${y}-${m}`, label: monatKurz(y, m) });
       }
     }
     // Der angezeigte Monat muss in der Liste stehen, sonst springt das Feld
@@ -766,7 +814,7 @@ export function ShiftPlanGrid({
     if (!list.some((o) => o.value === `${viewYear}-${viewMonth}`)) {
       list.push({
         value: `${viewYear}-${viewMonth}`,
-        label: `${monthName(viewMonth)} ${viewYear}`,
+        label: monatKurz(viewYear, viewMonth),
       });
       list.sort((a, b) => a.value.localeCompare(b.value, "de", { numeric: true }));
     }
@@ -811,17 +859,153 @@ export function ShiftPlanGrid({
     });
   }
 
+  /** Kommentare je Zelle (Person und Tag), älteste zuerst. */
+  const kommentareJeZelle = useMemo(() => {
+    const map = new Map<string, PlanKommentar[]>();
+    for (const k of kommentare) {
+      const key = zellSchluessel(k.employeeId, k.tag);
+      const liste = map.get(key);
+      if (liste) liste.push(k);
+      else map.set(key, [k]);
+    }
+    return map;
+  }, [kommentare]);
+
+  function oeffneKommentare(employeeId: string, name: string, tag: string) {
+    setSelected(null);
+    setSchwebe(null);
+    setKommentarFehler(null);
+    setKommentarText("");
+    setKommentarZelle({ employeeId, name, tag });
+  }
+
+  function speichereKommentar() {
+    if (!kommentarZelle) return;
+    const text = kommentarText.trim();
+    if (!text) {
+      setKommentarFehler("Bitte einen Text eingeben.");
+      return;
+    }
+    setKommentarFehler(null);
+    startTransition(async () => {
+      const result = await addPlanKommentar(kommentarZelle.employeeId, kommentarZelle.tag, text);
+      if (result.error) {
+        setKommentarFehler(result.error);
+        return;
+      }
+      setKommentarText("");
+      setKommentare(await fetchPlanKommentare(start, addDays(start, span - 1)));
+    });
+  }
+
+  function loescheKommentar(id: string) {
+    setKommentarFehler(null);
+    startTransition(async () => {
+      const result = await deletePlanKommentar(id);
+      if (result.error) {
+        setKommentarFehler(result.error);
+        return;
+      }
+      setKommentare((bisher) => bisher.filter((k) => k.id !== id));
+    });
+  }
+
+  /**
+   * Langes Drücken auf eine Zelle öffnet die Kommentare – für alle, auch
+   * dort, wo ein kurzer Tipp nichts tut. Wer dabei den Finger bewegt
+   * (wischen, scrollen), löst nichts aus.
+   */
+  function druckBeginn(e: React.PointerEvent, employeeId: string, name: string, tag: string) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    druckEnde();
+    const zeit = window.setTimeout(() => {
+      if (druck.current) druck.current.ausgeloest = true;
+      navigator.vibrate?.(15);
+      oeffneKommentare(employeeId, name, tag);
+    }, LANG_DRUECKEN_MS);
+    druck.current = { zeit, x: e.clientX, y: e.clientY, ausgeloest: false };
+  }
+  function druckBewegung(e: React.PointerEvent) {
+    const d = druck.current;
+    if (!d || d.ausgeloest) return;
+    if (Math.abs(e.clientX - d.x) > 8 || Math.abs(e.clientY - d.y) > 8) {
+      window.clearTimeout(d.zeit);
+      druck.current = null;
+    }
+  }
+  function druckEnde() {
+    const d = druck.current;
+    if (d && !d.ausgeloest) {
+      window.clearTimeout(d.zeit);
+      druck.current = null;
+    }
+  }
+  /** Nach langem Drücken den anschließenden Klick verschlucken. */
+  function klickNachDruck(): boolean {
+    const d = druck.current;
+    if (d?.ausgeloest) {
+      druck.current = null;
+      return true;
+    }
+    return false;
+  }
+
+  const kommentarListe = kommentarZelle
+    ? (kommentareJeZelle.get(zellSchluessel(kommentarZelle.employeeId, kommentarZelle.tag)) ?? [])
+    : [];
+  const selectedKommentare = selected
+    ? (kommentareJeZelle.get(zellSchluessel(selected.employeeId, selected.day)) ?? [])
+    : [];
+
   return (
     <Card className="scroll-mt-16 overflow-hidden" ref={planRef}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2">
-        <div>
+      {/* Auf dem Handy zwei Reihen: oben Titel und Blättern (mit „Heute“),
+          darunter Antrag, Monat und Reihenfolge. Am Desktop alles in einer
+          Reihe. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-line px-3 py-2">
+        <div className="mr-auto min-w-0">
           <h2 className="text-[15px] font-semibold tracking-tight">Schichtplan</h2>
           <p className="tnum text-[12px] text-ink-muted">
             {`${formatDE(start)} – ${formatDE(addDays(start, span - 1))}`}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="order-2 flex items-center gap-1 sm:order-3">
+          <button
+            type="button"
+            onClick={() => setStart(zurueck(start))}
+            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
+            aria-label="Vorheriger Zeitraum"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {/* Hervorgehoben: der Weg zurück zum heutigen Tag. */}
+          <button
+            type="button"
+            onClick={() => {
+              setStart(from);
+              if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+            }}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors",
+              start === from
+                ? "border-brand-600 bg-brand-600 text-white shadow-card"
+                : "border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
+            )}
+          >
+            Heute
+          </button>
+          <button
+            type="button"
+            onClick={() => setStart(weiter(start))}
+            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
+            aria-label="Nächster Zeitraum"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="order-3 flex w-full items-center gap-2 sm:order-2 sm:w-auto">
           {!nurLesen && employeeId && antragSchalter ? (
             <button
               type="button"
@@ -835,7 +1019,7 @@ export function ShiftPlanGrid({
               // es ist dieselbe Handlung. Eingeschaltet wird er hell, damit
               // „Fertig" als Rückweg erkennbar ist.
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
                 antragsModus
                   ? "border-brand-600 bg-brand-50 text-brand-700"
                   : "border-brand-600 bg-brand-600 text-white shadow-card hover:bg-brand-700",
@@ -845,7 +1029,6 @@ export function ShiftPlanGrid({
               {antragsModus ? "Fertig" : "Urlaub beantragen"}
             </button>
           ) : null}
-
 
           {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
               zu klicken – bei Jahresplanung der schnellste Weg. */}
@@ -858,7 +1041,7 @@ export function ShiftPlanGrid({
               setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
             }}
             aria-label="Monat auswählen"
-            className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+            className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
           >
             {monthOptions.map((option) => (
               <option key={option.value} value={option.value}>
@@ -866,32 +1049,6 @@ export function ShiftPlanGrid({
               </option>
             ))}
           </select>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setStart(zurueck(start))}
-              className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-              aria-label="Vorheriger Zeitraum"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => {
-                setStart(from);
-                if (scrollBox.current) scrollBox.current.scrollLeft = 0;
-              }}
-              className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
-            >
-              Heute
-            </button>
-            <button
-              onClick={() => setStart(weiter(start))}
-              className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-              aria-label="Nächster Zeitraum"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
 
           {/* Reihenfolge: selten gebraucht, deshalb nur ein kleines Symbol
               ganz rechts. Die Pfeile erscheinen erst in diesem Modus, sonst
@@ -904,7 +1061,7 @@ export function ShiftPlanGrid({
               aria-label={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
               title={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
               className={cn(
-                "ml-auto rounded-md p-1 transition-colors",
+                "ml-auto rounded-md p-1 transition-colors sm:ml-0",
                 sortieren
                   ? "bg-brand-500 text-white"
                   : "text-ink-faint hover:bg-surface-muted hover:text-ink",
@@ -961,9 +1118,28 @@ export function ShiftPlanGrid({
           aria-label="Tag bearbeiten"
           className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[50vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
         >
-          <p className="mb-2 text-[13px] font-medium">
-            {selected.employeeName} · {formatDE(selected.day)}
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[13px] font-medium">
+              {selected.employeeName} · {formatDE(selected.day)}
+            </p>
+            <button
+              type="button"
+              onClick={() => oeffneKommentare(selected.employeeId, selected.employeeName, selected.day)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[12px] text-ink-muted hover:bg-surface-muted"
+            >
+              <MessageSquare className="h-3.5 w-3.5" strokeWidth={2} />
+              Kommentar{selectedKommentare.length > 0 ? ` (${selectedKommentare.length})` : ""}
+            </button>
+          </div>
+          {selectedKommentare.length > 0 ? (
+            <ul className="mb-2 space-y-1 rounded-lg bg-crit-bg/40 px-2.5 py-1.5 text-[12px]">
+              {selectedKommentare.map((k) => (
+                <li key={k.id}>
+                  <span className="font-medium">{k.autorName}:</span> {k.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {gruppenWechsel.length > 0 ? (
             <div className="mb-2">
               <p className="mb-1 text-[12px] text-ink-muted">
@@ -1037,6 +1213,97 @@ export function ShiftPlanGrid({
         </div>
       ) : null}
 
+      {/* Kommentare zu einer Zelle: lesen, schreiben, löschen. Als Leiste
+          unten wie die Bearbeitung – so springt oben nichts. */}
+      {kommentarZelle ? (
+        <div
+          role="dialog"
+          aria-label="Kommentare"
+          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[60vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
+        >
+          <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium">
+            <MessageSquare className="h-4 w-4 text-crit-dot" strokeWidth={2} />
+            Kommentare · {kommentarZelle.name} · {formatDE(kommentarZelle.tag)}
+          </p>
+          {kommentarListe.length === 0 ? (
+            <p className="mb-2 text-[12px] text-ink-muted">Noch kein Kommentar zu diesem Tag.</p>
+          ) : (
+            <ul className="mb-2 space-y-1.5">
+              {kommentarListe.map((k) => (
+                <li key={k.id} className="flex items-start gap-2 rounded-lg bg-surface-muted px-2.5 py-1.5">
+                  <span className="min-w-0 flex-1 text-[13px]">
+                    <span className="block whitespace-pre-wrap break-words">{k.text}</span>
+                    <span className="block text-[11px] text-ink-faint">
+                      {k.autorName} ·{" "}
+                      {new Date(k.erstelltAm).toLocaleString("de-DE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </span>
+                  {/* Eigene Kommentare löscht jeder selbst, die Führung
+                      alle. Die Datenbank prüft es noch einmal. */}
+                  {k.autorId === profile.id || canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => loescheKommentar(k.id)}
+                      disabled={pending}
+                      aria-label="Kommentar löschen"
+                      className="shrink-0 rounded p-1 text-ink-faint hover:bg-surface hover:text-crit-fg disabled:opacity-40"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          <textarea
+            value={kommentarText}
+            onChange={(e) => setKommentarText(e.target.value)}
+            maxLength={500}
+            rows={2}
+            placeholder="Kommentar schreiben …"
+            className="w-full resize-none rounded-lg border border-line bg-surface px-2.5 py-2 text-[16px] sm:text-[13px]"
+          />
+          <p className="mt-1 text-[11px] text-ink-faint">
+            Für alle im Unternehmen sichtbar – bitte keine Krankheitsgründe oder
+            andere private Angaben.
+          </p>
+          {kommentarFehler ? (
+            <div className="mt-2">
+              <Alert tone="error">{kommentarFehler}</Alert>
+            </div>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
+            <Button disabled={pending || !kommentarText.trim()} onClick={speichereKommentar}>
+              Speichern
+            </Button>
+            <Button variant="ghost" onClick={() => setKommentarZelle(null)}>
+              Schließen
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Kommentar beim Überfahren mit der Maus. Fest positioniert, damit
+          ihn der seitlich scrollende Plan nicht abschneidet. */}
+      {schwebe ? (
+        <div
+          role="tooltip"
+          className="pointer-events-none fixed z-40 max-w-xs rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] shadow-pop"
+          style={{ left: schwebe.x, top: schwebe.y }}
+        >
+          {schwebe.liste.map((k) => (
+            <p key={k.id} className="whitespace-pre-wrap break-words">
+              <span className="font-medium">{k.autorName}:</span> {k.text}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       <div
         className="overflow-x-auto overscroll-x-contain"
         ref={scrollBox}
@@ -1056,7 +1323,7 @@ export function ShiftPlanGrid({
         ) : groups.length === 0 ? (
           <EmptyState title="Keine Mitarbeiter gefunden." />
         ) : (
-          <table className="w-max border-separate border-spacing-0 text-[13px]">
+          <table className="w-max border-separate border-spacing-0 text-[13px] sm:w-full">
             <thead>
               <tr>
                 <th
@@ -1232,6 +1499,10 @@ export function ShiftPlanGrid({
                         const waehlbar = antragAktiv && member.isMe && Boolean(cell) && iso >= from;
                         const gewaehlt =
                           member.isMe && auswahl !== null && iso >= auswahl.von && iso <= auswahl.bis;
+                        const bearbeitbar = !nurLesen && canEdit && Boolean(cell);
+                        const zellKommentare = kommentareJeZelle.get(
+                          zellSchluessel(member.employeeId, iso),
+                        );
                         return (
                           <td
                             key={iso}
@@ -1250,29 +1521,71 @@ export function ShiftPlanGrid({
                             )}
                           >
                             <button
-                              disabled={waehlbar ? false : nurLesen || !canEdit || !cell}
+                              type="button"
+                              // Kein `disabled`: auch nicht bearbeitbare Zellen
+                              // nehmen langes Drücken (Kommentar) und das
+                              // Überfahren mit der Maus an.
+                              aria-disabled={!waehlbar && !bearbeitbar && !zellKommentare}
+                              onPointerDown={(e) => druckBeginn(e, member.employeeId, member.name, iso)}
+                              onPointerMove={druckBewegung}
+                              onPointerUp={druckEnde}
+                              onPointerCancel={druckEnde}
+                              onPointerLeave={(e) => {
+                                druckEnde();
+                                if (e.pointerType === "mouse") setSchwebe(null);
+                              }}
+                              onPointerEnter={(e) => {
+                                if (e.pointerType !== "mouse" || !zellKommentare) return;
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setSchwebe({
+                                  x: Math.min(rect.left, window.innerWidth - 330),
+                                  y: rect.bottom + 4,
+                                  liste: zellKommentare,
+                                });
+                              }}
+                              onContextMenu={(e) => {
+                                // Rechtsklick am Desktop = Kommentar; auf
+                                // Android kommt beim langen Drücken dasselbe
+                                // Ereignis – das Menü des Browsers stört dort.
+                                e.preventDefault();
+                                if (!druck.current?.ausgeloest) {
+                                  oeffneKommentare(member.employeeId, member.name, iso);
+                                }
+                              }}
                               onClick={() => {
+                                if (klickNachDruck()) return;
                                 if (waehlbar) {
                                   setSelected(null);
                                   tippeTag(iso);
-                                } else if (!nurLesen && canEdit && cell) {
+                                } else if (bearbeitbar && cell) {
+                                  setKommentarZelle(null);
                                   setSelected(cell);
+                                } else if (zellKommentare) {
+                                  oeffneKommentare(member.employeeId, member.name, iso);
                                 }
                               }}
                               aria-pressed={waehlbar ? gewaehlt : undefined}
                               title={
-                                cell
+                                cell && !zellKommentare
                                   ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}${code && BEANTRAGT.has(code) ? " · beantragt, noch nicht genehmigt" : ""}`
                                   : undefined
                               }
                               className={cn(
-                                "mx-auto flex h-6 w-6 items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:w-7 sm:text-[12px]",
+                                "relative mx-auto flex h-6 w-6 select-none items-center justify-center rounded text-[11px] font-semibold [-webkit-touch-callout:none] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
-                                ((!nurLesen && canEdit) || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
+                                (bearbeitbar || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
+                                !waehlbar && !bearbeitbar && !zellKommentare && "cursor-default",
                                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
                               )}
                             >
                               {code ? cellLabel(code) : ""}
+                              {/* Kleiner roter Strich: hier steht ein Kommentar. */}
+                              {zellKommentare ? (
+                                <span
+                                  aria-label="Kommentar vorhanden"
+                                  className="absolute right-0.5 top-0.5 h-[3px] w-2 rounded-full bg-crit-dot sm:w-2.5"
+                                />
+                              ) : null}
                             </button>
                           </td>
                         );
@@ -1314,7 +1627,7 @@ export function ShiftPlanGrid({
                                     : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum mx-auto flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold sm:h-7 sm:w-7 sm:text-[12px]",
+                                "tnum mx-auto flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
                                 below
                                   ? "bg-crit-bg text-crit-fg"
                                   : knapp
@@ -1340,7 +1653,7 @@ export function ShiftPlanGrid({
 
       {/* Platz unter der Tabelle, damit die Leiste unten die letzten
           Zeilen nicht verdeckt – unten angefügt, damit oben nichts springt. */}
-      {selected && canEdit ? <div aria-hidden className="h-56" /> : null}
+      {(selected && canEdit) || kommentarZelle ? <div aria-hidden className="h-56" /> : null}
 
       {auswahl && employeeId ? (
         <>
