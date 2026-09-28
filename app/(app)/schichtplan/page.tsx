@@ -43,8 +43,8 @@ export default function ShiftPlanPage() {
         title="Schichtplan"
         description={
           canEdit
-            ? "Eine Zeile je Person, ein ganzer Monat. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
-            : "Der ganze Schichtplan, ein Monat auf einmal – deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag."
+            ? "Eine Zeile je Person, ab heute rund 30 Tage, mit den Pfeilen monatsweise. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
+            : "Der ganze Schichtplan, ab heute rund 30 Tage – deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag."
         }
       />
 

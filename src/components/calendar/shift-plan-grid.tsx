@@ -239,17 +239,7 @@ export function ShiftPlanGrid({
    * heute, und wer den März 2027 plant, muss sich jedes Mal neu
    * dorthinblättern.
    */
-  const normiere = useCallback(
-    (iso: string) => (monatsansicht ? `${iso.slice(0, 7)}-01` : iso),
-    [monatsansicht],
-  );
-  const [start, setStartRoh] = useState(() => normiere(from));
-  /** In der Monatsansicht landet jeder Start auf dem Monatsersten. */
-  const setStart = useCallback(
-    (wert: string | ((bisher: string) => string)) =>
-      setStartRoh((bisher) => normiere(typeof wert === "function" ? wert(bisher) : wert)),
-    [normiere],
-  );
+  const [start, setStart] = useState(from);
 
   useEffect(() => {
     const gemerkt = gemerkteAnsicht("schichtplan-start", istPlausiblesDatum);
@@ -281,10 +271,26 @@ export function ShiftPlanGrid({
    * Weiter schauen geht über die Pfeile oder die Monatsauswahl – der Plan
    * bleibt vollständig erreichbar, er kommt nur in Monatsschritten.
    */
-  const span = monatsansicht ? tageImMonat(start) : days;
-  /** Ein Zeitraum weiter bzw. zurück – in der Monatsansicht genau ein Monat. */
-  const weiter = (s: string) => addDays(s, monatsansicht ? tageImMonat(s) : span);
-  const zurueck = (s: string) => (monatsansicht ? addDays(s, -1) : addDays(s, -span));
+  /**
+   * Monatsansicht (Bereich „Plan“): Steht der Start auf einem Monatsersten,
+   * wird genau dieser Monat gezeigt. Über „Heute“ steht der heutige Tag
+   * ganz links, dahinter die nächsten 30 Tage. Die Pfeile springen immer
+   * auf den nächsten bzw. vorigen Monatsersten.
+   */
+  const monatsErster = (iso: string) => `${iso.slice(0, 7)}-01`;
+  const span = monatsansicht
+    ? start.endsWith("-01")
+      ? tageImMonat(start)
+      : 30
+    : days;
+  const weiter = (s: string) =>
+    monatsansicht ? addDays(monatsErster(s), tageImMonat(monatsErster(s))) : addDays(s, span);
+  const zurueck = (s: string) =>
+    monatsansicht
+      ? s.endsWith("-01")
+        ? monatsErster(addDays(s, -1))
+        : monatsErster(s)
+      : addDays(s, -span);
 
   /**
    * Wischen blättert: nach links die nächsten Tage, nach rechts die
@@ -528,25 +534,14 @@ export function ShiftPlanGrid({
   );
 
   /**
-   * Monatsansicht auf schmalen Bildschirmen: passt der Monat nicht ganz
-   * hinein, steht der heutige Tag beim Öffnen vorne im Bild – nicht der
-   * Monatserste, der schon vorbei ist.
+   * Der erste angezeigte Tag steht immer ganz links – nach „Heute“, nach
+   * einem Monatswechsel und beim Öffnen. Vorher blieb die Tabelle seitlich
+   * verschoben stehen, und der gewünschte Tag war nicht im Bild.
    */
+  const geladen = cells !== null;
   useEffect(() => {
-    if (!monatsansicht || cells === null || !dates.includes(from)) return;
-    // Auf dem Desktop soll der Monat vom Ersten an im Bild stehen.
-    if (window.innerWidth >= 1024) return;
-    const box = scrollBox.current;
-    if (!box || box.scrollWidth <= box.clientWidth) return;
-    const spalte = box.querySelector<HTMLElement>(`th[data-tag="${from}"]`);
-    const nameSpalte = box.querySelector<HTMLElement>("thead th");
-    if (spalte) {
-      box.scrollLeft = Math.max(
-        0,
-        spalte.offsetLeft - (nameSpalte?.offsetWidth ?? 0) - spalte.offsetWidth,
-      );
-    }
-  }, [monatsansicht, cells, dates, from]);
+    if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+  }, [start, geladen]);
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
   const groups = useMemo(() => {
@@ -843,7 +838,9 @@ export function ShiftPlanGrid({
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">Schichtplan</h2>
           <p className="tnum text-[12px] text-ink-muted">
-            {monatsansicht
+            {/* Ab „Heute" ist es kein Kalendermonat, sondern ein Zeitraum –
+                dann steht auch der Zeitraum da. */}
+            {monatsansicht && start.endsWith("-01")
               ? `${monthName(fromISO(start).getMonth())} ${fromISO(start).getFullYear()}`
               : `${formatDE(start)} – ${formatDE(addDays(start, span - 1))}`}
           </p>
@@ -904,7 +901,10 @@ export function ShiftPlanGrid({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setStart(from)}
+              onClick={() => {
+                setStart(from);
+                if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+              }}
               className="rounded-lg px-2.5 py-1.5 text-[13px] text-ink-muted hover:bg-surface-muted"
             >
               Heute
@@ -1116,7 +1116,7 @@ export function ShiftPlanGrid({
                       data-tag={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[24px] px-0 py-0.5 text-center sm:min-w-[30px] sm:px-0.5 lg:min-w-[32px]",
+                        "min-w-[36px] px-0 py-1 text-center sm:px-0.5 lg:min-w-[38px]",
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
@@ -1130,7 +1130,7 @@ export function ShiftPlanGrid({
                         blockReason && "bg-crit-bg",
                       )}
                     >
-                      <span className="block text-[9px] font-medium leading-tight text-ink-faint sm:text-[10px] lg:text-[11px]">
+                      <span className="block text-[10px] font-medium leading-tight text-ink-faint lg:text-[11px]">
                         {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
                             passen keine zwei Wochen nebeneinander. */}
                         <span className="sm:hidden">
@@ -1140,7 +1140,7 @@ export function ShiftPlanGrid({
                           {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
                         </span>
                       </span>
-                      <span className="tnum block whitespace-nowrap text-[9px] leading-tight tracking-tight text-ink-muted sm:text-[10px] lg:text-[11px]">
+                      <span className="tnum block whitespace-nowrap text-[10px] leading-tight tracking-tight text-ink-muted lg:text-[11px]">
                         {dayHeader(iso)}
                       </span>
                       {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
@@ -1261,7 +1261,7 @@ export function ShiftPlanGrid({
                           <td
                             key={iso}
                             className={cn(
-                              "p-px text-center sm:p-0.5",
+                              "p-0.5 text-center",
                               // Dieselbe Linie wie im Kopf, damit der
                               // Monatswechsel durch die ganze Tabelle geht.
                               iso.slice(8, 10) === "01" && "border-l-2 border-line",
@@ -1291,7 +1291,7 @@ export function ShiftPlanGrid({
                                   : undefined
                               }
                               className={cn(
-                                "flex h-6 w-full items-center justify-center rounded text-[11px] font-semibold sm:h-7 sm:text-[12px] lg:h-8 lg:text-[13px]",
+                                "flex h-9 w-full items-center justify-center rounded-md text-[13px] font-semibold lg:h-10 lg:text-[14px]",
                                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                                 ((!nurLesen && canEdit) || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
@@ -1325,7 +1325,7 @@ export function ShiftPlanGrid({
                       return (
                         <td
                           key={iso}
-                          className="bg-surface-sunken/60 p-px text-center sm:p-0.5"
+                          className="bg-surface-sunken/60 p-0.5 text-center"
                         >
                           {day == null || day.minimum === null ? (
                             <span className="text-[11px] text-ink-faint">–</span>
@@ -1339,7 +1339,7 @@ export function ShiftPlanGrid({
                                     : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum flex h-5 w-full items-center justify-center rounded text-[10px] font-semibold sm:h-6 sm:text-[12px] lg:h-7 lg:text-[13px]",
+                                "tnum flex h-7 w-full items-center justify-center rounded-md text-[12px] font-semibold lg:h-8 lg:text-[13px]",
                                 below
                                   ? "bg-crit-bg text-crit-fg"
                                   : knapp
