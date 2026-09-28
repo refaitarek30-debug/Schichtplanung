@@ -415,7 +415,7 @@ export default function DashboardPage() {
         <ShiftPlanGrid
           companyId={company.id}
           from={TODAY}
-          days={10}
+          days={14}
           canEdit={role === "admin" || role === "shift_leader"}
           employeeId={profile.employeeId}
           antragSchalter={false}
