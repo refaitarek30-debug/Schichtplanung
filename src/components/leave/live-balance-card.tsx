@@ -75,7 +75,7 @@ export function LiveBalanceCard({
           ) : undefined
         }
       />
-      <CardBody className="space-y-3">
+      <CardBody className="space-y-2">
         <Kontoblock
           farbe="urlaub"
           titel="Urlaub"
@@ -198,43 +198,40 @@ function Kontoblock({
   fuss?: React.ReactNode;
 }) {
   const f = farben[farbe];
+  // Kompakt: links Art und Anspruch, rechts der Stand groß, darunter die
+  // Einzelwerte als eine Zeile statt als Kästchenraster.
   return (
-    <div className={cn("rounded-xl border border-l-4 border-line px-4 py-3", f.rand, f.grund)}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <span className="flex items-center gap-2 text-[15px] font-semibold tracking-tight">
-          <span className={cn("h-2.5 w-2.5 rounded-full", f.punkt)} aria-hidden />
-          {titel}
-          {untertitel ? (
-            <span className="text-[12px] font-normal text-ink-faint">({untertitel})</span>
-          ) : null}
-        </span>
-        <span className="tnum text-[12px] text-ink-muted">{kopf}</span>
+    <div className={cn("rounded-xl border border-l-4 border-line px-3 py-2", f.rand, f.grund)}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[14px] font-semibold tracking-tight">
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", f.punkt)} aria-hidden />
+            {titel}
+            {untertitel ? (
+              <span className="text-[11px] font-normal text-ink-faint">({untertitel})</span>
+            ) : null}
+          </p>
+          <p className="tnum truncate text-[11px] text-ink-muted">{kopf}</p>
+        </div>
+        <p className="shrink-0 text-right leading-none">
+          <span
+            className={cn("tnum text-2xl font-semibold tracking-tight", minus && "text-crit-fg")}
+          >
+            {wert}
+          </span>
+          <span className="mt-0.5 block text-[11px] text-ink-muted">{einheit}</span>
+        </p>
       </div>
 
-      <p className="mt-1 flex items-baseline gap-2">
-        <span
-          className={cn(
-            "tnum text-3xl font-semibold tracking-tight",
-            minus && "text-crit-fg",
-          )}
-        >
-          {wert}
-        </span>
-        <span className="text-sm text-ink-muted">{einheit}</span>
-      </p>
-
-      <dl
-        className="mt-2.5 grid gap-2 text-center"
-        style={{ gridTemplateColumns: `repeat(${Math.min(felder.length, 4)}, minmax(0, 1fr))` }}
-      >
+      <dl className="tnum mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-ink-muted">
         {felder.map((feld) => (
-          <div key={feld.label} className="rounded-lg bg-surface/80 px-1.5 py-1.5">
-            <dt className="text-[11px] leading-tight text-ink-muted">{feld.label}</dt>
-            <dd className="tnum mt-0.5 text-[15px] font-semibold">{feld.wert}</dd>
+          <div key={feld.label} className="flex gap-1">
+            <dt>{feld.label}</dt>
+            <dd className="font-semibold text-ink">{feld.wert}</dd>
           </div>
         ))}
       </dl>
-      {fuss ? <p className="mt-2 text-[12px] leading-snug text-ink-muted">{fuss}</p> : null}
+      {fuss ? <p className="mt-1.5 text-[12px] leading-snug text-ink-muted">{fuss}</p> : null}
     </div>
   );
 }

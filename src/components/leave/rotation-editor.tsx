@@ -20,7 +20,22 @@ import type { EmployeeRecord, LiveShiftAssignment } from "@/lib/types";
 
 const initialState: FormState = {};
 
-export function RotationEditor({ companyId }: { companyId: string }) {
+/**
+ * Schichtwechsel: eine Person an einem einzelnen Tag in eine andere Schicht
+ * setzen – ohne ihre feste Schichtgruppe zu ändern. Steht im Schichtplan
+ * direkt unter den Abwesenheiten (vorher als „Neue Ausnahme“ unter
+ * Verwaltung → Schichten). Die Besetzung zählt die Person an dem Tag in der
+ * neuen Schicht.
+ *
+ * `onSaved` lädt den Plan darüber neu, damit der Wechsel sofort sichtbar ist.
+ */
+export function RotationEditor({
+  companyId,
+  onSaved,
+}: {
+  companyId: string;
+  onSaved?: () => void;
+}) {
   const [assignments, setAssignments] = useState<LiveShiftAssignment[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [shifts, setShifts] = useState<ShiftOption[]>([]);
@@ -53,7 +68,10 @@ export function RotationEditor({ companyId }: { companyId: string }) {
   }, [load]);
 
   useEffect(() => {
-    if (state.success) load();
+    if (state.success) {
+      load();
+      onSaved?.();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 
@@ -64,14 +82,15 @@ export function RotationEditor({ companyId }: { companyId: string }) {
       if (result.error) setError(result.error);
       setBusyId(null);
       void load();
+      if (!result.error) onSaved?.();
     });
   }
 
   return (
     <Card>
       <CardHeader
-        title="Schichtrotation"
-        hint="Weist eine Person für einen einzelnen Tag einer anderen Schicht zu – ohne die feste Zuordnung zu ändern."
+        title="Schichtwechsel"
+        hint="Eine Person für einen Tag in eine andere Schicht setzen – auch Tagschicht und auch am Wochenende. Die feste Schichtgruppe bleibt, die Besetzung zählt die Person an dem Tag in der neuen Schicht."
       />
 
       {error ? (
@@ -84,7 +103,7 @@ export function RotationEditor({ companyId }: { companyId: string }) {
         {assignments === null ? (
           <RowSkeleton rows={2} />
         ) : assignments.length === 0 ? (
-          <EmptyState title="Keine Ausnahmen in den nächsten vier Wochen." />
+          <EmptyState title="Keine Schichtwechsel in den nächsten vier Wochen." />
         ) : (
           assignments.map((a) => (
             <div
@@ -94,14 +113,14 @@ export function RotationEditor({ companyId }: { companyId: string }) {
               <div className="min-w-0">
                 <p className="text-sm font-medium">{a.employeeName}</p>
                 <p className="text-[12px] text-ink-muted">
-                  {formatDE(a.date)} · {a.shiftName}
+                  {formatDE(a.date)} · {a.shiftName || "frei"}
                 </p>
               </div>
               <button
                 onClick={() => remove(a.id)}
                 disabled={pending && busyId === a.id}
                 className="shrink-0 rounded-lg p-2 text-ink-faint hover:bg-crit-bg hover:text-crit-fg"
-                aria-label="Zuordnung entfernen"
+                aria-label="Schichtwechsel entfernen"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -111,7 +130,7 @@ export function RotationEditor({ companyId }: { companyId: string }) {
       </CardBody>
 
       <div className="border-t border-line px-5 py-4">
-        <p className="mb-3 text-[13px] font-medium">Neue Ausnahme</p>
+        <p className="mb-3 text-[13px] font-medium">Neuer Schichtwechsel</p>
         <form action={formAction} className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Mitarbeiter">
@@ -131,7 +150,7 @@ export function RotationEditor({ companyId }: { companyId: string }) {
             <Field label="Datum">
               <Input type="date" name="date" required min={TODAY} />
             </Field>
-            <Field label="Schicht">
+            <Field label="Neue Schicht">
               <select
                 name="shift_id"
                 required
@@ -160,7 +179,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" variant="secondary" disabled={pending}>
-      {pending ? "Wird gespeichert …" : "Zuordnen"}
+      {pending ? "Wird gespeichert …" : "Schicht wechseln"}
     </Button>
   );
 }

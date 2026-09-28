@@ -26,7 +26,7 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Mein Konto"
         title="Profil"
-        description="Name und Profilbild kannst du selbst ändern. Alles andere pflegt die Administration."
+        description="Deinen Namen kannst du selbst ändern. Alles andere pflegt die Administration."
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

@@ -117,7 +117,6 @@ export async function updateOwnProfile(
 
   const firstName = String(formData.get("first_name") ?? "").trim();
   const lastName = String(formData.get("last_name") ?? "").trim();
-  const avatarUrl = String(formData.get("avatar_url") ?? "").trim();
 
   if (!firstName || !lastName) return { error: "Vor- und Nachname dürfen nicht leer sein." };
 
@@ -129,12 +128,12 @@ export async function updateOwnProfile(
 
   // E-Mail und Rolle stehen bewusst nicht in diesem Update – dafür ist
   // die Administration zuständig, und die Policy verbietet es ohnehin.
+  // Ein Profilbild gibt es nicht mehr: angezeigt werden die Initialen.
   const { error } = await supabase
     .from("profiles")
     .update({
       first_name: firstName,
       last_name: lastName,
-      avatar_url: avatarUrl || null,
     })
     .eq("id", user.id);
 

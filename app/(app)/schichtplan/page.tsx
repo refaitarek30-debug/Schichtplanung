@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { ShiftPlanExport } from "@/components/calendar/shift-plan-export";
 import { AddAbsenceForm } from "@/components/leave/add-absence-form";
+import { RotationEditor } from "@/components/leave/rotation-editor";
 import { useSession } from "@/context/session";
 import { TODAY } from "@/lib/demo-data";
 import { fetchEmployees } from "@/lib/data/employees";
@@ -61,7 +62,6 @@ export default function ShiftPlanPage() {
             days={30}
             canEdit={canEdit}
             employeeId={profile.employeeId}
-            personalnummern={canEdit}
           />
 
           {canEdit ? (
@@ -76,6 +76,13 @@ export default function ShiftPlanPage() {
                   laden();
                   setStand((n) => n + 1);
                 }}
+              />
+
+              {/* Schichtwechsel direkt unter den Abwesenheiten – beides
+                  ändert den Plan für einzelne Tage. */}
+              <RotationEditor
+                companyId={company.id}
+                onSaved={() => setStand((n) => n + 1)}
               />
 
               <ShiftPlanExport

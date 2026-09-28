@@ -236,7 +236,10 @@ export default function DatenschutzPage() {
             Unternehmen die Anwendung nutzt. Scheidet eine Person aus, wird ihr
             Personalstammsatz üblicherweise auf <em>inaktiv</em> gesetzt, damit
             vergangene Pläne nachvollziehbar bleiben; das endgültige Löschen entscheidet
-            das Unternehmen.
+            das Unternehmen. Wird eine deaktivierte Person gelöscht, entfernt die
+            Anwendung sie vollständig: Stammdaten, Zugang, Profil, Anträge,
+            Abwesenheiten, Konten und Schichtzuordnungen. Im Änderungsprotokoll bleibt
+            nur vermerkt, dass gelöscht wurde, ohne Namen.
           </li>
           <li>
             Urlaubskonten werden je Kalenderjahr geführt und für die Nachvollziehbarkeit

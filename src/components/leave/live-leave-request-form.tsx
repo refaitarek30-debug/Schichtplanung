@@ -1,15 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/input";
-import { DateRangeCalendar } from "./date-range-calendar";
-import { addDays as addDaysISO, formatDE, formatDays, fromISO as fromISOLocal } from "@/lib/dates";
+import { Field, Input } from "@/components/ui/input";
+import { addDays as addDaysISO, formatDE, formatDays } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { fetchLeaveBlockReason, fetchLeaveImpact } from "@/lib/data/staffing";
@@ -20,7 +19,7 @@ import {
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
 } from "@/lib/data/leave";
-import { fetchBlockedDays, fetchMyShiftPlan } from "@/lib/data/rotation";
+import { fetchBlockedDays } from "@/lib/data/rotation";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
 import type {
@@ -64,15 +63,6 @@ const KONTINGENT_ARTEN = [
   "gewerkschaftstag",
 ] as const;
 
-/** Schichtname auf das Kürzel bringen, wie im Schichtplan. */
-function shiftCode(name: string | null): string | null {
-  if (!name) return null;
-  if (/^Früh/i.test(name)) return "F";
-  if (/^Spät/i.test(name)) return "S";
-  if (/^Nacht/i.test(name)) return "N";
-  return name.slice(0, 1).toUpperCase();
-}
-
 export function LiveLeaveRequestForm({
   employeeId,
   balance,
@@ -109,8 +99,6 @@ export function LiveLeaveRequestForm({
    * und jedes gegen seinen eigenen Teil geprüft.
    */
   const [konten, setKonten] = useState<Map<number, LiveLeaveBalance | null>>(new Map());
-  /** Eigene Schicht je Tag für den Kalender – F, S, N oder null (frei). */
-  const [shiftDays, setShiftDays] = useState<Map<string, string | null>>(new Map());
   /** Vorschau der automatischen Verteilung. */
   const [autoDays, setAutoDays] = useState<LiveAutoDay[] | null>(null);
   const [holidays, setHolidays] = useState<Holiday[] | null>(null);
@@ -142,6 +130,18 @@ export function LiveLeaveRequestForm({
     }
     return karte;
   }, [meineAntraege]);
+
+  /** Wie viele Tage des gewählten Zeitraums sind schon beantragt/genehmigt? */
+  const belegtImZeitraum = useMemo(() => {
+    if (endDate < startDate) return 0;
+    let n = 0;
+    let tag = startDate;
+    for (let i = 0; tag <= endDate && i < 400; i++) {
+      if (belegteTage.has(tag)) n += 1;
+      tag = addDaysISO(tag, 1);
+    }
+    return n;
+  }, [belegteTage, startDate, endDate]);
 
   /**
    * Die Datumsauswahl, nachdem sie kurz stillsteht.
@@ -350,61 +350,6 @@ export function LiveLeaveRequestForm({
     };
   }, [employeeId, stabil]);
 
-  /**
-   * Eigene Schichten für den Kalender.
-   *
-   * Drei Dinge, die vorher gefehlt haben und das Blättern zäh bis kaputt
-   * gemacht haben:
-   *
-   *   * Jeder Monatswechsel lud neu, auch ein schon geladener Monat.
-   *   * `setShiftDays(map)` ersetzte die ganze Karte – der vorige Monat
-   *     war danach weg und musste beim Zurückblättern wieder geholt werden.
-   *   * Ohne Abbruchlogik konnte eine ältere Antwort eine neuere
-   *     überschreiben. Wer schnell blätterte, sah dann die Schichten eines
-   *     Monats, den er längst verlassen hatte – oder gar keine.
-   *
-   * Jetzt: einmal je Monat, zusammenführen statt ersetzen, und nur die
-   * Antwort auf die zuletzt gestellte Frage wird übernommen.
-   */
-  const geladeneMonate = useRef(new Set<string>());
-  const letzteAnfrage = useRef(0);
-
-  const loadShifts = useCallback((year: number, month: number) => {
-    const schluessel = `${year}-${month}`;
-    if (geladeneMonate.current.has(schluessel)) return;
-    geladeneMonate.current.add(schluessel);
-
-    const von = new Date(year, month - 1, 1);
-    const bis = new Date(year, month + 2, 0);
-    const tage = Math.round((bis.getTime() - von.getTime()) / 86400000) + 1;
-    const vonISO = `${von.getFullYear()}-${String(von.getMonth() + 1).padStart(2, "0")}-01`;
-    const meine = ++letzteAnfrage.current;
-
-    // my_shift_plan gibt höchstens 62 Tage je Aufruf – in zwei Schritten holen.
-    Promise.all([
-      fetchMyShiftPlan(vonISO, Math.min(tage, 60)),
-      tage > 60 ? fetchMyShiftPlan(addDaysISO(vonISO, 60), tage - 60) : Promise.resolve([]),
-    ])
-      .then(([a, b]) => {
-        if (meine !== letzteAnfrage.current) return;
-        setShiftDays((bisher) => {
-          const map = new Map(bisher);
-          for (const day of [...a, ...b]) {
-            map.set(day.date, day.isFree ? null : shiftCode(day.shiftName));
-          }
-          return map;
-        });
-      })
-      .catch(() => {
-        // Nicht geladen heisst: beim naechsten Blick noch einmal versuchen.
-        geladeneMonate.current.delete(schluessel);
-      });
-  }, []);
-
-  useEffect(() => {
-    const heute = fromISOLocal(today);
-    loadShifts(heute.getFullYear(), heute.getMonth());
-  }, [today, loadShifts]);
 
   // Vorschau der Automatik – zeigt vor dem Absenden, welcher Tag auf
   // welches Konto geht.
@@ -561,7 +506,6 @@ export function LiveLeaveRequestForm({
         title="Urlaub beantragen"
         hint="Die Anzahl Tage wird verbindlich vom Server berechnet."
       />
-      {/* Weniger Rand auf dem Handy – die Breite braucht der Kalender. */}
       <CardBody className="space-y-4 px-3 sm:px-5">
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="start_date" value={startDate} />
@@ -569,22 +513,46 @@ export function LiveLeaveRequestForm({
           <input type="hidden" name="kind" value={kind} />
 
           <div>
-            <span className="mb-2 block text-[13px] font-medium text-ink-muted">
-              Zeitraum auswählen
-            </span>
-            <DateRangeCalendar
-              startDate={startDate}
-              endDate={endDate}
-              minDate={today}
-              holidays={holidays ?? []}
-              belegt={belegteTage}
-              shifts={shiftDays}
-              onMonthChange={loadShifts}
-              onChange={(newStart, newEnd) => {
-                setStartDate(newStart);
-                setEndDate(newEnd);
-              }}
-            />
+            {/* Zwei Datumsfelder statt Kalender: schneller, auf dem Handy
+                mit der gewohnten Datumsauswahl des Geräts. */}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Von">
+                <Input
+                  type="date"
+                  value={startDate}
+                  min={today}
+                  required
+                  onChange={(e) => {
+                    const neu = e.target.value;
+                    if (!neu) return;
+                    setStartDate(neu);
+                    if (endDate < neu) setEndDate(neu);
+                  }}
+                />
+              </Field>
+              <Field label="Bis">
+                <Input
+                  type="date"
+                  value={endDate}
+                  min={startDate}
+                  required
+                  onChange={(e) => {
+                    const neu = e.target.value;
+                    if (neu) setEndDate(neu < startDate ? startDate : neu);
+                  }}
+                />
+              </Field>
+            </div>
+            {belegtImZeitraum > 0 ? (
+              <div className="mt-2">
+                <Alert tone="warning">
+                  {belegtImZeitraum === 1
+                    ? "Für einen Tag in diesem Zeitraum hast du schon einen Antrag."
+                    : `Für ${belegtImZeitraum} Tage in diesem Zeitraum hast du schon einen Antrag.`}{" "}
+                  Den bestehenden Antrag zuerst zurückziehen oder den Zeitraum ändern.
+                </Alert>
+              </div>
+            ) : null}
             <p className="tnum mt-2 text-[13px] text-ink-muted">
               {startDate === endDate
                 ? formatDE(startDate)

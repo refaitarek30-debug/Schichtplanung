@@ -405,60 +405,31 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
 }
 
 /**
- * Löscht einen Personalstammsatz endgültig – anders als das bloße
- * Deaktivieren (bleibt für den normalen Alltag die richtige Wahl, siehe
- * `setEmployeeActive()` in `data/employees.ts`). Nur Admin.
+ * Löscht eine Person endgültig und vollständig – nur Admin, nur wenn sie
+ * vorher deaktiviert wurde.
  *
- * Sicherheitsbremse: hat die Person bereits einen Login (eine Zeile in
- * `profiles`), wird das Löschen verweigert. Grund: `profiles.employee_id`
- * verweist per `ON DELETE SET NULL` auf diese Zeile – ein Hard-Delete
- * würde den Zugang als „Karteileiche" ohne Personalstammsatz zurücklassen,
- * statt sauber aufzuräumen. Erst deaktivieren bzw. den Zugang entfernen,
- * dann löschen.
+ * Weg sind danach Personalstammsatz (Name, E-Mail, Personalnummer),
+ * Anträge, Abwesenheiten, Konten, Schichtzuordnungen, Qualifikationen,
+ * das Profil, die Datenschutz-Einstellungen und der Zugang selbst. Das
+ * erledigt `mitarbeiter_endgueltig_loeschen()` in einer einzigen
+ * Transaktion: klappt ein Teil nicht, bleibt alles, wie es war – es kann
+ * kein halber Datensatz zurückbleiben. Wird die Person wieder gebraucht,
+ * wird sie neu angelegt.
  */
 export async function deleteEmployee(employeeId: string): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   if (!employeeId) return { error: "Kein Mitarbeiter ausgewählt." };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, company_id")
-    .eq("id", user.id)
-    .returns<{ role: Role; company_id: string }[]>()
-    .maybeSingle();
-
-  if (!profile || profile.role !== "admin") {
-    return { error: "Du hast keine Berechtigung für diesen Bereich." };
-  }
-
-  const { count } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("employee_id", employeeId);
-
-  if ((count ?? 0) > 0) {
-    return {
-      error:
-        "Diese Person hat noch einen Zugang. Bitte zuerst deaktivieren – ein Löschen würde den Zugang ohne Personalstammsatz zurücklassen.",
-    };
-  }
-
-  const { error } = await supabase
-    .from("employees")
-    .delete()
-    .eq("id", employeeId)
-    .eq("company_id", profile.company_id);
+  const { error } = await supabase.rpc("mitarbeiter_endgueltig_loeschen", {
+    p_employee_id: employeeId,
+  });
 
   if (error) {
-    return { error: dataErrorMessage(error) ?? "Der Mitarbeiter konnte nicht gelöscht werden." };
+    return { error: dataErrorMessage(error) ?? "Die Person konnte nicht gelöscht werden." };
   }
 
   revalidatePath("/verwaltung");
-  return { success: "Mitarbeiter gelöscht." };
+  revalidatePath("/schichtplan");
+  return { success: "Person vollständig gelöscht." };
 }

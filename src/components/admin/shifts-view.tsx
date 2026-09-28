@@ -2,7 +2,6 @@
 
 
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { RotationEditor } from "@/components/leave/rotation-editor";
 import { RotationPatternEditor } from "@/components/leave/rotation-pattern-editor";
 import { useSession } from "@/context/session";
 import { AdminViewHeader } from "./view-header";
@@ -12,7 +11,7 @@ import { ShiftStaffingCards } from "@/components/staffing/shift-staffing-cards";
 import { cn } from "@/lib/utils";
 
 export function ShiftsView() {
-  const { mode, company, role } = useSession();
+  const { mode, role } = useSession();
 
   return (
     <div className="space-y-5">
@@ -26,7 +25,8 @@ export function ShiftsView() {
 
       {mode === "live" && role === "admin" ? <RotationPatternEditor /> : null}
 
-      {mode === "live" ? <RotationEditor companyId={company.id} /> : null}
+      {/* Schichtwechsel für einzelne Tage stehen jetzt im Schichtplan,
+          direkt unter den Abwesenheiten. */}
     </div>
   );
 }

@@ -187,7 +187,7 @@ export interface LiveTeamBalance {
 
 /**
  * Altersfreizeit als Stundenkonto: eingetragener Stand zum Stichtag, danach
- * je tatsächlich gearbeitetem Tag +0,83 Std., je AF-Tag −8 Std.
+ * je tatsächlich gearbeitetem Tag +0,82 Std., je AF-Tag −8 Std.
  */
 export interface LiveAfKonto {
   /** Stichtag des eingetragenen Stands; null = nicht freigeschaltet. */

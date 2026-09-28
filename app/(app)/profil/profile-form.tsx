@@ -46,16 +46,6 @@ export function ProfileForm({
             </Field>
           </div>
 
-          <Field label="Profilbild (URL)" hint="Leer lassen, um die Initialen zu zeigen.">
-            <Input
-              name="avatar_url"
-              type="url"
-              defaultValue={profile.avatarUrl ?? ""}
-              placeholder="https://…"
-              disabled={readOnly}
-            />
-          </Field>
-
           <Field label="E-Mail">
             <Input value={profile.email} disabled readOnly />
           </Field>
