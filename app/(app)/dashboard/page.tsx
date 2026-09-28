@@ -418,10 +418,11 @@ export default function DashboardPage() {
           days={14}
           canEdit={role === "admin" || role === "shift_leader"}
           employeeId={profile.employeeId}
-          // Auf der Startseite nur ansehen – zum Beantragen der große Knopf
-          // darüber, zum Bearbeiten die Seite „Plan".
           antragSchalter={false}
-          nurLesen
+          // Schichtleitung und Administration tragen direkt hier ein – ohne
+          // Umweg über die Seite „Plan“. Mitarbeiter sehen nur; beantragt
+          // wird über den großen Knopf „Urlaub beantragen“ oder im Plan.
+          nurLesen={!(role === "admin" || role === "shift_leader")}
         />
       ) : null}
 
