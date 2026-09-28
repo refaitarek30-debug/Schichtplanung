@@ -12,6 +12,7 @@ import { DataError, fetchAfGenommenJahr } from "@/lib/data/leave";
 import { afTageAusStand } from "@/lib/af";
 import {
   fetchAfUebersicht,
+  fetchPersonalnummern,
   fetchVTageUebersicht,
   type LiveAfUebersichtZeile,
   type LiveStundenkontoKurz,
@@ -34,7 +35,7 @@ const ARTEN = {
  *
  * AF: eingetragen wird der Stand in Stunden mit Datum (aus der Abrechnung).
  * Darauf baut die Datenbank auf – je tatsächlich gearbeiteter Schicht
- * +0,83 Std., je AF-Tag −8 Std. Gerechnet wird nur mit Angespartem.
+ * +0,82 Std., je AF-Tag −8 Std. Gerechnet wird nur mit Angespartem.
  *
  * V-Tage: schlicht in Tagen. Die Führung fügt Tage hinzu oder zieht sie ab;
  * die Schichtleitung nur für die eigene Schicht.
@@ -48,6 +49,7 @@ export function AgeLeaveTable() {
   const [zeilen, setZeilen] = useState<LiveAfUebersichtZeile[] | null>(null);
   const [vTage, setVTage] = useState<Map<string, LiveVTageZeile>>(new Map());
   const [afGenommen, setAfGenommen] = useState<Map<string, number>>(new Map());
+  const [nummern, setNummern] = useState<Map<string, string>>(new Map());
   const jetzt = new Date().getFullYear();
   const [jahr, setJahr] = useState(jetzt);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -58,14 +60,16 @@ export function AgeLeaveTable() {
   const laden = useCallback(async () => {
     setFehler(null);
     try {
-      const [af, v, genommen] = await Promise.all([
+      const [af, v, genommen, pnr] = await Promise.all([
         fetchAfUebersicht(),
         fetchVTageUebersicht(jahr),
         fetchAfGenommenJahr(jetzt),
+        fetchPersonalnummern(),
       ]);
       setZeilen(af);
       setVTage(v);
       setAfGenommen(genommen);
+      setNummern(pnr);
     } catch (caught) {
       setZeilen([]);
       setFehler(
@@ -86,7 +90,7 @@ export function AgeLeaveTable() {
     <div className="space-y-4">
       <Alert tone="info">
         <strong>AF:</strong> aktuellen Stand in Stunden mit Datum eintragen (aus der Abrechnung).
-        Danach rechnet die App weiter: je gearbeiteter Schicht +0,83 Std., je AF-Tag −8 Std.{" "}
+        Danach rechnet die App weiter: je gearbeiteter Schicht +0,82 Std., je AF-Tag −8 Std.{" "}
         <strong>V-Tage:</strong> werden in Tagen geführt – einfach Tage hinzufügen oder abziehen.
       </Alert>
 
@@ -139,6 +143,11 @@ export function AgeLeaveTable() {
                   ) : null}
                 </p>
                 <p className="tnum text-[12px] text-ink-muted">
+                  {/* Personalnummer bei den Mitarbeiterdetails – im Plan
+                      steht sie nicht mehr. */}
+                  {nummern.get(z.employeeId)
+                    ? `Pers.-Nr. ${nummern.get(z.employeeId)} · `
+                    : "Keine Pers.-Nr. · "}
                   {z.birthDate
                     ? `geb. ${formatDE(z.birthDate)} · ${z.alterHeute} Jahre`
                     : "Geburtsdatum nicht eingetragen"}

@@ -107,15 +107,14 @@ function cellLabel(code: string): string {
 }
 
 /**
- * Tageskopf: "21.9." statt nur "21".
- *
- * Ohne Monat ist eine "1" am Monatsanfang nicht einzuordnen – gerade auf
- * dem Handy, wo der Zeitraum über der Tabelle beim Scrollen wegrutscht.
- * Die führende Null entfällt; das spart je Spalte eine Zeichenbreite und
- * liest sich genauso eindeutig.
+ * Tageskopf auf dem Handy: nur die Zahl ("21"), damit die schmalen Spalten
+ * lesbar bleiben. Am Monatsersten steht der Monat dabei ("1.10."), sonst
+ * wäre die "1" nicht einzuordnen, wenn der Zeitraum über der Tabelle
+ * weggescrollt ist.
  */
 function dayHeader(iso: string): string {
-  return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
+  const tag = Number(iso.slice(8, 10));
+  return tag === 1 ? `1.${Number(iso.slice(5, 7))}.` : String(tag);
 }
 
 /**
@@ -181,8 +180,6 @@ const legend = [
  * Bis sechs Ziffern passen ohne Kürzung, längere Nummern werden mit „…“
  * abgeschnitten und stehen vollständig im Tooltip.
  */
-const NUMMER_SPALTE = "w-[3.25rem] min-w-[3.25rem] max-w-[3.25rem] sm:w-[4.25rem] sm:min-w-[4.25rem] sm:max-w-[4.25rem]";
-const NAME_NACH_NUMMER = "left-[3.25rem] sm:left-[4.25rem]";
 
 /** Eine Mitarbeiterzeile in der Matrix, Tag für Tag. */
 interface GridEmployee {
@@ -207,7 +204,6 @@ export function ShiftPlanGrid({
   employeeId = null,
   antragSchalter = true,
   nurLesen = false,
-  personalnummern = false,
 }: {
   companyId: string;
   from: string;
@@ -225,11 +221,6 @@ export function ShiftPlanGrid({
    * zum Beantragen gibt es dort den großen Knopf darüber.
    */
   nurLesen?: boolean;
-  /**
-   * Spalte mit Personalnummern zeigen. Nur im Bereich „Plan" für die
-   * Schichtleitung – auf der Startseite nie, auch nicht für die Führung.
-   */
-  personalnummern?: boolean;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -585,19 +576,12 @@ export function ShiftPlanGrid({
   const offeneGruppen = aufgeklappt ?? standardOffen;
 
   /**
-   * Eigene Spalte für die Personalnummer – nur, wo sie gewünscht ist
-   * (`personalnummern`) und es welche gibt. Die Datenbank liefert sie
-   * ausschließlich der Führung; Mitarbeiter sehen keine Personalnummern
-   * von Kollegen und bekommen die Spalte gar nicht.
+   * Spalten vor den Tagen: nur der Name. Die Personalnummer steht nicht im
+   * Plan – auf dem Handy kostet jede Spalte sichtbare Tage. Sie steht bei
+   * den Mitarbeiterdetails (AF-Stunden & V-Tage) neben Geburtsdatum und
+   * V-Tagen.
    */
-  const mitNummer = useMemo(
-    () =>
-      personalnummern &&
-      groups.some(([, members]) => members.some((m) => Boolean(m.number))),
-    [groups, personalnummern],
-  );
-  /** Spalten vor den Tagen: Personalnummer (falls da) und Name. */
-  const vorspalten = mitNummer ? 2 : 1;
+  const vorspalten = 1;
 
   // Kommt man über „Urlaub beantragen" von der Startseite, steht die eigene
   // Zeile sofort im Bild – bei fünfzig Zeilen sucht man sie sonst.
@@ -660,18 +644,17 @@ export function ShiftPlanGrid({
   }, [shiftDetails]);
 
   /**
-   * Ist- und Mindestbesetzung je Schichtgruppe und Tag.
+   * Welche Schicht fährt eine Schichtgruppe an einem Tag?
    *
-   * Welche Schicht eine Gruppe an einem Tag fährt, steht nicht in einer
-   * Spalte – im Rotationsbetrieb ergibt sie sich aus dem Muster. Deshalb wird
-   * sie aus den Zellen der Gruppe abgeleitet (die Schicht, auf der die meisten
-   * Mitglieder stehen). Gezählt werden nur Mitglieder genau dieser Schicht,
-   * die nicht ausfallen. Gruppe hat frei = keine Mindestbesetzung.
+   * Im Rotationsbetrieb steht das in keiner Spalte, es ergibt sich aus dem
+   * Muster. Deshalb wird es aus den Zellen der Gruppe abgeleitet: die
+   * Schicht, auf der die meisten Mitglieder stehen. Ein einzelner
+   * Schichtwechsel ändert daran nichts.
    */
-  const coverage = useMemo(() => {
-    const result = new Map<string, Map<string, { present: number; minimum: number | null }>>();
+  const gruppenSchicht = useMemo(() => {
+    const result = new Map<string, Map<string, string>>();
     for (const [teamName, members] of groups) {
-      const perDay = new Map<string, { present: number; minimum: number | null }>();
+      const perDay = new Map<string, string>();
       for (const iso of dates) {
         const counts = new Map<string, number>();
         for (const member of members) {
@@ -689,12 +672,35 @@ export function ShiftPlanGrid({
             dominant = shiftName;
           }
         }
+        if (dominant) perDay.set(iso, dominant);
+      }
+      result.set(teamName, perDay);
+    }
+    return result;
+  }, [groups, dates]);
+
+  /**
+   * Ist- und Mindestbesetzung je Schichtgruppe und Tag.
+   *
+   * Gezählt wird, wer an dem Tag tatsächlich in der Schicht der Gruppe steht
+   * und nicht ausfällt – aus allen Gruppen. Wer per Schichtwechsel von A in
+   * die Schicht von B gesetzt ist, zählt an dem Tag bei B und nicht mehr bei
+   * A. So rechnet auch die Datenbank (je Schicht). Gruppe hat frei = keine
+   * Mindestbesetzung.
+   */
+  const coverage = useMemo(() => {
+    const result = new Map<string, Map<string, { present: number; minimum: number | null }>>();
+    const alle = groups.flatMap(([, members]) => members);
+    for (const [teamName] of groups) {
+      const perDay = new Map<string, { present: number; minimum: number | null }>();
+      for (const iso of dates) {
+        const dominant = gruppenSchicht.get(teamName)?.get(iso) ?? null;
         if (!dominant) {
           perDay.set(iso, { present: 0, minimum: null });
           continue;
         }
         let present = 0;
-        for (const member of members) {
+        for (const member of alle) {
           if (member.isApprentice) continue;
           const cell = member.cells.get(iso);
           if (!cell || cell.shiftName !== dominant) continue;
@@ -706,7 +712,25 @@ export function ShiftPlanGrid({
       result.set(teamName, perDay);
     }
     return result;
-  }, [groups, dates, minimumByShift]);
+  }, [groups, dates, gruppenSchicht, minimumByShift]);
+
+  /**
+   * Gruppenwechsel für die angetippte Zelle: in welche Schicht käme die
+   * Person, wenn sie an dem Tag mit Gruppe B, C oder D arbeitet? Angeboten
+   * werden nur Gruppen, die an dem Tag fahren, und nicht die eigene.
+   */
+  const gruppenWechsel = useMemo(() => {
+    if (!selected) return [];
+    const eigene = selected.rotationTeam ? `Schicht ${selected.rotationTeam}` : null;
+    const ziele: { team: string; shiftId: string; shiftName: string }[] = [];
+    for (const [teamName] of groups) {
+      if (!teamName.startsWith("Schicht ") || teamName === eigene) continue;
+      const schicht = gruppenSchicht.get(teamName)?.get(selected.day);
+      const detail = schicht ? shiftDetails.find((d) => d.name === schicht) : undefined;
+      if (detail) ziele.push({ team: teamName.slice(8), shiftId: detail.id, shiftName: detail.name });
+    }
+    return ziele;
+  }, [selected, groups, gruppenSchicht, shiftDetails]);
 
   // Auswahlliste: das laufende Jahr und das kommende, dazu der Dezember
   // davor – mehr braucht die Planung im Betrieb nicht.
@@ -920,6 +944,26 @@ export function ShiftPlanGrid({
           <p className="mb-2 text-[13px] font-medium">
             {selected.employeeName} · {formatDE(selected.day)}
           </p>
+          {gruppenWechsel.length > 0 ? (
+            <div className="mb-2">
+              <p className="mb-1 text-[12px] text-ink-muted">
+                Schichtwechsel – an diesem Tag mit einer anderen Gruppe arbeiten:
+              </p>
+              <div className="flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
+                {gruppenWechsel.map((ziel) => (
+                  <Button
+                    key={ziel.team}
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={() => applyChange("shift", ziel.shiftId)}
+                    title={`Zählt an diesem Tag zur Besetzung von Gruppe ${ziel.team}`}
+                  >
+                    Gruppe {ziel.team} · {ziel.shiftName}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
             {shiftDetails.map((shift) => (
               <Button
@@ -995,32 +1039,16 @@ export function ShiftPlanGrid({
           <table className="w-full border-separate border-spacing-0 text-[13px]">
             <thead>
               <tr>
-                {/* Personalnummer in einer eigenen Spalte fester Breite:
-                    kurze und lange Nummern stehen bündig untereinander,
-                    nichts bricht um, und die Spalte verschiebt den Plan
-                    nicht. Sie bleibt beim Wischen stehen wie der Name. */}
-                {mitNummer ? (
-                  <th
-                    scope="col"
-                    title="Personalnummer"
-                    className={cn(
-                      "sticky left-0 z-20 whitespace-nowrap bg-surface px-1.5 py-1 text-left align-bottom text-[10px] font-medium uppercase tracking-[0.04em] text-ink-faint sm:px-2",
-                      NUMMER_SPALTE,
-                    )}
-                  >
-                    {/* Auf dem Handy ist die Spalte schmal – „Nr.“ passt in eine Zeile. */}
-                    <span className="sm:hidden">Nr.</span>
-                    <span className="hidden sm:inline">Pers.-Nr.</span>
-                  </th>
-                ) : null}
                 <th
                   scope="col"
                   className={cn(
-                    "sticky z-20 min-w-[80px] bg-surface px-2 py-1 text-left align-bottom text-[10px] font-medium uppercase tracking-[0.04em] text-ink-faint sm:min-w-[150px] sm:px-3 lg:min-w-[190px]",
-                    mitNummer ? NAME_NACH_NUMMER : "left-0",
+                    // Auf dem Handy schmal und fest: jeder Pixel hier ist
+                    // ein sichtbarer Tag mehr.
+                    "sticky left-0 z-20 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] bg-surface px-1 py-1 text-left align-bottom text-[10px] font-medium uppercase tracking-[0.04em] text-ink-faint sm:w-auto sm:min-w-[150px] sm:max-w-none sm:px-3 lg:min-w-[190px]",
                   )}
                 >
-                  Mitarbeiter
+                  <span className="sm:hidden">Name</span>
+                  <span className="hidden sm:inline">Mitarbeiter</span>
                 </th>
                 {dates.map((iso) => {
                   const blockReason = blocked.get(iso);
@@ -1042,7 +1070,7 @@ export function ShiftPlanGrid({
                       key={iso}
                       title={hinweis}
                       className={cn(
-                        "min-w-[28px] px-0.5 py-1 text-center sm:min-w-[38px] sm:px-1 lg:min-w-[42px]",
+                        "min-w-[24px] px-0 py-1 text-center sm:min-w-[38px] sm:px-1 lg:min-w-[42px]",
                         // Der Monatswechsel bekommt eine senkrechte Linie.
                         // Der Zeitraum über der Tabelle scrollt weg; die
                         // Linie bleibt stehen, wo der Monat umspringt.
@@ -1122,22 +1150,10 @@ export function ShiftPlanGrid({
                       id={member.isMe ? "eigene-zeile" : undefined}
                       className="hover:bg-surface-muted/50"
                     >
-                      {mitNummer ? (
-                        <td
-                          title={member.number ?? undefined}
-                          className={cn(
-                            "tnum sticky left-0 z-10 overflow-hidden text-ellipsis whitespace-nowrap bg-surface px-1.5 py-0.5 text-left text-[11px] text-ink-muted sm:px-2 sm:text-[12px] lg:text-[13px]",
-                            NUMMER_SPALTE,
-                          )}
-                        >
-                          {member.number ?? ""}
-                        </td>
-                      ) : null}
                       <th
                         scope="row"
                         className={cn(
-                          "sticky z-10 whitespace-nowrap bg-surface px-2 py-0.5 text-left text-[11px] font-normal sm:px-3 sm:text-[12px] lg:text-[13px]",
-                          mitNummer ? NAME_NACH_NUMMER : "left-0",
+                          "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left text-[11px] font-normal sm:w-auto sm:min-w-0 sm:max-w-none sm:px-3 sm:text-[12px] lg:text-[13px]",
                         )}
                       >
                         <span className="flex items-center gap-1.5">

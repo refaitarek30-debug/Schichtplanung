@@ -319,7 +319,7 @@ export function EmployeesView() {
                     </Button>
                   ) : null}
                   {role === "admin" ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {mode === "live" ? (
                         <Button
                           variant="secondary"
@@ -351,26 +351,35 @@ export function EmployeesView() {
                             ? "Deaktivieren"
                             : "Aktivieren"}
                       </Button>
-                      {confirmDeleteId === row.id ? (
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="danger"
-                            disabled={busyId === row.id}
-                            onClick={() => remove(row)}
-                          >
-                            Wirklich löschen
-                          </Button>
-                          <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>
-                            Abbrechen
-                          </Button>
+                      {/* Endgültig löschen erst nach dem Deaktivieren – dann aber
+                          vollständig: Stammdaten, Profil, Zugang, alle Einträge. */}
+                      {row.active ? null : confirmDeleteId === row.id ? (
+                        <div className="flex basis-full flex-col gap-2 rounded-xl border border-crit-bg bg-crit-bg/40 p-3 sm:basis-auto">
+                          <p className="text-[13px] leading-snug text-crit-fg">
+                            {row.firstName} {row.lastName} wird mit Zugang, Profil und allen
+                            Einträgen endgültig gelöscht. Das lässt sich nicht rückgängig machen –
+                            wird die Person wieder gebraucht, muss sie neu angelegt werden.
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="danger"
+                              disabled={busyId === row.id}
+                              onClick={() => remove(row)}
+                            >
+                              Endgültig löschen
+                            </Button>
+                            <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>
+                              Abbrechen
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <button
                           onClick={() => setConfirmDeleteId(row.id)}
                           disabled={mode === "demo"}
                           className="rounded-lg p-2 text-ink-faint hover:bg-crit-bg hover:text-crit-fg disabled:opacity-50"
-                          aria-label={`${row.firstName} ${row.lastName} löschen`}
-                          title="Mitarbeiter endgültig löschen"
+                          aria-label={`${row.firstName} ${row.lastName} endgültig löschen`}
+                          title="Endgültig löschen – mit Zugang und allen Einträgen"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>

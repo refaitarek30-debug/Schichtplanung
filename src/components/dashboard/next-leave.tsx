@@ -64,25 +64,27 @@ export function NextLeaveCard({
           <span className="block text-sm text-ink-muted">Noch kein Urlaub eingetragen.</span>
         ) : (
           <>
+            {/* Der ganze zusammenhängende Zeitraum, nicht nur der Beginn –
+                Urlaub, V-Tage und Sonderurlaub am Stück. */}
             <span className="tnum block text-[15px] font-semibold leading-snug">
               {zeitraum.von === zeitraum.bis
-                ? `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)}`
-                : `${wochentag(zeitraum.von)}, ${formatDE(zeitraum.von)} – ${wochentag(zeitraum.bis)}, ${formatDE(zeitraum.bis)}`}
+                ? formatDE(zeitraum.von)
+                : `${formatDE(zeitraum.von)} – ${formatDE(zeitraum.bis)}`}
             </span>
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-ink-muted">
               <span className="tnum">
-                {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei ·{" "}
+                {zeitraum.von === zeitraum.bis
+                  ? wochentag(zeitraum.von)
+                  : `${wochentag(zeitraum.von)} – ${wochentag(zeitraum.bis)}`}{" "}
+                · {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei ·{" "}
                 {formatDays(zeitraum.tage)} {zeitraum.tage === 1 ? "Tag" : "Tage"}{" "}
                 {artenText(zeitraum.arten)}
               </span>
-              <span
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                  zeitraum.offen ? "bg-warn-bg text-warn-fg" : "bg-ok-bg text-ok-fg",
-                )}
-              >
-                {zeitraum.offen ? "noch beantragt" : "genehmigt"}
-              </span>
+              {zeitraum.offen ? (
+                <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn-fg">
+                  noch beantragt
+                </span>
+              ) : null}
             </span>
           </>
         )}

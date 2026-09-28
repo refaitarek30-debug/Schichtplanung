@@ -179,3 +179,24 @@ export async function fetchVTageUebersicht(jahr: number): Promise<Map<string, Li
   }
   return map;
 }
+
+/**
+ * Personalnummern der aktiven Mitarbeiter – für die Mitarbeiterdetails der
+ * Führung (neben Geburtsdatum und V-Tagen). Im Schichtplan stehen sie nicht
+ * mehr. Wer keine Führung ist, bekommt über die Zeilenrechte ohnehin nur
+ * den eigenen Stammsatz.
+ */
+export async function fetchPersonalnummern(): Promise<Map<string, string>> {
+  const ergebnis = new Map<string, string>();
+  if (!isSupabaseConfigured) return ergebnis;
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("employees")
+    .select("id, personnel_number")
+    .eq("active", true);
+  if (error) return ergebnis;
+  for (const row of (data ?? []) as { id: string; personnel_number: string | null }[]) {
+    if (row.personnel_number) ergebnis.set(row.id, row.personnel_number);
+  }
+  return ergebnis;
+}
