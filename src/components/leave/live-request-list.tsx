@@ -29,12 +29,8 @@ const ABSCHNITTE: {
 }[] = [
   { key: "offen", titel: "Offen", status: ["pending"], rand: "border-l-warn-dot" },
   { key: "genehmigt", titel: "Genehmigt", status: ["approved"], rand: "border-l-ok-dot" },
-  {
-    key: "erledigt",
-    titel: "Abgelehnt oder zurückgezogen",
-    status: ["rejected", "withdrawn"],
-    rand: "border-l-crit-dot",
-  },
+  { key: "abgelehnt", titel: "Abgelehnt", status: ["rejected"], rand: "border-l-crit-dot" },
+  { key: "zurueck", titel: "Zurückgezogen", status: ["withdrawn"], rand: "border-l-line" },
 ];
 
 /**
@@ -77,6 +73,19 @@ export function LiveRequestList({
   const [pending, startTransition] = useTransition();
   const gruppen = useMemo(() => (requests ? gruppiereAntraege(requests) : null), [requests]);
   const [offen, setOffen] = useState(standardOffen);
+  /**
+   * Jeder Abschnitt klappt einzeln auf und zu. Offene Anträge stehen
+   * aufgeklappt, der Rest ist eingeklappt – so bleibt die Liste kurz.
+   */
+  const [aufgeklappt, setAufgeklappt] = useState<Set<string>>(() => new Set(["offen"]));
+  function abschnittUmschalten(key: string) {
+    setAufgeklappt((bisher) => {
+      const neu = new Set(bisher);
+      if (neu.has(key)) neu.delete(key);
+      else neu.add(key);
+      return neu;
+    });
+  }
   const offeneAntraege = (gruppen ?? []).filter((g) => g.status === "pending").length;
 
   const abschnitte = useMemo(
@@ -167,10 +176,26 @@ export function LiveRequestList({
           ) : (
             abschnitte.map((abschnitt) => (
               <section key={abschnitt.key} className="space-y-1.5">
-                <h3 className="px-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-                  {abschnitt.titel} · {abschnitt.eintraege.length}
+                <h3>
+                  <button
+                    type="button"
+                    onClick={() => abschnittUmschalten(abschnitt.key)}
+                    aria-expanded={aufgeklappt.has(abschnitt.key)}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint hover:bg-surface-muted"
+                  >
+                    <span>
+                      {abschnitt.titel} · {abschnitt.eintraege.length}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-transform",
+                        aufgeklappt.has(abschnitt.key) && "rotate-180",
+                      )}
+                      strokeWidth={2}
+                    />
+                  </button>
                 </h3>
-                {abschnitt.eintraege.map((request) => (
+                {!aufgeklappt.has(abschnitt.key) ? null : abschnitt.eintraege.map((request) => (
                   <div
                     key={request.id}
                     className={cn(

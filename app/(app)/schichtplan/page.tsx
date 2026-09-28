@@ -43,8 +43,8 @@ export default function ShiftPlanPage() {
         title="Schichtplan"
         description={
           canEdit
-            ? "Eine Zeile je Person über vier Wochen. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
-            : "Der ganze Schichtplan über vier Wochen – deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag."
+            ? "Eine Zeile je Person, ein ganzer Monat. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern."
+            : "Der ganze Schichtplan, ein Monat auf einmal – deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag."
         }
       />
 
@@ -59,7 +59,7 @@ export default function ShiftPlanPage() {
             key={stand}
             companyId={company.id}
             from={TODAY}
-            days={30}
+            monatsansicht
             canEdit={canEdit}
             employeeId={profile.employeeId}
           />
@@ -80,10 +80,7 @@ export default function ShiftPlanPage() {
 
               {/* Schichtwechsel direkt unter den Abwesenheiten – beides
                   ändert den Plan für einzelne Tage. */}
-              <RotationEditor
-                companyId={company.id}
-                onSaved={() => setStand((n) => n + 1)}
-              />
+              <RotationEditor onSaved={() => setStand((n) => n + 1)} />
 
               <ShiftPlanExport
                 companyId={company.id}
