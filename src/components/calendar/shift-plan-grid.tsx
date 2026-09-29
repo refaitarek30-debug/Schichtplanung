@@ -957,6 +957,72 @@ export function ShiftPlanGrid({
     ? (kommentareJeZelle.get(zellSchluessel(selected.employeeId, selected.day)) ?? [])
     : [];
 
+  /**
+   * Tageskopf: Wochentag, Datum, Feiertagsrahmen, Ferienfarbe und Schloss
+   * der Urlaubssperre. Oben im Kopf und bei jeder weiteren Schichtgruppe
+   * dieselbe Zelle – damit beides gleich aussieht.
+   */
+  const tagesKopf = (iso: string, oben: boolean) => {
+    const blockReason = blocked.get(iso);
+    const ferienName = ferien.get(iso);
+    // Eine Urlaubssperre ist das stärkere Signal und sticht
+    // die Ferien -- die sind nur ein Hinweis und dürfen den
+    // Plan nicht überfärben.
+    const feiertag = feiertage.get(iso);
+    const hinweis =
+      [
+        feiertag ? `Feiertag: ${feiertag}` : null,
+        blockReason ? `Urlaubssperre: ${blockReason}` : null,
+        !blockReason && ferienName ? `${ferienName} (Schulferien)` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || undefined;
+    return (
+      <th
+        key={iso}
+        data-tag={oben ? iso : undefined}
+        scope={oben ? "col" : undefined}
+        title={hinweis}
+        className={cn(
+          "px-0 py-0.5 text-center sm:px-0.5",
+          // Der Monatswechsel bekommt eine senkrechte Linie.
+          // Der Zeitraum über der Tabelle scrollt weg; die
+          // Linie bleibt stehen, wo der Monat umspringt.
+          iso.slice(8, 10) === "01" && "border-l-2 border-line",
+          isWeekend(iso) && "bg-surface-sunken/60",
+          // Feiertag: nur der Tageskopf bekommt einen Rahmen.
+          // Durch die ganze Spalte war es zu viel – die Zellen
+          // tragen schon Schicht- und Ferienfarben.
+          feiertag && "rounded-md ring-2 ring-inset ring-crit-dot",
+          ferienName && !blockReason && "bg-ferien-bg text-ferien-fg",
+          blockReason && "bg-crit-bg",
+        )}
+      >
+        <span className="block text-[9px] font-medium leading-tight text-ink-faint sm:text-[10px] lg:text-[11px]">
+          {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
+              passen keine zwei Wochen nebeneinander. */}
+          <span className="sm:hidden">
+            {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7].slice(0, 1)}
+          </span>
+          <span className="hidden sm:inline">
+            {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
+          </span>
+        </span>
+        <span className="tnum block whitespace-nowrap text-[9px] leading-tight tracking-tight text-ink-muted sm:text-[10px]">
+          {dayHeader(iso)}
+        </span>
+        {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
+            Vorschrift und muss auffallen. Die Ferien tragen
+            nur noch den Hintergrund durch die ganze Spalte;
+            das Koffersymbol hat eine Zeile gekostet und nichts
+            erklärt, was die Farbe nicht auch sagt. */}
+        {blockReason ? (
+          <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
+        ) : null}
+      </th>
+    );
+  };
+
   return (
     <Card className="scroll-mt-16 overflow-hidden" ref={planRef}>
       {/* Auf dem Handy zwei Reihen: oben Titel und Blättern (mit „Heute“),
@@ -1337,65 +1403,7 @@ export function ShiftPlanGrid({
                   <span className="sm:hidden">Name</span>
                   <span className="hidden sm:inline">Mitarbeiter</span>
                 </th>
-                {dates.map((iso) => {
-                  const blockReason = blocked.get(iso);
-                  const ferienName = ferien.get(iso);
-                  // Eine Urlaubssperre ist das stärkere Signal und sticht
-                  // die Ferien -- die sind nur ein Hinweis und dürfen den
-                  // Plan nicht überfärben.
-                  const feiertag = feiertage.get(iso);
-                  const hinweis =
-                    [
-                      feiertag ? `Feiertag: ${feiertag}` : null,
-                      blockReason ? `Urlaubssperre: ${blockReason}` : null,
-                      !blockReason && ferienName ? `${ferienName} (Schulferien)` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || undefined;
-                  return (
-                    <th
-                      key={iso}
-                      data-tag={iso}
-                      title={hinweis}
-                      className={cn(
-                        "px-0 py-0.5 text-center sm:px-0.5",
-                        // Der Monatswechsel bekommt eine senkrechte Linie.
-                        // Der Zeitraum über der Tabelle scrollt weg; die
-                        // Linie bleibt stehen, wo der Monat umspringt.
-                        iso.slice(8, 10) === "01" && "border-l-2 border-line",
-                        isWeekend(iso) && "bg-surface-sunken/60",
-                        // Feiertag: nur der Tageskopf bekommt einen Rahmen.
-                        // Durch die ganze Spalte war es zu viel – die Zellen
-                        // tragen schon Schicht- und Ferienfarben.
-                        feiertag && "rounded-md ring-2 ring-inset ring-crit-dot",
-                        ferienName && !blockReason && "bg-ferien-bg text-ferien-fg",
-                        blockReason && "bg-crit-bg",
-                      )}
-                    >
-                      <span className="block text-[9px] font-medium leading-tight text-ink-faint sm:text-[10px] lg:text-[11px]">
-                        {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
-                            passen keine zwei Wochen nebeneinander. */}
-                        <span className="sm:hidden">
-                          {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7].slice(0, 1)}
-                        </span>
-                        <span className="hidden sm:inline">
-                          {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
-                        </span>
-                      </span>
-                      <span className="tnum block whitespace-nowrap text-[9px] leading-tight tracking-tight text-ink-muted sm:text-[10px]">
-                        {dayHeader(iso)}
-                      </span>
-                      {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
-                          Vorschrift und muss auffallen. Die Ferien tragen
-                          nur noch den Hintergrund durch die ganze Spalte;
-                          das Koffersymbol hat eine Zeile gekostet und nichts
-                          erklärt, was die Farbe nicht auch sagt. */}
-                      {blockReason ? (
-                        <Lock className="mx-auto mt-0.5 h-3 w-3 text-crit-fg" />
-                      ) : null}
-                    </th>
-                  );
-                })}
+                {dates.map((iso) => tagesKopf(iso, true))}
               </tr>
             </thead>
             <tbody>
@@ -1439,31 +1447,7 @@ export function ShiftPlanGrid({
                   {offen && gruppenIndex > 0 ? (
                     <tr aria-hidden>
                       <th className="sticky left-0 z-10 bg-surface" />
-                      {dates.map((iso) => (
-                        <td
-                          key={iso}
-                          className={cn(
-                            "px-0 pb-0.5 pt-1 text-center leading-tight",
-                            iso.slice(8, 10) === "01" && "border-l-2 border-line",
-                            isWeekend(iso) && "bg-surface-sunken/60",
-                            blocked.has(iso)
-                              ? "bg-crit-bg/50"
-                              : ferien.has(iso) && "bg-ferien-bg/70",
-                          )}
-                        >
-                          <span className="block text-[9px] font-medium text-ink-faint sm:text-[10px]">
-                            <span className="sm:hidden">
-                              {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7].slice(0, 1)}
-                            </span>
-                            <span className="hidden sm:inline">
-                              {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
-                            </span>
-                          </span>
-                          <span className="tnum block whitespace-nowrap text-[9px] tracking-tight text-ink-muted sm:text-[10px]">
-                            {dayHeader(iso)}
-                          </span>
-                        </td>
-                      ))}
+                      {dates.map((iso) => tagesKopf(iso, false))}
                     </tr>
                   ) : null}
                   {offen && members.map((member, memberIndex) => (

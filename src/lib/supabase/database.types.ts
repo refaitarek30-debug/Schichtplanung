@@ -183,6 +183,8 @@ export interface LeaveBalanceViewRow {
   updated_at: string;
   /** Von Hand hinzugefügte (+) oder abgezogene (−) V-Tage. */
   v_korrektur: number;
+  /** Fehlstunden des Jahres, die vom V-Konto abgehen (1 V-Tag = 7,5 Std.). */
+  v_fehl_stunden: number;
 }
 
 export interface LeaveRequestRow {

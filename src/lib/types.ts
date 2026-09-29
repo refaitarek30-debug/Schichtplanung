@@ -166,6 +166,8 @@ export interface LiveLeaveBalance {
   vUsedDays: number;
   vPendingDays: number;
   vRemainingDays: number;
+  /** Fehlstunden (früher gegangen / später gekommen), die vom V-Konto abgehen. */
+  vFehlStunden: number;
 }
 
 /** Mitteilung aus der Betriebsleitung, wie sie auf dem Dashboard erscheint. */
