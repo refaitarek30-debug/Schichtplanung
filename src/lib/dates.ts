@@ -171,7 +171,20 @@ export function isSameMonth(iso: string, year: number, month: number): boolean {
   return date.getFullYear() === year && date.getMonth() === month;
 }
 
-/** Formatiert Tageszahlen: 0.5 -> "0,5", 12 -> "12". */
+/**
+ * Formatiert Tageszahlen: 0.5 -> "0,5", 12 -> "12", 0.25 -> "0,25".
+ * Viertel kommen durch Fehlzeiten zustande (2 Std. = 0,25 V-Tage) – mit
+ * nur einer Nachkommastelle stünde dort „0,3“.
+ */
 export function formatDays(days: number): string {
-  return Number.isInteger(days) ? String(days) : days.toFixed(1).replace(".", ",");
+  if (Number.isInteger(days)) return String(days);
+  return (Math.round(days * 100) / 100).toString().replace(".", ",");
+}
+
+/** Stunden einer Schicht – Grundlage für Fehlzeiten und V-Tage in Stunden. */
+export const SCHICHT_STUNDEN = 8;
+
+/** V-Tage als Stunden: 1,5 Tage -> "12 Std.". */
+export function vTageInStunden(tage: number): string {
+  return `${formatDays(tage * SCHICHT_STUNDEN)} Std.`;
 }

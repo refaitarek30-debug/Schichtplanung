@@ -1,7 +1,7 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { afTageAusStand } from "@/lib/af";
-import { formatDays } from "@/lib/dates";
+import { formatDays, vTageInStunden } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -101,7 +101,7 @@ export function LiveBalanceCard({
             balance.vCarriedOver > 0 ? ` + ${formatDays(balance.vCarriedOver)} Übertrag` : ""
           }`}
           wert={formatDays(balance.vRemainingDays)}
-          einheit={balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"}
+          einheit={`${balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"} · ${vTageInStunden(balance.vRemainingDays)}`}
           minus={balance.vRemainingDays < 0}
           felder={[
             ...(balance.vKorrektur !== 0

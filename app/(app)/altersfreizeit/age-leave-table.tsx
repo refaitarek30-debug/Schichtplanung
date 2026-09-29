@@ -19,7 +19,7 @@ import {
   type LiveVTageZeile,
 } from "@/lib/data/age-leave";
 import { useSession } from "@/context/session";
-import { formatDE, formatDays } from "@/lib/dates";
+import { formatDE, formatDays, vTageInStunden } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 function std(wert: number): string {
@@ -313,6 +313,9 @@ function VTageKonto({
             )}
           >
             {formatDays(konto.rest)} {Math.abs(konto.rest) === 1 ? "Tag" : "Tage"}
+            <span className="block text-right text-[10px] font-normal text-ink-muted">
+              {vTageInStunden(konto.rest)}
+            </span>
           </span>
         ) : (
           <span className="text-[12px] text-ink-faint">kein Konto</span>

@@ -45,6 +45,9 @@
   --c-plan-bg: 241 237 253;
   --c-plan-fg: 91 52 199;
   --c-plan-dot: 124 77 224;
+  /* Schulferien im Schichtplan: helles Türkis, deutlich anders als die Schichtfarben. */
+  --c-ferien-bg: 204 239 243;
+  --c-ferien-fg: 14 106 122;
 
   /* Kürzel im Schichtplan – die gewohnten Farben aus der Excel-Vorlage. */
   --c-frueh: 251 215 166;
@@ -127,6 +130,8 @@
     --c-plan-bg: 38 31 60;
     --c-plan-fg: 189 165 255;
     --c-plan-dot: 156 122 240;
+    --c-ferien-bg: 18 58 66;
+    --c-ferien-fg: 125 211 225;
 
     --c-frueh: 122 84 30;
     --c-frueh-ink: 252 224 183;
@@ -192,6 +197,8 @@
     --c-plan-bg: 38 31 60;
     --c-plan-fg: 189 165 255;
     --c-plan-dot: 156 122 240;
+    --c-ferien-bg: 18 58 66;
+    --c-ferien-fg: 125 211 225;
 
     --c-frueh: 122 84 30;
     --c-frueh-ink: 252 224 183;
