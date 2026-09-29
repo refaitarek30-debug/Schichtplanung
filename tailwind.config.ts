@@ -36,6 +36,7 @@ const config: Config = {
         crit: { bg: c("crit-bg"), fg: c("crit-fg"), dot: c("crit-dot") },
         info: { bg: c("info-bg"), fg: c("info-fg"), dot: c("info-dot") },
         plan: { bg: c("plan-bg"), fg: c("plan-fg"), dot: c("plan-dot") },
+        ferien: { bg: c("ferien-bg"), fg: c("ferien-fg") },
         // Kürzel im Schichtplan
         shift: {
           frueh: c("frueh"),

@@ -1368,7 +1368,7 @@ export function ShiftPlanGrid({
                         // Durch die ganze Spalte war es zu viel – die Zellen
                         // tragen schon Schicht- und Ferienfarben.
                         feiertag && "rounded-md ring-2 ring-inset ring-crit-dot",
-                        ferienName && !blockReason && "bg-plan-bg/40",
+                        ferienName && !blockReason && "bg-ferien-bg text-ferien-fg",
                         blockReason && "bg-crit-bg",
                       )}
                     >
@@ -1399,7 +1399,7 @@ export function ShiftPlanGrid({
               </tr>
             </thead>
             <tbody>
-              {groups.map(([teamName, members]) => {
+              {groups.map(([teamName, members], gruppenIndex) => {
                 const offen = offeneGruppen.has(teamName);
                 return (
                 <Fragment key={teamName}>
@@ -1433,6 +1433,39 @@ export function ShiftPlanGrid({
                       </button>
                     </th>
                   </tr>
+                  {/* Datum bei jeder Schichtgruppe, nicht nur ganz oben – wer
+                      bei Schicht D steht, muss sonst hochscrollen, um den Tag
+                      zu sehen. Die erste Gruppe hat den Kopf direkt darüber. */}
+                  {offen && gruppenIndex > 0 ? (
+                    <tr aria-hidden>
+                      <th className="sticky left-0 z-10 bg-surface" />
+                      {dates.map((iso) => (
+                        <td
+                          key={iso}
+                          className={cn(
+                            "px-0 pb-0.5 pt-1 text-center leading-tight",
+                            iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                            isWeekend(iso) && "bg-surface-sunken/60",
+                            blocked.has(iso)
+                              ? "bg-crit-bg/50"
+                              : ferien.has(iso) && "bg-ferien-bg/70",
+                          )}
+                        >
+                          <span className="block text-[9px] font-medium text-ink-faint sm:text-[10px]">
+                            <span className="sm:hidden">
+                              {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7].slice(0, 1)}
+                            </span>
+                            <span className="hidden sm:inline">
+                              {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
+                            </span>
+                          </span>
+                          <span className="tnum block whitespace-nowrap text-[9px] tracking-tight text-ink-muted sm:text-[10px]">
+                            {dayHeader(iso)}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  ) : null}
                   {offen && members.map((member, memberIndex) => (
                     <tr
                       key={member.employeeId}
@@ -1517,7 +1550,7 @@ export function ShiftPlanGrid({
                               // Urlaubssperre sticht sie, sie ist wichtiger.
                               blocked.has(iso)
                                 ? "bg-crit-bg/50"
-                                : ferien.has(iso) && "bg-plan-bg/40",
+                                : ferien.has(iso) && "bg-ferien-bg/70",
                             )}
                           >
                             <button
@@ -1696,6 +1729,10 @@ export function ShiftPlanGrid({
         <span className="flex min-w-0 items-center gap-1">
           <span className="h-3.5 w-4 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot sm:h-4 sm:w-5" />
           <span className="truncate">Feiertag (Rahmen am Tag)</span>
+        </span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="h-3.5 w-4 shrink-0 rounded-sm bg-ferien-bg sm:h-4 sm:w-5" />
+          <span className="truncate">Schulferien NRW</span>
         </span>
         {legend.map((item) => (
           <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">

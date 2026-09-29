@@ -47,9 +47,10 @@ import {
   staffingContext,
 } from "@/lib/demo-data";
 import { dayStatus, leaveBalance } from "@/lib/staffing";
-import { addDays, formatDE, formatDays, fromISO } from "@/lib/dates";
+import { addDays, formatDE, formatDays, fromISO, vTageInStunden } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useAktualisierung } from "@/lib/live-refresh";
+import { FehlzeitenLeiste } from "@/components/dashboard/fehlzeiten-leiste";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 
 /**
@@ -382,7 +383,7 @@ export default function DashboardPage() {
             href="/urlaub"
             value={formatDays(vRemaining)}
             unit="Tage"
-            hint={`von ${formatDays(vEntitlement)} übrig`}
+            hint={`von ${formatDays(vEntitlement)} übrig · ${vTageInStunden(vRemaining)}`}
             accent="plan"
             ton="lila"
             icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
@@ -424,6 +425,16 @@ export default function DashboardPage() {
           // Umweg über die Seite „Plan“. Mitarbeiter sehen nur; beantragt
           // wird über den großen Knopf „Urlaub beantragen“ oder im Plan.
           nurLesen={!(role === "admin" || role === "shift_leader")}
+        />
+      ) : null}
+
+      {/* Direkt unter dem Plan: früher gegangen / später gekommen. Nur für
+          die Führung – die Datenbank prüft es noch einmal. */}
+      {mode === "live" && (role === "admin" || role === "shift_leader") ? (
+        <FehlzeitenLeiste
+          heute={TODAY}
+          istAdmin={role === "admin"}
+          eigeneEmployeeId={profile.employeeId}
         />
       ) : null}
 
