@@ -1,7 +1,7 @@
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { afTageAusStand } from "@/lib/af";
-import { formatDays, vTageInStunden } from "@/lib/dates";
+import { formatDays, V_TAG_STUNDEN, vTageInStunden } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -101,7 +101,9 @@ export function LiveBalanceCard({
             balance.vCarriedOver > 0 ? ` + ${formatDays(balance.vCarriedOver)} Übertrag` : ""
           }`}
           wert={formatDays(balance.vRemainingDays)}
-          einheit={`${balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"} · ${vTageInStunden(balance.vRemainingDays)}`}
+          einheit={balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"}
+          // Dasselbe Konto in Stunden – 1 V-Tag = 7,5 Std.
+          stunden={vTageInStunden(balance.vRemainingDays)}
           minus={balance.vRemainingDays < 0}
           felder={[
             ...(balance.vKorrektur !== 0
@@ -112,9 +114,17 @@ export function LiveBalanceCard({
                   },
                 ]
               : []),
-            { label: "Verbraucht", wert: formatDays(balance.vUsedDays) },
+            // Ganze V-Tage; Fehlstunden stehen getrennt in Stunden.
+            {
+              label: "Verbraucht",
+              wert: formatDays(balance.vUsedDays - balance.vFehlStunden / V_TAG_STUNDEN),
+            },
             { label: "Beantragt", wert: formatDays(balance.vPendingDays) },
+            ...(balance.vFehlStunden > 0
+              ? [{ label: "Fehlzeiten", wert: `−${formatDays(balance.vFehlStunden)} Std.` }]
+              : []),
           ]}
+          fuss={`1 V-Tag = ${formatDays(V_TAG_STUNDEN)} Std.`}
         />
 
         {sonderurlaub ? (
@@ -186,6 +196,7 @@ function Kontoblock({
   minus = false,
   felder,
   fuss,
+  stunden,
 }: {
   farbe: keyof typeof farben;
   titel: string;
@@ -196,6 +207,8 @@ function Kontoblock({
   minus?: boolean;
   felder: { label: string; wert: string }[];
   fuss?: React.ReactNode;
+  /** Der Stand zusätzlich in Stunden, klein unter der Einheit. */
+  stunden?: string;
 }) {
   const f = farben[farbe];
   // Kompakt: links Art und Anspruch, rechts der Stand groß, darunter die
@@ -220,6 +233,16 @@ function Kontoblock({
             {wert}
           </span>
           <span className="mt-0.5 block text-[11px] text-ink-muted">{einheit}</span>
+          {stunden ? (
+            <span
+              className={cn(
+                "tnum mt-1 block text-[13px] font-semibold",
+                minus ? "text-crit-fg" : "text-ink",
+              )}
+            >
+              = {stunden}
+            </span>
+          ) : null}
         </p>
       </div>
 

@@ -181,10 +181,13 @@ export function formatDays(days: number): string {
   return (Math.round(days * 100) / 100).toString().replace(".", ",");
 }
 
-/** Stunden einer Schicht – Grundlage für Fehlzeiten und V-Tage in Stunden. */
+/** Stunden einer Schicht – Grundlage für das anteilige AF-Ansparen. */
 export const SCHICHT_STUNDEN = 8;
 
-/** V-Tage als Stunden: 1,5 Tage -> "12 Std.". */
+/** Ein V-Tag entspricht 7,5 Stunden. */
+export const V_TAG_STUNDEN = 7.5;
+
+/** V-Tage als Stunden: 1,5 Tage -> "11,25 Std.". */
 export function vTageInStunden(tage: number): string {
-  return `${formatDays(tage * SCHICHT_STUNDEN)} Std.`;
+  return `${formatDays(tage * V_TAG_STUNDEN)} Std.`;
 }

@@ -134,7 +134,7 @@ export async function fetchMyLeaveBalance(
   const { data, error } = await supabase
     .from("leave_balances_view")
     .select(
-      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_korrektur, v_used_days, v_pending_days, v_remaining_days",
+      "year, entitlement, carried_over, used_days, planned_days, pending_days, remaining_days, v_entitlement, v_carried_over, v_korrektur, v_used_days, v_pending_days, v_remaining_days, v_fehl_stunden",
     )
     .eq("employee_id", ich.employeeId)
     .eq("year", year)
@@ -158,6 +158,7 @@ export async function fetchMyLeaveBalance(
     vUsedDays: data.v_used_days ?? 0,
     vPendingDays: data.v_pending_days ?? 0,
     vRemainingDays: data.v_remaining_days ?? 0,
+    vFehlStunden: Number(data.v_fehl_stunden ?? 0),
   };
 }
 
