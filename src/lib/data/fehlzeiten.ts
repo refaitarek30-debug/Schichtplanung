@@ -6,6 +6,9 @@ export class DataError extends Error {}
 
 export type FehlzeitArt = "frueher_gegangen" | "spaeter_gekommen";
 
+/** Wovon die fehlenden Stunden abgehen: V-Tage (Std./8) oder AF-Stunden (1:1). */
+export type FehlzeitAbzug = "v" | "af";
+
 /** Ein Teil einer Schicht, der nicht gearbeitet wurde. */
 export interface Fehlzeit {
   id: string;
@@ -18,6 +21,7 @@ export interface Fehlzeit {
   notiz: string | null;
   /** Darf die angemeldete Person den Eintrag löschen? */
   darfAendern: boolean;
+  abzug: FehlzeitAbzug;
 }
 
 interface FehlzeitZeile {
@@ -30,6 +34,7 @@ interface FehlzeitZeile {
   stunden: number | string;
   notiz: string | null;
   darf_aendern: boolean;
+  abzug: FehlzeitAbzug | null;
 }
 
 /** Fehlzeiten im Zeitraum – nur für die Führung (prüft die Datenbank). */
@@ -48,5 +53,6 @@ export async function fetchFehlzeiten(von: string, bis: string): Promise<Fehlzei
     stunden: Number(z.stunden),
     notiz: z.notiz,
     darfAendern: z.darf_aendern === true,
+    abzug: z.abzug === "af" ? "af" : "v",
   }));
 }

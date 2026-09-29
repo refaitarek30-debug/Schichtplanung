@@ -7,7 +7,14 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { addDays, formatDE, formatDays, SCHICHT_STUNDEN } from "@/lib/dates";
 import { fetchEmployees } from "@/lib/data/employees";
-import { DataError, fetchFehlzeiten, type Fehlzeit, type FehlzeitArt } from "@/lib/data/fehlzeiten";
+import {
+  DataError,
+  fetchFehlzeiten,
+  type Fehlzeit,
+  type FehlzeitAbzug,
+  type FehlzeitArt,
+} from "@/lib/data/fehlzeiten";
+import { fetchAfUebersicht } from "@/lib/data/age-leave";
 import { deleteFehlzeit, saveFehlzeit } from "@/lib/auth/fehlzeit-actions";
 import { useAktualisierung } from "@/lib/live-refresh";
 import type { EmployeeRecord } from "@/lib/types";
@@ -29,9 +36,11 @@ const AF_SATZ = 0.82;
  * Startseite unter dem Schichtplan.
  *
  * Grundlage ist eine Schicht von 8 Stunden. Die fehlenden Stunden gehen
- * anteilig von den V-Tagen ab (2 Std. = 0,25 V-Tage), und die
- * Altersfreizeit wird für den Tag nur anteilig angespart (6 von 8 Std. =
- * 0,82 × 6/8). Gerechnet wird in der Datenbank; hier wird nur eingetragen.
+ * wahlweise anteilig von den V-Tagen ab (2 Std. = 0,25 V-Tage) oder 1:1
+ * von den AF-Stunden (2 Std. = 2 AF-Std.; nur mit AF-Konto). In beiden
+ * Fällen wird die Altersfreizeit für den Tag nur anteilig angespart (6 von
+ * 8 Std. = 0,82 × 6/8). Gerechnet wird in der Datenbank; hier wird nur
+ * eingetragen.
  *
  * Die Schichtleitung sieht die Personen ihrer eigenen Schicht, die
  * Administration wählt die Schicht oben aus.
@@ -57,15 +66,22 @@ export function FehlzeitenLeiste({
   const [art, setArt] = useState<FehlzeitArt>("frueher_gegangen");
   const [stunden, setStunden] = useState(2);
   const [notiz, setNotiz] = useState("");
+  const [abzug, setAbzug] = useState<FehlzeitAbzug>("v");
+  /** Wer ein AF-Stundenkonto hat – nur bei ihnen geht „von AF-Stunden“. */
+  const [mitAfKonto, setMitAfKonto] = useState<Set<string>>(new Set());
 
   const laden = useCallback(async () => {
     try {
-      const [liste, fz] = await Promise.all([
+      const [liste, fz, af] = await Promise.all([
         fetchEmployees(),
         fetchFehlzeiten(addDays(heute, -60), addDays(heute, 60)),
+        // Ohne AF-Übersicht bleibt nur „von V-Tagen“ – kein Grund, die
+        // ganze Leiste scheitern zu lassen.
+        fetchAfUebersicht().catch(() => []),
       ]);
       setMitarbeiter(liste.filter((e) => e.active));
       setEintraege(fz);
+      setMitAfKonto(new Set(af.filter((z) => z.af.ab !== null).map((z) => z.employeeId)));
     } catch (caught) {
       setEintraege([]);
       setFehler(
@@ -105,6 +121,9 @@ export function FehlzeitenLeiste({
   );
 
   const gewaehlt = auswahl.find((e) => e.id === person) ?? null;
+  const afMoeglich = gewaehlt !== null && mitAfKonto.has(gewaehlt.id);
+  // Hat die gewählte Person kein AF-Konto, geht es von den V-Tagen ab.
+  const abzugWirksam: FehlzeitAbzug = abzug === "af" && afMoeglich ? "af" : "v";
   const vTage = stunden / SCHICHT_STUNDEN;
   const afAnteil = (AF_SATZ * (SCHICHT_STUNDEN - stunden)) / SCHICHT_STUNDEN;
 
@@ -116,13 +135,15 @@ export function FehlzeitenLeiste({
     setFehler(null);
     setMeldung(null);
     startTransition(async () => {
-      const result = await saveFehlzeit(gewaehlt.id, tag, art, stunden, notiz);
+      const result = await saveFehlzeit(gewaehlt.id, tag, art, stunden, notiz, abzugWirksam);
       if (result.error) {
         setFehler(result.error);
         return;
       }
       setMeldung(
-        `${gewaehlt.firstName} ${gewaehlt.lastName}: ${formatDays(stunden)} Std. ${ART_TEXT[art]} am ${formatDE(tag)} – ${formatDays(vTage)} V-Tage abgezogen.`,
+        `${gewaehlt.firstName} ${gewaehlt.lastName}: ${formatDays(stunden)} Std. ${ART_TEXT[art]} am ${formatDE(tag)} – ${
+          abzugWirksam === "af" ? `${formatDays(stunden)} AF-Std.` : `${formatDays(vTage)} V-Tage`
+        } abgezogen.`,
       );
       setNotiz("");
       await laden();
@@ -146,7 +167,7 @@ export function FehlzeitenLeiste({
     <Card>
       <CardHeader
         title="Früher gegangen / später gekommen"
-        hint="Fehlende Stunden einer 8-Std.-Schicht gehen anteilig von den V-Tagen ab. Die Altersfreizeit wird für den Tag nur anteilig angespart."
+        hint="Fehlende Stunden einer 8-Std.-Schicht gehen von den V-Tagen (anteilig) oder von den AF-Stunden ab. Die Altersfreizeit wird für den Tag nur anteilig angespart."
       />
       <div className="space-y-3 px-4 py-3 sm:px-5">
         {istAdmin && gruppen.length > 1 ? (
@@ -247,6 +268,35 @@ export function FehlzeitenLeiste({
               ))}
             </select>
           </label>
+          <div className="flex flex-col gap-1 text-[12px] text-ink-muted">
+            Abziehen von
+            <div className="flex overflow-hidden rounded-lg border border-line" role="group" aria-label="Abziehen von">
+              <button
+                type="button"
+                onClick={() => setAbzug("v")}
+                aria-pressed={abzugWirksam === "v"}
+                className={cn(
+                  "px-2.5 py-1.5 text-[13px] transition-colors",
+                  abzugWirksam === "v" ? "bg-brand-600 font-semibold text-white" : "bg-surface text-ink hover:bg-surface-muted",
+                )}
+              >
+                V-Tagen
+              </button>
+              <button
+                type="button"
+                onClick={() => setAbzug("af")}
+                disabled={gewaehlt !== null && !afMoeglich}
+                aria-pressed={abzugWirksam === "af"}
+                title={gewaehlt !== null && !afMoeglich ? "Kein AF-Stundenkonto" : undefined}
+                className={cn(
+                  "px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                  abzugWirksam === "af" ? "bg-brand-600 font-semibold text-white" : "bg-surface text-ink hover:bg-surface-muted",
+                )}
+              >
+                AF-Stunden
+              </button>
+            </div>
+          </div>
           <label className="flex min-w-[10rem] flex-1 flex-col gap-1 text-[12px] text-ink-muted">
             Notiz (optional)
             <input
@@ -271,8 +321,15 @@ export function FehlzeitenLeiste({
           ) : (
             "Person auswählen · "
           )}
-          <span className="font-medium text-ink">−{formatDays(vTage)} V-Tage</span> ({formatDays(stunden)} Std.) ·
-          Altersfreizeit für den Tag {formatDays(Math.round(afAnteil * 100) / 100)} statt 0,82 Std.
+          {abzugWirksam === "af" ? (
+            <span className="font-medium text-ink">−{formatDays(stunden)} AF-Std.</span>
+          ) : (
+            <>
+              <span className="font-medium text-ink">−{formatDays(vTage)} V-Tage</span> ({formatDays(stunden)} Std.)
+            </>
+          )}{" "}
+          · Altersfreizeit für den Tag {formatDays(Math.round(afAnteil * 100) / 100)} statt 0,82 Std.
+          {gewaehlt !== null && !afMoeglich && abzug === "af" ? " · kein AF-Konto, deshalb von den V-Tagen" : ""}
         </p>
 
         {fehler ? <Alert tone="error">{fehler}</Alert> : null}
@@ -298,7 +355,9 @@ export function FehlzeitenLeiste({
                     </span>
                   </span>
                   <span className="tnum shrink-0 text-[12px] text-ink-muted">
-                    −{formatDays(f.stunden / SCHICHT_STUNDEN)} V
+                    {f.abzug === "af"
+                      ? `−${formatDays(f.stunden)} AF-Std.`
+                      : `−${formatDays(f.stunden / SCHICHT_STUNDEN)} V`}
                   </span>
                   {f.darfAendern ? (
                     <button

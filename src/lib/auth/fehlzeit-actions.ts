@@ -25,6 +25,7 @@ export async function saveFehlzeit(
   art: string,
   stunden: number,
   notiz: string,
+  abzug: string = "v",
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   if (!employeeId) return { error: "Bitte eine Person auswählen." };
@@ -33,6 +34,7 @@ export async function saveFehlzeit(
   if (!Number.isFinite(stunden) || stunden <= 0 || stunden >= 8 || Math.round(stunden * 4) !== stunden * 4) {
     return { error: "Bitte Stunden in Viertelstunden zwischen 0,25 und 7,75 angeben." };
   }
+  if (abzug !== "v" && abzug !== "af") return { error: "Ungültiger Abzug." };
   if (notiz.length > 200) return { error: "Die Notiz ist zu lang (höchstens 200 Zeichen)." };
 
   const supabase = await createClient();
@@ -42,6 +44,7 @@ export async function saveFehlzeit(
     p_art: art,
     p_stunden: stunden,
     p_notiz: notiz.trim() || null,
+    p_abzug: abzug,
   });
   if (error) {
     return { error: dataErrorMessage(error) ?? "Die Fehlzeit konnte nicht gespeichert werden." };
