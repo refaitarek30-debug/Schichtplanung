@@ -25,7 +25,8 @@ const kode = "rounded bg-surface-muted px-1 py-0.5 text-[12px]";
  *
  * Bei inhaltlichen Änderungen: LEGAL_VERSIONS.datenschutz in
  * src/lib/legal/version.ts erhöhen UND eine Migration, die legal_versions
- * nachzieht (löst bei allen Nutzern die Abfrage zur Kenntnisnahme aus).
+ * nachzieht. Die Abfrage zur Kenntnisnahme erscheint nur bei neu angelegten
+ * Personen (privacy_settings.accepted_at ist leer), nicht bei jeder neuen Fassung.
  *
  * Kein Ersatz für eine rechtliche Prüfung.
  *
@@ -288,8 +289,8 @@ export default function DatenschutzPage() {
         </Liste>
 
         <Absatz className="pt-2 text-[13px] text-ink-muted">
-          Die Abfrage beim ersten Anmelden nach einer neuen Fassung dieser Erklärung dient
-          nur dazu, die Kenntnisnahme festzuhalten (Art. 13 DSGVO). Sie ist{" "}
+          Die Abfrage beim ersten Anmelden einer neu angelegten Person dient nur dazu, die
+          Kenntnisnahme dieser Erklärung festzuhalten (Art. 13 DSGVO). Sie ist{" "}
           <strong>keine Einwilligung</strong> in die Verarbeitung.
         </Absatz>
       </Abschnitt>
@@ -518,8 +519,9 @@ export default function DatenschutzPage() {
         <Absatz>
           Diese Erklärung wird angepasst, wenn sich die Verarbeitung ändert. Maßgeblich ist die
           hier veröffentlichte Fassung. Wird sie inhaltlich geändert, erhöht sich die
-          Fassungsnummer; angemeldete Personen werden beim nächsten Besuch um die
-          Kenntnisnahme gebeten. Die Zustimmung des Kunden zu Nutzungsbedingungen und
+          Fassungsnummer, und die Änderung wird hier mit Datum veröffentlicht. Bereits
+          angemeldete Personen werden dafür nicht erneut abgefragt; der Arbeitgeber informiert
+          seine Beschäftigten selbst (Abschnitt 2). Die Zustimmung des Kunden zu Nutzungsbedingungen und
           Auftragsverarbeitungsvertrag wird dadurch nicht ersetzt.
         </Absatz>
       </Abschnitt>
