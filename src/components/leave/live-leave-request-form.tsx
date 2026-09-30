@@ -661,8 +661,13 @@ export function LiveLeaveRequestForm({
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               placeholder="z. B. Familienurlaub, Gewerkschaftstag, Sonderurlaub, Bildungsurlaub oder Sonstiges"
+              maxLength={500}
               className="w-full resize-none rounded-xl border border-line bg-surface px-3 py-2 text-sm placeholder:text-ink-faint"
             />
+            <p className="mt-1 text-[11px] text-ink-faint">
+              Freiwillig. Schichtleitung und Administration können den Kommentar lesen – bitte
+              keine Gesundheitsangaben eintragen.
+            </p>
           </Field>
 
           {kind === "auto" ? (

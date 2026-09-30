@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { safeInternalPath } from "@/lib/security/safe-path";
 
 export default function AuthBridgePage() {
   const [error, setError] = useState(false);
@@ -20,9 +21,10 @@ export default function AuthBridgePage() {
       const refreshToken = params.get("refresh_token");
       const type = params.get("type");
       const nextParam = new URLSearchParams(window.location.search).get("weiter");
-      const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-        ? nextParam
-        : type === "invite" || type === "recovery" ? "/passwort-neu" : "/dashboard";
+      const next = safeInternalPath(
+        nextParam,
+        type === "invite" || type === "recovery" ? "/passwort-neu" : "/dashboard",
+      );
 
       if (!accessToken || !refreshToken) {
         window.location.replace("/login?fehler=abgelaufen");

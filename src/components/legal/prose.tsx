@@ -14,7 +14,7 @@ export function LegalPage({
   intro?: string;
   /** Datum der letzten Änderung – gehört sichtbar in jeden Rechtstext. */
   updated: string;
-  /** Nur bei der Datenschutzerklärung gesetzt, siehe `VersionTag`. */
+  /** Fassung des Textes (bei versionierten Rechtstexten), siehe `VersionTag`. */
   version?: number;
   children: ReactNode;
 }) {
@@ -22,7 +22,7 @@ export function LegalPage({
     <article className="rounded-card border border-line bg-surface px-5 py-6 shadow-card sm:px-8 sm:py-8">
       <h1 className="text-[26px] font-semibold tracking-tight sm:text-[30px]">
         {title}
-        {version ? <VersionTag version={version} /> : null}
+        {version ? <VersionTag version={version} dokument={title} /> : null}
       </h1>
       {intro ? (
         <p className="mt-2 text-sm leading-relaxed text-ink-muted">{intro}</p>
@@ -75,15 +75,21 @@ export function Platzhalter({ children }: { children: ReactNode }) {
 }
 
 /**
- * Kleines Versionszeichen neben „Datenschutz“ – im Footer, in der
- * Registrierung und auf der Erklärung selbst. Steigt mit
- * `DATENSCHUTZ_VERSION`, sobald sich die Erklärung inhaltlich ändert.
+ * Kleines Versionszeichen neben dem Namen eines Rechtstexts – im Footer, in
+ * der Registrierung und auf dem Text selbst. Steigt mit der Fassung in
+ * `src/lib/legal/version.ts`, sobald sich der Text inhaltlich ändert.
  */
-export function VersionTag({ version }: { version: number }) {
+export function VersionTag({
+  version,
+  dokument = "Datenschutzerklärung",
+}: {
+  version: number;
+  dokument?: string;
+}) {
   return (
     <sup
       className="ml-0.5 text-[9px] font-medium leading-none text-ink-faint"
-      title={`Version ${version} der Datenschutzerklärung`}
+      title={`Fassung ${version} – ${dokument}`}
     >
       v{version}
     </sup>

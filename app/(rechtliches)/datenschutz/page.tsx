@@ -11,340 +11,527 @@ import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 export const metadata = {
   title: "Datenschutzerklärung – Schichtplan",
   description:
-    "Welche personenbezogenen Daten Schichtplan verarbeitet, zu welchem Zweck und auf welcher Rechtsgrundlage.",
+    "Welche personenbezogenen Daten Schichtplan verarbeitet, zu welchem Zweck, auf welcher Rechtsgrundlage und wie lange.",
 };
 
+const kode = "rounded bg-surface-muted px-1 py-0.5 text-[12px]";
+
 /*
- * Fundierter Entwurf, kein Ersatz für eine rechtliche Prüfung.
+ * Fassung 2 (30.09.2026). Grundlage ist das, was die Anwendung tatsächlich
+ * tut: Schema und Zugriffsregeln (supabase/migrations), Server-Aktionen,
+ * Middleware und Browser-Speicher. Jede Aussage hier muss sich im Code
+ * belegen lassen; was nicht aus dem Code kommen kann (Anbieter, Verträge,
+ * Fristen des Betreibers), ist mit <Platzhalter> markiert.
  *
- * Die inhaltlichen Angaben – welche Felder es gibt, wo sie liegen, wie lange
- * sie bleiben – stammen aus dem Schema und aus der Projektkonfiguration und
- * sind insoweit belastbar. Was NICHT aus dem Code kommen kann, ist mit
- * <Platzhalter> markiert.
+ * Bei inhaltlichen Änderungen: LEGAL_VERSIONS.datenschutz in
+ * src/lib/legal/version.ts erhöhen UND eine Migration, die legal_versions
+ * nachzieht (löst bei allen Nutzern die Abfrage zur Kenntnisnahme aus).
  *
- * TODO: von Tarek auszufüllen
+ * Kein Ersatz für eine rechtliche Prüfung.
+ *
+ * TODO (Betreiber): alle Platzhalter ausfüllen bzw. streichen.
  */
 export default function DatenschutzPage() {
   return (
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="14. September 2026"
+      updated="30. September 2026"
       version={DATENSCHUTZ_VERSION}
     >
-      <Hinweis titel="Zwei Verantwortliche – bitte nicht verwechseln">
+      <Hinweis titel="Wer ist wofür verantwortlich?">
         <p>
-          Schichtplan wird Unternehmen als Anwendung zur Verfügung gestellt. Für die
-          Daten <strong>der Beschäftigten</strong> ist das jeweilige Unternehmen als
-          Arbeitgeber die verantwortliche Stelle; der Betreiber von Schichtplan ist
-          insoweit nur <strong>Auftragsverarbeiter</strong> nach Art. 28 DSGVO und
-          handelt ausschließlich auf Weisung des Unternehmens.
+          Schichtplan wird Unternehmen (Kunden) als Anwendung zur technischen Schicht- und
+          Personalplanung zur Verfügung gestellt. Für die Daten <strong>der Beschäftigten</strong>{" "}
+          ist das jeweilige Unternehmen als Arbeitgeber die verantwortliche Stelle. Der
+          Betreiber von Schichtplan verarbeitet diese Daten insoweit als{" "}
+          <strong>Auftragsverarbeiter</strong> nach Art. 28 DSGVO ausschließlich auf
+          Weisung des Unternehmens (siehe{" "}
+          <a href="/avv" className="font-medium text-brand-600 hover:underline">
+            Auftragsverarbeitungsvertrag
+          </a>
+          ).
         </p>
         <p>
-          Eigenverantwortlich verarbeitet der Betreiber nur die Daten, die für den
-          Betrieb der Anwendung selbst anfallen – etwa das Konto der Person, die ein
-          Unternehmen registriert, und technische Protokolldaten.
+          Eigenverantwortlich verarbeitet der Betreiber nur die Daten, die für den Vertrag
+          mit dem Kunden und für den sicheren Betrieb der Anwendung selbst anfallen
+          (Abschnitt 1).
         </p>
       </Hinweis>
 
       <Abschnitt titel="1. Verantwortlicher für den Betrieb der Anwendung">
         <Absatz>
-          <Platzhalter>Name oder Firma</Platzhalter>,{" "}
+          <Platzhalter>Name oder Firma des Betreibers</Platzhalter>,{" "}
           <Platzhalter>Anschrift</Platzhalter>, E-Mail:{" "}
-          <Platzhalter>Kontaktadresse</Platzhalter>. Die vollständigen Angaben stehen
-          im{" "}
+          <Platzhalter>Kontaktadresse</Platzhalter>. Die vollständigen Angaben stehen im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
           </a>
           .
         </Absatz>
+        <Absatz>Der Betreiber verantwortet eigenständig:</Absatz>
+        <Liste>
+          <li>
+            das Kundenkonto: Name, E-Mail-Adresse und Unternehmensname der Person, die ein
+            Unternehmen registriert, sowie die Nachweise der Zustimmung zu Nutzungsbedingungen,
+            Auftragsverarbeitungsvertrag und die Kenntnisnahme dieser Erklärung (Zeitpunkt und
+            Fassung)
+          </li>
+          <li>
+            technische Betriebs- und Sicherheitsdaten: Zugriffsprotokolle der
+            Hosting-Dienstleister, Ratenbegrenzung gegen automatisiertes Ausprobieren
+            (Abschnitt 3)
+          </li>
+        </Liste>
         <Absatz>
           Ein Datenschutzbeauftragter ist{" "}
-          <Platzhalter>benannt / nicht benannt – bitte prüfen</Platzhalter>. Die
-          Benennung ist nach § 38 BDSG unter anderem dann Pflicht, wenn in der Regel
-          mindestens 20 Personen ständig mit automatisierter Verarbeitung beschäftigt
-          sind.
+          <Platzhalter>benannt (Kontakt) / nicht benannt – Pflicht nach § 38 BDSG prüfen</Platzhalter>.
         </Absatz>
       </Abschnitt>
 
       <Abschnitt titel="2. Verantwortlicher für die Beschäftigtendaten">
         <Absatz>
-          Das Unternehmen, das den Zugang eingerichtet hat. Beschäftigte richten
-          Auskunfts-, Berichtigungs- und Löschverlangen zu ihren Schicht-, Urlaubs- und
-          Abwesenheitsdaten an ihren Arbeitgeber – in der Regel an die Personalabteilung
-          oder die Betriebsleitung. Erreicht ein solches Verlangen den Betreiber, leitet
-          er es an das Unternehmen weiter und beantwortet es nicht selbst.
+          Das Unternehmen, das den Zugang eingerichtet hat (Ihr Arbeitgeber). An diese
+          Stelle richten Beschäftigte Auskunfts-, Berichtigungs-, Lösch- und sonstige
+          Betroffenenanfragen zu ihren Schicht-, Urlaubs- und Abwesenheitsdaten. Erreicht
+          ein solches Verlangen den Betreiber, leitet er es unverzüglich an das Unternehmen
+          weiter, unterstützt dieses bei der Beantwortung und beantwortet es nicht selbst.
+        </Absatz>
+        <Absatz>
+          Das Unternehmen ist auch dafür zuständig, seine Beschäftigten nach Art. 13 DSGVO zu
+          informieren, die Rechtmäßigkeit der Verarbeitung im eigenen Betrieb sicherzustellen
+          (einschließlich einer etwaigen Beteiligung von Betriebsrat oder Personalvertretung)
+          und die Angaben richtig zu halten. Diese Erklärung ergänzt, ersetzt aber nicht die
+          Information durch den Arbeitgeber.
         </Absatz>
       </Abschnitt>
 
       <Abschnitt titel="3. Welche Daten verarbeitet werden">
         <Absatz>
-          <strong>Stammdaten der Beschäftigten:</strong>
+          <strong>Erforderliche Angaben zur Person</strong> (ohne sie lässt sich eine Person
+          nicht in den Schichtplan aufnehmen):
         </Absatz>
         <Liste>
-          <li>Vor- und Nachname</li>
-          <li>E-Mail-Adresse (nur wenn ein Zugang eingerichtet werden soll)</li>
-          <li>Telefonnummer, sofern das Unternehmen sie einträgt</li>
-          <li>Personalnummer</li>
-          <li>Abteilung</li>
-          <li>Rolle in der Anwendung (Mitarbeiter, Schichtleitung, Administration)</li>
-          <li>Qualifikationen, soweit für die Besetzungsplanung hinterlegt</li>
+          <li>Vor- und Nachname, Personalnummer, Rolle in der Anwendung (Mitarbeiter, Schichtleitung, Administration)</li>
+          <li>Schichtgruppe bzw. Rotationsmuster, Eintritts- und ggf. Austrittsdatum, Kennzeichen „Auszubildende/r“</li>
+          <li>
+            E-Mail-Adresse – nur, wenn für die Person ein Zugang eingerichtet werden soll
+            (Anmeldung, Benachrichtigungen)
+          </li>
+        </Liste>
+
+        <Absatz className="pt-1">
+          <strong>Freiwillige Angaben</strong> (ohne Nachteil verzichtbar; Änderung oder
+          Löschung jederzeit beim Arbeitgeber bzw. – soweit vorgesehen – im eigenen Profil):
+        </Absatz>
+        <Liste>
+          <li>Telefonnummer, Abteilung</li>
+          <li>
+            Geburtsdatum im Profil. Es wird für die rechnerische Ermittlung des
+            Anspruchs auf Altersfreizeit (Sonderurlaub ab dem Jahr nach dem 55. Geburtstag)
+            verwendet und ist für Schichtleitung und Administration sichtbar
+          </li>
+          <li>Begründung bei einem Urlaubsantrag (Freitext) und Notizen bei Fehlzeiten (höchstens 200 Zeichen)</li>
+          <li>Kommentare im Schichtplan (Freitext, siehe Abschnitt 7)</li>
+          <li>Freigaben zur Sichtbarkeit von Abwesenheitsgründen (Abschnitt 5)</li>
+          <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite</li>
         </Liste>
 
         <Absatz className="pt-1">
           <strong>Planungs- und Abwesenheitsdaten:</strong>
         </Absatz>
         <Liste>
-          <li>Schichtzuordnung, Rotationsgruppe und einzelne Schichtzuweisungen je Tag</li>
-          <li>Urlaubsanspruch, genommene und beantragte Urlaubstage, Resturlaub</li>
-          <li>V-Tage (Freischichten) mit demselben Kontostand</li>
-          <li>Urlaubsanträge samt Zeitraum, Art, Status und freiwilligem Kommentar</li>
+          <li>Schichtzuordnung je Tag, Besetzungsvorgaben, Qualifikationen, soweit für die Besetzungsplanung hinterlegt</li>
           <li>
-            Abwesenheiten mit Grund in der Kategorie <em>krank</em>, <em>Urlaub</em>,{" "}
-            <em>Freischicht</em> oder <em>frei</em>
+            Urlaubsanspruch, genommene, geplante und beantragte Tage; V-Tage, Altersfreizeit
+            und Stundenkonten einschließlich Korrekturen
           </li>
+          <li>Anträge mit Zeitraum, Art, Status, Bearbeiter und Zeitpunkten</li>
+          <li>
+            Abwesenheiten mit Art (z. B. Urlaub, Freischicht, Schulung, <em>krank</em>)
+          </li>
+          <li>
+            Fehlzeiten („früher gegangen“, „später gekommen“) mit Datum und Stunden; sie
+            mindern V- oder Altersfreizeit-Konto. Diese Funktion ist derzeit auf die
+            Administration beschränkt
+          </li>
+          <li>Benachrichtigungen in der Anwendung (z. B. zu Antragsentscheidungen)</li>
         </Liste>
-        <Absatz className="text-[13px] text-ink-muted">
-          Zu Krankheitstagen wird ausschließlich die Tatsache der Abwesenheit
-          gespeichert – <strong>keine Diagnose, keine ärztliche Bescheinigung und kein
-          sonstiger Gesundheitsbefund</strong>. Die Anwendung sieht für solche Angaben
-          bewusst kein Feld vor.
+
+        <Absatz className="pt-1">
+          <strong>Datenschutz-Einstellungen:</strong> gewählte Sichtbarkeit, Fassung dieser
+          Erklärung und Zeitpunkt der Kenntnisnahme sowie Zeitpunkte, zu denen eine Freigabe
+          erteilt oder zurückgenommen wurde.
         </Absatz>
 
         <Absatz className="pt-1">
-          <strong>Zugangs- und technische Daten:</strong>
+          <strong>Zugangs- und Sicherheitsdaten:</strong>
         </Absatz>
         <Liste>
           <li>
-            E-Mail-Adresse und ein Passwort-Hash für die Anmeldung; das Passwort selbst
-            wird nicht gespeichert
+            E-Mail-Adresse, Passwort-Hash (das Passwort selbst wird nicht gespeichert),
+            Sitzungs-Token, Zeitpunkt der letzten Anmeldung
           </li>
-          <li>Zeitpunkt der letzten Anmeldung und der letzten Aktivität</li>
           <li>
-            Server-Protokolle der eingesetzten Dienstleister mit IP-Adresse, Zeitpunkt,
+            Änderungsprotokoll (Audit-Log): sicherheits- und datenschutzrelevante Änderungen
+            wie Rollen- und Aktivstatus-Änderungen, Löschungen, Änderungen der
+            Datenschutz-Einstellungen und die Registrierung eines Unternehmens – jeweils mit
+            Zeitpunkt und handelnder Person. Inhalte von Abwesenheitsgründen, Notizen oder
+            Gesundheitsangaben werden nicht protokolliert
+          </li>
+          <li>
+            Ratenbegrenzung: für Anmeldung, Passwort-Zurücksetzen und Registrierung werden
+            die Versuche mit einem gesalzenen Hashwert der IP-Adresse bzw. E-Mail-Adresse
+            gezählt, nicht mit Klartext. Die Einträge werden nach spätestens einem Tag gelöscht
+          </li>
+          <li>
+            Zugriffsprotokolle der Hosting-Dienstleister mit IP-Adresse, Zeitpunkt,
             aufgerufenem Pfad und Browserkennung
           </li>
         </Liste>
+
+        <Absatz className="pt-1">
+          <strong>E-Mails:</strong> Systemmails (Bestätigung, Einladung, Passwort
+          zurücksetzen) versendet der Authentifizierungsdienst über den dort eingerichteten
+          Mailserver. Benachrichtigungen zu Anträgen werden zunächst in einem Postausgang
+          (Empfänger, Betreff, Text, Status) zwischengespeichert und von dort versendet.
+          Versanddienstleister: <Platzhalter>SMTP-Anbieter eintragen und Region prüfen</Platzhalter>.
+        </Absatz>
+
         <Absatz className="text-[13px] text-ink-muted">
-          Es findet keine Reichweitenmessung, kein Tracking und keine Werbung statt. Es
-          werden keine Daten an Dritte verkauft oder für fremde Zwecke ausgewertet.
+          Es findet keine Reichweitenmessung, kein Tracking und keine Werbung statt. Es werden
+          keine Daten verkauft oder für fremde Zwecke ausgewertet.
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="4. Zwecke der Verarbeitung">
-        <Liste>
-          <li>Schicht- und Urlaubsplanung einschließlich Prüfung der Mindestbesetzung</li>
-          <li>Bearbeitung und Genehmigung von Urlaubsanträgen</li>
-          <li>Führung der Urlaubs- und Freischichtkonten</li>
-          <li>Einrichtung und Absicherung der Zugänge</li>
-          <li>Betrieb, Fehlersuche und Absicherung der Anwendung</li>
-        </Liste>
-      </Abschnitt>
-
-      <Abschnitt titel="5. Rechtsgrundlagen">
-        <Liste>
-          <li>
-            <strong>Beschäftigtendaten:</strong> § 26 Abs. 1 BDSG in Verbindung mit
-            Art. 88 DSGVO – die Verarbeitung ist für die Durchführung des
-            Beschäftigungsverhältnisses erforderlich. Ergänzend Art. 6 Abs. 1 lit. b
-            DSGVO.
-          </li>
-          <li>
-            <strong>Abwesenheit wegen Krankheit:</strong> Art. 9 Abs. 2 lit. b DSGVO in
-            Verbindung mit § 26 Abs. 3 BDSG – Erfüllung arbeitsrechtlicher Pflichten.
-            Der Zugriff ist auf Schichtleitung und Administration des eigenen
-            Unternehmens beschränkt.
-          </li>
-          <li>
-            <strong>Konto des registrierenden Unternehmens:</strong> Art. 6 Abs. 1
-            lit. b DSGVO – Erfüllung des Nutzungsvertrags.
-          </li>
-          <li>
-            <strong>Protokolldaten und technische Absicherung:</strong> Art. 6 Abs. 1
-            lit. f DSGVO – berechtigtes Interesse an einem sicheren und funktionsfähigen
-            Betrieb.
-          </li>
-        </Liste>
-      </Abschnitt>
-
-      <Abschnitt titel="6. Wer die Daten zu sehen bekommt">
+      <Abschnitt titel="4. Gesundheitsdaten (Krankheit)">
         <Absatz>
-          Innerhalb der Anwendung ist jedes Unternehmen technisch vollständig von allen
-          anderen getrennt. Die Trennung wird nicht im Browser, sondern in der Datenbank
-          durchgesetzt (Row Level Security in PostgreSQL): jede Abfrage wird serverseitig
-          auf das Unternehmen der angemeldeten Person eingegrenzt. Eine Abfrage über
-          Unternehmensgrenzen hinweg ist damit auch dann nicht möglich, wenn jemand die
-          Anfrage manipuliert.
+          Die Angabe, dass eine Person krank ist, kann ein Gesundheitsdatum im Sinne von
+          Art. 9 DSGVO sein. Die Anwendung ist deshalb bewusst datensparsam gebaut:
+        </Absatz>
+        <Liste>
+          <li>
+            Gespeichert wird ausschließlich die <strong>Tatsache der Abwesenheit</strong> („krank“).
+            Es gibt <strong>kein Feld für Diagnosen, Bescheinigungen oder Freitext</strong>; die
+            Datenbank weist Notizen bei Krankheit ab
+          </li>
+          <li>
+            Standardmäßig sehen Kolleginnen und Kollegen nur, dass jemand „abwesend“ ist –
+            nicht den Grund
+          </li>
+          <li>
+            Die Art der Abwesenheit einschließlich „krank“ sehen Schichtleitung und
+            Administration des eigenen Unternehmens. Das ist technisch nicht auf die eigene
+            Schichtgruppe beschränkt
+          </li>
+          <li>
+            Im Änderungsprotokoll und in Benachrichtigungen an Dritte werden keine
+            Krankheitsangaben ausgeschrieben
+          </li>
+        </Liste>
+        <Absatz className="text-[13px] text-ink-muted">
+          Bitte tragen Sie in Freitextfeldern (Kommentare, Begründungen, Notizen) keine
+          Gesundheitsangaben ein. Das Unternehmen sollte seine Beschäftigten entsprechend
+          anweisen.
+        </Absatz>
+      </Abschnitt>
+
+      <Abschnitt titel="5. Zwecke und Rechtsgrundlagen">
+        <Absatz>
+          <strong>Beschäftigtendaten (Verantwortlicher: Ihr Arbeitgeber)</strong>
+        </Absatz>
+        <Liste>
+          <li>
+            <strong>Schicht-, Urlaubs- und Stundenkontenplanung, Antragsbearbeitung,
+            Mindestbesetzung:</strong> Art. 6 Abs. 1 lit. b DSGVO (Durchführung des
+            Beschäftigungsverhältnisses) und lit. f (berechtigtes Interesse an einer
+            geordneten Betriebsorganisation), soweit anwendbar in Verbindung mit § 26 BDSG und
+            Art. 88 DSGVO sowie kollektivrechtlichen Regelungen
+          </li>
+          <li>
+            <strong>Abwesenheit „krank“:</strong> Art. 9 Abs. 2 lit. b DSGVO in Verbindung
+            mit § 26 Abs. 3 BDSG (Ausübung von Rechten und Erfüllung von Pflichten aus dem
+            Arbeitsrecht, z. B. Entgeltfortzahlung und Personalplanung)
+          </li>
+          <li>
+            <strong>Freigabe von Abwesenheitsgründen für die eigene Schichtgruppe:</strong>{" "}
+            freiwillige Einwilligung, Art. 6 Abs. 1 lit. a DSGVO, für Krankheit zusätzlich
+            Art. 9 Abs. 2 lit. a DSGVO in Verbindung mit § 26 Abs. 2 BDSG. Ohne Freigabe (Voreinstellung)
+            entstehen keine Nachteile. Sie können jede Freigabe jederzeit unter{" "}
+            <em>Profil → Datenschutz</em> mit Wirkung für die Zukunft zurücknehmen; die
+            Rechtmäßigkeit der bis dahin erfolgten Verarbeitung bleibt unberührt
+            (Art. 7 Abs. 3 DSGVO)
+          </li>
+          <li>
+            <strong>Sicherheit und Nachvollziehbarkeit (Protokoll):</strong> Art. 6 Abs. 1
+            lit. f DSGVO
+          </li>
+        </Liste>
+
+        <Absatz className="pt-2">
+          <strong>Daten, für die der Betreiber verantwortlich ist</strong>
+        </Absatz>
+        <Liste>
+          <li>
+            <strong>Kundenkonto und Nachweise der Zustimmung:</strong> Art. 6 Abs. 1 lit. b
+            DSGVO (Vertrag mit dem Kunden), Art. 6 Abs. 1 lit. f DSGVO (Nachweis der
+            Vertragsannahme)
+          </li>
+          <li>
+            <strong>Zugriffsprotokolle, Ratenbegrenzung, Missbrauchs- und Angriffsabwehr:</strong>{" "}
+            Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren und
+            funktionsfähigen Betrieb)
+          </li>
+          <li>
+            <strong>Aufbewahrungspflichten:</strong> Art. 6 Abs. 1 lit. c DSGVO
+          </li>
+        </Liste>
+
+        <Absatz className="pt-2 text-[13px] text-ink-muted">
+          Die Abfrage beim ersten Anmelden nach einer neuen Fassung dieser Erklärung dient
+          nur dazu, die Kenntnisnahme festzuhalten (Art. 13 DSGVO). Sie ist{" "}
+          <strong>keine Einwilligung</strong> in die Verarbeitung.
+        </Absatz>
+      </Abschnitt>
+
+      <Abschnitt titel="6. Wer welche Daten sehen kann">
+        <Absatz>
+          Die Trennung der Unternehmen und die Rechte der Rollen werden nicht (nur) in der
+          Oberfläche, sondern in der Datenbank durchgesetzt (Row Level Security in
+          PostgreSQL): jede Abfrage wird serverseitig auf das Unternehmen der angemeldeten
+          Person eingegrenzt. Kein technisches System ist vollkommen unangreifbar; die
+          Maßnahmen in Abschnitt 12 verringern das Risiko, ohne es auszuschließen.
         </Absatz>
         <Absatz>Innerhalb eines Unternehmens gilt:</Absatz>
         <Liste>
           <li>
-            Beschäftigte sehen ihre eigenen Daten und den Schichtplan aller
-            Schichtgruppen – bei Kolleginnen und Kollegen nur, dass jemand abwesend
-            ist. Den Grund (etwa Urlaub oder Krankheit) sehen Kollegen nur, wenn der
-            Betrieb diese Anzeige zulässt und die Person den Grund für ihre
-            Schichtgruppe freigegeben hat; ohne diese Zulassung sehen Gründe nur
-            Schichtleitung und Administration. Personalnummern sehen nur
-            Schichtleitung und Administration
+            <strong>Alle Beschäftigten</strong> sehen ihre eigenen Daten sowie im Schichtplan,
+            wer in welcher Schicht eingeteilt ist, Feiertage und Schulferien und – bei
+            Kolleginnen und Kollegen – dass jemand abwesend ist. Den Grund sehen sie nur, wenn
+            die betroffene Person ihn für ihre Schichtgruppe freigegeben hat <em>und</em> das
+            Unternehmen diese Anzeige zulässt (Betriebseinstellung; solange sie aus ist, sehen
+            Gründe nur Schichtleitung und Administration). Krankheit ist getrennt einstellbar
+            und standardmäßig privat
           </li>
           <li>
-            die Schichtleitung sieht zusätzlich die Anträge und Abwesenheiten ihres
-            Bereichs
+            <strong>Schichtleitung</strong> sieht unternehmensweit Anträge, Abwesenheiten
+            einschließlich Art, Stammdaten (auch Telefon, E-Mail, Geburtsdatum) und Konten
+            und kann Anträge bearbeiten sowie Abwesenheiten pflegen
           </li>
-          <li>die Administration sieht alle Daten des eigenen Unternehmens</li>
+          <li>
+            <strong>Administration</strong> sieht und verwaltet alle Daten des eigenen
+            Unternehmens, einschließlich Fehlzeiten, Änderungsprotokoll und
+            Benachrichtigungen im Unternehmen
+          </li>
+          <li>
+            <strong>Der Betreiber</strong> nutzt keinen routinemäßigen Zugriff auf
+            Beschäftigtendaten. Technischer Zugriff auf die Datenbank ist möglich und erfolgt
+            nur zu Wartung, Support und Fehleranalyse auf Weisung des Kunden. Die
+            Betreiber-Übersicht zeigt je Unternehmen Name, Anlagezeitpunkt, Stand der
+            Zustimmungen und Zählwerte (z. B. Anzahl Mitarbeiter und Anträge) – keine
+            Namen von Beschäftigten und keine Abwesenheitsinhalte
+          </li>
         </Liste>
       </Abschnitt>
 
-      <Abschnitt titel="7. Auftragsverarbeiter">
+      <Abschnitt titel="7. Kommentare im Schichtplan">
         <Absatz>
-          Für Betrieb und Auslieferung werden zwei Dienstleister eingesetzt. Mit beiden
-          bestehen Verträge zur Auftragsverarbeitung nach Art. 28 DSGVO.
+          Kommentare zu einem Tag können alle angemeldeten Personen des Unternehmens schreiben
+          und lesen; gelöscht werden sie von der Autorin bzw. dem Autor sowie von
+          Schichtleitung und Administration. Gespeichert werden Text, Datum, Name und
+          Zeitpunkt. Ein Kommentar ist damit für das gesamte Unternehmen sichtbar. Bitte keine
+          Gesundheitsangaben oder sonstigen sensiblen Informationen über Dritte eintragen.
+        </Absatz>
+      </Abschnitt>
+
+      <Abschnitt titel="8. Empfänger, Dienstleister und Drittlandbezug">
+        <Absatz>
+          Für Betrieb und Auslieferung setzt der Betreiber Dienstleister als
+          Unterauftragsverarbeiter ein:
         </Absatz>
         <Liste>
           <li>
-            <strong>Supabase</strong> (Supabase, Inc.) – Datenbank, Anmeldung und
-            Dateiablage. Die Datenbank dieses Projekts liegt in der Region{" "}
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">
-              eu-west-1
-            </code>{" "}
-            (Irland, Europäische Union). Hier liegen alle oben genannten Stamm-,
-            Planungs- und Abwesenheitsdaten.
+            <strong>Supabase</strong> (Supabase, Inc.) – Datenbank, Authentifizierung,
+            Serverfunktionen für den Mailversand. Die Datenbank dieses Projekts liegt in der
+            Region <code className={kode}>eu-west-1</code> (Irland, Europäische Union).
           </li>
           <li>
             <strong>Vercel</strong> (Vercel, Inc.) – Auslieferung der Anwendung. Die
-            Serverfunktionen dieses Projekts laufen in der Region{" "}
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">dub1</code>{" "}
-            (Dublin, Irland, Europäische Union), direkt neben der Datenbank. Vercel
-            speichert selbst keine Stamm-, Planungs- oder Abwesenheitsdaten, sondern nur
-            übliche Zugriffsprotokolle.
+            Serverfunktionen laufen in der Region <code className={kode}>dub1</code> (Dublin,
+            Irland). Anfragen werden über das Edge-Netzwerk von Vercel geleitet; dort
+            entstehen übliche Zugriffsprotokolle. Vercel speichert keine Stamm-, Planungs-
+            oder Abwesenheitsdaten der Anwendung.
+          </li>
+          <li>
+            <strong>Mailversand:</strong>{" "}
+            <Platzhalter>SMTP-Anbieter, Sitz, Region – oder streichen, falls kein externer Anbieter</Platzhalter>
           </li>
         </Liste>
         <Absatz>
-          <strong>Bezug zu den USA:</strong> Beide Dienstleister sind Unternehmen mit Sitz
-          in den USA. Die Daten werden in der EU verarbeitet; soweit ein Zugriff aus den
-          USA nicht ausgeschlossen werden kann, stützt er sich auf einen
-          Angemessenheitsbeschluss der Europäischen Kommission (EU-US Data Privacy
-          Framework) beziehungsweise auf Standardvertragsklauseln nach Art. 46 Abs. 2
-          lit. c DSGVO.
+          <strong>Drittlandbezug:</strong> Supabase, Inc. und Vercel, Inc. haben Sitz in den
+          USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
+          ausgeschlossen werden kann, stützt er sich auf einen Angemessenheitsbeschluss der
+          Europäischen Kommission (EU-US Data Privacy Framework) oder auf
+          Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.{" "}
+          <Platzhalter>
+            Betreiber: Abschluss der Auftragsverarbeitungsverträge mit Supabase, Vercel und
+            Mailanbieter sowie aktuellen Zertifizierungs-/Klauselstand prüfen und bestätigen
+          </Platzhalter>
+        </Absatz>
+        <Absatz>
+          Eine Weitergabe an sonstige Dritte findet nicht statt, außer aufgrund einer
+          gesetzlichen Pflicht.
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="8. Speicherdauer">
+      <Abschnitt titel="9. Speicherdauer und Löschung">
         <Liste>
           <li>
-            Stammdaten, Planungs- und Abwesenheitsdaten bleiben gespeichert, solange das
-            Unternehmen die Anwendung nutzt. Scheidet eine Person aus, wird ihr
-            Personalstammsatz üblicherweise auf <em>inaktiv</em> gesetzt, damit
-            vergangene Pläne nachvollziehbar bleiben; das endgültige Löschen entscheidet
-            das Unternehmen. Wird eine deaktivierte Person gelöscht, entfernt die
-            Anwendung sie vollständig: Stammdaten, Zugang, Profil, Anträge,
-            Abwesenheiten, Konten und Schichtzuordnungen. Im Änderungsprotokoll bleibt
-            nur vermerkt, dass gelöscht wurde, ohne Namen.
+            Stamm-, Planungs- und Abwesenheitsdaten bleiben gespeichert, solange das
+            Unternehmen die Anwendung nutzt und die Daten benötigt. Scheidet eine Person aus,
+            wird sie üblicherweise auf <em>inaktiv</em> gesetzt, damit vergangene Pläne
+            nachvollziehbar bleiben; über das endgültige Löschen entscheidet das Unternehmen.
+            Beim Löschen einer Person entfernt die Anwendung Stammdaten, Zugang, Profil,
+            Anträge, Abwesenheiten, Konten und Schichtzuordnungen; im Änderungsprotokoll
+            bleibt nur vermerkt, dass gelöscht wurde, ohne Namen.
           </li>
           <li>
-            Urlaubskonten werden je Kalenderjahr geführt und für die Nachvollziehbarkeit
-            vergangener Jahre aufbewahrt. Aufbewahrungsfristen ergeben sich aus dem
-            Arbeits-, Steuer- und Handelsrecht und legt das Unternehmen fest.
+            Urlaubs- und Stundenkonten werden je Kalenderjahr geführt. Aufbewahrungsfristen
+            aus Arbeits-, Steuer- und Handelsrecht legt das Unternehmen fest.
           </li>
           <li>
-            Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens
-            nach Wahl des Unternehmens herausgegeben oder gelöscht (siehe
-            Auftragsverarbeitungsvertrag).
+            Automatische Löschung: Ratenbegrenzungs-Zähler nach 1 Tag, Postausgang nach
+            30 Tagen, Benachrichtigungen nach 180 Tagen, Kommentare im Schichtplan 12 Monate
+            nach dem Tag, auf den sie sich beziehen, Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
-            Server-Protokolle der Dienstleister werden nach deren Vorgaben nach kurzer
-            Zeit automatisch gelöscht.
+            Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach
+            dessen Wahl herausgegeben und gelöscht (siehe Auftragsverarbeitungsvertrag).
+            Sicherungskopien des Datenbankanbieters laufen turnusmäßig aus:{" "}
+            <Platzhalter>Aufbewahrungsdauer der Sicherungen laut gebuchtem Tarif eintragen</Platzhalter>.
+          </li>
+          <li>
+            Zugriffsprotokolle der Hosting-Dienstleister werden nach deren Vorgaben nach
+            kurzer Zeit automatisch gelöscht.
           </li>
         </Liste>
       </Abschnitt>
 
-      <Abschnitt titel="9. Cookies und lokale Speicherung">
+      <Abschnitt titel="10. Cookies und lokale Speicherung">
         <Absatz>
-          Die Anwendung setzt keine Cookies zu Werbe- oder Analysezwecken. Gespeichert
-          wird nur, was für den Betrieb nötig ist:
+          Es werden keine Cookies oder Speicher für Werbung, Analyse oder Reichweitenmessung
+          verwendet. Gespeichert wird nur, was für den ausdrücklich gewünschten Dienst oder
+          eine vom Nutzer gewählte Einstellung nötig ist:
         </Absatz>
         <Liste>
           <li>
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">sb-…</code>{" "}
-            – Sitzungscookies von Supabase, ohne die keine Anmeldung möglich ist
+            <code className={kode}>sb-…</code> (Cookie) – Sitzung der Anmeldung
+            (Authentifizierungsdienst)
           </li>
           <li>
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">
-              sp_letzte_aktivitaet
-            </code>{" "}
-            – Zeitpunkt der letzten Aktivität, damit die Sitzung nach 10 Minuten ohne
-            Nutzung automatisch endet
+            <code className={kode}>sp_letzte_aktivitaet</code> (Cookie, bis zu 7 Tage) –
+            Zeitpunkt der letzten Aktivität; die Sitzung endet nach 10 Minuten ohne Nutzung
+            automatisch
           </li>
           <li>
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">
-              schichtplan.theme
-            </code>{" "}
-            und{" "}
-            <code className="rounded bg-surface-muted px-1 py-0.5 text-[12px]">
-              schichtplan.install-hint
-            </code>{" "}
-            – im lokalen Speicher des Browsers, für die Farbdarstellung und einen
-            einmaligen Installationshinweis
+            <code className={kode}>schichtplan.theme</code>,{" "}
+            <code className={kode}>schichtplan.install-hint</code>,{" "}
+            <code className={kode}>seitenleiste-eingeklappt</code> (lokaler Speicher, bis zum
+            Löschen) – Farbdarstellung, ein einmaliger Installationshinweis, Zustand der
+            Seitenleiste
+          </li>
+          <li>
+            <code className={kode}>schichtplan:…</code> und{" "}
+            <code className={kode}>sp_ansicht</code> (Sitzungsspeicher, endet mit dem
+            Browser-Tab) – Scrollposition, gewählte Ansicht
           </li>
         </Liste>
         <Absatz>
-          Alle genannten Einträge sind für den ausdrücklich gewünschten Dienst
-          erforderlich. Eine Einwilligung ist dafür nach § 25 Abs. 2 Nr. 2 TDDDG nicht
-          nötig; ein Cookie-Banner entfällt.
+          Diese Zugriffe sind nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung zulässig; ein
+          Cookie-Banner ist nicht erforderlich. Die anschließende Verarbeitung stützt sich auf
+          Art. 6 Abs. 1 lit. b bzw. f DSGVO.
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="10. Rechte der betroffenen Personen">
+      <Abschnitt titel="11. Rechte der betroffenen Personen">
         <Absatz>Gegenüber der jeweils verantwortlichen Stelle bestehen die Rechte auf</Absatz>
         <Liste>
-          <li>Auskunft über die verarbeiteten Daten (Art. 15 DSGVO)</li>
-          <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
+          <li>Auskunft (Art. 15 DSGVO)</li>
+          <li>Berichtigung (Art. 16 DSGVO)</li>
           <li>Löschung (Art. 17 DSGVO)</li>
           <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
           <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
           <li>
-            Widerspruch gegen eine Verarbeitung auf Grundlage berechtigter Interessen
+            Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen
             (Art. 21 DSGVO)
+          </li>
+          <li>
+            Widerruf einer erteilten Einwilligung mit Wirkung für die Zukunft (Art. 7 Abs. 3
+            DSGVO) – für die Freigaben unter <em>Profil → Datenschutz</em> jederzeit
+            selbst möglich
           </li>
         </Liste>
         <Absatz>
-          Unabhängig davon besteht ein Beschwerderecht bei einer
-          Datenschutz-Aufsichtsbehörde (Art. 77 DSGVO). Zuständig ist die Behörde am
-          Wohnsitz, am Arbeitsplatz oder am Sitz der verantwortlichen Stelle.
+          Sie haben außerdem das Recht auf Beschwerde bei einer Datenschutz-Aufsichtsbehörde
+          (Art. 77 DSGVO), etwa am Wohnort, am Arbeitsplatz oder am Ort des mutmaßlichen
+          Verstoßes. Für den Betreiber ist zuständig:{" "}
+          <Platzhalter>zuständige Aufsichtsbehörde nach Sitz des Betreibers eintragen</Platzhalter>.
         </Absatz>
         <Absatz>
-          Anfragen zu Beschäftigtendaten richten Sie bitte an Ihren Arbeitgeber
-          (Abschnitt 2), Anfragen zum Betrieb der Anwendung an{" "}
-          <Platzhalter>Kontaktadresse</Platzhalter>.
+          Anfragen zu Beschäftigtendaten richten Sie an Ihren Arbeitgeber (Abschnitt 2),
+          Anfragen zum Betrieb der Anwendung an <Platzhalter>Kontaktadresse</Platzhalter>.
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="11. Keine automatisierte Entscheidung im Einzelfall">
+      <Abschnitt titel="12. Schutzmaßnahmen">
         <Absatz>
-          Die Anwendung prüft rechnerisch, ob durch einen Urlaubsantrag die
-          Mindestbesetzung einer Schicht unterschritten würde, und zeigt das Ergebnis an.
-          Über Genehmigung oder Ablehnung entscheidet immer ein Mensch – Schichtleitung
-          oder Administration. Eine automatisierte Entscheidung im Sinne des Art. 22
-          DSGVO findet nicht statt.
+          Der Betreiber trifft angemessene technische und organisatorische Maßnahmen nach
+          Art. 32 DSGVO, unter anderem:
+        </Absatz>
+        <Liste>
+          <li>verschlüsselte Übertragung (HTTPS mit HSTS) und Sicherheits-Header im Browser</li>
+          <li>Mandantentrennung und Rollenrechte in der Datenbank (Row Level Security), serverseitige Prüfung aller Aktionen</li>
+          <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
+          <li>automatische Abmeldung nach 10 Minuten Inaktivität</li>
+          <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
+          <li>Änderungsprotokoll für sicherheitsrelevante Änderungen ohne Gesundheitsinhalte</li>
+          <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>
+        </Liste>
+        <Absatz>
+          <strong>Sicherheitsvorfälle:</strong> Ein Vorfall, der personenbezogene Daten eines
+          Kunden betrifft, wird dem Kunden unverzüglich gemeldet, damit dieser seinen Pflichten
+          nach Art. 33 und 34 DSGVO nachkommen kann.
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="12. Änderungen dieser Erklärung">
+      <Abschnitt titel="13. Berechnungen sind Hilfsmittel, keine automatisierte Entscheidung">
         <Absatz>
-          Diese Erklärung wird angepasst, wenn sich die Verarbeitung ändert – etwa beim
-          Wechsel eines Dienstleisters oder einer Serverregion. Maßgeblich ist die hier
-          veröffentlichte Fassung mit dem oben genannten Stand.
+          Die Anwendung rechnet Kontostände, prüft, ob ein Antrag die Mindestbesetzung
+          unterschreiten würde, und zeigt das Ergebnis an. Über Genehmigung oder Ablehnung
+          entscheidet immer ein Mensch – Schichtleitung oder Administration. Eine
+          ausschließlich automatisierte Entscheidung mit Rechtswirkung im Sinne des Art. 22
+          DSGVO und ein Profiling finden nicht statt.
         </Absatz>
       </Abschnitt>
 
-      <Hinweis titel="Bitte vor dem produktiven Einsatz prüfen lassen">
+      <Abschnitt titel="14. Änderungen dieser Erklärung">
+        <Absatz>
+          Diese Erklärung wird angepasst, wenn sich die Verarbeitung ändert. Maßgeblich ist die
+          hier veröffentlichte Fassung. Wird sie inhaltlich geändert, erhöht sich die
+          Fassungsnummer; angemeldete Personen werden beim nächsten Besuch um die
+          Kenntnisnahme gebeten. Die Zustimmung des Kunden zu Nutzungsbedingungen und
+          Auftragsverarbeitungsvertrag wird dadurch nicht ersetzt.
+        </Absatz>
+      </Abschnitt>
+
+      <Hinweis titel="Hinweis zur rechtlichen Prüfung">
         <p>
-          Dieser Text ist ein fundierter Entwurf auf Grundlage dessen, was die Anwendung
-          tatsächlich verarbeitet. Er ersetzt keine Rechtsberatung. Unternehmen mit
-          eigenen Besonderheiten – Betriebsrat und Mitbestimmung nach § 87 Abs. 1 Nr. 2
-          und 6 BetrVG, Betriebsvereinbarungen, Tarifbindung, zusätzliche
-          Datenkategorien oder eine erforderliche Datenschutz-Folgenabschätzung – sollten
-          ihn vor dem produktiven Einsatz durch eine fachkundige Stelle prüfen lassen.
+          Dieser Text beschreibt die Verarbeitung, wie sie in der Anwendung umgesetzt ist. Er
+          ersetzt keine Rechtsberatung. Kunden mit Besonderheiten – Betriebsrat und
+          Mitbestimmung (§ 87 Abs. 1 Nr. 6 BetrVG), Betriebsvereinbarungen, Tarifbindung,
+          zusätzliche Datenkategorien oder eine erforderliche
+          Datenschutz-Folgenabschätzung – sollten ihn vor dem produktiven Einsatz fachkundig
+          prüfen lassen.
         </p>
       </Hinweis>
     </LegalPage>

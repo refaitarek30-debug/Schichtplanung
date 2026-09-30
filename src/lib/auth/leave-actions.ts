@@ -60,6 +60,7 @@ export async function submitLeaveRequest(
   if (endDate < startDate) {
     return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
   }
+  if (reason.length > 500) return { error: "Der Kommentar ist zu lang (höchstens 500 Zeichen)." };
 
   const supabase = await createClient();
   const {
@@ -218,6 +219,7 @@ export async function submitLeaveAuto(
   if (endDate < startDate) {
     return { error: "Das Enddatum darf nicht vor dem Startdatum liegen." };
   }
+  if (reason.length > 500) return { error: "Der Kommentar ist zu lang (höchstens 500 Zeichen)." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("submit_leave_auto", {

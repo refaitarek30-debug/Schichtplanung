@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
+import { safeInternalPath } from "@/lib/security/safe-path";
 
 /**
  * Landepunkt für Einladungs- und Passwort-Links.
@@ -61,9 +62,7 @@ export async function GET(request: NextRequest) {
       : type === "signup"
         ? "/willkommen"
         : "/dashboard";
-  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-    ? nextParam
-    : fallback;
+  const next = safeInternalPath(nextParam, fallback);
 
   if (!isSupabaseConfigured) {
     return NextResponse.redirect(`${origin}/login?fehler=link`);
@@ -118,8 +117,7 @@ export async function POST(request: NextRequest) {
   const type = String(form.get("type") ?? "");
   const weiter = String(form.get("weiter") ?? "");
 
-  const ziel =
-    weiter.startsWith("/") && !weiter.startsWith("//") ? weiter : "/dashboard";
+  const ziel = safeInternalPath(weiter, "/dashboard");
 
   if (!isSupabaseConfigured || !tokenHash || !OTP_TYPES.has(type)) {
     return NextResponse.redirect(`${origin}/login?fehler=link`, { status: 303 });

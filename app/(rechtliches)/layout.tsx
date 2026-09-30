@@ -3,11 +3,12 @@ import Link from "next/link";
 import { LegalFooter } from "@/components/layout/legal-footer";
 
 /**
- * Impressum und Datenschutzerklärung sind Pflichtangaben und müssen ohne
- * Anmeldung erreichbar sein – deshalb ein eigener Bereich außerhalb von
+ * Impressum, Datenschutzerklärung, Nutzungsbedingungen und AV-Vertrag müssen
+ * ohne Anmeldung erreichbar sein – deshalb ein eigener Bereich außerhalb von
  * `(app)` (setzt eine Sitzung voraus) und `(auth)` (zweispaltiges
  * Anmeldelayout). Die Middleware lässt alles durch, was nicht in
- * PROTECTED_PREFIXES steht; diese beiden Pfade stehen dort bewusst nicht.
+ * PROTECTED_PREFIXES steht; diese Pfade stehen dort bewusst nicht. Ein Test
+ * (Playwright) prüft, dass sie ohne Anmeldung erreichbar bleiben.
  */
 export default function LegalLayout({ children }: { children: ReactNode }) {
   return (
