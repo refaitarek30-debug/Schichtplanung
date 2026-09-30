@@ -7,10 +7,12 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
     return "E-Mail oder Passwort ist falsch.";
   }
   if (message.includes("email not confirmed")) {
-    return "Dieses Konto ist noch nicht bestätigt. Bitte den Einladungslink aus der E-Mail öffnen.";
+    return "Dieses Konto ist noch nicht bestätigt. Bitte den Link aus der E-Mail öffnen, die wir dir geschickt haben.";
   }
+  // Bewusst dieselbe Meldung wie bei falschem Passwort: sonst ließe sich
+  // abfragen, wer ein Konto hat.
   if (message.includes("user not found")) {
-    return "Zu dieser E-Mail-Adresse gibt es kein Konto.";
+    return "E-Mail oder Passwort ist falsch.";
   }
   if (message.includes("password should be at least")) {
     return "Das Passwort muss mindestens 8 Zeichen lang sein.";
@@ -59,12 +61,10 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
       "dich an den Betreiber dieser Anwendung."
     );
   }
+  // Neutral formuliert, weil sich sonst über Formulare abfragen ließe, welche
+  // Adressen ein Konto haben.
   if (message.includes("already registered") || message.includes("already been registered")) {
-    return (
-      "Zu dieser E-Mail-Adresse gibt es bereits ein Konto. Jede Adresse kann " +
-      "nur zu einem Unternehmen gehören – bitte melde dich an oder nimm eine " +
-      "andere Adresse."
-    );
+    return "Das hat nicht geklappt. Bitte melde dich an oder nutze „Passwort vergessen“.";
   }
   return "Das hat nicht geklappt. Bitte später erneut versuchen.";
 }

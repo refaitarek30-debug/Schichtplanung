@@ -10,16 +10,15 @@ import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import type { EmployeeRow, ProfileRow } from "@/lib/supabase/database.types";
 import type { FormState } from "./form-state";
 import { grantAccess, siteOrigin } from "./invite";
+import { safeInternalPath } from "@/lib/security/safe-path";
+import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
+import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
 
 export type { FormState } from "./form-state";
 
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
-
-function isSafePath(path: string | null): path is string {
-  return Boolean(path && path.startsWith("/") && !path.startsWith("//"));
-}
 
 /** Startpunkt für die automatische Abmeldung nach Inaktivität. */
 async function merkeAnmeldung() {
@@ -43,6 +42,15 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     return { error: "Bitte E-Mail und Passwort eingeben." };
   }
 
+  if (password.length > PASSWORT_MAX) return { error: "E-Mail oder Passwort ist falsch." };
+
+  // Bremse gegen automatisiertes Durchprobieren: je Adresse des Aufrufers
+  // und je Konto. Die Zähler laufen in der Datenbank, nicht im Speicher.
+  const erlaubt =
+    (await allow("login-ip", await clientKey(), 40, 600)) &&
+    (await allow("login-mail", emailKey(email), 10, 600));
+  if (!erlaubt) return { error: ZU_VIELE_VERSUCHE };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: authErrorMessage(error) ?? "Anmeldung fehlgeschlagen." };
@@ -52,7 +60,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   await merkeAnmeldung();
 
   revalidatePath("/", "layout");
-  redirect(isSafePath(next) ? next : "/dashboard");
+  redirect(safeInternalPath(next, "/dashboard"));
 }
 
 export async function signOut() {
@@ -74,19 +82,28 @@ export async function requestPasswordReset(
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Bitte eine E-Mail-Adresse eingeben." };
 
+  // Gleiche Antwort in jedem Fall – auch wenn die Grenze erreicht ist. So
+  // verrät weder die Meldung noch das Ausbleiben einer Mail etwas über das
+  // Konto, und niemand kann ein fremdes Postfach mit Reset-Mails fluten.
+  const neutral: FormState = {
+    success: "Wenn es zu dieser Adresse ein Konto gibt, ist der Link zum Zurücksetzen unterwegs.",
+  };
+  const erlaubt =
+    (await allow("reset-ip", await clientKey(), 10, 3600)) &&
+    (await allow("reset-mail", emailKey(email), 3, 3600));
+  if (!erlaubt) return neutral;
+
   const supabase = await createClient();
   const origin = await siteOrigin();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?weiter=/passwort-neu`,
   });
-  if (error) return { error: authErrorMessage(error) ?? "Versand fehlgeschlagen." };
-
-  // Bewusst dieselbe Antwort, egal ob die Adresse existiert:
-  // sonst ließe sich abfragen, wer ein Konto hat.
-  return {
-    success:
-      "Wenn es zu dieser Adresse ein Konto gibt, ist der Link zum Zurücksetzen unterwegs.",
-  };
+  // Nur echte Störungen des Dienstes werden gemeldet; ob die Adresse ein
+  // Konto hat, bleibt unsichtbar.
+  if (error && (error.status === undefined || error.status >= 500)) {
+    return { error: authErrorMessage(error) ?? "Versand fehlgeschlagen." };
+  }
+  return neutral;
 }
 
 export async function updatePassword(
@@ -98,7 +115,12 @@ export async function updatePassword(
   const password = String(formData.get("password") ?? "");
   const repeat = String(formData.get("password_repeat") ?? "");
 
-  if (password.length < 8) return { error: "Das Passwort muss mindestens 8 Zeichen lang sein." };
+  if (password.length < PASSWORT_MIN) {
+    return { error: `Das Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
+  }
+  if (password.length > PASSWORT_MAX) {
+    return { error: `Das Passwort darf höchstens ${PASSWORT_MAX} Zeichen lang sein.` };
+  }
   if (password !== repeat) return { error: "Die beiden Passwörter stimmen nicht überein." };
 
   const supabase = await createClient();

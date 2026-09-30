@@ -572,7 +572,7 @@ und die Urlaubsprüfung aus, ohne dass dort etwas geändert werden musste.
 Bisher wurde jedes Unternehmen (samt erstem Admin) von Hand per SQL angelegt.
 Neu: eine öffentliche Seite **`/registrieren`**, über die sich ein neues
 Unternehmen komplett selbstständig einrichtet – eine einzige Website-Adresse
-für beliebig viele Firmen, mit vollständig getrennten Daten pro Firma.
+für beliebig viele Firmen, mit je Firma getrennten Daten.
 
 **Wie es funktioniert:**
 

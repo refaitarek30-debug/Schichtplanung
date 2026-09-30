@@ -235,8 +235,12 @@ export function PlanLeaveRequest({
             value={kommentar}
             onChange={(e) => setKommentar(e.target.value)}
             placeholder="z. B. Familienurlaub"
+            maxLength={500}
             className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base placeholder:text-ink-faint sm:text-sm"
           />
+          <span className="mt-1 block text-[11px] text-ink-faint">
+            Freiwillig, keine Gesundheitsangaben.
+          </span>
         </label>
       </div>
 

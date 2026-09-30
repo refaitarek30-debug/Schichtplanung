@@ -51,15 +51,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
 async function isPrivacyOnboardingRequired(userId: string): Promise<boolean> {
   const supabase = await import("@/lib/supabase/server").then((m) => m.createClient());
-  const { data, error } = await supabase
-    .from("privacy_settings")
-    .select("privacy_notice_version, accepted_at")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const [{ data, error }, { data: aktuell }] = await Promise.all([
+    supabase
+      .from("privacy_settings")
+      .select("privacy_notice_version, accepted_at")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    // Die gültige Fassung steht in der Datenbank (legal_versions); dieselbe
+    // Quelle setzt sie beim Speichern. Fällt die Abfrage aus, gilt die
+    // Fassung aus dem Code.
+    supabase.rpc("current_legal_version", { p_doc: "datenschutz" }),
+  ]);
 
   // Fail closed: an unreadable or missing privacy record must never be
   // interpreted as an already completed privacy setup.
   if (error || !data) return true;
 
-  return data.privacy_notice_version !== PRIVACY_NOTICE_VERSION || !data.accepted_at;
+  const erwartet = typeof aktuell === "string" && aktuell ? aktuell : PRIVACY_NOTICE_VERSION;
+  return data.privacy_notice_version !== erwartet || !data.accepted_at;
 }

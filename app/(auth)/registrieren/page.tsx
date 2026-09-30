@@ -10,8 +10,8 @@ export default function RegisterPage() {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Unternehmen registrieren</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
-        Ein eigener, vollständig getrennter Bereich für dein Unternehmen – du wirst
-        automatisch Administrator.
+        Ein eigener, von anderen Unternehmen getrennter Bereich für dein Unternehmen – du
+        wirst automatisch Administrator. Das Angebot richtet sich an Unternehmen.
       </p>
 
       {!isSupabaseConfigured ? (

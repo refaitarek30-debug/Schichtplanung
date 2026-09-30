@@ -93,8 +93,23 @@ export function PrivacyOnboarding() {
           </div>
 
           <p className="text-[12px] leading-snug text-ink-faint">
-            Deine Entscheidung ist freiwillig. Sie kann später unter Profil → Datenschutz jederzeit geändert werden.
-            Es werden keine Diagnosen erfasst.
+            Die Freigaben sind freiwillig und ohne Nachteil verweigerbar. Du kannst sie jederzeit
+            unter Profil → Datenschutz mit Wirkung für die Zukunft ändern oder zurücknehmen. Es
+            werden keine Diagnosen erfasst.
+          </p>
+
+          <p className="text-[12px] leading-snug text-ink-faint">
+            Mit „Einstellungen speichern“ bestätigst du nur, dass du die{" "}
+            <a
+              href="/datenschutz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-brand-600 underline underline-offset-2"
+            >
+              Datenschutzerklärung
+            </a>{" "}
+            zur Kenntnis nehmen konntest. Das ist keine Einwilligung in die Verarbeitung deiner
+            Daten durch den Betrieb.
           </p>
 
           <input type="hidden" name="privacy_notice_acknowledged" value="on" />

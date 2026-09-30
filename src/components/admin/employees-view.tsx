@@ -141,7 +141,7 @@ export function EmployeesView() {
   return (
     <div className="space-y-5">
       <AdminViewHeader
-        description="Personalstammdaten des eigenen Unternehmens. Andere Unternehmen sind auf Datenbankebene ausgeschlossen."
+        description="Personalstammdaten des eigenen Unternehmens. Die Daten anderer Unternehmen sind durch Zugriffsregeln in der Datenbank getrennt."
         action={
           role === "admin" ? (
             <Button

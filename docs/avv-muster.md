@@ -1,5 +1,10 @@
 # Vertrag über die Verarbeitung personenbezogener Daten im Auftrag
 
+> **Ersetzt.** Maßgeblich ist der in der Anwendung veröffentlichte Vertrag unter `/avv`
+> (Quelle: `app/(rechtliches)/avv/page.tsx`, Fassung siehe `src/lib/legal/version.ts`). Dieses
+> Dokument bleibt nur als Druckvorlage für individuelle Verträge; seine Angaben zu Inaktivitätsfrist
+> („30 Minuten“ → tatsächlich 10 Minuten) und Vercel-Region (→ `dub1`) waren veraltet.
+
 **Muster nach Art. 28 DSGVO — Vorlage, kein unterschriftsreifes Dokument.**
 
 Diese Vorlage legt der Betreiber von Schichtplan jedem Kunden-Unternehmen
