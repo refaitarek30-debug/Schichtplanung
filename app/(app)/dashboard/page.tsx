@@ -428,9 +428,10 @@ export default function DashboardPage() {
         />
       ) : null}
 
-      {/* Direkt unter dem Plan: früher gegangen / später gekommen. Nur für
-          die Führung – die Datenbank prüft es noch einmal. */}
-      {mode === "live" && (role === "admin" || role === "shift_leader") ? (
+      {/* Direkt unter dem Plan: früher gegangen / später gekommen. Vorerst
+          nur für die Administration (Testphase) – die Schichtleitung sieht
+          die Leiste noch nicht. Die Datenbank prüft es noch einmal. */}
+      {mode === "live" && role === "admin" ? (
         <FehlzeitenLeiste
           heute={TODAY}
           istAdmin={role === "admin"}
