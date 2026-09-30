@@ -6,7 +6,6 @@ import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
-import { PRIVACY_NOTICE_VERSION } from "@/lib/legal/privacy-notice";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -49,24 +48,22 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Die Datenschutz-Abfrage erscheint nur bei neu angelegten Personen, die sie
+ * noch nie beantwortet haben (accepted_at ist leer). Eine neue Fassung der
+ * Erklärung löst sie bei bestehenden Personen bewusst nicht erneut aus.
+ */
 async function isPrivacyOnboardingRequired(userId: string): Promise<boolean> {
   const supabase = await import("@/lib/supabase/server").then((m) => m.createClient());
-  const [{ data, error }, { data: aktuell }] = await Promise.all([
-    supabase
-      .from("privacy_settings")
-      .select("privacy_notice_version, accepted_at")
-      .eq("user_id", userId)
-      .maybeSingle(),
-    // Die gültige Fassung steht in der Datenbank (legal_versions); dieselbe
-    // Quelle setzt sie beim Speichern. Fällt die Abfrage aus, gilt die
-    // Fassung aus dem Code.
-    supabase.rpc("current_legal_version", { p_doc: "datenschutz" }),
-  ]);
+  const { data, error } = await supabase
+    .from("privacy_settings")
+    .select("accepted_at")
+    .eq("user_id", userId)
+    .maybeSingle();
 
   // Fail closed: an unreadable or missing privacy record must never be
   // interpreted as an already completed privacy setup.
   if (error || !data) return true;
 
-  const erwartet = typeof aktuell === "string" && aktuell ? aktuell : PRIVACY_NOTICE_VERSION;
-  return data.privacy_notice_version !== erwartet || !data.accepted_at;
+  return !data.accepted_at;
 }
