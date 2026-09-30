@@ -261,3 +261,50 @@ begin
   raise exception 'ROLLBACK: %', E'\n' || log;
 end
 $test$;
+
+-- Teil 2 (nach Migration 0123): Konten werden nur bei Einladung verknüpft;
+-- register_company() ist nicht mehr öffentlich.
+do $test2$
+declare
+  log text := '';
+  roehm_company uuid;
+  emp uuid;
+  u_self uuid := gen_random_uuid();
+  u_inv uuid := gen_random_uuid();
+  n int;
+begin
+  select company_id into roehm_company from profiles limit 1;
+
+  log := log || case when not has_function_privilege('anon', 'public.register_company(text,text,text,text,boolean)', 'EXECUTE')
+                      and not has_function_privilege('authenticated', 'public.register_company(text,text,text,text,boolean)', 'EXECUTE')
+                     then 'OK   register_company nicht öffentlich' else 'FEHLER register_company öffentlich' end || E'\n';
+
+  insert into employees (company_id, personnel_number, first_name, last_name, email, role, vacation_days, v_days)
+  values (roehm_company, 'T-' || left(gen_random_uuid()::text, 8), 'Test', 'Einladung', 'einladung-test@example.invalid', 'employee', 0, 0)
+  returning id into emp;
+
+  -- Selbst-Signup mit passender Adresse und Mitarbeiter-ID: KEIN Profil
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data, created_at, updated_at)
+  values (u_self, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'einladung-test@example.invalid', 'x', jsonb_build_object('employee_id', emp), now(), now());
+  select count(*) into n from profiles where id = u_self;
+  log := log || case when n = 0 then 'OK   Selbst-Signup mit fremder Mitarbeiter-ID bekommt kein Profil' else 'FEHLER Selbst-Signup verknüpft' end || E'\n';
+
+  -- Eingeladen, aber andere Adresse als im Stammsatz: kein Profil
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data, invited_at, created_at, updated_at)
+  values (u_inv, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'einladung-test@example.invalid-2', 'x', jsonb_build_object('employee_id', emp, 'role', 'admin', 'company_id', gen_random_uuid()), now(), now(), now());
+  select count(*) into n from profiles where id = u_inv;
+  log := log || case when n = 0 then 'OK   Eingeladenes Konto mit abweichender Adresse bekommt kein Profil' else 'FEHLER Adressabgleich fehlt' end || E'\n';
+  delete from auth.users where id in (u_inv, u_self);
+
+  -- Eingeladen mit passender Adresse: Profil, Rolle und Firma aus der Datenbank
+  insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_user_meta_data, invited_at, created_at, updated_at)
+  values (u_inv, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          'einladung-test@example.invalid', 'x', jsonb_build_object('employee_id', emp, 'role', 'admin', 'company_id', gen_random_uuid()), now(), now(), now());
+  select count(*) into n from profiles where id = u_inv and role = 'employee' and company_id = roehm_company;
+  log := log || case when n = 1 then 'OK   Einladung: Rolle und Firma kommen aus der Datenbank, nicht aus den Metadaten' else 'FEHLER Einladung' end || E'\n';
+
+  raise exception 'ROLLBACK: %', E'\n' || log;
+end
+$test2$;
