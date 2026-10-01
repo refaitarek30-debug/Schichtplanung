@@ -140,7 +140,11 @@ export const config = {
      * Manifest, Service Worker und Offline-Seite bleiben bewusst außen vor:
      * sie enthalten keine Daten und müssen auch ohne Anmeldung erreichbar
      * sein, sonst lässt sich die App nicht installieren.
+     *
+     * `api/version` ebenso: die Abfrage läuft jede Minute von selbst und
+     * darf nicht als Aktivität zählen, sonst endete keine Sitzung mehr
+     * wegen Untätigkeit.
      */
-    "/((?!_next/static|_next/image|favicon.ico|favicon.png|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|api/version|_next/image|favicon.ico|favicon.png|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
