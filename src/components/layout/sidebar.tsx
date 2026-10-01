@@ -44,9 +44,11 @@ export function Sidebar() {
         eingeklappt ? "w-16" : "w-64",
       )}
     >
-      <div
+      <Link
+        href="/dashboard"
+        aria-label="Schichtplan – Startseite"
         className={cn(
-          "flex h-16 items-center gap-2.5 border-b border-line",
+          "flex h-16 items-center gap-2.5 border-b border-line hover:bg-surface-muted",
           eingeklappt ? "justify-center px-2" : "px-5",
         )}
       >
@@ -54,12 +56,12 @@ export function Sidebar() {
           SP
         </span>
         {eingeklappt ? null : (
-          <span className="leading-tight">
+          <span className="min-w-0 leading-tight">
             <span className="block text-sm font-semibold tracking-tight">Schichtplan</span>
             <span className="block truncate text-[11px] text-ink-faint">{company.name}</span>
           </span>
         )}
-      </div>
+      </Link>
 
       <nav className={cn("flex-1 overflow-y-auto py-4", eingeklappt ? "px-2" : "px-3")}>
         {groups.map((group) => (

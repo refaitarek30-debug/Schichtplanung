@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { LegalFooter } from "@/components/layout/legal-footer";
 
 /**
@@ -9,12 +10,16 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <section className="hidden flex-col justify-between border-r border-line bg-surface p-10 lg:flex">
-        <div className="flex items-center gap-2.5">
+        <Link
+          href="/"
+          aria-label="Schichtplan – Startseite"
+          className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80"
+        >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
             SP
           </span>
           <span className="text-sm font-semibold tracking-tight">Schichtplan</span>
-        </div>
+        </Link>
 
         <div className="max-w-md">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">

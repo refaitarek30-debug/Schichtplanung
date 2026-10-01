@@ -60,18 +60,32 @@ export function LiveBalanceCard({
         hint={`Jahr ${balance.year}`}
         action={
           onYearChange ? (
-            <select
-              value={year ?? balance.year}
-              onChange={(e) => onYearChange(Number(e.target.value))}
+            // Beide Jahre als sichtbare Reiter: das kommende Konto soll man
+            // sehen, ohne erst eine Auswahlliste zu öffnen.
+            <div
+              role="tablist"
               aria-label="Urlaubsjahr"
-              className="tnum rounded-lg border border-line bg-surface px-2 py-1 text-[13px]"
+              className="inline-flex rounded-lg border border-line bg-surface-muted p-0.5"
             >
-              {jahre.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+              {jahre.map((y) => {
+                const aktiv = (year ?? balance.year) === y;
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    role="tab"
+                    aria-selected={aktiv}
+                    onClick={() => onYearChange(y)}
+                    className={cn(
+                      "tnum rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors",
+                      aktiv ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",
+                    )}
+                  >
+                    {y}
+                  </button>
+                );
+              })}
+            </div>
           ) : undefined
         }
       />

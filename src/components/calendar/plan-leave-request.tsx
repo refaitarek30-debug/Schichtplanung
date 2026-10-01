@@ -75,9 +75,9 @@ export function PlanLeaveRequest({
   const jahr = Number(von.slice(0, 4));
 
   // Konto und Kontingente des Jahres, in dem der Zeitraum beginnt – nicht
-  // das des laufenden Jahres.
+  // das des laufenden Jahres. Schon ab dem ersten Tipp: die Übersicht steht
+  // dann bereits in der schmalen Leiste.
   useEffect(() => {
-    if (!fertig) return;
     let cancelled = false;
     Promise.all([
       fetchMyLeaveBalance(jahr).catch(() => null),
@@ -90,7 +90,7 @@ export function PlanLeaveRequest({
     return () => {
       cancelled = true;
     };
-  }, [jahr, fertig]);
+  }, [jahr]);
 
   // Tage, Automatik-Vorschau und Qualifikationsprüfung für den Zeitraum.
   // Über den Jahreswechsel zählt der Server die Tage je Jahr; für die
@@ -167,6 +167,7 @@ export function PlanLeaveRequest({
     return (
       <div role="dialog" aria-label="Urlaub beantragen" className={leiste}>
         <p className="tnum text-[14px] font-semibold">Beginn: {formatDE(von)}</p>
+        <KontoUebersicht konto={konto} kontingente={kontingente} />
         <p className="mt-0.5 text-[12px] text-ink-muted">
           Jetzt in deiner Zeile den letzten Tag antippen.
         </p>
@@ -200,6 +201,8 @@ export function PlanLeaveRequest({
           {tage === null ? "wird gezählt …" : `${formatDays(tage)} Arbeitstag${tage === 1 ? "" : "e"}`}
         </p>
       </div>
+
+      <KontoUebersicht konto={konto} kontingente={kontingente} />
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <label className="block">
@@ -288,5 +291,45 @@ export function PlanLeaveRequest({
         </Button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Kleine Übersicht: wie viel Urlaub, V-Tage, Sonderurlaub und Altersfreizeit
+ * im Jahr des Antrags noch übrig sind – in den Farben aus dem Plan.
+ * SU und AF nur, wenn sie für die Person freigeschaltet sind.
+ */
+function KontoUebersicht({
+  konto,
+  kontingente,
+}: {
+  konto: LiveLeaveBalance | null;
+  kontingente: LiveLeaveKindQuota[];
+}) {
+  if (!konto) return null;
+  const su = kontingente.find((q) => q.kind === "sonderurlaub" && q.erlaubt);
+  const af = kontingente.find((q) => q.kind === "altersfreizeit" && q.erlaubt);
+  const kacheln = [
+    { label: "Urlaub", wert: Math.max(konto.remainingDays, 0), farbe: "bg-shift-urlaub text-shift-urlaub-ink" },
+    { label: "V-Tage", wert: konto.vRemainingDays, farbe: "bg-shift-vtag text-shift-vtag-ink" },
+    ...(su
+      ? [{ label: "Sonderurl.", wert: Math.max(su.rest, 0), farbe: "bg-shift-sonderurlaub text-shift-sonderurlaub-ink" }]
+      : []),
+    ...(af
+      ? [{ label: "AF", wert: Math.max(af.rest, 0), farbe: "bg-shift-altersfrei text-shift-altersfrei-ink" }]
+      : []),
+  ];
+  return (
+    <dl
+      aria-label={`Noch verfügbar ${konto.year}`}
+      className="mt-2 grid grid-cols-4 gap-1"
+    >
+      {kacheln.map((k) => (
+        <div key={k.label} className={`min-w-0 rounded-md px-1.5 py-0.5 leading-tight ${k.farbe}`}>
+          <dt className="truncate text-[10px] font-medium opacity-90">{k.label}</dt>
+          <dd className="tnum text-[13px] font-bold">{formatDays(k.wert)}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
