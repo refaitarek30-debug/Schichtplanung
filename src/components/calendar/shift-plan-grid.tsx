@@ -33,6 +33,7 @@ import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { fetchPlanKommentare, type PlanKommentar } from "@/lib/data/plan-comments";
 import { addPlanKommentar, deletePlanKommentar } from "@/lib/auth/comment-actions";
+import { nachSchichtfolge, schichtFarbe } from "@/lib/shift-style";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -166,6 +167,31 @@ const leaveKnoepfe: { aktion: (typeof LEAVE_AKTIONEN)[number]; label: string; co
   { aktion: "bildungsurlaub", label: "Bildungsurlaub", code: "BU" },
   { aktion: "gewerkschaftstag", label: "Gewerkschaftstag", code: "G" },
 ];
+
+/** Einheitliche Knöpfe in der Bearbeitungsleiste – alle gleich hoch und breit. */
+const bearbeitKnopf =
+  "inline-flex min-h-[2.5rem] items-center justify-center gap-1 rounded-lg px-2 text-[13px] font-medium transition hover:brightness-95 disabled:opacity-50";
+
+/** Ein beschrifteter Block in der Bearbeitungsleiste. */
+function Abschnitt({
+  titel,
+  hinweis,
+  children,
+}: {
+  titel: string;
+  hinweis?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+        {titel}
+        {hinweis ? <span className="ml-1 font-normal normal-case tracking-normal">· {hinweis}</span> : null}
+      </p>
+      {children}
+    </section>
+  );
+}
 
 const legend = [
   { code: "F", label: "Frühschicht" },
@@ -787,24 +813,31 @@ export function ShiftPlanGrid({
   const gruppenWechsel = useMemo(() => {
     if (!selected) return [];
     const eigene = selected.rotationTeam ? `Schicht ${selected.rotationTeam}` : null;
-    const ziele: { team: string; shiftId: string; shiftName: string }[] = [];
+    const ziele: { team: string; shiftId: string; shiftName: string; shortName: string }[] = [];
     for (const [teamName] of groups) {
       if (!teamName.startsWith("Schicht ") || teamName === eigene) continue;
       const schicht = gruppenSchicht.get(teamName)?.get(selected.day);
       const detail = schicht ? shiftDetails.find((d) => d.name === schicht) : undefined;
-      if (detail) ziele.push({ team: teamName.slice(8), shiftId: detail.id, shiftName: detail.name });
+      if (detail) {
+        ziele.push({
+          team: teamName.slice(8),
+          shiftId: detail.id,
+          shiftName: detail.name,
+          shortName: detail.shortName,
+        });
+      }
     }
     return ziele;
   }, [selected, groups, gruppenSchicht, shiftDetails]);
 
-  // Auswahlliste: das laufende Jahr und das kommende, dazu der Dezember
-  // davor – mehr braucht die Planung im Betrieb nicht.
+  // Auswahlliste: das laufende Jahr und das kommende. Vergangene Jahre stehen
+  // nicht mehr darin; zurückblättern geht weiter über die Pfeile.
   const viewYear = fromISO(start).getFullYear();
   const viewMonth = fromISO(start).getMonth();
   const monthOptions = useMemo(() => {
     const base = fromISO(from).getFullYear();
     const list: { value: string; label: string }[] = [];
-    for (let y = base - 1; y <= base + 1; y += 1) {
+    for (let y = base; y <= base + 1; y += 1) {
       for (let m = 0; m < 12; m += 1) {
         list.push({ value: `${y}-${m}`, label: monatKurz(y, m) });
       }
@@ -1182,11 +1215,16 @@ export function ShiftPlanGrid({
         <div
           role="dialog"
           aria-label="Tag bearbeiten"
-          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[50vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
+          className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[65vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[13px] font-medium">
-              {selected.employeeName} · {formatDE(selected.day)}
+            <p className="min-w-0 text-[13px]">
+              <span className="font-semibold">{selected.employeeName}</span>
+              <span className="text-ink-muted"> · {formatDE(selected.day)}</span>
+              <span className="block text-[12px] text-ink-muted">
+                Aktuell: {selected.shiftName ?? "frei"}
+                {selected.absenceCode ? ` · ${selected.absenceCode}` : ""}
+              </span>
             </p>
             <button
               type="button"
@@ -1206,62 +1244,105 @@ export function ShiftPlanGrid({
               ))}
             </ul>
           ) : null}
-          {gruppenWechsel.length > 0 ? (
-            <div className="mb-2">
-              <p className="mb-1 text-[12px] text-ink-muted">
-                Schichtwechsel – an diesem Tag mit einer anderen Gruppe arbeiten:
-              </p>
-              <div className="flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
-                {gruppenWechsel.map((ziel) => (
-                  <Button
-                    key={ziel.team}
-                    variant="secondary"
+          <div className="space-y-2.5">
+            <Abschnitt titel="Schicht">
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                {nachSchichtfolge(shiftDetails.filter((s) => s.active)).map((shift) => (
+                  <button
+                    key={shift.id}
+                    type="button"
                     disabled={pending}
-                    onClick={() => applyChange("shift", ziel.shiftId)}
-                    title={`Zählt an diesem Tag zur Besetzung von Gruppe ${ziel.team}`}
+                    onClick={() => applyChange("shift", shift.id)}
+                    aria-pressed={selected.shiftName === shift.name && !selected.absenceCode}
+                    className={cn(
+                      bearbeitKnopf,
+                      schichtFarbe(shift.shortName) ?? "border border-line bg-surface text-ink",
+                      selected.shiftName === shift.name &&
+                        !selected.absenceCode &&
+                        "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
+                    )}
                   >
-                    Gruppe {ziel.team} · {ziel.shiftName}
-                  </Button>
+                    {shift.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => applyChange("free", "")}
+                  className={cn(bearbeitKnopf, "border border-line bg-surface text-ink")}
+                >
+                  Frei
+                </button>
+              </div>
+            </Abschnitt>
+
+            {gruppenWechsel.length > 0 ? (
+              <Abschnitt titel="Schichtwechsel" hinweis="an diesem Tag mit einer anderen Gruppe arbeiten">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  {gruppenWechsel.map((ziel) => (
+                    <button
+                      key={ziel.team}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => applyChange("shift", ziel.shiftId)}
+                      title={`Zählt an diesem Tag zur Besetzung von Gruppe ${ziel.team}`}
+                      className={cn(
+                        bearbeitKnopf,
+                        "flex-col gap-0 py-1.5 leading-tight",
+                        schichtFarbe(ziel.shortName) ?? "border border-line bg-surface text-ink",
+                      )}
+                    >
+                      <span className="font-semibold">Gruppe {ziel.team}</span>
+                      <span className="text-[11px] font-normal opacity-90">{ziel.shiftName}</span>
+                    </button>
+                  ))}
+                </div>
+              </Abschnitt>
+            ) : null}
+
+            <Abschnitt titel="Urlaub und Freistellung" hinweis="sofort genehmigt">
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                {leaveKnoepfe.map((k) => (
+                  <button
+                    key={k.aktion}
+                    type="button"
+                    disabled={pending}
+                    onClick={() => applyChange(k.aktion, "")}
+                    title={k.label}
+                    className={cn(bearbeitKnopf, "flex-col gap-0 py-1.5 leading-tight", cellStyles[k.code])}
+                  >
+                    <span className="text-[14px] font-bold">{k.code}</span>
+                    <span className="w-full truncate text-[10px] font-normal opacity-90">{k.label}</span>
+                  </button>
                 ))}
               </div>
-            </div>
-          ) : null}
-          <div className="flex flex-wrap gap-1.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
-            {shiftDetails.map((shift) => (
-              <Button
-                key={shift.id}
-                variant="secondary"
-                disabled={pending}
-                onClick={() => applyChange("shift", shift.id)}
-              >
-                {shift.name}
-              </Button>
-            ))}
-            <Button variant="secondary" disabled={pending} onClick={() => applyChange("free", "")}>
-              Frei
-            </Button>
-            {leaveKnoepfe.map((k) => (
-              <Button
-                key={k.aktion}
-                variant="secondary"
-                disabled={pending}
-                onClick={() => applyChange(k.aktion, "")}
-                className={cn(cellStyles[k.code], "hover:brightness-95")}
-              >
-                {k.label}
-              </Button>
-            ))}
-            <Button variant="danger" disabled={pending} onClick={() => applyChange("absence", "krank")}>
-              Krank
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => applyChange("absence", "schulung")}
-              className={cn(cellStyles.FB, "hover:brightness-95")}
-            >
-              Schulung
-            </Button>
+            </Abschnitt>
+
+            <Abschnitt titel="Abwesenheit">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-6">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => applyChange("absence", "krank")}
+                  className={cn(bearbeitKnopf, "flex-col gap-0 py-1.5 leading-tight", cellStyles.K)}
+                >
+                  <span className="text-[14px] font-bold">K</span>
+                  <span className="text-[10px] font-normal opacity-90">Krank</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => applyChange("absence", "schulung")}
+                  className={cn(bearbeitKnopf, "flex-col gap-0 py-1.5 leading-tight", cellStyles.FB)}
+                >
+                  <span className="text-[14px] font-bold">FB</span>
+                  <span className="text-[10px] font-normal opacity-90">Schulung</span>
+                </button>
+              </div>
+            </Abschnitt>
+          </div>
+
+          <div className="mt-3 flex flex-wrap justify-end gap-1.5 border-t border-line pt-2.5 [&_button]:px-2.5 [&_button]:py-1.5 [&_button]:text-[13px]">
             {/* Nur anbieten, wenn wirklich ein Antrag auf dem Tag liegt –
                 sonst räumt der Knopf nichts weg und verwirrt bloß. */}
             {selected.absenceCode &&
@@ -1269,10 +1350,11 @@ export function ShiftPlanGrid({
               selected.absenceCode,
             ) ? (
               <Button variant="ghost" disabled={pending} onClick={() => applyChange("clear", "")}>
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
                 Eintrag entfernen
               </Button>
             ) : null}
-            <Button variant="ghost" onClick={() => setSelected(null)}>
+            <Button variant="secondary" onClick={() => setSelected(null)}>
               Abbrechen
             </Button>
           </div>
@@ -1670,7 +1752,7 @@ export function ShiftPlanGrid({
 
       {/* Platz unter der Tabelle, damit die Leiste unten die letzten
           Zeilen nicht verdeckt – unten angefügt, damit oben nichts springt. */}
-      {(selected && canEdit) || kommentarZelle ? <div aria-hidden className="h-56" /> : null}
+      {(selected && canEdit) || kommentarZelle ? <div aria-hidden className="h-80" /> : null}
 
       {auswahl && employeeId ? (
         <>

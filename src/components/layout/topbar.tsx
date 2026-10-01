@@ -51,10 +51,10 @@ export function Topbar() {
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
-      <div className="lg:hidden">
+      <Link href="/dashboard" aria-label="Schichtplan – Startseite" className="min-w-0 lg:hidden">
         <p className="text-sm font-semibold tracking-tight">Schichtplan</p>
         <p className="truncate text-[11px] text-ink-faint">{company.name}</p>
-      </div>
+      </Link>
 
       <div className="ml-auto flex items-center gap-2">
         {/* Deutlich sichtbar, solange man die App in einer anderen Rolle

@@ -69,14 +69,15 @@ export function ReviewPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [requests, jahr],
   );
-  /** Jahre, in denen es Anträge gibt – plus das laufende. */
+  /** Jahre, in denen es Anträge gibt – ab dem laufenden, vergangene nicht mehr. */
   const jahre = useMemo(() => {
-    const menge = new Set<number>([new Date().getFullYear()]);
+    const laufend = new Date().getFullYear();
+    const menge = new Set<number>([laufend]);
     for (const r of requests ?? []) {
       menge.add(Number(r.startDate.slice(0, 4)));
       menge.add(Number(r.endDate.slice(0, 4)));
     }
-    return [...menge].sort((a, b) => a - b);
+    return [...menge].filter((j) => j >= laufend).sort((a, b) => a - b);
   }, [requests]);
 
   /**

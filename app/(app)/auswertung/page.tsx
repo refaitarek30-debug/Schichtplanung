@@ -149,7 +149,7 @@ export default function AuswertungPage() {
               onChange={(e) => setJahr(Number(e.target.value))}
               className="rounded-xl border border-line bg-surface px-3 py-2 text-sm"
             >
-              {[jetzt.getFullYear() - 1, jetzt.getFullYear(), jetzt.getFullYear() + 1].map((j) => (
+              {[jetzt.getFullYear(), jetzt.getFullYear() + 1].map((j) => (
                 <option key={j} value={j}>
                   {j}
                 </option>

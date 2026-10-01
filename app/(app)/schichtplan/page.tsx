@@ -5,8 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { ShiftPlanExport } from "@/components/calendar/shift-plan-export";
-import { AddAbsenceForm } from "@/components/leave/add-absence-form";
-import { RotationEditor } from "@/components/leave/rotation-editor";
+import { PlanEintragForm } from "@/components/leave/plan-eintrag-form";
 import { useSession } from "@/context/session";
 import { TODAY } from "@/lib/demo-data";
 import { fetchEmployees } from "@/lib/data/employees";
@@ -21,7 +20,7 @@ export default function ShiftPlanPage() {
   const [stand, setStand] = useState(0);
 
   // Mitarbeiter für zwei Zwecke: die Vorauswahl der eigenen Gruppe im
-  // Export und die Auswahlliste im Abwesenheitsformular.
+  // Export und die Auswahlliste in „Plan ändern“.
   const laden = useCallback(() => {
     if (mode !== "live" || !canEdit) return;
     fetchEmployees()
@@ -66,21 +65,16 @@ export default function ShiftPlanPage() {
 
           {canEdit ? (
             <>
-              {/* Abwesenheiten gehören dorthin, wo man den Plan sieht: wer
-                  eine Krankmeldung einträgt, will sofort erkennen, welches
-                  Loch sie reißt. Vorher stand das Formular auf einer
-                  eigenen Seite unter Besetzung. */}
-              <AddAbsenceForm
+              {/* Schichtwechsel und Abwesenheiten in einer Kachel direkt
+                  unter dem Plan: wer etwas einträgt, sieht sofort, welches
+                  Loch es reißt. */}
+              <PlanEintragForm
                 employees={employees}
                 onSaved={() => {
                   laden();
                   setStand((n) => n + 1);
                 }}
               />
-
-              {/* Schichtwechsel direkt unter den Abwesenheiten – beides
-                  ändert den Plan für einzelne Tage. */}
-              <RotationEditor onSaved={() => setStand((n) => n + 1)} />
 
               <ShiftPlanExport
                 companyId={company.id}
