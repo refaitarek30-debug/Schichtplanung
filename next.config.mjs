@@ -55,9 +55,17 @@ const sicherheitsHeader = [
     : []),
 ];
 
+/**
+ * Kennung dieses Builds. Auf Vercel der Commit, lokal „lokal“. Der Browser
+ * bekommt sie fest eingebaut, `/api/version` liefert die des gerade
+ * ausgelieferten Builds – weichen beide ab, ist eine neue Version online.
+ */
+const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || "lokal";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  env: { NEXT_PUBLIC_APP_VERSION: appVersion },
   // Verrät die Framework-Version nicht ungefragt in jeder Antwort.
   poweredByHeader: false,
   async headers() {

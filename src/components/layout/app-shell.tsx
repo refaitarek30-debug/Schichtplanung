@@ -4,6 +4,7 @@ import { InstallHint } from "./install-hint";
 import { LegalFooter } from "./legal-footer";
 import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
+import { NeueVersionHinweis } from "./neue-version";
 import { MobileNav } from "./mobile-nav";
 import { ShellMain } from "./shell-main";
 import { Sidebar } from "./sidebar";
@@ -31,6 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <MobileNav />
       {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
       <LiveRefresh />
+      <NeueVersionHinweis />
       {/* Blockiert Klicks, solange etwas gespeichert wird. */}
       <LadeSperre />
     </div>
