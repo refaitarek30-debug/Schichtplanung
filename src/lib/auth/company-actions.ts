@@ -110,6 +110,12 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     return { error: "Bitte bestätige, dass du die Datenschutzerklärung zur Kenntnis genommen hast." };
   }
 
+  // Ohne Dienstschlüssel lässt sich keine Firma anlegen – ehrlich melden,
+  // statt die Ratenbegrenzung „Zu viele Versuche“ sagen zu lassen.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "Die Registrierung ist auf diesem Server gerade nicht verfügbar." };
+  }
+
   const erlaubt =
     (await allow("register-ip", await clientKey(), 5, 3600, true)) &&
     (await allow("register-mail", emailKey(email), 3, 3600, true));

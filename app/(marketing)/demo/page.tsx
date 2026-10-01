@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { Clock, ShieldCheck, UserCog } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
+import { DemoStart } from "@/components/marketing/demo-start";
 import { PlanPreview } from "@/components/marketing/plan-preview";
 
 export const metadata: Metadata = {
   title: "Live-Demo – Schichtplan",
   description:
-    "Die öffentliche Live-Demo von Schichtplan wird vorbereitet. Bis dahin können Unternehmen Schichtplan kostenlos mit einem eigenen Bereich testen.",
+    "Schichtplan ohne Registrierung ausprobieren: ein eigener Demo-Bereich mit Beispieldaten eines Schichtbetriebs, 24 Stunden gültig.",
 };
 
 /*
- * Vorgesehene Route für die öffentliche Demo.
+ * Live-Demo.
  *
- * Bewusst KEIN gemeinsames Demo-Konto im Produktivsystem: ein öffentlich
- * bekanntes Passwort zu einem echten Mandanten wäre ein Sicherheitsrisiko.
- * Eine echte Demo braucht eine eigene, regelmäßig zurückgesetzte Umgebung
- * (oder je Besucher einen frischen, befristeten Mandanten). Bis es die gibt,
- * erklärt diese Seite den Stand und führt zur Registrierung.
+ * Bewusst KEIN gemeinsames Demo-Konto: ein öffentlich bekanntes Passwort zu
+ * einem Mandanten im Produktivsystem wäre ein Sicherheitsrisiko, und
+ * Besucher sähen gegenseitig ihre Eingaben. Stattdessen legt „Live-Demo
+ * starten“ je Besucher ein eigenes Konto und eine eigene Kopie der
+ * Beispielfirma an (src/lib/demo/actions.ts, demo_create in der Datenbank).
+ * Nach 24 Stunden wird beides automatisch gelöscht.
  */
 export default function DemoPage() {
   return (
@@ -25,28 +27,61 @@ export default function DemoPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">Live-Demo</p>
           <h1 className="mt-2 text-[32px] font-semibold leading-tight tracking-tight sm:text-[42px]">
-            Die Live-Demo wird gerade vorbereitet.
+            Schichtplan live ausprobieren
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
-            Bald können Sie Schichtplan hier mit vorbereiteten Beispieldaten ausprobieren – ohne
-            Registrierung. Bis dahin legen Sie in wenigen Minuten einen eigenen, kostenlosen
-            Testbereich für Ihr Unternehmen an und richten Schichten und Mitarbeiter selbst ein.
+            Mit einem Klick erhalten Sie einen eigenen Demo-Bereich mit den Beispieldaten eines
+            Schichtbetriebs: rund 50 Mitarbeiter in vier Schichtgruppen, Qualifikationen,
+            Urlaubskonten, Abwesenheiten und offene Anträge zum Genehmigen. Ohne Registrierung.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <CtaLink href={ZIELE.testen} size="lg">
-              Kostenlos testen
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </CtaLink>
-            <CtaLink href="/#funktionen" size="lg" variant="secondary">
-              Funktionen ansehen
-            </CtaLink>
+
+          <ul className="mt-6 space-y-3 text-[14px] leading-snug">
+            <li className="flex gap-3">
+              <UserCog className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden />
+              Sie sind als Administration angemeldet und sehen alles. Über „Ansicht“ können Sie
+              auch die Sicht von Schichtleitung und Mitarbeitern ausprobieren.
+            </li>
+            <li className="flex gap-3">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden />
+              Der Demo-Bereich wird nach 24 Stunden automatisch gelöscht. Nach 10 Minuten ohne
+              Aktivität endet die Sitzung; dann starten Sie einfach eine neue Demo.
+            </li>
+            <li className="flex gap-3">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden />
+              Ihr Demo-Bereich ist von allen anderen getrennt. Einladungen und E-Mails sind
+              abgeschaltet. Bitte geben Sie keine echten Personendaten ein.
+            </li>
+          </ul>
+
+          <div className="mt-8">
+            <DemoStart />
           </div>
-          <p className="mt-6 flex items-start gap-2 text-[13px] leading-snug text-ink-muted">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok-dot" aria-hidden />
-            Ihr Testbereich ist von anderen Unternehmen getrennt. Die Daten liegen in der EU.
+          <p className="mt-4 text-[13px] text-ink-muted">
+            Lieber gleich mit eigenen Daten?{" "}
+            <a href={ZIELE.testen} className="font-medium text-brand-600 hover:underline">
+              Kostenlos registrieren
+            </a>
+          </p>
+          <p className="mt-2 text-[12px] leading-snug text-ink-faint">
+            Mit dem Start gelten die{" "}
+            <a href="/nutzungsbedingungen" className="underline underline-offset-2">
+              Nutzungsbedingungen
+            </a>
+            . Hinweise zur Verarbeitung stehen in der{" "}
+            <a href="/datenschutz" className="underline underline-offset-2">
+              Datenschutzerklärung
+            </a>
+            .
           </p>
         </div>
-        <PlanPreview />
+        <div className="space-y-4">
+          <PlanPreview />
+          <div className="hidden justify-end lg:flex">
+            <CtaLink href="/#funktionen" variant="ghost">
+              Alle Funktionen ansehen
+            </CtaLink>
+          </div>
+        </div>
       </div>
     </section>
   );

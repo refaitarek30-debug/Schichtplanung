@@ -27,6 +27,9 @@ export interface Company {
    * und Mitarbeiter Beispieldaten, es gibt nichts einzurichten.
    */
   setupCompletedAt?: string | null;
+  /** Befristeter Mandant der Live-Demo (wird automatisch gelöscht). */
+  isDemo?: boolean;
+  demoExpiresAt?: string | null;
 }
 
 /** Angemeldete Person: Auth-Benutzer + Zeile aus `profiles` (+ `employees`). */
