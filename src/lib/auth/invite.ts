@@ -226,6 +226,17 @@ export async function grantAccess(
     };
   }
 
+  // In der Live-Demo entstehen keine echten Zugänge: eine Einladung würde
+  // ein Konto zu einer fremden E-Mail-Adresse anlegen.
+  const { data: firma } = await admin
+    .from("companies")
+    .select("is_demo")
+    .eq("id", employee.company_id)
+    .maybeSingle<{ is_demo: boolean }>();
+  if (firma?.is_demo) {
+    return { error: "In der Live-Demo können keine Zugänge eingerichtet werden." };
+  }
+
   const redirectTo = `${origin}/auth/callback?weiter=${NACH_EINLADUNG}`;
   const metadata = {
     employee_id: employee.id,

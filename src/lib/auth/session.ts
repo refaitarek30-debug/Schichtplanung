@@ -29,7 +29,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
     .select(
       `id, company_id, employee_id, first_name, last_name, email, role, avatar_url, active,
        hidden_dashboard_tiles,
-       companies ( id, name, logo_url, active, setup_completed_at ),
+       companies ( id, name, logo_url, active, setup_completed_at, is_demo, demo_expires_at ),
        employees ( personnel_number, department, shifts ( name ) )`,
     )
     .eq("id", user.id)
@@ -69,6 +69,8 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       logoUrl: companyRow?.logo_url ?? null,
       active: companyRow?.active ?? true,
       setupCompletedAt: companyRow?.setup_completed_at ?? null,
+      isDemo: companyRow?.is_demo === true,
+      demoExpiresAt: companyRow?.demo_expires_at ?? null,
     },
   };
 });

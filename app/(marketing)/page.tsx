@@ -181,7 +181,7 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
   {
     frage: "Gibt es eine Demo?",
     antwort:
-      "Eine öffentliche Live-Demo wird vorbereitet. Bis dahin können Sie sich kostenlos registrieren und Schichtplan mit einem eigenen, von anderen Unternehmen getrennten Bereich ausprobieren.",
+      "Ja. Unter „Live-Demo“ erhalten Sie ohne Registrierung einen eigenen Demo-Bereich mit Beispieldaten eines Schichtbetriebs – als Administration, mit offenen Anträgen zum Genehmigen. Der Bereich wird nach 24 Stunden automatisch gelöscht. Für einen dauerhaften Bereich mit eigenen Daten registrieren Sie sich kostenlos.",
   },
   {
     frage: "Wie funktioniert die Besetzungskontrolle?",

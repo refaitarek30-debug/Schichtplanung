@@ -76,6 +76,9 @@ export interface CompanyRow {
   avv_accepted_at: string | null;
   /** Abschluss des Einrichtungsassistenten. Null = noch offen. */
   setup_completed_at: string | null;
+  /** Befristeter Mandant der Live-Demo. */
+  is_demo: boolean;
+  demo_expires_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -568,7 +571,7 @@ export interface Database {
 export interface ProfileWithRelations extends ProfileRow {
   companies: Pick<
     CompanyRow,
-    "id" | "name" | "logo_url" | "active" | "setup_completed_at"
+    "id" | "name" | "logo_url" | "active" | "setup_completed_at" | "is_demo" | "demo_expires_at"
   > | null;
   employees:
     | (Pick<EmployeeRow, "personnel_number" | "department"> & {

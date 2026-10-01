@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="30. September 2026"
+      updated="1. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -197,6 +197,15 @@ export default function DatenschutzPage() {
           Mailserver. Benachrichtigungen zu Anträgen werden zunächst in einem Postausgang
           (Empfänger, Betreff, Text, Status) zwischengespeichert und von dort versendet.
           Versanddienstleister: <Platzhalter>SMTP-Anbieter eintragen und Region prüfen</Platzhalter>.
+        </Absatz>
+
+        <Absatz className="pt-1">
+          <strong>Live-Demo:</strong> Wer die Live-Demo startet, erhält ein befristetes Konto mit
+          einer zufälligen Platzhalter-Adresse und einen eigenen Demo-Bereich mit Beispieldaten.
+          Verarbeitet werden dabei nur Sitzungscookies (Abschnitt 10) und zur Begrenzung von
+          Missbrauch ein gesalzener Hashwert der IP-Adresse (höchstens ein Tag). Konto und
+          Demo-Bereich werden nach 24 Stunden automatisch gelöscht. Verantwortlich ist der
+          Betreiber; Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. f DSGVO.
         </Absatz>
 
         <Absatz className="text-[13px] text-ink-muted">
@@ -401,7 +410,8 @@ export default function DatenschutzPage() {
             aus Arbeits-, Steuer- und Handelsrecht legt das Unternehmen fest.
           </li>
           <li>
-            Automatische Löschung: Ratenbegrenzungs-Zähler nach 1 Tag, Postausgang nach
+            Automatische Löschung: Demo-Bereiche der Live-Demo nach 24 Stunden,
+            Ratenbegrenzungs-Zähler nach 1 Tag, Postausgang nach
             30 Tagen, Benachrichtigungen nach 180 Tagen, Kommentare im Schichtplan 12 Monate
             nach dem Tag, auf den sie sich beziehen, Änderungsprotokoll nach 24 Monaten.
           </li>

@@ -13,8 +13,30 @@ import { useSession } from "@/context/session";
 const PLANNING_PATHS: string[] = [];
 
 export function DataModeNotice() {
-  const { mode } = useSession();
+  const { mode, company } = useSession();
   const pathname = usePathname();
+
+  // Live-Demo: ein eigener, befristeter Mandant mit Beispieldaten.
+  if (mode === "live" && company.isDemo) {
+    const bis = company.demoExpiresAt
+      ? new Date(company.demoExpiresAt).toLocaleString("de-DE", {
+          weekday: "short",
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : null;
+    return (
+      <Alert tone="info" className="mb-5">
+        <strong>Live-Demo</strong> – alle Personen und Termine sind Beispieldaten. Sie können
+        alles ausprobieren; nur Einladungen und E-Mails sind abgeschaltet. Dieser Demo-Bereich
+        wird {bis ? `am ${bis} Uhr` : "nach 24 Stunden"} automatisch gelöscht. Bitte keine echten
+        Personendaten eingeben. Für Ihr eigenes Unternehmen melden Sie sich ab und registrieren
+        sich kostenlos.
+      </Alert>
+    );
+  }
 
   if (mode === "demo") {
     return (
