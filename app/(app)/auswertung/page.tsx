@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -31,6 +32,14 @@ type Ebene = "gesamt" | "schicht" | "person";
  * ein Mittelwert würde jemanden mit fünf Arbeitstagen genauso stark
  * gewichten wie jemanden mit zwanzig.
  */
+function ZurStartseite() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/dashboard");
+  }, [router]);
+  return null;
+}
+
 export default function AuswertungPage() {
   const { mode, role } = useSession();
   const jetzt = new Date();
@@ -43,7 +52,7 @@ export default function AuswertungPage() {
   const [fehler, setFehler] = useState<string | null>(null);
 
   const laden = useCallback(async () => {
-    if (mode !== "live") return;
+    if (mode !== "live" || role !== "admin") return;
     setZeilen(null);
     setFehler(null);
     try {
@@ -59,7 +68,7 @@ export default function AuswertungPage() {
         caught instanceof DataError ? caught.message : "Die Auswertung konnte nicht geladen werden.",
       );
     }
-  }, [mode, jahr, monat]);
+  }, [mode, role, jahr, monat]);
 
   useEffect(() => {
     void laden();
@@ -115,17 +124,10 @@ export default function AuswertungPage() {
     );
   }
 
-  // Nur die Administration. Die Auswertung schluesselt Kranktage je Person
-  // auf; die Schichtleitung plant damit nicht. Gesperrt wird in
-  // `absence_report()` -- diese Abfrage erspart nur den Fehlertext.
-  if (role !== "admin") {
-    return (
-      <div className="space-y-5">
-        <PageHeader eyebrow="Verwaltung" title="Auswertung" />
-        <Alert tone="warning">Für diesen Bereich fehlt dir die Berechtigung.</Alert>
-      </div>
-    );
-  }
+  // Nur die Administration. Wer nicht Admin ist, kommt gar nicht bis hier
+  // (layout.tsx leitet um). Schaltet ein Admin auf „Ansicht: Schichtleitung“,
+  // verschwindet die Seite genauso – zurück zur Startseite.
+  if (role !== "admin") return <ZurStartseite />;
 
   const abweichung = gesamt?.gesundheitsrate !== null && gesamt?.gesundheitsrate !== undefined
     ? gesamt.gesundheitsrate - ziel
