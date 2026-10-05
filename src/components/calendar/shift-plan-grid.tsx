@@ -1,6 +1,16 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -351,13 +361,10 @@ export function ShiftPlanGrid({
     const amEnde = (links: number) => links >= maxLinks - 2;
     const amAnfang = (links: number) => links <= 2;
     if (dx < 0 && (amEnde(anfang.links) || (kraeftig && amEnde(box.scrollLeft)))) {
-      setStart(weiter);
-      box.scrollLeft = 0;
+      geheZu(weiter(start));
     } else if (dx > 0 && (amAnfang(anfang.links) || (kraeftig && amAnfang(box.scrollLeft)))) {
-      setStart(zurueck);
-      requestAnimationFrame(() => {
-        box.scrollLeft = box.scrollWidth;
-      });
+      // Zurück: am Ende des vorigen Zeitraums landen, nicht am Anfang.
+      geheZu(zurueck(start), true);
     }
   }
   /** Legende zu, bis jemand sie braucht. Spart auf dem Handy zwei Zeilen. */
@@ -455,7 +462,64 @@ export function ShiftPlanGrid({
 
   const { profile } = useSession();
   // Je Benutzer getrennt: die Führung sieht andere Zeilen als ein Mitarbeiter.
-  const speicherSchluessel = `${profile.id}:plan:${companyId}:${start}:${span}`;
+  const schluesselFuer = useCallback(
+    (s: string) => `${profile.id}:plan:${companyId}:${s}:${span}`,
+    [profile.id, companyId, span],
+  );
+  const speicherSchluessel = schluesselFuer(start);
+
+  /**
+   * Blättern ohne Ruckeln.
+   *
+   * Vorher baute jeder Wisch den Plan zweimal komplett auf: erst leer für
+   * den neuen Zeitraum, dann noch einmal, wenn die Daten kamen – auf dem
+   * Handy zwei Hänger von je 0,3–0,4 s mit einer leeren Tabelle dazwischen.
+   * Jetzt
+   *   * liegen der vorige und der nächste Zeitraum schon bereit (vorladen),
+   *     Zeitraum und Daten wechseln in einem einzigen Aufbau,
+   *   * läuft dieser Aufbau als Übergang: der alte Zeitraum bleibt stehen,
+   *     bis der neue fertig ist, und der Finger hängt nicht fest,
+   *   * fehlt ein Zeitraum doch einmal, steht kurz die leichte Ladeanzeige
+   *     statt 1.260 leerer Kästchen,
+   *   * wird nichts neu gezeichnet, wenn beim Auffrischen dasselbe kommt.
+   */
+  const [, startBlaettern] = useTransition();
+  /** Fingerabdruck des angezeigten Stands – gleich = nicht neu zeichnen. */
+  const angezeigt = useRef<string | null>(null);
+  /** Nach dem Zurückblättern ans Ende des Zeitraums scrollen. */
+  const zumEnde = useRef(false);
+
+  function zeige(stand: PlanStand) {
+    const abdruck = JSON.stringify([
+      stand.grid,
+      stand.details,
+      [...stand.blocked],
+      [...stand.ferien],
+      stand.kommentare ?? [],
+    ]);
+    if (abdruck === angezeigt.current) return;
+    angezeigt.current = abdruck;
+    setCells(stand.grid);
+    setShiftDetails(stand.details);
+    setBlocked(stand.blocked);
+    setFerien(stand.ferien);
+    setKommentare(stand.kommentare ?? []);
+  }
+
+  function geheZu(neu: string, ansEnde = false) {
+    if (neu === start) return;
+    const gemerkt = ausZwischenspeicher<PlanStand>(schluesselFuer(neu));
+    zumEnde.current = ansEnde;
+    startBlaettern(() => {
+      setStart(neu);
+      if (gemerkt) {
+        zeige(gemerkt);
+      } else {
+        angezeigt.current = null;
+        setCells(null);
+      }
+    });
+  }
 
   /**
    * Nummer des zuletzt gestellten Abrufs.
@@ -486,35 +550,24 @@ export function ShiftPlanGrid({
    * bei vielen gleichzeitig angemeldeten Mitarbeitern ein spürbarer
    * Unterschied für die Datenbank.
    */
-  const load = useCallback(async (nurDaten = false) => {
-    const meiner = ++letzterAbruf.current;
-    setError(null);
-    // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
-    // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
-    // Wartezeit da.
-    const gemerkt = nurDaten ? null : ausZwischenspeicher<PlanStand>(speicherSchluessel);
-    if (gemerkt) {
-      setCells(gemerkt.grid);
-      setShiftDetails(gemerkt.details);
-      setBlocked(gemerkt.blocked);
-      setFerien(gemerkt.ferien);
-      setKommentare(gemerkt.kommentare ?? []);
-    }
-    try {
-      const bis = addDays(start, span - 1);
-      const rahmenDa = nurDaten && rahmen.current?.schluessel === speicherSchluessel;
+  /** Alles, was ein Zeitraum braucht, in einem Rutsch holen. */
+  const holeStand = useCallback(
+    async (s: string, alterRahmen: typeof rahmen.current) => {
+      const schluessel = schluesselFuer(s);
+      const bis = addDays(s, span - 1);
+      const rahmenDa = alterRahmen?.schluessel === schluessel;
       const [grid, blockedDays, neueKommentare, neuerRahmen] = await Promise.all([
-        fetchShiftPlanGrid(companyId, start, span),
-        fetchBlockedDays(start, bis),
-        fetchPlanKommentare(start, bis),
+        fetchShiftPlanGrid(companyId, s, span),
+        fetchBlockedDays(s, bis),
+        fetchPlanKommentare(s, bis),
         rahmenDa
-          ? Promise.resolve(rahmen.current!)
+          ? Promise.resolve(alterRahmen!)
           : (async () => {
               // Die Schichtdetails liefern Name und Id gleich mit – eine
               // zweite Abfrage nur für die Auswahlliste braucht es nicht.
               const [details, ferienZeitraeume] = await Promise.all([
                 fetchShiftDetails(),
-                fetchSchoolHolidays(start, bis),
+                fetchSchoolHolidays(s, bis),
               ]);
               // Zeiträume auf einzelne Tage aufziehen, damit der Tabellenkopf
               // je Spalte nachschlagen kann, statt für jeden Tag alle
@@ -525,24 +578,73 @@ export function ShiftPlanGrid({
                   tage.set(tag, zeitraum.name);
                 }
               }
-              return { schluessel: speicherSchluessel, details, ferien: tage };
+              return { schluessel, details, ferien: tage };
             })(),
       ]);
-      // Inzwischen wurde weitergeblättert: diese Antwort ist überholt.
-      if (meiner !== letzterAbruf.current) return;
-      rahmen.current = neuerRahmen;
-      setCells(grid);
-      setShiftDetails(neuerRahmen.details);
-      setBlocked(blockedDays);
-      setFerien(neuerRahmen.ferien);
-      setKommentare(neueKommentare);
-      inZwischenspeicher<PlanStand>(speicherSchluessel, {
+      const stand: PlanStand = {
         grid,
         details: neuerRahmen.details,
         blocked: blockedDays,
         ferien: neuerRahmen.ferien,
         kommentare: neueKommentare,
-      });
+      };
+      return { stand, rahmen: neuerRahmen };
+    },
+    [companyId, span, schluesselFuer],
+  );
+
+  /** Nachbarzeitraum im Hintergrund holen, damit der nächste Wisch sofort steht. */
+  const imVorladen = useRef(new Set<string>());
+  const vorladen = useCallback(
+    (s: string) => {
+      const schluessel = schluesselFuer(s);
+      if (ausZwischenspeicher<PlanStand>(schluessel) || imVorladen.current.has(schluessel)) return;
+      if (document.visibilityState !== "visible") return;
+      imVorladen.current.add(schluessel);
+      holeStand(s, null)
+        .then(({ stand }) => inZwischenspeicher<PlanStand>(schluessel, stand))
+        .catch(() => {
+          // Vorladen ist Beiwerk – klappt es nicht, lädt der Wisch wie bisher.
+        })
+        .finally(() => imVorladen.current.delete(schluessel));
+    },
+    [holeStand, schluesselFuer],
+  );
+  const vorladeUhr = useRef<number | undefined>(undefined);
+
+  /**
+   * Plan laden. `nurDaten`: nur, was andere geändert haben können – Plan und
+   * Urlaubssperren. So kostet eine Aktualisierung zwei Abfragen statt vier,
+   * bei vielen gleichzeitig angemeldeten Mitarbeitern ein spürbarer
+   * Unterschied für die Datenbank.
+   */
+  const load = useCallback(async (nurDaten = false) => {
+    const meiner = ++letzterAbruf.current;
+    setError(null);
+    // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
+    // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
+    // Wartezeit da.
+    const gemerkt = nurDaten ? null : ausZwischenspeicher<PlanStand>(speicherSchluessel);
+    if (gemerkt) zeige(gemerkt);
+    try {
+      const { stand, rahmen: neuerRahmen } = await holeStand(
+        start,
+        nurDaten ? rahmen.current : null,
+      );
+      // Inzwischen wurde weitergeblättert: diese Antwort ist überholt.
+      if (meiner !== letzterAbruf.current) return;
+      rahmen.current = neuerRahmen;
+      zeige(stand);
+      inZwischenspeicher<PlanStand>(speicherSchluessel, stand);
+      if (!nurDaten) {
+        // Kurz warten, damit das Vorladen nicht mit dem Aufbau der Tabelle
+        // um die Leitung konkurriert.
+        window.clearTimeout(vorladeUhr.current);
+        vorladeUhr.current = window.setTimeout(() => {
+          vorladen(addDays(start, span));
+          vorladen(addDays(start, -span));
+        }, 600);
+      }
     } catch (caught) {
       if (meiner !== letzterAbruf.current) return;
       // Steht schon ein Stand da, bleibt er sichtbar – lieber der Plan von
@@ -551,12 +653,15 @@ export function ShiftPlanGrid({
         setError("Der Plan konnte gerade nicht aufgefrischt werden – angezeigt wird der letzte Stand.");
         return;
       }
+      angezeigt.current = null;
       setCells([]);
       setError(
         caught instanceof DataError ? caught.message : "Der Schichtplan kann momentan nicht geladen werden. Bitte in einigen Minuten erneut versuchen.",
       );
     }
-  }, [companyId, start, span, speicherSchluessel]);
+  }, [start, span, speicherSchluessel, holeStand, vorladen]);
+
+  useEffect(() => () => window.clearTimeout(vorladeUhr.current), []);
 
   useEffect(() => {
     void load();
@@ -592,8 +697,16 @@ export function ShiftPlanGrid({
    * verschoben stehen, und der gewünschte Tag war nicht im Bild.
    */
   const geladen = cells !== null;
-  useEffect(() => {
-    if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+  // Vor dem Zeichnen, sonst blitzt beim Zurückblättern kurz der Anfang auf.
+  useLayoutEffect(() => {
+    const box = scrollBox.current;
+    if (!box) return;
+    if (zumEnde.current && geladen) {
+      box.scrollLeft = box.scrollWidth;
+      zumEnde.current = false;
+    } else {
+      box.scrollLeft = 0;
+    }
   }, [start, geladen]);
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
@@ -983,6 +1096,63 @@ export function ShiftPlanGrid({
     return false;
   }
 
+  /**
+   * Bedienfunktionen der Kästchen, einmal gebündelt. Das Bündel selbst bleibt
+   * über alle Aufbauten dasselbe; es ruft immer die aktuelle Fassung auf.
+   * So muss eine Zeile nur neu gezeichnet werden, wenn sich ihre Daten
+   * ändern – nicht bei jedem Antippen irgendwo im Plan.
+   */
+  const aktuelleAktionen = useRef<ZeilenAktionen | null>(null);
+  useLayoutEffect(() => {
+    aktuelleAktionen.current = {
+      druckBeginn,
+      druckBewegung,
+      druckEnde,
+      klickNachDruck,
+      mausRaus: (e) => {
+        druckEnde();
+        if (e.pointerType === "mouse") setSchwebe(null);
+      },
+      schwebe: (e, liste) => {
+        if (e.pointerType !== "mouse") return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        setSchwebe({ x: Math.min(rect.left, window.innerWidth - 330), y: rect.bottom + 4, liste });
+      },
+      kontextmenue: (employeeId, name, tag) => {
+        if (!druck.current?.ausgeloest) oeffneKommentare(employeeId, name, tag);
+      },
+      waehleTag: (tag) => {
+        setSelected(null);
+        tippeTag(tag);
+      },
+      bearbeite: (cell) => {
+        setKommentarZelle(null);
+        setSelected(cell);
+      },
+      oeffneKommentare,
+      verschiebe: (teamName, index, richtung) => {
+        const gruppe = groups.find(([name]) => name === teamName);
+        if (gruppe) verschieben(teamName, gruppe[1], index, richtung);
+      },
+    };
+  });
+  const aktionen = useMemo<ZeilenAktionen>(
+    () => ({
+      druckBeginn: (...x) => aktuelleAktionen.current?.druckBeginn(...x),
+      druckBewegung: (...x) => aktuelleAktionen.current?.druckBewegung(...x),
+      druckEnde: () => aktuelleAktionen.current?.druckEnde(),
+      klickNachDruck: () => aktuelleAktionen.current?.klickNachDruck() ?? false,
+      mausRaus: (...x) => aktuelleAktionen.current?.mausRaus(...x),
+      schwebe: (...x) => aktuelleAktionen.current?.schwebe(...x),
+      kontextmenue: (...x) => aktuelleAktionen.current?.kontextmenue(...x),
+      waehleTag: (...x) => aktuelleAktionen.current?.waehleTag(...x),
+      bearbeite: (...x) => aktuelleAktionen.current?.bearbeite(...x),
+      oeffneKommentare: (...x) => aktuelleAktionen.current?.oeffneKommentare(...x),
+      verschiebe: (...x) => aktuelleAktionen.current?.verschiebe(...x),
+    }),
+    [],
+  );
+
   const kommentarListe = kommentarZelle
     ? (kommentareJeZelle.get(zellSchluessel(kommentarZelle.employeeId, kommentarZelle.tag)) ?? [])
     : [];
@@ -1072,7 +1242,7 @@ export function ShiftPlanGrid({
         <div className="order-2 flex items-center gap-1 sm:order-3">
           <button
             type="button"
-            onClick={() => setStart(zurueck(start))}
+            onClick={() => geheZu(zurueck(start))}
             className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
             aria-label="Vorheriger Zeitraum"
           >
@@ -1082,7 +1252,7 @@ export function ShiftPlanGrid({
           <button
             type="button"
             onClick={() => {
-              setStart(from);
+              geheZu(from);
               if (scrollBox.current) scrollBox.current.scrollLeft = 0;
             }}
             className={cn(
@@ -1096,7 +1266,7 @@ export function ShiftPlanGrid({
           </button>
           <button
             type="button"
-            onClick={() => setStart(weiter(start))}
+            onClick={() => geheZu(weiter(start))}
             className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
             aria-label="Nächster Zeitraum"
           >
@@ -1137,7 +1307,7 @@ export function ShiftPlanGrid({
               const [y, m] = e.target.value.split("-").map(Number);
               // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
               // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
-              setStart(`${y}-${String(m + 1).padStart(2, "0")}-01`);
+              geheZu(`${y}-${String(m + 1).padStart(2, "0")}-01`);
             }}
             aria-label="Monat auswählen"
             className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
@@ -1533,163 +1703,24 @@ export function ShiftPlanGrid({
                     </tr>
                   ) : null}
                   {offen && members.map((member, memberIndex) => (
-                    <tr
+                    <PlanZeile
                       key={member.employeeId}
-                      id={member.isMe ? "eigene-zeile" : undefined}
-                      className="hover:bg-surface-muted/50"
-                    >
-                      <th
-                        scope="row"
-                        className={cn(
-                          "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left text-[11px] font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2 sm:text-[12px] lg:text-[13px]",
-                        )}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          {sortieren && canEdit ? (
-                            <span className="flex shrink-0 flex-col">
-                              <button
-                                type="button"
-                                onClick={() => verschieben(teamName, members, memberIndex, -1)}
-                                disabled={memberIndex === 0 || pending}
-                                aria-label={`${member.name} nach oben`}
-                                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
-                              >
-                                <ArrowUp className="h-3 w-3" strokeWidth={2.5} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => verschieben(teamName, members, memberIndex, 1)}
-                                disabled={memberIndex === members.length - 1 || pending}
-                                aria-label={`${member.name} nach unten`}
-                                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
-                              >
-                                <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
-                              </button>
-                            </span>
-                          ) : null}
-                          <span className="flex min-w-0 items-center gap-1">
-                            {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
-                            <span className="block truncate sm:hidden">
-                              {shortName(member.name)}
-                            </span>
-                            <span className="hidden truncate sm:block">{member.name}</span>
-                            {/* Azubis stehen im Plan, zählen aber nicht zur
-                                Besetzung – das soll man sehen. */}
-                            {member.isApprentice ? (
-                              <span
-                                title="Azubi – zählt nicht zur Besetzung"
-                                className="shrink-0 rounded bg-surface-sunken px-1 text-[9px] font-semibold uppercase tracking-[0.04em] text-ink-muted sm:text-[10px]"
-                              >
-                                Azubi
-                              </span>
-                            ) : null}
-                          </span>
-                        </span>
-                      </th>
-                      {dates.map((iso) => {
-                        const cell = member.cells.get(iso);
-                        // Rangfolge: Abwesenheit > Schicht > (Zelle da, aber
-                        // ohne Schicht = frei laut Muster). Kein cell = kein Tag.
-                        const code = cell
-                          ? (cell.absenceCode ?? cell.shiftCode ?? "FREI")
-                          : null;
-                        // In der eigenen Zeile: Tag für den Antrag wählen.
-                        // Vergangene Tage und Tage ohne Plan gehen nicht.
-                        const waehlbar = antragAktiv && member.isMe && Boolean(cell) && iso >= from;
-                        const gewaehlt =
-                          member.isMe && auswahl !== null && iso >= auswahl.von && iso <= auswahl.bis;
-                        const bearbeitbar = !nurLesen && canEdit && Boolean(cell);
-                        const zellKommentare = kommentareJeZelle.get(
-                          zellSchluessel(member.employeeId, iso),
-                        );
-                        return (
-                          <td
-                            key={iso}
-                            className={cn(
-                              "p-px text-center sm:p-0.5",
-                              // Dieselbe Linie wie im Kopf, damit der
-                              // Monatswechsel durch die ganze Tabelle geht.
-                              iso.slice(8, 10) === "01" && "border-l-2 border-line",
-                              // Ferien als durchgehender Hintergrund der
-                              // Spalte. Dezent genug, dass die Kürzel in
-                              // den Zellen klar lesbar bleiben; die
-                              // Urlaubssperre sticht sie, sie ist wichtiger.
-                              blocked.has(iso)
-                                ? "bg-crit-bg/50"
-                                : ferien.has(iso) && "bg-ferien-bg/70",
-                            )}
-                          >
-                            <button
-                              type="button"
-                              // Kein `disabled`: auch nicht bearbeitbare Zellen
-                              // nehmen langes Drücken (Kommentar) und das
-                              // Überfahren mit der Maus an.
-                              aria-disabled={!waehlbar && !bearbeitbar && !zellKommentare}
-                              onPointerDown={(e) => druckBeginn(e, member.employeeId, member.name, iso)}
-                              onPointerMove={druckBewegung}
-                              onPointerUp={druckEnde}
-                              onPointerCancel={druckEnde}
-                              onPointerLeave={(e) => {
-                                druckEnde();
-                                if (e.pointerType === "mouse") setSchwebe(null);
-                              }}
-                              onPointerEnter={(e) => {
-                                if (e.pointerType !== "mouse" || !zellKommentare) return;
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                setSchwebe({
-                                  x: Math.min(rect.left, window.innerWidth - 330),
-                                  y: rect.bottom + 4,
-                                  liste: zellKommentare,
-                                });
-                              }}
-                              onContextMenu={(e) => {
-                                // Rechtsklick am Desktop = Kommentar; auf
-                                // Android kommt beim langen Drücken dasselbe
-                                // Ereignis – das Menü des Browsers stört dort.
-                                e.preventDefault();
-                                if (!druck.current?.ausgeloest) {
-                                  oeffneKommentare(member.employeeId, member.name, iso);
-                                }
-                              }}
-                              onClick={() => {
-                                if (klickNachDruck()) return;
-                                if (waehlbar) {
-                                  setSelected(null);
-                                  tippeTag(iso);
-                                } else if (bearbeitbar && cell) {
-                                  setKommentarZelle(null);
-                                  setSelected(cell);
-                                } else if (zellKommentare) {
-                                  oeffneKommentare(member.employeeId, member.name, iso);
-                                }
-                              }}
-                              aria-pressed={waehlbar ? gewaehlt : undefined}
-                              title={
-                                cell && !zellKommentare
-                                  ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}${code && BEANTRAGT.has(code) ? " · beantragt, noch nicht genehmigt" : ""}`
-                                  : undefined
-                              }
-                              className={cn(
-                                "relative mx-auto flex h-6 w-6 select-none items-center justify-center rounded text-[11px] font-semibold [-webkit-touch-callout:none] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
-                                code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
-                                (bearbeitbar || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
-                                !waehlbar && !bearbeitbar && !zellKommentare && "cursor-default",
-                                gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
-                              )}
-                            >
-                              {code ? cellLabel(code) : ""}
-                              {/* Kleiner roter Strich: hier steht ein Kommentar. */}
-                              {zellKommentare ? (
-                                <span
-                                  aria-label="Kommentar vorhanden"
-                                  className="absolute right-0.5 top-0.5 h-[3px] w-2 rounded-full bg-crit-dot sm:w-2.5"
-                                />
-                              ) : null}
-                            </button>
-                          </td>
-                        );
-                      })}
-                    </tr>
+                      member={member}
+                      memberIndex={memberIndex}
+                      anzahl={members.length}
+                      teamName={teamName}
+                      dates={dates}
+                      from={from}
+                      antragHier={antragAktiv && member.isMe}
+                      auswahl={member.isMe ? auswahl : null}
+                      bearbeitbarBasis={!nurLesen && canEdit}
+                      blocked={blocked}
+                      ferien={ferien}
+                      kommentareJeZelle={kommentareJeZelle}
+                      sortierbar={sortieren && canEdit}
+                      sortierPending={sortieren && canEdit && pending}
+                      aktionen={aktionen}
+                    />
                   ))}
                   {offen && (
                   <tr>
@@ -1832,3 +1863,186 @@ export function ShiftPlanGrid({
     </Card>
   );
 }
+
+interface ZeilenAktionen {
+  druckBeginn: (e: React.PointerEvent, employeeId: string, name: string, tag: string) => void;
+  druckBewegung: (e: React.PointerEvent) => void;
+  druckEnde: () => void;
+  klickNachDruck: () => boolean;
+  mausRaus: (e: React.PointerEvent) => void;
+  schwebe: (e: React.PointerEvent<HTMLButtonElement>, liste: PlanKommentar[]) => void;
+  kontextmenue: (employeeId: string, name: string, tag: string) => void;
+  waehleTag: (tag: string) => void;
+  bearbeite: (cell: LiveShiftPlanCell) => void;
+  oeffneKommentare: (employeeId: string, name: string, tag: string) => void;
+  verschiebe: (teamName: string, index: number, richtung: -1 | 1) => void;
+}
+
+/**
+ * Eine Mitarbeiterzeile im Plan. Eigener Baustein, damit der Browser den
+ * Aufbau der Tabelle in Häppchen teilen kann (der Finger bleibt beim
+ * Blättern nicht hängen) und damit beim Antippen nicht die ganze Tabelle
+ * neu gezeichnet wird.
+ */
+const PlanZeile = memo(function PlanZeile({
+  member,
+  memberIndex,
+  anzahl,
+  teamName,
+  dates,
+  from,
+  antragHier,
+  auswahl,
+  bearbeitbarBasis,
+  blocked,
+  ferien,
+  kommentareJeZelle,
+  sortierbar,
+  sortierPending,
+  aktionen,
+}: {
+  member: GridRow;
+  memberIndex: number;
+  anzahl: number;
+  teamName: string;
+  dates: string[];
+  from: string;
+  antragHier: boolean;
+  auswahl: { von: string; bis: string; fertig: boolean } | null;
+  bearbeitbarBasis: boolean;
+  blocked: Map<string, string>;
+  ferien: Map<string, string>;
+  kommentareJeZelle: Map<string, PlanKommentar[]>;
+  sortierbar: boolean;
+  sortierPending: boolean;
+  aktionen: ZeilenAktionen;
+}) {
+  return (
+    <tr id={member.isMe ? "eigene-zeile" : undefined} className="hover:bg-surface-muted/50">
+      <th
+        scope="row"
+        className="sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left text-[11px] font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2 sm:text-[12px] lg:text-[13px]"
+      >
+        <span className="flex items-center gap-1.5">
+          {sortierbar ? (
+            <span className="flex shrink-0 flex-col">
+              <button
+                type="button"
+                onClick={() => aktionen.verschiebe(teamName, memberIndex, -1)}
+                disabled={memberIndex === 0 || sortierPending}
+                aria-label={`${member.name} nach oben`}
+                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
+              >
+                <ArrowUp className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => aktionen.verschiebe(teamName, memberIndex, 1)}
+                disabled={memberIndex === anzahl - 1 || sortierPending}
+                aria-label={`${member.name} nach unten`}
+                className="rounded px-0.5 text-ink-faint hover:bg-surface-muted hover:text-ink disabled:opacity-25"
+              >
+                <ArrowDown className="h-3 w-3" strokeWidth={2.5} />
+              </button>
+            </span>
+          ) : null}
+          <span className="flex min-w-0 items-center gap-1">
+            {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
+            <span className="block truncate sm:hidden">{shortName(member.name)}</span>
+            <span className="hidden truncate sm:block">{member.name}</span>
+            {/* Azubis stehen im Plan, zählen aber nicht zur Besetzung – das
+                soll man sehen. */}
+            {member.isApprentice ? (
+              <span
+                title="Azubi – zählt nicht zur Besetzung"
+                className="shrink-0 rounded bg-surface-sunken px-1 text-[9px] font-semibold uppercase tracking-[0.04em] text-ink-muted sm:text-[10px]"
+              >
+                Azubi
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </th>
+      {dates.map((iso) => {
+        const cell = member.cells.get(iso);
+        // Rangfolge: Abwesenheit > Schicht > (Zelle da, aber ohne Schicht =
+        // frei laut Muster). Kein cell = kein Tag.
+        const code = cell ? (cell.absenceCode ?? cell.shiftCode ?? "FREI") : null;
+        // In der eigenen Zeile: Tag für den Antrag wählen. Vergangene Tage und
+        // Tage ohne Plan gehen nicht.
+        const waehlbar = antragHier && Boolean(cell) && iso >= from;
+        const gewaehlt = auswahl !== null && iso >= auswahl.von && iso <= auswahl.bis;
+        const bearbeitbar = bearbeitbarBasis && Boolean(cell);
+        const zellKommentare = kommentareJeZelle.get(zellSchluessel(member.employeeId, iso));
+        return (
+          <td
+            key={iso}
+            className={cn(
+              "p-px text-center sm:p-0.5",
+              // Dieselbe Linie wie im Kopf, damit der Monatswechsel durch die
+              // ganze Tabelle geht.
+              iso.slice(8, 10) === "01" && "border-l-2 border-line",
+              // Ferien als durchgehender Hintergrund der Spalte; die
+              // Urlaubssperre sticht sie, sie ist wichtiger.
+              blocked.has(iso) ? "bg-crit-bg/50" : ferien.has(iso) && "bg-ferien-bg/70",
+            )}
+          >
+            <button
+              type="button"
+              // Kein `disabled`: auch nicht bearbeitbare Zellen nehmen langes
+              // Drücken (Kommentar) und das Überfahren mit der Maus an.
+              aria-disabled={!waehlbar && !bearbeitbar && !zellKommentare}
+              onPointerDown={(e) => aktionen.druckBeginn(e, member.employeeId, member.name, iso)}
+              onPointerMove={aktionen.druckBewegung}
+              onPointerUp={aktionen.druckEnde}
+              onPointerCancel={aktionen.druckEnde}
+              onPointerLeave={aktionen.mausRaus}
+              onPointerEnter={(e) => {
+                if (zellKommentare) aktionen.schwebe(e, zellKommentare);
+              }}
+              onContextMenu={(e) => {
+                // Rechtsklick am Desktop = Kommentar; auf Android kommt beim
+                // langen Drücken dasselbe Ereignis – das Menü des Browsers
+                // stört dort.
+                e.preventDefault();
+                aktionen.kontextmenue(member.employeeId, member.name, iso);
+              }}
+              onClick={() => {
+                if (aktionen.klickNachDruck()) return;
+                if (waehlbar) {
+                  aktionen.waehleTag(iso);
+                } else if (bearbeitbar && cell) {
+                  aktionen.bearbeite(cell);
+                } else if (zellKommentare) {
+                  aktionen.oeffneKommentare(member.employeeId, member.name, iso);
+                }
+              }}
+              aria-pressed={waehlbar ? gewaehlt : undefined}
+              title={
+                cell && !zellKommentare
+                  ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}${code && BEANTRAGT.has(code) ? " · beantragt, noch nicht genehmigt" : ""}`
+                  : undefined
+              }
+              className={cn(
+                "relative mx-auto flex h-6 w-6 select-none items-center justify-center rounded text-[11px] font-semibold [-webkit-touch-callout:none] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
+                code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
+                (bearbeitbar || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
+                !waehlbar && !bearbeitbar && !zellKommentare && "cursor-default",
+                gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
+              )}
+            >
+              {code ? cellLabel(code) : ""}
+              {/* Kleiner roter Strich: hier steht ein Kommentar. */}
+              {zellKommentare ? (
+                <span
+                  aria-label="Kommentar vorhanden"
+                  className="absolute right-0.5 top-0.5 h-[3px] w-2 rounded-full bg-crit-dot sm:w-2.5"
+                />
+              ) : null}
+            </button>
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
