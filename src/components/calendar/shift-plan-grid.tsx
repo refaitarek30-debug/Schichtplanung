@@ -374,7 +374,14 @@ export function ShiftPlanGrid({
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
   /** Ferientag → Name des Zeitraums, für die dezente Markierung im Kopf. */
   const [ferien, setFerien] = useState<Map<string, string>>(new Map());
+  /** Fehler beim Speichern einer Änderung aus der Bearbeitungsleiste. */
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Fehler beim Laden – getrennt vom Speicherfehler: Bisher löschte das
+   * Neuladen nach dem Speichern die Speichermeldung sofort wieder, sie war
+   * nie zu sehen.
+   */
+  const [ladeFehler, setLadeFehler] = useState<string | null>(null);
   /** Gesetzliche Feiertage: Tag → Name. Einmal geladen, sie ändern sich nicht. */
   const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
   const [selected, setSelected] = useState<LiveShiftPlanCell | null>(null);
@@ -508,6 +515,7 @@ export function ShiftPlanGrid({
 
   function geheZu(neu: string, ansEnde = false) {
     if (neu === start) return;
+    setError(null);
     const gemerkt = ausZwischenspeicher<PlanStand>(schluesselFuer(neu));
     zumEnde.current = ansEnde;
     startBlaettern(() => {
@@ -620,17 +628,31 @@ export function ShiftPlanGrid({
    */
   const load = useCallback(async (nurDaten = false) => {
     const meiner = ++letzterAbruf.current;
-    setError(null);
+    setLadeFehler(null);
     // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
     // Beim Zurückblättern oder Seitenwechsel steht der Plan damit ohne
     // Wartezeit da.
     const gemerkt = nurDaten ? null : ausZwischenspeicher<PlanStand>(speicherSchluessel);
     if (gemerkt) zeige(gemerkt);
     try {
-      const { stand, rahmen: neuerRahmen } = await holeStand(
-        start,
-        nurDaten ? rahmen.current : null,
-      );
+      // Auf dem Handy reißt die Verbindung oft für einen Moment ab (WLAN-
+      // Wechsel, Funkloch, App kurz im Hintergrund). Lesen ist gefahrlos
+      // wiederholbar – also zweimal still nachfassen, bevor eine Meldung
+      // erscheint.
+      let versuch = 0;
+      let ergebnis: Awaited<ReturnType<typeof holeStand>>;
+      for (;;) {
+        try {
+          ergebnis = await holeStand(start, nurDaten ? rahmen.current : null);
+          break;
+        } catch (fehler) {
+          if (versuch >= 2 || meiner !== letzterAbruf.current) throw fehler;
+          await new Promise((weiter) => window.setTimeout(weiter, versuch === 0 ? 1_000 : 3_000));
+          if (meiner !== letzterAbruf.current) return;
+          versuch += 1;
+        }
+      }
+      const { stand, rahmen: neuerRahmen } = ergebnis;
       // Inzwischen wurde weitergeblättert: diese Antwort ist überholt.
       if (meiner !== letzterAbruf.current) return;
       rahmen.current = neuerRahmen;
@@ -650,12 +672,12 @@ export function ShiftPlanGrid({
       // Steht schon ein Stand da, bleibt er sichtbar – lieber der Plan von
       // vor einer Minute als ein leerer Bildschirm.
       if (gemerkt || nurDaten) {
-        setError("Der Plan konnte gerade nicht aufgefrischt werden – angezeigt wird der letzte Stand.");
+        setLadeFehler("Der Plan konnte gerade nicht aufgefrischt werden – angezeigt wird der letzte Stand.");
         return;
       }
       angezeigt.current = null;
       setCells([]);
-      setError(
+      setLadeFehler(
         caught instanceof DataError ? caught.message : "Der Schichtplan kann momentan nicht geladen werden. Bitte in einigen Minuten erneut versuchen.",
       );
     }
@@ -666,6 +688,29 @@ export function ShiftPlanGrid({
   useEffect(() => {
     void load();
   }, [load]);
+
+  /**
+   * Steht eine Fehlermeldung, wird von selbst weiter versucht: sobald das
+   * Netz zurück ist, die App wieder vorne liegt und sonst alle 20 Sekunden.
+   * Vorher blieb die Meldung nach einem kurzen Funkloch stehen, bis jemand
+   * die Seite wechselte – obwohl längst wieder alles ging.
+   */
+  useEffect(() => {
+    if (!ladeFehler) return;
+    const nochmal = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const uhr = window.setInterval(nochmal, 20_000);
+    window.addEventListener("online", nochmal);
+    window.addEventListener("focus", nochmal);
+    document.addEventListener("visibilitychange", nochmal);
+    return () => {
+      window.clearInterval(uhr);
+      window.removeEventListener("online", nochmal);
+      window.removeEventListener("focus", nochmal);
+      document.removeEventListener("visibilitychange", nochmal);
+    };
+  }, [ladeFehler, load]);
 
   useEffect(() => {
     let abgebrochen = false;
@@ -1342,9 +1387,9 @@ export function ShiftPlanGrid({
         </div>
       </div>
 
-      {error ? (
+      {(error ?? ladeFehler) ? (
         <div className="px-4 pt-3">
-          <Alert tone="error">{error}</Alert>
+          <Alert tone="error">{error ?? ladeFehler}</Alert>
         </div>
       ) : null}
 
@@ -1630,7 +1675,7 @@ export function ShiftPlanGrid({
       >
         {cells === null ? (
           <RowSkeleton rows={6} />
-        ) : groups.length === 0 && error ? (
+        ) : groups.length === 0 && ladeFehler ? (
           // Plan kam nicht (Störung) – nicht „keine Mitarbeiter“ behaupten,
           // sondern einen neuen Versuch anbieten.
           <div className="flex justify-center px-4 py-6">
