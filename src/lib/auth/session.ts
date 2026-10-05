@@ -19,10 +19,13 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
   if (!isSupabaseConfigured) return null;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Token lokal prüfen statt beim Anmeldedienst nachzufragen (siehe
+  // src/lib/supabase/middleware.ts). Die Rechte prüft ohnehin die
+  // Datenbank bei jeder Abfrage.
+  const { data: anspruch } = await supabase.auth.getClaims();
+  const userId = anspruch?.claims?.sub;
+  if (!userId) return null;
+  const user = { id: userId };
 
   const { data, error } = await supabase
     .from("profiles")

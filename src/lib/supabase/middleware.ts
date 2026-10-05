@@ -76,8 +76,14 @@ export async function updateSession(request: NextRequest): Promise<SitzungsErgeb
   let uhr: ReturnType<typeof setTimeout> | undefined;
 
   try {
+    // `getClaims()` statt `getUser()`: das Token wird hier mit dem
+    // öffentlichen Schlüssel des Projekts geprüft (ES256, Schlüssel 10 min
+    // zwischengespeichert) statt bei jeder Anfrage beim Anmeldedienst
+    // nachzufragen. Vorher kostete jede Seite, jedes Speichern und jedes
+    // Vorladen eines Menülinks einen eigenen Aufruf – bis zu 140 pro Minute
+    // und Person. Ein abgelaufenes Token wird dabei wie bisher erneuert.
     const ergebnis = await Promise.race([
-      supabase.auth.getUser(),
+      supabase.auth.getClaims(),
       new Promise<typeof ZEIT_ABGELAUFEN>((resolve) => {
         uhr = setTimeout(() => resolve(ZEIT_ABGELAUFEN), ANTWORTFRIST_MS);
       }),
@@ -108,7 +114,8 @@ export async function updateSession(request: NextRequest): Promise<SitzungsErgeb
       }
     }
 
-    return { response, user: ergebnis.data.user, dienstGestoert: false };
+    const sub = ergebnis.data?.claims?.sub;
+    return { response, user: sub ? { id: sub } : null, dienstGestoert: false };
   } catch {
     // Netzwerkfehler, 5xx, abgebrochene Verbindung. Der Grund steht in den
     // Supabase-Protokollen; hier zählt nur, dass die Anwendung weiterläuft.
