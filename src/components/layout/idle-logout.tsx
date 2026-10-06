@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE, IDLE_TIMEOUT_MS } from "@/lib/auth/idle";
+import { melde } from "@/lib/protokoll-melden";
 
 /** Wie oft geprüft wird. Gemessen wird an Zeitstempeln, nicht am Takt. */
 const PRUEF_INTERVALL_MS = 30_000;
@@ -52,8 +53,13 @@ export function IdleLogout() {
       if (Date.now() - letzteAktivitaet <= IDLE_TIMEOUT_MS) return;
 
       abgemeldet = true;
-      void createClient()
-        .auth.signOut()
+      // Erst ins Protokoll (solange die Sitzung noch gilt), dann abmelden –
+      // höchstens 3 s warten, die Abmeldung geht vor.
+      void Promise.race([
+        melde("abmeldung.inaktiv", null),
+        new Promise((fertig) => window.setTimeout(fertig, 3_000)),
+      ])
+        .then(() => createClient().auth.signOut())
         .finally(() => {
           window.location.replace("/login?fehler=inaktiv");
         });

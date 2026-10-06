@@ -16,6 +16,7 @@ const PROTECTED_PREFIXES = [
   "/altersfreizeit",
   "/ausbildung",
   "/auswertung",
+  "/protokoll",
   "/mitteilungen",
   "/krank",
   "/dashboard",

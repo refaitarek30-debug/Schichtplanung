@@ -53,6 +53,12 @@ export interface SessionProfile {
    * erscheinen statt unsichtbar zu bleiben.
    */
   hiddenDashboardTiles: string[];
+  /**
+   * Darf das Protokoll (Anmeldungen, Änderungen, Fehler) sehen. Nur für
+   * ausdrücklich freigeschaltete Personen, nicht für jede Administration –
+   * siehe `protokoll_zugang` in der Datenbank.
+   */
+  protokoll?: boolean;
 }
 
 /** Zeile aus `employees` – Personalstammdaten, unabhängig vom Login. */

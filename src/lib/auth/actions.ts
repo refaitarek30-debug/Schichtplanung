@@ -2,9 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "./idle";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import type { EmployeeRow, ProfileRow } from "@/lib/supabase/database.types";
@@ -30,6 +30,71 @@ async function merkeAnmeldung() {
   });
 }
 
+/** Grobes Gerät für das Protokoll: „iPhone · Safari“ statt der ganzen Kennung. */
+async function geraet(): Promise<string | null> {
+  const ua = (await headers()).get("user-agent") ?? "";
+  if (!ua) return null;
+  const system = /iPhone/.test(ua)
+    ? "iPhone"
+    : /iPad/.test(ua)
+      ? "iPad"
+      : /Android/.test(ua)
+        ? "Android"
+        : /Windows/.test(ua)
+          ? "Windows"
+          : /Mac OS X/.test(ua)
+            ? "Mac"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : "Unbekannt";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /CriOS|Chrome\//.test(ua)
+      ? "Chrome"
+      : /FxiOS|Firefox\//.test(ua)
+        ? "Firefox"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Browser";
+  return `${system} · ${browser}`;
+}
+
+/**
+ * Ins Protokoll schreiben, ohne die Anmeldung aufzuhalten: schlägt das
+ * fehl, geht es trotzdem weiter.
+ */
+async function protokolliere(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  art: "anmeldung" | "abmeldung",
+  text: string | null,
+) {
+  try {
+    await mitFrist(Promise.resolve(supabase.rpc("protokoll_melden", { p_art: art, p_text: text, p_seite: null })));
+  } catch {
+    // Protokoll ist Beiwerk.
+  }
+}
+
+/** Höchstens zwei Sekunden – Anmelden und Abmelden gehen vor. */
+function mitFrist<T>(versprechen: Promise<T>): Promise<T | undefined> {
+  return Promise.race([
+    versprechen,
+    new Promise<undefined>((fertig) => setTimeout(() => fertig(undefined), 2_000)),
+  ]);
+}
+
+/**
+ * Fehlgeschlagene Anmeldung festhalten. Ohne Anmeldung gibt es keine
+ * Sitzung – deshalb über den Service-Schlüssel, nur auf dem Server. Fehlt
+ * der Schlüssel (Vorschau, lokal), entfällt der Eintrag.
+ */
+async function protokolliereFehlanmeldung(email: string) {
+  try {
+    await mitFrist(Promise.resolve(createAdminClient().rpc("protokoll_fehlanmeldung", { p_email: email })));
+  } catch {
+    // Protokoll ist Beiwerk.
+  }
+}
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
@@ -53,7 +118,14 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: authErrorMessage(error) ?? "Anmeldung fehlgeschlagen." };
+  if (error) {
+    if ((error.message ?? "").toLowerCase().includes("invalid login credentials")) {
+      await protokolliereFehlanmeldung(email);
+    }
+    return { error: authErrorMessage(error) ?? "Anmeldung fehlgeschlagen." };
+  }
+
+  await protokolliere(supabase, "anmeldung", await geraet());
 
   // Die Frist für die automatische Abmeldung beginnt jetzt. Ohne das würde
   // ein Zeitstempel aus einer früheren Sitzung sofort wieder greifen.
@@ -66,6 +138,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
 export async function signOut() {
   if (isSupabaseConfigured) {
     const supabase = await createClient();
+    await protokolliere(supabase, "abmeldung", null);
     await supabase.auth.signOut();
   }
   (await cookies()).delete(ACTIVITY_COOKIE);

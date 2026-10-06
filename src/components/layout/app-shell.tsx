@@ -5,6 +5,7 @@ import { LegalFooter } from "./legal-footer";
 import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
 import { NeueVersionHinweis } from "./neue-version";
+import { AbsturzMelder } from "@/components/protokoll/fehler-melder";
 import { MobileNav } from "./mobile-nav";
 import { ShellMain } from "./shell-main";
 import { Sidebar } from "./sidebar";
@@ -33,6 +34,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
       <LiveRefresh />
       <NeueVersionHinweis />
+      {/* Technische Fehler im Browser ins Protokoll. */}
+      <AbsturzMelder />
       {/* Blockiert Klicks, solange etwas gespeichert wird. */}
       <LadeSperre />
     </div>
