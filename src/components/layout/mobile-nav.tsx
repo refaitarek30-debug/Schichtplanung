@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
 /** Untere Tab-Leiste mit den vier Hauptbereichen plus Menü für den Rest. */
 export function MobileNav() {
   const pathname = usePathname();
-  const { role } = useSession();
+  const { role, profile } = useSession();
   const [open, setOpen] = useState(false);
 
   const primary = navItems.filter((i) => i.primary && i.roles.includes(role));
-  const groups = navForRole(role);
+  const groups = navForRole(role, profile.protokoll === true);
 
   return (
     <>

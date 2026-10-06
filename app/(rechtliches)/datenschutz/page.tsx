@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="1. Oktober 2026"
+      updated="6. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -174,11 +174,24 @@ export default function DatenschutzPage() {
             Sitzungs-Token, Zeitpunkt der letzten Anmeldung
           </li>
           <li>
-            Änderungsprotokoll (Audit-Log): sicherheits- und datenschutzrelevante Änderungen
-            wie Rollen- und Aktivstatus-Änderungen, Löschungen, Änderungen der
-            Datenschutz-Einstellungen und die Registrierung eines Unternehmens – jeweils mit
-            Zeitpunkt und handelnder Person. Inhalte von Abwesenheitsgründen, Notizen oder
-            Gesundheitsangaben werden nicht protokolliert
+            Änderungsprotokoll (Audit-Log): Änderungen an Anträgen, Urlaub und Abwesenheiten,
+            Schichtwechseln, Konten, Mitteilungen, Urlaubssperren und Stammdaten, Rollen- und
+            Aktivstatus-Änderungen, Löschungen, Änderungen der Datenschutz-Einstellungen und
+            die Registrierung eines Unternehmens – jeweils mit Zeitpunkt, handelnder und
+            betroffener Person. Inhalte von Kommentaren, Abwesenheitsgründen, Notizen oder
+            Gesundheitsangaben werden nicht protokolliert; bei Krankmeldungen steht nur
+            „Abwesenheit“
+          </li>
+          <li>
+            Anmeldeprotokoll: Anmeldung und Abmeldung mit Zeitpunkt und grobem Gerätetyp (z. B.
+            „iPhone · Safari“), automatische Abmeldung wegen Inaktivität, fehlgeschlagene
+            Anmeldungen bei einem bestehenden Konto (mit der eingegebenen E-Mail-Adresse) sowie
+            Fehlermeldungen, die in der Anwendung angezeigt wurden (Meldungstext und Seite). Es
+            wird nicht protokolliert, welche Seiten jemand aufruft oder worauf geklickt wird
+          </li>
+          <li>
+            Einsehen kann das Protokoll nur eine vom Unternehmen ausdrücklich dafür
+            freigeschaltete Person der Administration, nicht jede Administration
           </li>
           <li>
             Ratenbegrenzung: für Anmeldung, Passwort-Zurücksetzen und Registrierung werden
@@ -413,7 +426,8 @@ export default function DatenschutzPage() {
             Automatische Löschung: Demo-Bereiche der Live-Demo nach 24 Stunden,
             Ratenbegrenzungs-Zähler nach 1 Tag, Postausgang nach
             30 Tagen, Benachrichtigungen nach 180 Tagen, Kommentare im Schichtplan 12 Monate
-            nach dem Tag, auf den sie sich beziehen, Änderungsprotokoll nach 24 Monaten.
+            nach dem Tag, auf den sie sich beziehen, Anmeldeprotokoll und angezeigte
+            Fehlermeldungen nach 90 Tagen, Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
             Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach
@@ -505,7 +519,7 @@ export default function DatenschutzPage() {
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
           <li>automatische Abmeldung nach 10 Minuten Inaktivität</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
-          <li>Änderungsprotokoll für sicherheitsrelevante Änderungen ohne Gesundheitsinhalte</li>
+          <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte, einsehbar nur für ausdrücklich freigeschaltete Personen</li>
           <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>
         </Liste>
         <Absatz>

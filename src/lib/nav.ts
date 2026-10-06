@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Palmtree,
+  ScrollText,
   Timer,
   Users,
   type LucideIcon,
@@ -23,6 +24,8 @@ export interface NavItem {
   /** Kurzlabel für die mobile Tab-Leiste. */
   short?: string;
   primary?: boolean;
+  /** Nur mit ausdrücklicher Freischaltung sichtbar (SessionProfile.protokoll). */
+  nurProtokoll?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -87,6 +90,15 @@ export const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
+    // Anmeldungen, Änderungen und Fehler. Nur für freigeschaltete Personen
+    // – abgesichert in `protokoll_liste()`, hier wird nur ausgeblendet.
+    href: "/protokoll",
+    label: "Protokoll",
+    icon: ScrollText,
+    roles: ["admin"],
+    nurProtokoll: true,
+  },
+  {
     // AF-Stundenstand eintragen – Administration und Schichtleitung. Das
     // Geburtsdatum korrigiert dort nur die Administration (set_birth_date).
     href: "/altersfreizeit",
@@ -126,8 +138,10 @@ export const navGroups: { label: string; roles: Role[] }[] = [
   { label: "Verwaltung", roles: ["admin"] },
 ];
 
-export function navForRole(role: Role) {
-  const visible = navItems.filter((item) => item.roles.includes(role));
+export function navForRole(role: Role, protokoll = false) {
+  const visible = navItems.filter(
+    (item) => item.roles.includes(role) && (!item.nurProtokoll || protokoll),
+  );
   return [
     {
       label: "Meine Ansicht",

@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { role, company, mode } = useSession();
-  const groups = navForRole(role);
+  const { role, company, mode, profile } = useSession();
+  const groups = navForRole(role, profile.protokoll === true);
   /**
    * Eingeklappt bleiben nur die Symbole – der Schichtplan bekommt die
    * Breite. Die Wahl gilt pro Gerät und bleibt beim nächsten Besuch.

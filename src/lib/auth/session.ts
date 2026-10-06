@@ -41,6 +41,19 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
 
   if (error || !data) return null;
 
+  // Nur für die Administration nachfragen – alle anderen haben ohnehin
+  // keinen Zugang. Geht die Frage schief, bleibt der Menüpunkt weg; die
+  // Anmeldung selbst hängt nicht daran.
+  let protokoll = false;
+  if (data.role === "admin") {
+    try {
+      const { data: darf } = await supabase.rpc("darf_protokoll");
+      protokoll = darf === true;
+    } catch {
+      protokoll = false;
+    }
+  }
+
   const companyRow = Array.isArray(data.companies) ? data.companies[0] : data.companies;
   const employeeRow = Array.isArray(data.employees) ? data.employees[0] : data.employees;
   const shiftRow = employeeRow
@@ -64,6 +77,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       department: employeeRow?.department ?? null,
       shiftName: shiftRow?.name ?? null,
       hiddenDashboardTiles: data.hidden_dashboard_tiles ?? [],
+      protokoll,
     },
     company: {
       id: companyRow?.id ?? data.company_id,
