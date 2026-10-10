@@ -3,6 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 import { safeInternalPath } from "@/lib/security/safe-path";
+import { geraet, protokolliere } from "@/lib/auth/protokoll-server";
+
+/** Wie die Person hereingekommen ist – fürs Protokoll. */
+const LINK_TEXT: Record<string, string> = {
+  invite: "über Einladungslink",
+  recovery: "über Link „Passwort vergessen“",
+  signup: "über Bestätigungslink",
+};
+
+async function linkAnmeldung(supabase: Awaited<ReturnType<typeof createClient>>, type: string) {
+  const art = LINK_TEXT[type] ?? "über E-Mail-Link";
+  await protokolliere(supabase, "anmeldung", `${art} · ${(await geraet()) ?? "unbekanntes Gerät"}`);
+}
 
 /**
  * Landepunkt für Einladungs- und Passwort-Links.
@@ -71,7 +84,10 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return angemeldet(`${origin}${next}`);
+    if (!error) {
+      await linkAnmeldung(supabase, type);
+      return angemeldet(`${origin}${next}`);
+    }
     return NextResponse.redirect(`${origin}/login?fehler=link`);
   }
 
@@ -132,6 +148,7 @@ export async function POST(request: NextRequest) {
   // 303, damit der Browser nach dem Absenden auf GET wechselt und ein
   // Neuladen nicht erneut abschickt.
   if (!error) {
+    await linkAnmeldung(supabase, type);
     const antwort = angemeldet(`${origin}${ziel}`);
     return new NextResponse(antwort.body, {
       status: 303,

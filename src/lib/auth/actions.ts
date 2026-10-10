@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "./idle";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -13,6 +13,7 @@ import { grantAccess, siteOrigin } from "./invite";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
+import { geraet, mitFrist, protokolliere } from "./protokoll-server";
 
 export type { FormState } from "./form-state";
 
@@ -28,59 +29,6 @@ async function merkeAnmeldung() {
     secure: process.env.NODE_ENV === "production",
     maxAge: ACTIVITY_COOKIE_MAX_AGE,
   });
-}
-
-/** Grobes Gerät für das Protokoll: „iPhone · Safari“ statt der ganzen Kennung. */
-async function geraet(): Promise<string | null> {
-  const ua = (await headers()).get("user-agent") ?? "";
-  if (!ua) return null;
-  const system = /iPhone/.test(ua)
-    ? "iPhone"
-    : /iPad/.test(ua)
-      ? "iPad"
-      : /Android/.test(ua)
-        ? "Android"
-        : /Windows/.test(ua)
-          ? "Windows"
-          : /Mac OS X/.test(ua)
-            ? "Mac"
-            : /Linux/.test(ua)
-              ? "Linux"
-              : "Unbekannt";
-  const browser = /Edg\//.test(ua)
-    ? "Edge"
-    : /CriOS|Chrome\//.test(ua)
-      ? "Chrome"
-      : /FxiOS|Firefox\//.test(ua)
-        ? "Firefox"
-        : /Safari\//.test(ua)
-          ? "Safari"
-          : "Browser";
-  return `${system} · ${browser}`;
-}
-
-/**
- * Ins Protokoll schreiben, ohne die Anmeldung aufzuhalten: schlägt das
- * fehl, geht es trotzdem weiter.
- */
-async function protokolliere(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  art: "anmeldung" | "abmeldung",
-  text: string | null,
-) {
-  try {
-    await mitFrist(Promise.resolve(supabase.rpc("protokoll_melden", { p_art: art, p_text: text, p_seite: null })));
-  } catch {
-    // Protokoll ist Beiwerk.
-  }
-}
-
-/** Höchstens zwei Sekunden – Anmelden und Abmelden gehen vor. */
-function mitFrist<T>(versprechen: Promise<T>): Promise<T | undefined> {
-  return Promise.race([
-    versprechen,
-    new Promise<undefined>((fertig) => setTimeout(() => fertig(undefined), 2_000)),
-  ]);
 }
 
 /**
@@ -199,6 +147,8 @@ export async function updatePassword(
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: authErrorMessage(error) ?? "Änderung fehlgeschlagen." };
+
+  await protokolliere(supabase, "anmeldung.passwort", "Neues Passwort gesetzt");
 
   revalidatePath("/", "layout");
   redirect("/dashboard");

@@ -80,6 +80,8 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
     // --- Anmeldung -------------------------------------------------------
     case "anmeldung":
       return { kategorie: "anmeldung", text: "hat sich angemeldet", zusatz: text(d.text) };
+    case "anmeldung.passwort":
+      return { kategorie: "anmeldung", text: "hat ein neues Passwort gesetzt", zusatz: null };
     case "anmeldung.fehlgeschlagen":
       return {
         kategorie: "fehlanmeldung",
