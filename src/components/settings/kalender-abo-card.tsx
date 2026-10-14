@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatZeitpunkt } from "@/lib/dates";
+import { ABO_TEILE, type AboTeil } from "@/lib/abo/ics";
 import { beendeAbo, erstelleAbo, fetchAboStatus, hatKalenderAbo, type AboStatus } from "@/lib/data/abo";
+
+const TEILE: AboTeil[] = ["frueh", "spaet", "nacht", "frei"];
+
+const webcal = (basis: string, teil: AboTeil) => (basis + ABO_TEILE[teil].datei).replace(/^https?:/, "webcal:");
 
 /**
  * Kalender-Abo: der Plan im Kalender des Handys. Die Karte erscheint nur für
@@ -44,7 +49,7 @@ export function KalenderAboCard() {
     setFehler(null);
     try {
       const schluessel = await erstelleAbo();
-      setLink(`${window.location.origin}/abo/${schluessel}/plan.ics`);
+      setLink(`${window.location.origin}/abo/${schluessel}/`);
       setStatus(await fetchAboStatus());
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
@@ -71,7 +76,7 @@ export function KalenderAboCard() {
   async function kopieren() {
     if (!link) return;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(link + ABO_TEILE.alles.datei);
       setKopiert(true);
       setTimeout(() => setKopiert(false), 2500);
     } catch {
@@ -99,14 +104,16 @@ export function KalenderAboCard() {
         )}
 
         {link ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <a
-              href={link.replace(/^https?:/, "webcal:")}
+              href={webcal(link, "alles")}
               className="inline-flex items-center justify-center rounded-xl bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600"
             >
               Zum Kalender hinzufügen
             </a>
-            <p className="break-all rounded-lg bg-surface-muted p-2 font-mono text-xs text-ink-muted">{link}</p>
+            <p className="break-all rounded-lg bg-surface-muted p-2 font-mono text-xs text-ink-muted">
+              {link + ABO_TEILE.alles.datei}
+            </p>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={kopieren}>
                 {kopiert ? "Kopiert" : "Link kopieren"}
@@ -116,6 +123,30 @@ export function KalenderAboCard() {
               iPhone: Knopf antippen und „Abonnieren“ bestätigen. Google Kalender: im Browser „Weitere Kalender“ →
               „Per URL“ und den Link einfügen. Den Link siehst du nur jetzt – später kannst du einen neuen erzeugen.
             </p>
+
+            <div className="space-y-2 rounded-xl border border-line p-3">
+              <p className="font-medium">Lieber eigene Farben je Schicht?</p>
+              <p className="text-xs text-ink-muted">
+                Auf dem iPhone hat jeder Kalender genau eine Farbe. Statt des Kalenders oben abonnierst du dann diese
+                vier einzeln – jeder bekommt seine Farbe (änderbar in der Kalender-App unter „Kalender“).
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {TEILE.map((teil) => (
+                  <a
+                    key={teil}
+                    href={webcal(link, teil)}
+                    className="flex items-center gap-2 rounded-xl border border-line px-3 py-2 hover:bg-surface-muted"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: ABO_TEILE[teil].farbe }}
+                    />
+                    {ABO_TEILE[teil].name}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
 

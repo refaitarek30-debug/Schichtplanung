@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="6. Oktober 2026"
+      updated="14. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -135,7 +135,8 @@ export default function DatenschutzPage() {
           <li>Begründung bei einem Urlaubsantrag (Freitext) und Notizen bei Fehlzeiten (höchstens 200 Zeichen)</li>
           <li>Kommentare im Schichtplan (Freitext, siehe Abschnitt 7)</li>
           <li>Freigaben zur Sichtbarkeit von Abwesenheitsgründen (Abschnitt 5)</li>
-          <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite</li>
+          <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite oder die beim Öffnen gewählte Startseite</li>
+          <li>Persönlicher Kalender: eigene Termine, Partner-Link und Kalender-Abo (Abschnitt 8)</li>
         </Liste>
 
         <Absatz className="pt-1">
@@ -215,7 +216,7 @@ export default function DatenschutzPage() {
         <Absatz className="pt-1">
           <strong>Live-Demo:</strong> Wer die Live-Demo startet, erhält ein befristetes Konto mit
           einer zufälligen Platzhalter-Adresse und einen eigenen Demo-Bereich mit Beispieldaten.
-          Verarbeitet werden dabei nur Sitzungscookies (Abschnitt 10) und zur Begrenzung von
+          Verarbeitet werden dabei nur Sitzungscookies (Abschnitt 11) und zur Begrenzung von
           Missbrauch ein gesalzener Hashwert der IP-Adresse (höchstens ein Tag). Konto und
           Demo-Bereich werden nach 24 Stunden automatisch gelöscht. Verantwortlich ist der
           Betreiber; Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. f DSGVO.
@@ -323,7 +324,7 @@ export default function DatenschutzPage() {
           Oberfläche, sondern in der Datenbank durchgesetzt (Row Level Security in
           PostgreSQL): jede Abfrage wird serverseitig auf das Unternehmen der angemeldeten
           Person eingegrenzt. Kein technisches System ist vollkommen unangreifbar; die
-          Maßnahmen in Abschnitt 12 verringern das Risiko, ohne es auszuschließen.
+          Maßnahmen in Abschnitt 13 verringern das Risiko, ohne es auszuschließen.
         </Absatz>
         <Absatz>Innerhalb eines Unternehmens gilt:</Absatz>
         <Liste>
@@ -367,7 +368,71 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="8. Empfänger, Dienstleister und Drittlandbezug">
+      <Abschnitt titel="8. Persönlicher Kalender, Partner-Link und Kalender-Abo">
+        <Absatz>
+          Unter <em>Mein Kalender</em> sieht jede Person ihren eigenen Plan und kann freiwillig
+          zusätzliche Angaben machen. Alle drei Funktionen sind freiwillig; wer sie nicht nutzt,
+          hat keinen Nachteil, und es werden dafür keine Daten gespeichert.
+        </Absatz>
+        <Absatz>
+          <strong>Eigene Termine:</strong> Titel, Datum, Uhrzeit oder ganztägig, Wiederholung,
+          Ort und Notiz (je mit Längenbegrenzung). Die Termine sieht nur die Person selbst und –
+          wenn sie das beim Partner-Link ausdrücklich einschaltet – ihr Partner. Kolleginnen und
+          Kollegen, Schichtleitung und Administration des Unternehmens haben keinen Zugriff; die
+          Datenbank lässt Abfragen darauf nur für die Person selbst zu.
+        </Absatz>
+        <Absatz>
+          <strong>Partner-Link:</strong> Eine Person kann einer Vertrauensperson (z. B. Partnerin
+          oder Partner) einen Link schicken. Wer den Link öffnet, braucht kein Konto und sieht
+          ohne Anmeldung:
+        </Absatz>
+        <Liste>
+          <li>den Vornamen der einladenden Person und deren Schichten (Früh, Spät, Nacht, frei)</li>
+          <li>
+            Abwesenheiten nur als „Urlaub“ bzw. frei – <strong>ohne Grund</strong>; eine
+            Krankheit ist nicht erkennbar
+          </li>
+          <li>die eigenen Termine der einladenden Person nur, wenn diese das Teilen eingeschaltet hat</li>
+        </Liste>
+        <Absatz>
+          Die Vertrauensperson kann über den Link ihre eigenen Arbeitstage (Kürzel wie Früh,
+          Spät, Nacht, Urlaub) und eigene Termine eintragen. Diese Angaben stammen von einer
+          Person, die selbst keinen Zugang zur Anwendung hat; sie werden der einladenden Person
+          zugeordnet und sind nur für diese beiden sichtbar. Gespeichert werden außerdem
+          Zeitpunkt der Erstellung, der letzten Nutzung (höchstens alle 5 Minuten
+          aktualisiert) und des Beendens des Links. Keine IP-Adresse, kein Name der
+          Vertrauensperson.
+        </Absatz>
+        <Absatz>
+          <strong>Kalender-Abo:</strong> Eine Person kann ihren Plan als Kalender-Link
+          (iCalendar) in die Kalender-App ihres Handys übernehmen. Der Link enthält Schichten
+          mit Uhrzeit sowie Urlaub, Schulung und sonstige Abwesenheit – letztere nur als
+          „Abwesend“, <strong>ohne Grund</strong>. Keine Kolleginnen und Kollegen, keine
+          Termine. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
+          der Link erstellt, zuletzt abgerufen und beendet wurde. Was die Kalender-App des
+          Handys bzw. deren Anbieter (z. B. Apple, Google) mit den abgerufenen Daten macht,
+          richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.{" "}
+          <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
+        </Absatz>
+        <Absatz>
+          <strong>Schutz der Links:</strong> Partner-Link und Kalender-Abo funktionieren ohne
+          Anmeldung, der Link selbst ist der Schlüssel. Er ist zufällig (192 Bit) und wird in
+          der Datenbank nur als Hashwert gespeichert. Jede Person hat höchstens einen aktiven Link je Funktion und kann ihn
+          jederzeit erneuern (der alte wird sofort ungültig) oder beenden. Wer den Link kennt,
+          sieht die genannten Daten – er sollte deshalb nicht weitergegeben werden.
+        </Absatz>
+        <Absatz>
+          <strong>Rechtsgrundlage:</strong> Einwilligung bzw. Wunsch der Person, Art. 6 Abs. 1
+          lit. a DSGVO; die Nutzung lässt sich jederzeit durch Beenden des Links und Löschen der
+          Einträge zurücknehmen.{" "}
+          <Platzhalter>
+            Verantwortlichkeit für diese freiwilligen Kalenderdaten (Arbeitgeber oder Betreiber)
+            festlegen und mit Betriebsrat abstimmen
+          </Platzhalter>
+        </Absatz>
+      </Abschnitt>
+
+      <Abschnitt titel="9. Empfänger, Dienstleister und Drittlandbezug">
         <Absatz>
           Für Betrieb und Auslieferung setzt der Betreiber Dienstleister als
           Unterauftragsverarbeiter ein:
@@ -407,7 +472,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="9. Speicherdauer und Löschung">
+      <Abschnitt titel="10. Speicherdauer und Löschung">
         <Liste>
           <li>
             Stamm-, Planungs- und Abwesenheitsdaten bleiben gespeichert, solange das
@@ -430,6 +495,12 @@ export default function DatenschutzPage() {
             Fehlermeldungen nach 90 Tagen, Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
+            Persönlicher Kalender (Abschnitt 8): eigene Termine und die Einträge der
+            Vertrauensperson bleiben, bis die Person sie löscht oder ihr Zugang gelöscht wird.
+            Ein beendeter Partner-Link oder ein beendetes Kalender-Abo funktioniert sofort
+            nicht mehr.
+          </li>
+          <li>
             Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach
             dessen Wahl herausgegeben und gelöscht (siehe Auftragsverarbeitungsvertrag).
             Sicherungskopien des Datenbankanbieters laufen turnusmäßig aus:{" "}
@@ -442,7 +513,7 @@ export default function DatenschutzPage() {
         </Liste>
       </Abschnitt>
 
-      <Abschnitt titel="10. Cookies und lokale Speicherung">
+      <Abschnitt titel="11. Cookies und lokale Speicherung">
         <Absatz>
           Es werden keine Cookies oder Speicher für Werbung, Analyse oder Reichweitenmessung
           verwendet. Gespeichert wird nur, was für den ausdrücklich gewünschten Dienst oder
@@ -459,11 +530,22 @@ export default function DatenschutzPage() {
             Inaktivität (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)
           </li>
           <li>
+            <code className={kode}>sp_frist</code> (Cookie, bis zu 7 Tage) – die für die eigene
+            Rolle geltende Zeit bis zur automatischen Abmeldung
+          </li>
+          <li>
             <code className={kode}>schichtplan.theme</code>,{" "}
             <code className={kode}>schichtplan.install-hint</code>,{" "}
             <code className={kode}>seitenleiste-eingeklappt</code> (lokaler Speicher, bis zum
             Löschen) – Farbdarstellung, ein einmaliger Installationshinweis, Zustand der
             Seitenleiste
+          </li>
+          <li>
+            <code className={kode}>schichtplan.kalender-…</code>,{" "}
+            <code className={kode}>schichtplan.partner-zeigen.…</code>,{" "}
+            <code className={kode}>schichtplan.neu-gesehen.…</code> (lokaler Speicher, bis zum
+            Löschen) – ob die Einführung zum Kalender gesehen wurde, ob Partnereinträge
+            angezeigt werden, Hinweis „Neu“ gesehen
           </li>
           <li>
             <code className={kode}>schichtplan:…</code> und{" "}
@@ -478,7 +560,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="11. Rechte der betroffenen Personen">
+      <Abschnitt titel="12. Rechte der betroffenen Personen">
         <Absatz>Gegenüber der jeweils verantwortlichen Stelle bestehen die Rechte auf</Absatz>
         <Liste>
           <li>Auskunft (Art. 15 DSGVO)</li>
@@ -508,7 +590,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="12. Schutzmaßnahmen">
+      <Abschnitt titel="13. Schutzmaßnahmen">
         <Absatz>
           Der Betreiber trifft angemessene technische und organisatorische Maßnahmen nach
           Art. 32 DSGVO, unter anderem:
@@ -516,6 +598,7 @@ export default function DatenschutzPage() {
         <Liste>
           <li>verschlüsselte Übertragung (HTTPS mit HSTS) und Sicherheits-Header im Browser</li>
           <li>Mandantentrennung und Rollenrechte in der Datenbank (Row Level Security), serverseitige Prüfung aller Aktionen</li>
+          <li>Partner- und Kalender-Links nur als Hashwert gespeichert, jederzeit erneuer- und beendbar</li>
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
           <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
@@ -529,7 +612,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="13. Berechnungen sind Hilfsmittel, keine automatisierte Entscheidung">
+      <Abschnitt titel="14. Berechnungen sind Hilfsmittel, keine automatisierte Entscheidung">
         <Absatz>
           Die Anwendung rechnet Kontostände, prüft, ob ein Antrag die Mindestbesetzung
           unterschreiten würde, und zeigt das Ergebnis an. Über Genehmigung oder Ablehnung
@@ -539,7 +622,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="14. Änderungen dieser Erklärung">
+      <Abschnitt titel="15. Änderungen dieser Erklärung">
         <Absatz>
           Diese Erklärung wird angepasst, wenn sich die Verarbeitung ändert. Maßgeblich ist die
           hier veröffentlichte Fassung. Wird sie inhaltlich geändert, erhöht sich die
