@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { useSession } from "@/context/session";
 import { navForRole, navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { NeuMarke } from "./neu-marke";
 
 /** Untere Tab-Leiste mit den vier Hauptbereichen plus Menü für den Rest. */
 export function MobileNav() {
@@ -59,6 +60,7 @@ export function MobileNav() {
                         >
                           <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
                           {item.label}
+                          {item.neu ? <NeuMarke name={item.neu} /> : null}
                         </Link>
                       </li>
                     );
@@ -93,7 +95,12 @@ export function MobileNav() {
                     active ? "text-brand-600" : "text-ink-faint",
                   )}
                 >
-                  <Icon className="h-5 w-5" strokeWidth={1.8} />
+                  <span className="relative">
+                    <Icon className="h-5 w-5" strokeWidth={1.8} />
+                    {item.neu ? (
+                      <NeuMarke name={item.neu} className="absolute -right-4 -top-1.5" />
+                    ) : null}
+                  </span>
                   {item.short ?? item.label}
                 </Link>
               </li>

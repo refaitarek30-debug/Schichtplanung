@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
@@ -15,10 +15,16 @@ import { TerminBlatt, termineAm, useTermine, type Termin } from "./termine";
 import {
   PARTNER_FARBE,
   PartnerBlatt,
+  PartnerEinladen,
+  alteLokalePartnerTage,
   partnerText,
-  usePartnerTage,
+  vergissLokalePartnerTage,
   type PartnerSchicht,
 } from "./partner";
+import { fetchMeinePartnerTage, setzeMeinePartnerTage } from "@/lib/data/partner";
+import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
+import { KalenderEinfuehrung } from "./einfuehrung";
+import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 
 /**
  * Mein Kalender – der eigene Schichtplan als Monat.
@@ -134,6 +140,8 @@ interface Stand {
   tage: Map<string, LiveShiftPlanCell>;
   /** Steht die eigene Person überhaupt im Plan? */
   imPlan: boolean;
+  /** Arbeitstage des Partners in diesem Ausschnitt. */
+  partner: Record<string, PartnerSchicht>;
 }
 
 export function MeinKalender() {
@@ -160,10 +168,14 @@ export function MeinKalender() {
 
   const holen = useCallback(
     async (s: string, n: number): Promise<Stand> => {
-      const zellen = await fetchShiftPlanGrid(company.id, s, n);
+      // Die Partnertage sind Beiwerk: fehlen sie, steht der Kalender trotzdem.
+      const [zellen, partner] = await Promise.all([
+        fetchShiftPlanGrid(company.id, s, n),
+        fetchMeinePartnerTage(s, addDays(s, n - 1)).catch(() => ({})),
+      ]);
       const tage = new Map<string, LiveShiftPlanCell>();
       for (const z of zellen) if (z.isMe) tage.set(z.day, z);
-      const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0 };
+      const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0, partner };
       inZwischenspeicher(schluessel(s, n), ergebnis);
       return ergebnis;
     },
@@ -217,6 +229,47 @@ export function MeinKalender() {
 
   useAktualisierung(["plan", "abwesenheiten", "antraege"], () => void laden());
 
+  // Der Partner trägt auf seinem Handy ein – beim Zurückkehren in die App
+  // frisch holen, damit seine Tage ohne Neuladen erscheinen.
+  useEffect(() => {
+    let zuletzt = 0;
+    const auffrischen = () => {
+      if (document.visibilityState !== "visible" || Date.now() - zuletzt < 15_000) return;
+      zuletzt = Date.now();
+      void laden();
+    };
+    document.addEventListener("visibilitychange", auffrischen);
+    window.addEventListener("focus", auffrischen);
+    return () => {
+      document.removeEventListener("visibilitychange", auffrischen);
+      window.removeEventListener("focus", auffrischen);
+    };
+  }, [laden]);
+
+  // Partnertage lagen anfangs nur im Browser – einmal übernehmen.
+  useEffect(() => {
+    const alt = alteLokalePartnerTage(profile.id);
+    if (!alt) return;
+    let aus = false;
+    void (async () => {
+      try {
+        for (const [tag, code] of Object.entries(alt)) {
+          if (aus) return;
+          await setzeMeinePartnerTage(tag, 1, code);
+        }
+        vergissLokalePartnerTage(profile.id);
+        if (!aus) void laden();
+      } catch {
+        // Beim nächsten Öffnen noch einmal – das Setzen ist wiederholbar.
+      }
+    })();
+    return () => {
+      aus = true;
+    };
+    // Nur einmal beim Öffnen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
+
   useEffect(() => {
     let aus = false;
     fetchShiftDetails()
@@ -235,8 +288,28 @@ export function MeinKalender() {
 
   // ---- Termine (nur auf diesem Gerät) ---------------------------------
   const { termine, speichern, loeschen } = useTermine(profile.id);
-  // ---- Arbeitstage des Partners (ebenfalls nur auf diesem Gerät) -------
-  const { tage: partnerTage, setzen: partnerSetzen } = usePartnerTage(profile.id);
+  // ---- Arbeitstage des Partners (Datenbank, nur Inhaber + Partner) -----
+  const [partnerZeigen, setPartnerZeigen] = useLokaleEinstellung(
+    `schichtplan.partner-zeigen.${profile.id}`,
+    true,
+  );
+  const [einladen, setEinladen] = useState(false);
+
+  // „Neu“ im Menü verschwindet, sobald der Kalender einmal offen war.
+  useEffect(() => {
+    setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
+  }, []);
+  // Einführung (drei Fenster) beim ersten Öffnen.
+  const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung.${profile.id}`, false, true);
+  async function partnerSetzen(von: string, anzahl: number, code: PartnerSchicht | null) {
+    try {
+      await setzeMeinePartnerTage(von, anzahl, code);
+      setFehler(null);
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : "Das konnte nicht gespeichert werden.");
+    }
+    void laden();
+  }
 
   // ---- Auswahl, Sprechblase, Blätter ------------------------------------
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
@@ -360,6 +433,7 @@ export function MeinKalender() {
       ? stand
       : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
   const zellen = sichtbar?.tage ?? new Map<string, LiveShiftPlanCell>();
+  const partnerTage = sichtbar?.partner ?? {};
   const imMonat = (iso: string) => fromISO(iso).getMonth() === monat.monat;
   const istAktuellerMonat = (() => {
     const d = fromISO(heute);
@@ -406,28 +480,49 @@ export function MeinKalender() {
         "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px]",
       )}
     >
-      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3 sm:px-6 lg:px-0 [@media(max-height:700px)]:pb-1 [@media(max-height:700px)]:pt-1.5">
+      <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3 sm:px-6 lg:px-0 [@media(max-height:700px)]:pb-1 [@media(max-height:700px)]:pt-1.5">
         <div className="min-w-0">
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight [@media(max-height:700px)]:text-[26px]">
-            {monthName(monat.monat)}
-          </h1>
-          <p className="tnum text-[13px] font-medium text-ink-muted">{monat.jahr}</p>
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-[28px] font-bold leading-tight tracking-tight sm:text-[32px] [@media(max-height:700px)]:text-[25px]">
+              {monthName(monat.monat)}
+            </h1>
+            {/* Partnertage ein- und ausblenden – gemerkt auf diesem Gerät. */}
+            <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-2 py-1 text-[12px] font-semibold text-ink-muted">
+              <input
+                type="checkbox"
+                checked={partnerZeigen}
+                onChange={(e) => setPartnerZeigen(e.target.checked)}
+                className="h-3.5 w-3.5 accent-brand-500"
+              />
+              Partner
+            </label>
+          </div>
+          <p className="tnum text-[13px] font-medium text-ink-muted">
+            {monat.jahr}
+            {!istAktuellerMonat ? (
+              <>
+                {" · "}
+                <button type="button" onClick={zuHeute} className="font-semibold text-brand-600">
+                  Heute
+                </button>
+              </>
+            ) : null}
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {!istAktuellerMonat ? (
-            <button
-              type="button"
-              onClick={zuHeute}
-              className="h-11 rounded-full bg-surface-muted px-4 text-[14px] font-semibold text-brand-600"
-            >
-              Heute
-            </button>
-          ) : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setEinladen(true)}
+            aria-label="Partner einladen"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-brand-600 ring-1 ring-inset ring-line"
+          >
+            <UserPlus className="h-[18px] w-[18px]" />
+          </button>
           <button
             type="button"
             onClick={() => springe(-1)}
             aria-label="Vorheriger Monat"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted text-ink-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-inset ring-line"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -435,7 +530,7 @@ export function MeinKalender() {
             type="button"
             onClick={() => springe(1)}
             aria-label="Nächster Monat"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-muted text-ink-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-inset ring-line"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -485,7 +580,7 @@ export function MeinKalender() {
           const istHeute = iso === heute;
           const wochenende = i % 7 >= 5;
           const ts = termineAm(termine, iso);
-          const partner = partnerTage[iso] ?? null;
+          const partner = partnerZeigen ? (partnerTage[iso] ?? null) : null;
           return (
             <button
               key={iso}
@@ -590,7 +685,7 @@ export function MeinKalender() {
                 info={gewaehltInfo}
                 schicht={gewaehltInfo.schichtName ? uhrzeit.get(gewaehltInfo.schichtName) : undefined}
                 termine={gewaehltTermine}
-                partner={partnerTage[gewaehlt] ?? null}
+                partner={partnerZeigen ? (partnerTage[gewaehlt] ?? null) : null}
                 onTermin={(t) => {
                   setTerminBlatt({ datum: gewaehlt, termin: t });
                   blaseZu();
@@ -625,11 +720,25 @@ export function MeinKalender() {
         <PartnerBlatt
           datum={partnerBlatt}
           aktuell={partnerTage[partnerBlatt] ?? null}
+          hinweis="Das siehst nur du – und dein Partner, wenn du ihn einlädst."
           onWahl={(code, anzahl) => {
-            partnerSetzen(partnerBlatt, anzahl, code);
+            if (!partnerZeigen) setPartnerZeigen(true);
+            void partnerSetzen(partnerBlatt, anzahl, code);
             setPartnerBlatt(null);
           }}
           onClose={() => setPartnerBlatt(null)}
+          onEinladen={() => {
+            setPartnerBlatt(null);
+            setEinladen(true);
+          }}
+        />
+      ) : null}
+
+      {einladen ? <PartnerEinladen onClose={() => setEinladen(false)} /> : null}
+
+      {!einfuehrungGesehen ? (
+        <KalenderEinfuehrung
+          onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung.${profile.id}`, true)}
         />
       ) : null}
 

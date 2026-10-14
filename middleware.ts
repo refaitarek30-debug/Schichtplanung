@@ -83,6 +83,11 @@ export async function middleware(request: NextRequest) {
 
   if (!isSupabaseConfigured) return NextResponse.next();
 
+  // Einladungslink für Partner: ohne Anmeldung, ohne Sitzung. Bewusst vor
+  // allem anderen – auch eine abgelaufene Sitzung auf demselben Gerät soll
+  // hier nicht zur Anmeldeseite umleiten.
+  if (pathname.startsWith("/partner/")) return NextResponse.next();
+
   const { response, user, dienstGestoert } = await updateSession(request);
 
   // Antwortet Supabase nicht, ist unbekannt, wer da klopft. Geschützte

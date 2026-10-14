@@ -7,6 +7,7 @@ import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "@/context/session";
 import { navForRole } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { NeuMarke } from "./neu-marke";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -94,6 +95,7 @@ export function Sidebar() {
                     >
                       <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
                       {eingeklappt ? null : item.label}
+                      {item.neu && !eingeklappt ? <NeuMarke name={item.neu} /> : null}
                     </Link>
                   </li>
                 );
