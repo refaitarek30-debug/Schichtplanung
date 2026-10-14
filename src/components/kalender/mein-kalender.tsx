@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { PlanLeaveRequest } from "@/components/calendar/plan-leave-request";
 import { useSession } from "@/context/session";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
@@ -23,8 +22,10 @@ import { TerminBlatt, termineAm, useTermine, type Termin } from "./termine";
  * bewusst nicht – zwei Wege zum selben Plan laufen irgendwann auseinander.
  *
  * Tippen auf einen Tag öffnet eine Sprechblase mit Schicht, Uhrzeit und
- * Stunden. Von dort: Termin eintragen (nur auf diesem Gerät) oder Urlaub
- * beantragen (derselbe Weg wie im Schichtplan).
+ * Stunden. Von dort lässt sich ein eigener Termin eintragen (nur auf
+ * diesem Gerät). Anträge laufen bewusst nicht über den Kalender – er ist
+ * Übersicht und Terminkalender, beantragt wird im Schichtplan und unter
+ * Urlaub.
  */
 
 const WOCHENTAGE = ["M", "D", "M", "D", "F", "S", "S"];
@@ -228,13 +229,6 @@ export function MeinKalender() {
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [blase, setBlase] = useState<{ oben: number; pfeil: number; unten: boolean } | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
-  const [antrag, setAntrag] = useState<{ von: string; bis: string; fertig: boolean } | null>(null);
-  const [meldung, setMeldung] = useState<string | null>(null);
-  useEffect(() => {
-    if (!meldung) return;
-    const t = setTimeout(() => setMeldung(null), 8000);
-    return () => clearTimeout(t);
-  }, [meldung]);
   const flaeche = useRef<HTMLDivElement>(null);
   const blaseRef = useRef<HTMLDivElement>(null);
   const gewischt = useRef(false);
@@ -277,12 +271,6 @@ export function MeinKalender() {
   function tagAntippen(iso: string, knopf: HTMLElement) {
     if (gewischt.current) {
       gewischt.current = false;
-      return;
-    }
-    // Zweiter Tipp beim Urlaubsantrag: Ende des Zeitraums.
-    if (antrag && !antrag.fertig) {
-      const [von, bis] = iso < antrag.von ? [iso, antrag.von] : [antrag.von, iso];
-      setAntrag({ von, bis, fertig: true });
       return;
     }
     setGewaehlt(iso);
@@ -378,12 +366,6 @@ export function MeinKalender() {
 
   const gewaehltInfo = gewaehlt ? tagInfo(zellen.get(gewaehlt)) : null;
   const gewaehltTermine = gewaehlt ? termineAm(termine, gewaehlt) : [];
-  const darfBeantragen =
-    !!profile.employeeId &&
-    !!gewaehlt &&
-    gewaehlt >= heute &&
-    !!gewaehltInfo?.schichtName &&
-    !gewaehltInfo.abwesenheit;
 
   return (
     <div
@@ -442,11 +424,6 @@ export function MeinKalender() {
           </button>
         </div>
       ) : null}
-      {meldung ? (
-        <div className="px-4 pb-2 sm:px-6 lg:px-0">
-          <Alert tone="success">{meldung}</Alert>
-        </div>
-      ) : null}
       {sichtbar && !sichtbar.imPlan ? (
         <p className="px-4 pb-2 text-[13px] text-ink-muted sm:px-6 lg:px-0">
           Für dein Konto ist im Schichtplan keine Person hinterlegt – deshalb bleibt der Kalender leer.
@@ -478,7 +455,6 @@ export function MeinKalender() {
           const istHeute = iso === heute;
           const wochenende = i % 7 >= 5;
           const ts = termineAm(termine, iso);
-          const imAntrag = antrag && iso >= antrag.von && iso <= antrag.bis;
           return (
             <button
               key={iso}
@@ -491,7 +467,6 @@ export function MeinKalender() {
                 wochenende && "bg-surface-muted/70",
                 istHeute && "bg-ink/[0.07]",
                 gewaehlt === iso && "ring-2 ring-inset ring-brand-500",
-                imAntrag && "bg-brand-50",
               )}
             >
               <span
@@ -567,11 +542,6 @@ export function MeinKalender() {
                   setTerminBlatt({ datum: gewaehlt, termin: t });
                   blaseZu();
                 }}
-                darfBeantragen={darfBeantragen}
-                onBeantragen={() => {
-                  setAntrag({ von: gewaehlt, bis: gewaehlt, fertig: false });
-                  blaseZu();
-                }}
               />
             </div>
           </>
@@ -594,22 +564,6 @@ export function MeinKalender() {
         />
       ) : null}
 
-      {antrag && profile.employeeId ? (
-        <PlanLeaveRequest
-          employeeId={profile.employeeId}
-          von={antrag.von}
-          bis={antrag.bis}
-          fertig={antrag.fertig}
-          hinweisZweiterTipp="Jetzt im Kalender den letzten Tag antippen."
-          onEinTag={() => setAntrag((a) => (a ? { ...a, fertig: true } : a))}
-          onClose={() => setAntrag(null)}
-          onDone={(text) => {
-            setAntrag(null);
-            setMeldung(text);
-            void laden();
-          }}
-        />
-      ) : null}
     </div>
   );
 }
@@ -628,16 +582,12 @@ function Sprechblase({
   schicht,
   termine,
   onTermin,
-  darfBeantragen,
-  onBeantragen,
 }: {
   iso: string;
   info: TagInfo;
   schicht: ShiftDetail | undefined;
   termine: Termin[];
   onTermin: (t: Termin | null) => void;
-  darfBeantragen: boolean;
-  onBeantragen: () => void;
 }) {
   const d = fromISO(iso);
   const abw = info.abwesenheit;
@@ -715,25 +665,15 @@ function Sprechblase({
         </ul>
       ) : null}
 
-      <div className={cn("-mx-4 grid border-t border-line", darfBeantragen ? "grid-cols-2" : "grid-cols-1")}>
+      <div className="-mx-4 border-t border-line">
         <button
           type="button"
           onClick={() => onTermin(null)}
-          className="flex items-center justify-center gap-2 py-3.5 text-[15px] font-semibold text-ink-muted"
+          className="flex w-full items-center justify-center gap-2 py-3.5 text-[15px] font-semibold text-ink-muted"
         >
           <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
           Termin
         </button>
-        {darfBeantragen ? (
-          <button
-            type="button"
-            onClick={onBeantragen}
-            className="flex items-center justify-center gap-2 border-l border-line py-3.5 text-[15px] font-semibold text-ink-muted"
-          >
-            <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
-            Urlaub
-          </button>
-        ) : null}
       </div>
     </div>
   );

@@ -73,7 +73,7 @@ const guides: { id: string; label: string; forRole: string[]; steps: Step[] }[] 
       {
         icon: CalendarDays,
         title: "4. Oder: nur deinen Monat im Kalender",
-        body: "Unten auf „Kalender“ tippen. Dort steht nur dein eigener Plan als Monat. Wischen oder die Pfeile wechseln den Monat. Ein Tipp auf einen Tag zeigt Schicht und Uhrzeit – dort kannst du auch einen eigenen Termin eintragen (nur auf deinem Gerät gespeichert) oder Urlaub beantragen.",
+        body: "Unten auf „Kalender“ tippen. Dort steht nur dein eigener Plan als Monat. Wischen oder die Pfeile wechseln den Monat. Ein Tipp auf einen Tag zeigt Schicht und Uhrzeit – dort kannst du auch einen eigenen Termin eintragen (nur auf deinem Gerät gespeichert).",
       },
     ],
   },

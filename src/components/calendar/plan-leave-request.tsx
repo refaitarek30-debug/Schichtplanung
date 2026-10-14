@@ -51,7 +51,6 @@ export function PlanLeaveRequest({
   onEinTag,
   onClose,
   onDone,
-  hinweisZweiterTipp = "Jetzt in deiner Zeile den letzten Tag antippen.",
 }: {
   employeeId: string;
   von: string;
@@ -62,8 +61,6 @@ export function PlanLeaveRequest({
   onEinTag: () => void;
   onClose: () => void;
   onDone: (meldung: string) => void;
-  /** Text nach dem ersten Tipp – im Kalender gibt es keine „Zeile“. */
-  hinweisZweiterTipp?: string;
 }) {
   const [art, setArt] = useState<Art>("auto");
   const [kommentar, setKommentar] = useState("");
@@ -172,7 +169,7 @@ export function PlanLeaveRequest({
         <p className="tnum text-[14px] font-semibold">Beginn: {formatDE(von)}</p>
         <KontoUebersicht konto={konto} kontingente={kontingente} />
         <p className="mt-0.5 text-[12px] text-ink-muted">
-          {hinweisZweiterTipp}
+          Jetzt in deiner Zeile den letzten Tag antippen.
         </p>
         <div className="mt-2 flex gap-2">
           <Button variant="secondary" onClick={onEinTag}>
