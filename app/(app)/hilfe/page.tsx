@@ -73,7 +73,7 @@ const guides: { id: string; label: string; forRole: string[]; steps: Step[] }[] 
       {
         icon: CalendarDays,
         title: "4. Oder: nur deinen Monat im Kalender",
-        body: "Unten auf „Kalender“ tippen. Dort steht nur dein eigener Plan als Monat. Wischen oder die Pfeile wechseln den Monat. Ein Tipp auf einen Tag zeigt Schicht und Uhrzeit – dort kannst du auch einen eigenen Termin oder die Arbeitstage deines Partners eintragen (beides nur auf deinem Gerät gespeichert).",
+        body: "Unten auf „Kalender“ tippen. Dort steht nur dein eigener Plan als Monat. Wischen oder die Pfeile wechseln den Monat. Ein Tipp auf einen Tag zeigt Schicht und Uhrzeit – dort kannst du auch einen eigenen Termin (nur auf deinem Gerät) oder die Arbeitstage deines Partners eintragen. Über das Personen-Symbol oben lädst du deinen Partner per Link ein: Er sieht deinen Plan (ohne Urlaub oder Krankheit) und trägt seine Arbeit selbst ein. Mit dem Kästchen „Partner“ neben dem Monat blendest du seine Tage aus.",
       },
     ],
   },

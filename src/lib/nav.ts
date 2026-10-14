@@ -26,6 +26,8 @@ export interface NavItem {
   primary?: boolean;
   /** Nur mit ausdrücklicher Freischaltung sichtbar (SessionProfile.protokoll). */
   nurProtokoll?: boolean;
+  /** Kleines „Neu“, bis die Seite einmal geöffnet wurde (Name der Neuerung). */
+  neu?: string;
 }
 
 export const navItems: NavItem[] = [
@@ -61,6 +63,7 @@ export const navItems: NavItem[] = [
     label: "Mein Kalender",
     short: "Kalender",
     icon: CalendarRange,
+    neu: "kalender-partner",
     roles: ["employee", "shift_leader", "admin"],
     primary: true,
   },
