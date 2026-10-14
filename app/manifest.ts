@@ -12,9 +12,9 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Schichtplan",
     description:
       "Urlaub beantragen, Schichten sehen und die Mindestbesetzung automatisch prüfen.",
-    // Startet direkt im Dashboard; ohne Anmeldung leitet die Middleware
-    // von dort ohnehin auf /login um.
-    start_url: "/dashboard",
+    // Startet auf der gewählten Startseite (/start leitet dorthin); ohne
+    // Anmeldung leitet die Middleware auf /login um.
+    start_url: "/start",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

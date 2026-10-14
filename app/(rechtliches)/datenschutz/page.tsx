@@ -455,8 +455,8 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <code className={kode}>sp_letzte_aktivitaet</code> (Cookie, bis zu 7 Tage) –
-            Zeitpunkt der letzten Aktivität; die Sitzung endet nach 10 Minuten ohne Nutzung
-            automatisch
+            Zeitpunkt der letzten Aktivität; die Sitzung endet je nach Rolle automatisch nach
+            Inaktivität (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)
           </li>
           <li>
             <code className={kode}>schichtplan.theme</code>,{" "}
@@ -517,7 +517,7 @@ export default function DatenschutzPage() {
           <li>verschlüsselte Übertragung (HTTPS mit HSTS) und Sicherheits-Header im Browser</li>
           <li>Mandantentrennung und Rollenrechte in der Datenbank (Row Level Security), serverseitige Prüfung aller Aktionen</li>
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
-          <li>automatische Abmeldung nach 10 Minuten Inaktivität</li>
+          <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
           <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte, einsehbar nur für ausdrücklich freigeschaltete Personen</li>
           <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>

@@ -103,6 +103,8 @@ export interface ProfileRow {
   active: boolean;
   /** Kacheln, die diese Person auf ihrem Dashboard ausgeblendet hat. */
   hidden_dashboard_tiles: string[];
+  /** Startseite beim Öffnen: dashboard, schichtplan, kalender – leer = Dashboard. */
+  start_seite: "dashboard" | "schichtplan" | "kalender" | null;
   created_at: string;
   updated_at: string;
 }

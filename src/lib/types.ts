@@ -59,6 +59,8 @@ export interface SessionProfile {
    * siehe `protokoll_zugang` in der Datenbank.
    */
   protokoll?: boolean;
+  /** Was beim Öffnen der App zuerst kommt; leer = Dashboard. */
+  startSeite?: "dashboard" | "schichtplan" | "kalender" | null;
 }
 
 /** Zeile aus `employees` – Personalstammdaten, unabhängig vom Login. */

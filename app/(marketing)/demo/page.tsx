@@ -43,7 +43,7 @@ export default function DemoPage() {
             </li>
             <li className="flex gap-3">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden />
-              Der Demo-Bereich wird nach 24 Stunden automatisch gelöscht. Nach 10 Minuten ohne
+              Der Demo-Bereich wird nach 24 Stunden automatisch gelöscht. Nach 15 Minuten ohne
               Aktivität endet die Sitzung; dann starten Sie einfach eine neue Demo.
             </li>
             <li className="flex gap-3">

@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       ? "/passwort-neu"
       : type === "signup"
         ? "/willkommen"
-        : "/dashboard";
+        : "/start";
   const next = safeInternalPath(nextParam, fallback);
 
   if (!isSupabaseConfigured) {
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
   const type = String(form.get("type") ?? "");
   const weiter = String(form.get("weiter") ?? "");
 
-  const ziel = safeInternalPath(weiter, "/dashboard");
+  const ziel = safeInternalPath(weiter, "/start");
 
   if (!isSupabaseConfigured || !tokenHash || !OTP_TYPES.has(type)) {
     return NextResponse.redirect(`${origin}/login?fehler=link`, { status: 303 });

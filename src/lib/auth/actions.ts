@@ -80,7 +80,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   await merkeAnmeldung();
 
   revalidatePath("/", "layout");
-  redirect(safeInternalPath(next, "/dashboard"));
+  redirect(safeInternalPath(next, "/start"));
 }
 
 export async function signOut() {
@@ -151,7 +151,7 @@ export async function updatePassword(
   await protokolliere(supabase, "anmeldung.passwort", "Neues Passwort gesetzt");
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/start");
 }
 
 export async function updateOwnProfile(
