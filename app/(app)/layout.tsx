@@ -8,6 +8,7 @@ import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
+import { getPrivatKonto } from "@/lib/privat/server";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -27,7 +28,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const session = await getAppSession();
-  if (!session) redirect("/login");
+  if (!session) {
+    // Privatkonten haben kein Firmenprofil – sonst liefe /login ↔ /start im Kreis.
+    if (await getPrivatKonto()) redirect("/privat");
+    redirect("/login");
+  }
 
   if (!session.profile.active) {
     redirect("/login?fehler=deaktiviert");
