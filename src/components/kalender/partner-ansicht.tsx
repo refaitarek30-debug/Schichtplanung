@@ -85,6 +85,17 @@ export function PartnerAnsicht({ token }: { token: string }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void laden();
+    // Was der Inhaber einträgt, soll ohne Neuladen erscheinen: beim
+    // Zurückkehren und alle 20 Sekunden, solange die Seite sichtbar ist.
+    const sichtbar = () => {
+      if (document.visibilityState === "visible") void laden();
+    };
+    document.addEventListener("visibilitychange", sichtbar);
+    const takt = window.setInterval(sichtbar, 20_000);
+    return () => {
+      document.removeEventListener("visibilitychange", sichtbar);
+      window.clearInterval(takt);
+    };
   }, [laden]);
 
   // Seite fest wie eine App – kein Scrollen dahinter.
@@ -176,6 +187,9 @@ export function PartnerAnsicht({ token }: { token: string }) {
             <h1 className="text-[28px] font-bold leading-tight tracking-tight">{monthName(monat.monat)}</h1>
             <p className="tnum text-[13px] font-medium text-ink-muted">
               {monat.jahr}
+              <span className="ml-2 text-[12px] text-ink-faint">
+                Gefüllt: du · Umriss: {name || "Plan"}
+              </span>
               {!istAktuell ? (
                 <>
                   {" · "}
@@ -272,42 +286,49 @@ export function PartnerAnsicht({ token }: { token: string }) {
                 >
                   {d.getDate()}
                 </span>
-                {sichtbar ? (
+                {/* Wie beim Inhaber: die eigenen Einträge gefüllt, die der anderen
+                    Person als Umriss. So steht der eingetragene Urlaub groß da und
+                    nicht die Schicht des Inhabers. */}
+                {!sichtbar ? (
+                  <span className="h-5 animate-pulse rounded-md bg-surface-sunken" />
+                ) : null}
+                {sichtbar && partner ? (
                   <span
                     className={cn(
                       "shrink-0 truncate rounded-md px-0.5 py-[3px] text-[12.5px] font-medium leading-tight",
-                      VOLL_FARBE[eigen ?? "X"],
-                      !imMonat && "opacity-45",
-                    )}
-                  >
-                    {partnerText(eigen ?? "X")}
-                  </span>
-                ) : (
-                  <span className="h-5 animate-pulse rounded-md bg-surface-sunken" />
-                )}
-                {partner ? (
-                  <span
-                    className={cn(
-                      "shrink-0 truncate rounded-md px-0.5 py-px text-[11px] font-semibold leading-tight ring-[1.5px] ring-inset",
-                      PARTNER_FARBE[partner],
+                      VOLL_FARBE[partner],
                       !imMonat && "opacity-45",
                     )}
                   >
                     {partnerText(partner)}
                   </span>
                 ) : null}
-                {ts.length ? (
-                  <span className={cn("shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted", !imMonat && "opacity-45")}>
+                {sichtbar ? (
+                  <span
+                    className={cn(
+                      "shrink-0 truncate rounded-md px-0.5 py-px text-[11px] font-semibold leading-tight ring-[1.5px] ring-inset",
+                      PARTNER_FARBE[eigen ?? "X"],
+                      !imMonat && "opacity-45",
+                    )}
+                  >
+                    {partnerText(eigen ?? "X")}
+                  </span>
+                ) : null}
+                {ts.slice(0, 3).map((t, j) => (
+                  <span
+                    key={t.id}
+                    className={cn("shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted", !imMonat && "opacity-45")}
+                  >
                     <span
                       className={cn(
                         "mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle",
-                        ts[0]!.vonPartner ? "bg-brand-500" : "bg-ink-faint",
+                        t.vonPartner ? "bg-brand-500" : "bg-ink-faint",
                       )}
                     />
-                    {ts[0]!.titel || "Termin"}
-                    {ts.length > 1 ? ` +${ts.length - 1}` : ""}
+                    {t.titel || "Termin"}
+                    {j === 2 && ts.length > 3 ? ` +${ts.length - 3}` : ""}
                   </span>
-                ) : null}
+                ))}
               </button>
             );
           })}
@@ -395,20 +416,20 @@ function TagBlatt({
         </div>
         <div className="space-y-2 px-5 py-4">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[15px] text-ink-muted">{name || "Plan"}</span>
-            <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold", VOLL_FARBE[eigen ?? "X"])}>
-              {partnerText(eigen ?? "X", true)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3">
             <span className="text-[15px] text-ink-muted">Du</span>
             {partner ? (
-              <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[partner])}>
+              <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold", VOLL_FARBE[partner])}>
                 {partnerText(partner, true)}
               </span>
             ) : (
               <span className="text-[14px] text-ink-faint">nichts eingetragen</span>
             )}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] text-ink-muted">{name || "Plan"}</span>
+            <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[eigen ?? "X"])}>
+              {partnerText(eigen ?? "X", true)}
+            </span>
           </div>
           {termine.length ? (
             <ul className="border-t border-line pt-1">

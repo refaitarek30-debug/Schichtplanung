@@ -259,6 +259,32 @@ export function MeinKalender() {
     };
   }, [laden]);
 
+  // Was der Partner auf seinem Handy einträgt, soll ohne Neuladen
+  // erscheinen: alle 20 Sekunden – nur solange der Kalender sichtbar ist –
+  // die Partnertage des angezeigten Monats frisch holen. Bewusst nicht den
+  // ganzen Plan: der ändert sich selten und ist die teurere Abfrage.
+  useEffect(() => {
+    const s = start;
+    const n = tageImRaster;
+    const k = schluessel(s, n);
+    const takt = window.setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const partner = await fetchMeinePartnerTage(s, addDays(s, n - 1));
+        setStand((alt) => {
+          if (!alt || alt.schluessel !== k) return alt;
+          if (JSON.stringify(alt.partner) === JSON.stringify(partner)) return alt;
+          const neu = { ...alt, partner };
+          inZwischenspeicher(k, neu);
+          return neu;
+        });
+      } catch {
+        // nächster Takt
+      }
+    }, 20_000);
+    return () => window.clearInterval(takt);
+  }, [start, tageImRaster, schluessel]);
+
   // Partnertage lagen anfangs nur im Browser – einmal übernehmen.
   useEffect(() => {
     const alt = alteLokalePartnerTage(profile.id);
@@ -304,7 +330,9 @@ export function MeinKalender() {
   const [termine, setTermine] = useState<Termin[]>([]);
   const ladeTermine = useCallback(async () => {
     try {
-      setTermine(await fetchMeineTermine());
+      const neu = await fetchMeineTermine();
+      // Nur bei Änderung neu zeichnen – der 20-Sekunden-Takt bringt meist nichts Neues.
+      setTermine((alt) => (JSON.stringify(alt) === JSON.stringify(neu) ? alt : neu));
     } catch {
       // Termine sind Beiwerk – der Kalender steht auch ohne sie.
     }
@@ -317,7 +345,14 @@ export function MeinKalender() {
       if (document.visibilityState === "visible") void ladeTermine();
     };
     document.addEventListener("visibilitychange", sichtbar);
-    return () => document.removeEventListener("visibilitychange", sichtbar);
+    // Termine des Partners ebenfalls alle 20 Sekunden, solange sichtbar.
+    const takt = window.setInterval(() => {
+      if (document.visibilityState === "visible") void ladeTermine();
+    }, 20_000);
+    return () => {
+      document.removeEventListener("visibilitychange", sichtbar);
+      window.clearInterval(takt);
+    };
   }, [ladeTermine]);
   // Termine lagen anfangs nur im Browser – einmal übernehmen.
   useEffect(() => {
@@ -675,12 +710,16 @@ export function MeinKalender() {
                 >
                   {d.getDate()}
                 </span>
-                {/* Kleine Handys: statt der Terminzeile nur ein Punkt an der Zahl. */}
+                {/* Kleine Handys: statt der Terminzeilen ein Punkt je Termin an der Zahl. */}
                 {ts.length ? (
-                  <span
-                    aria-hidden
-                    className="absolute -right-1.5 top-0 hidden h-1.5 w-1.5 rounded-full bg-brand-500 [@media(max-height:700px)]:block"
-                  />
+                  <span aria-hidden className="absolute -right-2 top-0 hidden gap-px [@media(max-height:700px)]:flex">
+                    {ts.slice(0, 3).map((t) => (
+                      <span
+                        key={t.id}
+                        className={cn("h-1.5 w-1.5 rounded-full", t.vonPartner ? "bg-brand-500" : "bg-ink-muted")}
+                      />
+                    ))}
+                  </span>
                 ) : null}
               </span>
               {sichtbar
@@ -711,8 +750,11 @@ export function MeinKalender() {
                   {partnerText(partner)}
                 </span>
               ) : null}
-              {ts.length ? (
+              {/* Termine: so viele Zeilen, wie in die Zelle passen – der Rest
+                  wird abgeschnitten, alle stehen in der Sprechblase. */}
+              {ts.map((t, j) => (
                 <span
+                  key={t.id}
                   className={cn(
                     "shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted [@media(max-height:700px)]:hidden",
                     !imM && "opacity-45",
@@ -721,13 +763,13 @@ export function MeinKalender() {
                   <span
                     className={cn(
                       "mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle",
-                      ts[0]!.vonPartner ? "bg-brand-500" : "bg-ink-faint",
+                      t.vonPartner ? "bg-brand-500" : "bg-ink-faint",
                     )}
                   />
-                  {ts[0]!.titel || "Termin"}
-                  {ts.length > 1 ? ` +${ts.length - 1}` : ""}
+                  {t.titel || "Termin"}
+                  {j === 2 && ts.length > 3 ? ` +${ts.length - 3}` : ""}
                 </span>
-              ) : null}
+              )).slice(0, 3)}
             </button>
           );
         })}
