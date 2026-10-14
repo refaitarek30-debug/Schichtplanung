@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
+  LayoutGrid,
+  LogOut,
+  UserCheck,
   CalendarHeart,
   ArrowRight,
   BadgeCheck,
@@ -153,6 +156,9 @@ const FUNKTIONSUEBERSICHT: { icon: ReactNode; text: string }[] = [
   { icon: <CalendarHeart className="h-4 w-4" />, text: "Persönlicher Kalender mit Terminen, Partner per Link einladen" },
   { icon: <Smartphone className="h-4 w-4" />, text: "Auf dem Handy als App installierbar, mit Dunkelmodus" },
   { icon: <ShieldCheck className="h-4 w-4" />, text: "Datenschutz-Einstellungen je Mitarbeiter" },
+  { icon: <LayoutGrid className="h-4 w-4" />, text: "Startseite frei wählbar: Übersicht oder eigener Kalender" },
+  { icon: <LogOut className="h-4 w-4" />, text: "Automatische Abmeldung, abgestuft nach Rolle" },
+  { icon: <UserCheck className="h-4 w-4" />, text: "Ohne KI und ohne Tracking – über Anträge entscheiden Menschen" },
 ];
 
 const FAQ: { frage: string; antwort: ReactNode }[] = [
@@ -169,7 +175,7 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
   {
     frage: "Können Mitarbeiter ihre eigenen Schichten sehen?",
     antwort:
-      "Ja. Mitarbeiter erhalten einen eigenen Zugang über eine Einladung und sehen ihre eigenen Schichten sowie den Schichtplan. Schichtplan lässt sich auf dem Handy wie eine App installieren. Welche Gründe für Abwesenheiten Kollegen sehen, ist standardmäßig eingeschränkt und kann je Person freigegeben werden.",
+      "Ja. Mitarbeiter erhalten einen eigenen Zugang über eine Einladung und sehen ihre eigenen Schichten sowie den Schichtplan. Im persönlichen Kalender tragen sie zusätzlich eigene Termine ein und können auf Wunsch ihren Partner oder ihre Partnerin per Link einladen. Die eingeladene Person braucht kein Konto und sieht die Schichten, Abwesenheiten nur als „Urlaub“ ohne Grund. Schichtplan lässt sich auf dem Handy wie eine App installieren. Welche Gründe für Abwesenheiten Kollegen sehen, ist standardmäßig eingeschränkt und kann je Person freigegeben werden.",
   },
   {
     frage: "Kann Urlaub digital beantragt werden?",
@@ -190,6 +196,11 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
     frage: "Wie funktioniert die Besetzungskontrolle?",
     antwort:
       "Je Schicht werden eine Mindest- und eine Sollbesetzung festgelegt, zusätzlich auf Wunsch eine Mindestanzahl je Qualifikation. Schichtplan zeigt pro Tag, ob die Besetzung erfüllt ist, unter Soll liegt oder die Mindestbesetzung reißt, und prüft Urlaubsanträge vor der Genehmigung dagegen. Die Entscheidung trifft immer ein Mensch.",
+  },
+  {
+    frage: "Wird künstliche Intelligenz eingesetzt?",
+    antwort:
+      "Nein. Schichtplan nutzt keine KI-Dienste und gibt keine Daten an KI-Anbieter weiter. Konten, Besetzung und Konflikte werden nach festen, nachvollziehbaren Regeln berechnet; über Anträge entscheidet immer ein Mensch.",
   },
   {
     frage: "Wo werden die Daten gespeichert?",
