@@ -2,16 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { addDays, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
   LINK_UNGUELTIG,
   fetchPartnerKalender,
   partnerTageSetzen,
+  partnerTerminLoeschen,
+  partnerTerminSpeichern,
+  type Termin,
+  type TerminEingabe,
   type PartnerCode,
 } from "@/lib/data/partner";
 import { cn } from "@/lib/utils";
 import { PARTNER_FARBE, PartnerBlatt, VOLL_FARBE, partnerText } from "./partner";
+import { TerminBlatt, termineAm } from "./termine";
+
+const WOCHENTAG_LANG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
 /**
  * Ansicht für den Partner – ohne Anmeldung, nur mit dem Einladungslink.
@@ -35,6 +42,7 @@ interface Stand {
   schluessel: string;
   name: string;
   tage: Map<string, [PartnerCode | null, PartnerCode | null]>;
+  termine: Termin[];
 }
 
 export function PartnerAnsicht({ token }: { token: string }) {
@@ -51,7 +59,11 @@ export function PartnerAnsicht({ token }: { token: string }) {
   const [name, setName] = useState("");
   const [fehler, setFehler] = useState<string | null>(null);
   const [ungueltig, setUngueltig] = useState(false);
+  /** Tag, dessen Übersicht offen ist. */
+  const [tag, setTag] = useState<string | null>(null);
+  /** Auswahl der eigenen Schicht für diesen Tag. */
   const [blatt, setBlatt] = useState<string | null>(null);
+  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
   const ladeNr = useRef(0);
 
   const laden = useCallback(async () => {
@@ -59,7 +71,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
     try {
       const k = await fetchPartnerKalender(token, start, anzahl);
       if (nr !== ladeNr.current) return;
-      setStand({ schluessel: `${start}:${anzahl}`, name: k.name, tage: k.tage });
+      setStand({ schluessel: `${start}:${anzahl}`, name: k.name, tage: k.tage, termine: k.termine });
       setName(k.name);
       setFehler(null);
     } catch (e) {
@@ -111,6 +123,28 @@ export function PartnerAnsicht({ token }: { token: string }) {
     }
     void laden();
   }
+
+  async function terminSpeichern(t: TerminEingabe) {
+    setTerminBlatt(null);
+    try {
+      await partnerTerminSpeichern(token, t);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden.");
+    }
+    void laden();
+  }
+
+  async function terminLoeschen(id: string) {
+    setTerminBlatt(null);
+    try {
+      await partnerTerminLoeschen(token, id);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gelöscht werden.");
+    }
+    void laden();
+  }
+
+  const termine = sichtbar?.termine ?? [];
 
   if (ungueltig) {
     return (
@@ -210,6 +244,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
             const d = fromISO(iso);
             const imMonat = d.getMonth() === monat.monat;
             const [eigen, partner] = sichtbar?.tage.get(iso) ?? [null, null];
+            const ts = termineAm(termine, iso);
             return (
               <button
                 key={iso}
@@ -219,7 +254,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
                     gewischt.current = false;
                     return;
                   }
-                  setBlatt(iso);
+                  setTag(iso);
                 }}
                 aria-label={`${d.getDate()}. ${monthName(d.getMonth())}: ${name || "Plan"} ${eigen ? partnerText(eigen, true) : "–"}${partner ? `, du: ${partnerText(partner, true)}` : ""}`}
                 className={cn(
@@ -261,18 +296,43 @@ export function PartnerAnsicht({ token }: { token: string }) {
                     {partnerText(partner)}
                   </span>
                 ) : null}
+                {ts.length ? (
+                  <span className={cn("shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted", !imMonat && "opacity-45")}>
+                    <span
+                      className={cn(
+                        "mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle",
+                        ts[0]!.vonPartner ? "bg-brand-500" : "bg-ink-faint",
+                      )}
+                    />
+                    {ts[0]!.titel || "Termin"}
+                    {ts.length > 1 ? ` +${ts.length - 1}` : ""}
+                  </span>
+                ) : null}
               </button>
             );
           })}
         </div>
 
-        <p className="px-4 py-2 text-center text-[12px] text-ink-muted">
-          Gefüllt: {name || "Plan"} · Umriss: du – Tag antippen, um deine Arbeit einzutragen.{" "}
-          <Link href="/datenschutz" className="underline">
-            Datenschutz
-          </Link>
-        </p>
       </div>
+
+      {tag ? (
+        <TagBlatt
+          iso={tag}
+          name={name}
+          eigen={sichtbar?.tage.get(tag)?.[0] ?? null}
+          partner={sichtbar?.tage.get(tag)?.[1] ?? null}
+          termine={termineAm(termine, tag)}
+          onClose={() => setTag(null)}
+          onSchicht={() => {
+            setBlatt(tag);
+            setTag(null);
+          }}
+          onTermin={(t) => {
+            setTerminBlatt({ datum: tag, termin: t });
+            setTag(null);
+          }}
+        />
+      ) : null}
 
       {blatt ? (
         <PartnerBlatt
@@ -283,6 +343,123 @@ export function PartnerAnsicht({ token }: { token: string }) {
           onClose={() => setBlatt(null)}
         />
       ) : null}
+
+      {terminBlatt ? (
+        <TerminBlatt
+          datum={terminBlatt.datum}
+          termin={terminBlatt.termin}
+          nurLesen={!!terminBlatt.termin && !terminBlatt.termin.vonPartner}
+          hinweis={
+            terminBlatt.termin && !terminBlatt.termin.vonPartner
+              ? `Termin von ${name || "deinem Partner"} – nur zum Ansehen.`
+              : `Den Termin sehen du und ${name || "die Person, die dich eingeladen hat"}.`
+          }
+          onSpeichern={(t) => void terminSpeichern(t)}
+          onLoeschen={(id) => void terminLoeschen(id)}
+          onClose={() => setTerminBlatt(null)}
+        />
+      ) : null}
     </main>
+  );
+}
+
+/** Übersicht eines Tages: beide Schichten, Termine, Eintragen. */
+function TagBlatt({
+  iso,
+  name,
+  eigen,
+  partner,
+  termine,
+  onClose,
+  onSchicht,
+  onTermin,
+}: {
+  iso: string;
+  name: string;
+  eigen: PartnerCode | null;
+  partner: PartnerCode | null;
+  termine: Termin[];
+  onClose: () => void;
+  onSchicht: () => void;
+  onTermin: (t: Termin | null) => void;
+}) {
+  const d = fromISO(iso);
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-black/40" onClick={onClose} />
+      <div role="dialog" aria-label={formatDE(iso)} className="relative w-full max-w-lg overflow-hidden rounded-t-3xl bg-surface shadow-pop sm:rounded-3xl">
+        <div className="bg-surface-sunken px-5 py-4">
+          <p className="text-[17px] font-semibold">
+            {WOCHENTAG_LANG[d.getDay()]}, {formatDE(iso)}
+          </p>
+        </div>
+        <div className="space-y-2 px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] text-ink-muted">{name || "Plan"}</span>
+            <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold", VOLL_FARBE[eigen ?? "X"])}>
+              {partnerText(eigen ?? "X", true)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] text-ink-muted">Du</span>
+            {partner ? (
+              <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[partner])}>
+                {partnerText(partner, true)}
+              </span>
+            ) : (
+              <span className="text-[14px] text-ink-faint">nichts eingetragen</span>
+            )}
+          </div>
+          {termine.length ? (
+            <ul className="border-t border-line pt-1">
+              {termine.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    onClick={() => onTermin(t)}
+                    className="flex w-full items-baseline justify-between gap-3 py-2 text-left text-[15px]"
+                  >
+                    <span className="min-w-0 truncate">
+                      {t.titel || "Ohne Titel"}
+                      {!t.vonPartner ? (
+                        <span className="ml-1.5 rounded bg-surface-sunken px-1 py-px text-[11px] font-semibold text-ink-muted">
+                          {name || "Partner"}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="tnum shrink-0 text-[13px] text-ink-muted">
+                      {t.ganztaegig ? "Ganztägig" : `${t.von} – ${t.bis}`}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        <div className="grid grid-cols-2 border-t border-line">
+          <button
+            type="button"
+            onClick={() => onTermin(null)}
+            className="flex items-center justify-center gap-2 py-4 text-[15px] font-semibold text-ink-muted"
+          >
+            <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
+            Termin
+          </button>
+          <button
+            type="button"
+            onClick={onSchicht}
+            className="flex items-center justify-center gap-2 border-l border-line py-4 text-[15px] font-semibold text-ink-muted"
+          >
+            <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
+            Schicht / Urlaub
+          </button>
+        </div>
+        <div className="border-t border-line pb-[env(safe-area-inset-bottom)] text-center">
+          <Link href="/datenschutz" className="inline-block py-3 text-[12px] text-ink-faint underline">
+            Datenschutz
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,120 +1,61 @@
 "use client";
 
-import { useCallback, useId, useState, useSyncExternalStore } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2 } from "lucide-react";
 import { formatDE, fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
+import type { Termin, TerminEingabe, Wiederholung } from "@/lib/data/partner";
+
 /**
- * Eigene Termine im Kalender – nur auf diesem Gerät.
+ * Termine im Kalender – Formular und Hilfen.
  *
- * Bewusst nicht in der Datenbank: Termine sind privat und haben mit dem
- * Betrieb nichts zu tun. So sieht sie weder die Firma noch die
- * Schichtleitung, und es gibt keine neuen Daten, für die die
- * Datenschutzerklärung gelten müsste. Der Preis: Sie sind nur auf dem
- * Gerät da, auf dem sie eingetragen wurden, und verschwinden mit den
- * Website-Daten des Browsers. Das steht so auch im Formular.
- *
- * Der Schlüssel enthält die Benutzer-Id – meldet sich auf demselben Gerät
- * jemand anderes an, sieht er die Termine der ersten Person nicht.
+ * Gespeichert in der Datenbank (0139_kalender_partner_termine.sql): eigene
+ * Termine sieht nur die Person selbst – und ihr Partner, wenn sie das bei
+ * der Einladung freigegeben hat. Termine des Partners sehen beide. Die
+ * Firma sieht keine Termine.
  */
 
-export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich";
 
-export interface Termin {
-  id: string;
-  /** Erster Tag, "YYYY-MM-DD". */
-  datum: string;
-  titel: string;
-  ganztaegig: boolean;
-  von: string;
-  bis: string;
-  wiederholung: Wiederholung;
-  notiz: string;
-  ort: string;
-}
+export type { Termin, TerminEingabe, Wiederholung };
 
-const LEER: Termin[] = [];
-const zuhoerer = new Set<() => void>();
-const lesecache = new Map<string, { roh: string | null; liste: Termin[] }>();
-
-function speicherSchluessel(benutzer: string) {
-  return `schichtplan.termine.${benutzer}`;
-}
-
-function lesen(schluessel: string): Termin[] {
-  let roh: string | null = null;
+/**
+ * Termine lagen anfangs nur im Browser. Was dort noch steht, wird einmal in
+ * die Datenbank übernommen und danach gelöscht (siehe MeinKalender).
+ */
+export function alteLokaleTermine(benutzer: string): TerminEingabe[] | null {
   try {
-    roh = window.localStorage.getItem(schluessel);
+    const roh = window.localStorage.getItem(`schichtplan.termine.${benutzer}`);
+    if (!roh) return null;
+    const daten: unknown = JSON.parse(roh);
+    if (!Array.isArray(daten)) return [];
+    return daten
+      .filter((t) => t && typeof t === "object" && typeof t.datum === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.datum))
+      .map((t) => ({
+        id: null,
+        datum: t.datum,
+        titel: String(t.titel ?? "").slice(0, 80),
+        ganztaegig: t.ganztaegig === true,
+        von: typeof t.von === "string" ? t.von : "",
+        bis: typeof t.bis === "string" ? t.bis : "",
+        wiederholung: (["nie", "taeglich", "woechentlich", "monatlich"].includes(t.wiederholung)
+          ? t.wiederholung
+          : "nie") as Wiederholung,
+        notiz: String(t.notiz ?? "").slice(0, 500),
+        ort: String(t.ort ?? "").slice(0, 120),
+      }));
   } catch {
-    return LEER;
+    return null;
   }
-  const alt = lesecache.get(schluessel);
-  if (alt && alt.roh === roh) return alt.liste;
-  let liste: Termin[] = LEER;
-  if (roh) {
-    try {
-      const daten: unknown = JSON.parse(roh);
-      if (Array.isArray(daten)) {
-        liste = daten.filter(
-          (t): t is Termin =>
-            !!t && typeof t === "object" && typeof t.id === "string" && typeof t.datum === "string",
-        );
-      }
-    } catch {
-      liste = LEER;
-    }
-  }
-  lesecache.set(schluessel, { roh, liste });
-  return liste;
 }
 
-function abonnieren(rueckruf: () => void) {
-  zuhoerer.add(rueckruf);
-  // Änderungen aus einem zweiten Tab.
-  window.addEventListener("storage", rueckruf);
-  return () => {
-    zuhoerer.delete(rueckruf);
-    window.removeEventListener("storage", rueckruf);
-  };
-}
-
-export function useTermine(benutzer: string) {
-  const schluessel = speicherSchluessel(benutzer);
-  const termine = useSyncExternalStore(
-    abonnieren,
-    () => lesen(schluessel),
-    () => LEER,
-  );
-
-  const schreiben = useCallback(
-    (liste: Termin[]) => {
-      try {
-        window.localStorage.setItem(schluessel, JSON.stringify(liste));
-      } catch {
-        // Speicher voll oder gesperrt (privater Modus) – dann bleibt es beim alten Stand.
-      }
-      for (const z of zuhoerer) z();
-    },
-    [schluessel],
-  );
-
-  const speichern = useCallback(
-    (t: Termin) => {
-      const aktuell = lesen(schluessel);
-      const vorhanden = aktuell.some((x) => x.id === t.id);
-      schreiben(vorhanden ? aktuell.map((x) => (x.id === t.id ? t : x)) : [...aktuell, t]);
-    },
-    [schluessel, schreiben],
-  );
-
-  const loeschen = useCallback(
-    (id: string) => schreiben(lesen(schluessel).filter((x) => x.id !== id)),
-    [schluessel, schreiben],
-  );
-
-  return { termine, speichern, loeschen };
+export function vergissLokaleTermine(benutzer: string) {
+  try {
+    window.localStorage.removeItem(`schichtplan.termine.${benutzer}`);
+  } catch {
+    // dann beim nächsten Mal – doppelt übernommen wird nichts, weil erst danach gelöscht wird
+  }
 }
 
 /** Ganze Tage zwischen zwei Daten (lokal, ohne Zeitumstellungsfehler). */
@@ -151,14 +92,6 @@ function dauer(von: string, bis: string): string {
   return m % 60 ? `${h} Std. ${m % 60} Min.` : `${h} Std.`;
 }
 
-function neueId() {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  }
-}
-
 const feld =
   "flex min-h-[52px] items-center justify-between gap-3 border-b border-line text-[16px]";
 const eingabe =
@@ -169,12 +102,18 @@ export function TerminBlatt({
   termin,
   onSpeichern,
   onLoeschen,
+  hinweis,
+  nurLesen = false,
   onClose,
 }: {
   datum: string;
   termin: Termin | null;
-  onSpeichern: (t: Termin) => void;
+  onSpeichern: (t: TerminEingabe) => void;
   onLoeschen: (id: string) => void;
+  /** Zeile unter den Feldern – wer den Termin sieht. */
+  hinweis: string;
+  /** Nur ansehen (Termin der anderen Person). */
+  nurLesen?: boolean;
   onClose: () => void;
 }) {
   const id = useId();
@@ -191,7 +130,7 @@ export function TerminBlatt({
   function speichern(e: React.FormEvent) {
     e.preventDefault();
     onSpeichern({
-      id: termin?.id ?? neueId(),
+      id: termin?.id ?? null,
       datum: tag,
       titel: titel.trim(),
       ganztaegig: ganz,
@@ -229,6 +168,7 @@ export function TerminBlatt({
         </div>
 
         <div className="overflow-y-auto px-5">
+          <fieldset disabled={nurLesen} className="m-0 min-w-0 border-0 p-0">
           <label className={feld}>
             <span className="shrink-0">Titel</span>
             <input
@@ -323,13 +263,14 @@ export function TerminBlatt({
               className="block w-full border-t border-line bg-transparent px-4 py-3 text-[16px] outline-none placeholder:text-ink-faint"
             />
           </div>
+          </fieldset>
           <p className="pb-3 text-[12px] text-ink-faint">
-            Termine werden nur auf diesem Gerät gespeichert. Niemand sonst sieht sie.
+            {hinweis}
           </p>
         </div>
 
         <div className="flex items-center border-t border-line pb-[env(safe-area-inset-bottom)]">
-          {termin ? (
+          {termin && !nurLesen ? (
             <button
               type="button"
               onClick={() => onLoeschen(termin.id)}
@@ -346,9 +287,11 @@ export function TerminBlatt({
           >
             Schließen
           </button>
-          <button type="submit" className="h-14 flex-1 text-[16px] font-semibold text-brand-600">
-            Speichern
-          </button>
+          {!nurLesen ? (
+            <button type="submit" className="h-14 flex-1 text-[16px] font-semibold text-brand-600">
+              Speichern
+            </button>
+          ) : null}
         </div>
       </form>
     </div>,
