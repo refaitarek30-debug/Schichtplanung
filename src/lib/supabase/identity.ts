@@ -21,6 +21,8 @@ export interface Identity {
 }
 
 let pending: Promise<Identity | null> | null = null;
+/** Für welches Konto `pending` gilt. */
+let pendingFuer: string | null = null;
 let watching = false;
 
 function watchAuthChanges() {
@@ -29,20 +31,37 @@ function watchAuthChanges() {
   createClient().auth.onAuthStateChange((event) => {
     // Anmeldung, Abmeldung, Benutzerwechsel: gemerkte Identität verwerfen.
     if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
-      pending = null;
+      forgetIdentity();
     }
   });
 }
 
 export function forgetIdentity() {
   pending = null;
+  pendingFuer = null;
 }
 
-export function currentIdentity(): Promise<Identity | null> {
-  if (!isSupabaseConfigured) return Promise.resolve(null);
+/**
+ * An- und Abmelden laufen über Server-Aktionen: Die Cookies wechseln, die
+ * Seite lädt aber nicht neu, und `onAuthStateChange` meldet das nicht
+ * zuverlässig. Ohne diese Prüfung blieb nach einem Kontowechsel auf
+ * demselben Gerät die Mitarbeiter-ID des vorigen Kontos gemerkt – das
+ * Urlaubskonto stand dann auf „0 von 0“ und die V-Tage-Kachel fehlte.
+ * Deshalb wird vor jeder Nutzung mit der aktuellen Sitzung verglichen
+ * (aus dem Cookie, ohne Netzwerk).
+ */
+export async function currentIdentity(): Promise<Identity | null> {
+  if (!isSupabaseConfigured) return null;
   watchAuthChanges();
 
+  const {
+    data: { session },
+  } = await createClient().auth.getSession();
+  const sitzungFuer = session?.user?.id ?? null;
+  if (pending && pendingFuer !== sitzungFuer) pending = null;
+
   if (!pending) {
+    pendingFuer = sitzungFuer;
     pending = (async () => {
       const supabase = createClient();
       const {
@@ -66,6 +85,7 @@ export function currentIdentity(): Promise<Identity | null> {
       // Bei einem Fehler nicht dauerhaft merken – der nächste Versuch soll
       // es erneut probieren dürfen.
       pending = null;
+      pendingFuer = null;
       throw caught;
     });
   }
