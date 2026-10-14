@@ -10,6 +10,7 @@ import { roleLabels } from "@/lib/nav";
 import { signOut } from "@/lib/auth/actions";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
+import { forgetIdentity } from "@/lib/supabase/identity";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -187,6 +188,7 @@ export function Topbar() {
                   onSubmit={() => {
                     setAnsicht(null);
                     leereZwischenspeicher();
+                    forgetIdentity();
                     vergissAenderungsstand();
                   }}
                   className="border-t border-line pt-1"

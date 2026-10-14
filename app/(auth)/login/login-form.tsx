@@ -10,6 +10,7 @@ import { signIn } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
+import { forgetIdentity } from "@/lib/supabase/identity";
 
 const initialState: FormState = {};
 
@@ -20,6 +21,7 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
   // Nichts vom vorigen Benutzer soll im Tab übrig bleiben.
   useEffect(() => {
     leereZwischenspeicher();
+    forgetIdentity();
     vergissAenderungsstand();
   }, []);
 
