@@ -497,3 +497,9 @@ begin
   return ergebnis;
 end;
 $$;
+
+-- Datenschutzerklärung Fassung 2.6: Abschnitt 8a (persönlicher
+-- Schichtkalender ohne Unternehmen).
+update public.legal_versions
+   set version = '2.6', valid_from = current_date
+ where doc = 'datenschutz';

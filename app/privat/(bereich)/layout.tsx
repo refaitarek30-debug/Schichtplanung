@@ -9,6 +9,8 @@ import { getPrivatKonto } from "@/lib/privat/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOut } from "@/lib/auth/actions";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = { title: "Mein Schichtkalender – Schichtplan", robots: { index: false, follow: false } };
 
 /**
