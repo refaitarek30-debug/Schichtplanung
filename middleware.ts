@@ -94,6 +94,9 @@ export async function middleware(request: NextRequest) {
   // hier nicht zur Anmeldeseite umleiten.
   if (pathname.startsWith("/partner/")) return NextResponse.next();
 
+  // Kalender-Abo: Der Kalender des Handys ruft den Link ohne Anmeldung ab.
+  if (pathname.startsWith("/abo/")) return NextResponse.next();
+
   const { response, user, dienstGestoert } = await updateSession(request);
 
   // Antwortet Supabase nicht, ist unbekannt, wer da klopft. Geschützte

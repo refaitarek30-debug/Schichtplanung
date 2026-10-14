@@ -11,6 +11,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
 import { PrivacySettingsPanel } from "./privacy-settings-panel";
 import { StartSeiteCard } from "@/components/settings/start-seite-card";
+import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -66,6 +67,8 @@ export default function SettingsPage() {
       </Card>
 
       {mode === "live" ? <StartSeiteCard /> : null}
+
+      {mode === "live" ? <KalenderAboCard /> : null}
 
       {mode === "live" ? (
         <Card>
