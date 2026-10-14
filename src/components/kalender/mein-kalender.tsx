@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Mic, Plus, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
@@ -20,8 +20,6 @@ import {
   type TerminEingabe,
 } from "./termine";
 import { KalenderTeilen } from "./teilen";
-import { SprachBlatt } from "./sprache";
-import { hatFunktion } from "@/lib/data/abo";
 import {
   PARTNER_FARBE,
   PartnerBlatt,
@@ -422,23 +420,7 @@ export function MeinKalender() {
   // ---- Auswahl, Sprechblase, Blätter ------------------------------------
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [blase, setBlase] = useState<{ oben: number; pfeil: number; unten: boolean } | null>(null);
-  const [terminBlatt, setTerminBlatt] = useState<{
-    datum: string;
-    termin: Termin | null;
-    vorlage?: TerminEingabe;
-  } | null>(null);
-  // Termin per Sprache – nur, wenn für diese Person freigeschaltet.
-  const [spracheFrei, setSpracheFrei] = useState(false);
-  const [sprechen, setSprechen] = useState(false);
-  useEffect(() => {
-    let aktiv = true;
-    void hatFunktion("termin_sprache").then((ja) => {
-      if (aktiv) setSpracheFrei(ja);
-    });
-    return () => {
-      aktiv = false;
-    };
-  }, []);
+  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<string | null>(null);
   const flaeche = useRef<HTMLDivElement>(null);
 
@@ -634,16 +616,6 @@ export function MeinKalender() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {spracheFrei ? (
-            <button
-              type="button"
-              onClick={() => setSprechen(true)}
-              aria-label="Termin sprechen"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-brand-600 ring-1 ring-inset ring-line"
-            >
-              <Mic className="h-[18px] w-[18px]" />
-            </button>
-          ) : null}
           <button
             type="button"
             onClick={() => setEinladen(true)}
@@ -850,7 +822,6 @@ export function MeinKalender() {
         <TerminBlatt
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
-          vorlage={terminBlatt.vorlage}
           hinweis={
             terminBlatt.termin?.vonPartner
               ? "Von deinem Partner eingetragen. Ihr seht ihn beide."
@@ -883,18 +854,6 @@ export function MeinKalender() {
             setPartnerBlatt(null);
             setEinladen(true);
           }}
-        />
-      ) : null}
-
-      {sprechen ? (
-        <SprachBlatt
-          onVorschlag={(v) => {
-            setSprechen(false);
-            const d = fromISO(v.datum);
-            setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
-            setTerminBlatt({ datum: v.datum, termin: null, vorlage: v });
-          }}
-          onClose={() => setSprechen(false)}
         />
       ) : null}
 

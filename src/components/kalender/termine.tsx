@@ -100,7 +100,6 @@ const eingabe =
 export function TerminBlatt({
   datum,
   termin,
-  vorlage,
   onSpeichern,
   onLoeschen,
   hinweis,
@@ -109,8 +108,6 @@ export function TerminBlatt({
 }: {
   datum: string;
   termin: Termin | null;
-  /** Vorschlag für einen neuen Termin (z. B. aus der Spracheingabe). */
-  vorlage?: TerminEingabe;
   onSpeichern: (t: TerminEingabe) => void;
   onLoeschen: (id: string) => void;
   /** Zeile unter den Feldern – wer den Termin sieht. */
@@ -120,16 +117,15 @@ export function TerminBlatt({
   onClose: () => void;
 }) {
   const id = useId();
-  const start = termin ?? vorlage;
-  const [titel, setTitel] = useState(start?.titel ?? "");
-  const [ganz, setGanz] = useState(start?.ganztaegig ?? false);
-  const [von, setVon] = useState(start?.von || "12:00");
-  const [bis, setBis] = useState(start?.bis || "13:00");
-  const [wdh, setWdh] = useState<Wiederholung>(start?.wiederholung ?? "nie");
-  const [notiz, setNotiz] = useState(start?.notiz ?? "");
-  const [ort, setOrt] = useState(start?.ort ?? "");
+  const [titel, setTitel] = useState(termin?.titel ?? "");
+  const [ganz, setGanz] = useState(termin?.ganztaegig ?? false);
+  const [von, setVon] = useState(termin?.von ?? "12:00");
+  const [bis, setBis] = useState(termin?.bis ?? "13:00");
+  const [wdh, setWdh] = useState<Wiederholung>(termin?.wiederholung ?? "nie");
+  const [notiz, setNotiz] = useState(termin?.notiz ?? "");
+  const [ort, setOrt] = useState(termin?.ort ?? "");
 
-  const tag = start?.datum ?? datum;
+  const tag = termin?.datum ?? datum;
 
   function speichern(e: React.FormEvent) {
     e.preventDefault();
