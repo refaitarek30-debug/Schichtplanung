@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isSupabaseConfigured, isProductionMisconfigured } from "@/lib/supabase/config";
 import { updateSession } from "@/lib/supabase/middleware";
-import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE, IDLE_TIMEOUT_MS } from "@/lib/auth/idle";
+import {
+  ACTIVITY_COOKIE,
+  ACTIVITY_COOKIE_MAX_AGE,
+  FRIST_COOKIE,
+  fristAusCookie,
+} from "@/lib/auth/idle";
 
 /**
  * Alles unter diesen Pfaden setzt eine Anmeldung voraus.
@@ -20,6 +25,7 @@ const PROTECTED_PREFIXES = [
   "/mitteilungen",
   "/krank",
   "/dashboard",
+  "/start",
   "/kalender",
   "/schichtplan",
   "/urlaub",
@@ -109,7 +115,7 @@ export async function middleware(request: NextRequest) {
 
   if (user) {
     const zuletzt = Number(request.cookies.get(ACTIVITY_COOKIE)?.value);
-    if (Number.isFinite(zuletzt) && Date.now() - zuletzt > IDLE_TIMEOUT_MS) {
+    if (Number.isFinite(zuletzt) && Date.now() - zuletzt > fristAusCookie(request.cookies.get(FRIST_COOKIE)?.value)) {
       return abmelden(request);
     }
   }
@@ -127,7 +133,7 @@ export async function middleware(request: NextRequest) {
   // Produktseite unter "/": sie gehen direkt in die Anwendung.
   if (user && (AUTH_PATHS.includes(pathname) || pathname === "/")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/start";
     url.search = "";
     return merkeAktivitaet(NextResponse.redirect(url));
   }

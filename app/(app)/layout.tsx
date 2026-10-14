@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { IdleLogout } from "@/components/layout/idle-logout";
+import { StartWeiterleitung } from "@/components/layout/start-weiterleitung";
+import { FRIST_NACH_ROLLE } from "@/lib/auth/idle";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
@@ -38,7 +40,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {/* Die Abmeldefrist laeuft auch waehrend der Datenschutzabfrage. Sonst
           bliebe ein unbeaufsichtigtes Geraet mit offener Sitzung stehen,
           nur weil die Abfrage noch nicht beantwortet ist. */}
-      <IdleLogout />
+      <IdleLogout fristMs={FRIST_NACH_ROLLE[session.profile.role]} />
+      <StartWeiterleitung startSeite={session.profile.startSeite ?? null} />
       {privacyOnboardingRequired ? (
         <PrivacyOnboarding />
       ) : (

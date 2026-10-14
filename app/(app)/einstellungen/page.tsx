@@ -10,6 +10,7 @@ import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
 import { PrivacySettingsPanel } from "./privacy-settings-panel";
+import { StartSeiteCard } from "@/components/settings/start-seite-card";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -63,6 +64,8 @@ export default function SettingsPage() {
           <ThemeToggle />
         </CardBody>
       </Card>
+
+      {mode === "live" ? <StartSeiteCard /> : null}
 
       {mode === "live" ? (
         <Card>

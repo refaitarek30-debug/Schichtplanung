@@ -240,7 +240,7 @@ export default function AvvPage() {
           <li>
             <strong>Zugang:</strong> Anmeldung über persönliche Konten mit E-Mail und Passwort
             (Passwörter nur als Hash); Begrenzung von Anmelde-, Zurücksetzen- und
-            Registrierungsversuchen; automatische Abmeldung nach 10 Minuten ohne Aktivität.
+            Registrierungsversuchen; automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden).
           </li>
           <li>
             <strong>Zugriff und Trennung:</strong> Mandantentrennung durch eine
