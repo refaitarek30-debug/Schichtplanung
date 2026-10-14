@@ -433,6 +433,35 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
+      <Abschnitt titel="8a. Persönlicher Schichtkalender ohne Unternehmen">
+        <Absatz>
+          Wer sich ohne Unternehmen für den persönlichen Schichtkalender registriert, nutzt
+          Schichtplan als Privatperson. <strong>Verantwortlich ist dann der Betreiber</strong>{" "}
+          (Abschnitt 1), nicht ein Arbeitgeber; ein Arbeitgeber hat keinen Zugriff auf diese
+          Daten.
+        </Absatz>
+        <Liste>
+          <li>Name, E-Mail-Adresse, Passwort (nur als Hash) und Zeitpunkt der Registrierung</li>
+          <li>
+            die eigenen Schichtarten (Name, Kürzel, Farbe, Uhrzeit, Stunden) und die eingetragenen
+            Tage, Bundesland für die Feiertage, optional die Wochenstunden für die Auswertung
+          </li>
+          <li>
+            optional Termine, Partner-Link und Kalender-Abo wie in Abschnitt 8 beschrieben. Ein
+            Eintrag „Krank“ ist eine freiwillige eigene Angabe; die Vertrauensperson sieht ihn
+            nur als „Urlaub“, das Kalender-Abo als „Abwesend“
+          </li>
+        </Liste>
+        <Absatz>
+          Rechtsgrundlage ist die Bereitstellung des gewünschten Dienstes (Art. 6 Abs. 1 lit. b
+          DSGVO), für eigene Angaben zu Krankheit die ausdrückliche Einwilligung durch das
+          Eintragen selbst (Art. 9 Abs. 2 lit. a DSGVO), jederzeit widerrufbar durch Löschen des
+          Eintrags. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
+          das Konto lässt sich unter <em>Mehr → Konto löschen</em> jederzeit selbst endgültig
+          löschen. Es gibt keine Werbung, kein Tracking und keine Weitergabe.
+        </Absatz>
+      </Abschnitt>
+
       <Abschnitt titel="9. Empfänger, Dienstleister und Drittlandbezug">
         <Absatz>
           Für Betrieb und Auslieferung setzt der Betreiber Dienstleister als

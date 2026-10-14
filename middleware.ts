@@ -41,9 +41,13 @@ const PROTECTED_PREFIXES = [
   "/einrichtung",
   "/profil",
   "/hilfe",
+  "/privat",
 ];
 
-const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren"];
+const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren", "/privat/registrieren"];
+
+/** Öffentlich, obwohl unter einem geschützten Pfad. */
+const OEFFENTLICH = ["/privat/registrieren"];
 
 /** Zeitpunkt der letzten Aktivität auf der Antwort festhalten. */
 function merkeAktivitaet(response: NextResponse): NextResponse {
@@ -105,7 +109,8 @@ export async function middleware(request: NextRequest) {
   // Cookies bleiben liegen: sobald der Dienst wieder da ist, läuft die
   // bestehende Sitzung weiter, ohne erneute Anmeldung.
   if (dienstGestoert) {
-    const isProtectedPath = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    const isProtectedPath =
+      !OEFFENTLICH.includes(pathname) && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
     if (!isProtectedPath) return response;
 
     const url = request.nextUrl.clone();
@@ -123,7 +128,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isProtected =
+    !OEFFENTLICH.includes(pathname) && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone();
