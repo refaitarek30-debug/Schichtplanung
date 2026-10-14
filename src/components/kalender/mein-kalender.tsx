@@ -12,6 +12,13 @@ import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher"
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TerminBlatt, termineAm, useTermine, type Termin } from "./termine";
+import {
+  PARTNER_FARBE,
+  PartnerBlatt,
+  partnerText,
+  usePartnerTage,
+  type PartnerSchicht,
+} from "./partner";
 
 /**
  * Mein Kalender – der eigene Schichtplan als Monat.
@@ -22,13 +29,17 @@ import { TerminBlatt, termineAm, useTermine, type Termin } from "./termine";
  * bewusst nicht – zwei Wege zum selben Plan laufen irgendwann auseinander.
  *
  * Tippen auf einen Tag öffnet eine Sprechblase mit Schicht, Uhrzeit und
- * Stunden. Von dort lässt sich ein eigener Termin eintragen (nur auf
- * diesem Gerät). Anträge laufen bewusst nicht über den Kalender – er ist
- * Übersicht und Terminkalender, beantragt wird im Schichtplan und unter
- * Urlaub.
+ * Stunden. Von dort lassen sich eigene Termine und die Arbeitstage des
+ * Partners eintragen (beides nur auf diesem Gerät). Anträge laufen bewusst
+ * nicht über den Kalender – er ist Übersicht und Terminkalender, beantragt
+ * wird im Schichtplan und unter Urlaub.
  */
 
 const WOCHENTAGE = ["M", "D", "M", "D", "F", "S", "S"];
+
+// Kleine Handys (Bildschirmhöhe bis 700 px, z. B. iPhone SE) bekommen über
+// `[@media(max-height:700px)]:` etwas engere Abstände, damit Schicht,
+// Partner und Termin auch dort in eine Zelle passen.
 const WOCHENTAG_LANG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
 /** Farben wie im Schichtplan. */
@@ -224,11 +235,14 @@ export function MeinKalender() {
 
   // ---- Termine (nur auf diesem Gerät) ---------------------------------
   const { termine, speichern, loeschen } = useTermine(profile.id);
+  // ---- Arbeitstage des Partners (ebenfalls nur auf diesem Gerät) -------
+  const { tage: partnerTage, setzen: partnerSetzen } = usePartnerTage(profile.id);
 
   // ---- Auswahl, Sprechblase, Blätter ------------------------------------
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
   const [blase, setBlase] = useState<{ oben: number; pfeil: number; unten: boolean } | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
+  const [partnerBlatt, setPartnerBlatt] = useState<string | null>(null);
   const flaeche = useRef<HTMLDivElement>(null);
 
   // Auf dem Handy steht der Kalender fest – die Seite dahinter soll nicht
@@ -392,9 +406,9 @@ export function MeinKalender() {
         "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px]",
       )}
     >
-      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3 sm:px-6 lg:px-0">
+      <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3 sm:px-6 lg:px-0 [@media(max-height:700px)]:pb-1 [@media(max-height:700px)]:pt-1.5">
         <div className="min-w-0">
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight">
+          <h1 className="text-[32px] font-bold leading-tight tracking-tight [@media(max-height:700px)]:text-[26px]">
             {monthName(monat.monat)}
           </h1>
           <p className="tnum text-[13px] font-medium text-ink-muted">{monat.jahr}</p>
@@ -471,34 +485,44 @@ export function MeinKalender() {
           const istHeute = iso === heute;
           const wochenende = i % 7 >= 5;
           const ts = termineAm(termine, iso);
+          const partner = partnerTage[iso] ?? null;
           return (
             <button
               key={iso}
               type="button"
               onClick={(e) => tagAntippen(iso, e.currentTarget)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${partner ? `, Partner: ${partnerText(partner, true)}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
-                "flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t border-line px-[2px] pb-1 pt-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+                "flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t border-line px-[2px] pb-1 pt-1 text-center [@media(max-height:700px)]:gap-[2px] [@media(max-height:700px)]:pt-0.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
                 wochenende && "bg-surface-muted/70",
                 istHeute && "bg-ink/[0.07]",
                 gewaehlt === iso && "ring-2 ring-inset ring-brand-500",
               )}
             >
-              <span
-                className={cn(
-                  "tnum mx-auto flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-[16px] leading-none",
-                  istHeute ? "bg-ink font-bold text-surface" : imM ? "font-medium" : "text-ink-faint",
-                )}
-              >
-                {d.getDate()}
+              <span className="relative mx-auto shrink-0">
+                <span
+                  className={cn(
+                    "tnum flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[16px] leading-none [@media(max-height:700px)]:h-5 [@media(max-height:700px)]:min-w-5 [@media(max-height:700px)]:text-[14px]",
+                    istHeute ? "bg-ink font-bold text-surface" : imM ? "font-medium" : "text-ink-faint",
+                  )}
+                >
+                  {d.getDate()}
+                </span>
+                {/* Kleine Handys: statt der Terminzeile nur ein Punkt an der Zahl. */}
+                {ts.length ? (
+                  <span
+                    aria-hidden
+                    className="absolute -right-1.5 top-0 hidden h-1.5 w-1.5 rounded-full bg-brand-500 [@media(max-height:700px)]:block"
+                  />
+                ) : null}
               </span>
               {sichtbar
                 ? kaestchen(info).map((k, j) => (
                     <span
                       key={j}
                       className={cn(
-                        "truncate rounded-md px-0.5 py-[3px] text-[12.5px] font-medium leading-tight",
+                        "shrink-0 truncate rounded-md px-0.5 py-[3px] text-[12.5px] font-medium leading-tight [@media(max-height:700px)]:py-[2px] [@media(max-height:700px)]:text-[12px]",
                         k.klasse,
                         !imM && "opacity-45",
                       )}
@@ -509,10 +533,22 @@ export function MeinKalender() {
                 : (
                     <span className="h-5 animate-pulse rounded-md bg-surface-sunken" />
                   )}
+              {partner ? (
+                // Partner: nur Umriss – gefüllt sind die eigenen Schichten.
+                <span
+                  className={cn(
+                    "shrink-0 truncate rounded-md px-0.5 py-px text-[11px] font-semibold leading-tight ring-[1.5px] ring-inset",
+                    PARTNER_FARBE[partner],
+                    !imM && "opacity-45",
+                  )}
+                >
+                  {partnerText(partner)}
+                </span>
+              ) : null}
               {ts.length ? (
                 <span
                   className={cn(
-                    "truncate text-left text-[11px] leading-tight text-ink-muted",
+                    "shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted [@media(max-height:700px)]:hidden",
                     !imM && "opacity-45",
                   )}
                 >
@@ -554,8 +590,13 @@ export function MeinKalender() {
                 info={gewaehltInfo}
                 schicht={gewaehltInfo.schichtName ? uhrzeit.get(gewaehltInfo.schichtName) : undefined}
                 termine={gewaehltTermine}
+                partner={partnerTage[gewaehlt] ?? null}
                 onTermin={(t) => {
                   setTerminBlatt({ datum: gewaehlt, termin: t });
+                  blaseZu();
+                }}
+                onPartner={() => {
+                  setPartnerBlatt(gewaehlt);
                   blaseZu();
                 }}
               />
@@ -580,6 +621,18 @@ export function MeinKalender() {
         />
       ) : null}
 
+      {partnerBlatt ? (
+        <PartnerBlatt
+          datum={partnerBlatt}
+          aktuell={partnerTage[partnerBlatt] ?? null}
+          onWahl={(code, anzahl) => {
+            partnerSetzen(partnerBlatt, anzahl, code);
+            setPartnerBlatt(null);
+          }}
+          onClose={() => setPartnerBlatt(null)}
+        />
+      ) : null}
+
     </div>
   );
 }
@@ -597,13 +650,17 @@ function Sprechblase({
   info,
   schicht,
   termine,
+  partner,
   onTermin,
+  onPartner,
 }: {
   iso: string;
   info: TagInfo;
   schicht: ShiftDetail | undefined;
   termine: Termin[];
+  partner: PartnerSchicht | null;
   onTermin: (t: Termin | null) => void;
+  onPartner: () => void;
 }) {
   const d = fromISO(iso);
   const abw = info.abwesenheit;
@@ -662,6 +719,24 @@ function Sprechblase({
         </p>
       ) : null}
 
+      {partner ? (
+        <button
+          type="button"
+          onClick={onPartner}
+          className="flex w-full items-center gap-3 border-t border-line py-2.5 text-left text-[15px]"
+        >
+          <span
+            className={cn(
+              "rounded-md px-2 py-0.5 text-[13px] font-semibold ring-[1.5px] ring-inset",
+              PARTNER_FARBE[partner],
+            )}
+          >
+            {partnerText(partner)}
+          </span>
+          <span className="text-ink-muted">Partner: {partnerText(partner, true)}</span>
+        </button>
+      ) : null}
+
       {termine.length ? (
         <ul className="border-t border-line py-1">
           {termine.map((t) => (
@@ -681,14 +756,22 @@ function Sprechblase({
         </ul>
       ) : null}
 
-      <div className="-mx-4 border-t border-line">
+      <div className="-mx-4 grid grid-cols-2 border-t border-line">
         <button
           type="button"
           onClick={() => onTermin(null)}
-          className="flex w-full items-center justify-center gap-2 py-3.5 text-[15px] font-semibold text-ink-muted"
+          className="flex items-center justify-center gap-2 py-3.5 text-[15px] font-semibold text-ink-muted"
         >
           <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
           Termin
+        </button>
+        <button
+          type="button"
+          onClick={onPartner}
+          className="flex items-center justify-center gap-2 border-l border-line py-3.5 text-[15px] font-semibold text-ink-muted"
+        >
+          <Plus className="h-5 w-5 text-ink" strokeWidth={2} />
+          Partner
         </button>
       </div>
     </div>
