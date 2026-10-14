@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Heart, Mail, MessageCircle, Share2, X } from "lucide-react";
+import { Check, Copy, Mail, MessageCircle, Share2, X } from "lucide-react";
 import { formatZeitpunkt } from "@/lib/dates";
 import {
   beendePartnerLink,
@@ -180,11 +180,8 @@ export function KalenderTeilen({ vorname, onClose }: { vorname: string; onClose:
           </button>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-6 text-center">
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-4">
             <Avatar text={(vorname || "D").slice(0, 1).toUpperCase()} name={vorname || "Du"} farbe="bg-brand-500" gross />
-            <span className="mb-10 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-crit-dot shadow-sm">
-              <Heart className="h-5 w-5 fill-current" />
-            </span>
             <Avatar text="P" name="Partner" farbe="bg-shift-frueh-ink" />
           </div>
           <h2 className="mt-8 text-[30px] font-bold tracking-tight">Kalender teilen</h2>

@@ -165,7 +165,9 @@ export interface PartnerKalender {
 export const LINK_UNGUELTIG = "Dieser Link ist nicht mehr gültig.";
 
 function linkFehler(error: Parameters<typeof dataErrorMessage>[0] & { code?: string }, standard: string): never {
-  if (error?.code === "P0002") throw new PartnerFehler(LINK_UNGUELTIG);
+  // PT404 = „nicht gefunden“ (HTTP 404). P0002 lieferte die Datenbank bis
+  // 14.10. – als HTTP 500, was in den Protokollen wie ein Serverfehler aussah.
+  if (error?.code === "PT404" || error?.code === "P0002") throw new PartnerFehler(LINK_UNGUELTIG);
   fehler(error, standard);
 }
 
