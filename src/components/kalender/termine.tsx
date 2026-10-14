@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Trash2 } from "lucide-react";
 import { formatDE, fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -202,7 +203,10 @@ export function TerminBlatt({
     });
   }
 
-  return (
+  // An den Body gehängt: der Kalender steht auf dem Handy fest (eigene
+  // Ebene unter der Navigation) – im Kalender selbst läge das Blatt sonst
+  // unter der Navigationsleiste, und „Speichern“ wäre nicht zu erreichen.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
       <button
         type="button"
@@ -347,6 +351,7 @@ export function TerminBlatt({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }
