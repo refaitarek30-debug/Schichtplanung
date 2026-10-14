@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Share2 } from "lucide-react";
-import { formatDE, formatZeitpunkt } from "@/lib/dates";
-import {
-  beendePartnerLink,
-  erstellePartnerLink,
-  fetchPartnerLinkStatus,
-  type PartnerCode,
-  type PartnerLinkStatus,
-} from "@/lib/data/partner";
+import { formatDE } from "@/lib/dates";
+import type { PartnerCode } from "@/lib/data/partner";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +22,7 @@ export const PARTNER_SCHICHTEN: { code: PartnerSchicht; text: string; lang: stri
   { code: "S", text: "Spät", lang: "Spätschicht" },
   { code: "N", text: "Nacht", lang: "Nachtschicht" },
   { code: "T", text: "Arbeit", lang: "Arbeitstag" },
+  { code: "U", text: "Urlaub", lang: "Urlaub" },
   { code: "X", text: "Frei", lang: "Frei" },
 ];
 
@@ -43,6 +37,7 @@ export const PARTNER_FARBE: Record<PartnerSchicht, string> = {
   S: "ring-shift-spaet-ink/70 text-shift-spaet-ink",
   N: "ring-shift-nacht-ink/70 text-shift-nacht-ink",
   T: "ring-brand-600/70 text-brand-700",
+  U: "ring-shift-urlaub-ink/70 text-shift-urlaub-ink",
   X: "ring-line text-ink-faint",
 };
 
@@ -52,6 +47,7 @@ export const VOLL_FARBE: Record<PartnerSchicht, string> = {
   S: "bg-shift-spaet text-shift-spaet-ink",
   N: "bg-shift-nacht text-shift-nacht-ink",
   T: "bg-brand-100 text-brand-700",
+  U: "bg-shift-urlaub text-shift-urlaub-ink",
   X: "bg-surface-sunken text-ink-muted",
 };
 
@@ -129,7 +125,7 @@ export function PartnerBlatt({
         </div>
 
         <div className="space-y-4 px-5 py-4">
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {PARTNER_SCHICHTEN.map((s) => (
               <button
                 key={s.code}
@@ -137,7 +133,7 @@ export function PartnerBlatt({
                 onClick={() => onWahl(s.code, anzahl)}
                 aria-pressed={aktuell === s.code}
                 className={cn(
-                  "rounded-xl py-4 text-[14px] font-semibold",
+                  "rounded-xl py-3.5 text-[15px] font-semibold",
                   VOLL_FARBE[s.code],
                   aktuell === s.code && "ring-2 ring-brand-500 ring-offset-2 ring-offset-surface",
                 )}
@@ -189,205 +185,6 @@ export function PartnerBlatt({
             type="button"
             onClick={onClose}
             className="h-14 flex-1 text-[16px] font-semibold text-ink-muted"
-          >
-            Schließen
-          </button>
-        </div>
-      </div>
-    </Blatt>,
-    document.body,
-  );
-}
-
-/** Einladungslink erstellen, teilen, beenden. */
-export function PartnerEinladen({ onClose }: { onClose: () => void }) {
-  const [status, setStatus] = useState<PartnerLinkStatus | null>(null);
-  const [link, setLink] = useState<string | null>(null);
-  const [fehler, setFehler] = useState<string | null>(null);
-  const [laeuft, setLaeuft] = useState(false);
-  const [kopiert, setKopiert] = useState(false);
-  const [sicherBeenden, setSicherBeenden] = useState(false);
-
-  useEffect(() => {
-    let aus = false;
-    fetchPartnerLinkStatus()
-      .then((s) => !aus && setStatus(s))
-      .catch((e: unknown) => !aus && setFehler(e instanceof Error ? e.message : "Fehler beim Laden."));
-    return () => {
-      aus = true;
-    };
-  }, []);
-
-  async function erstellen() {
-    setLaeuft(true);
-    setFehler(null);
-    try {
-      const schluessel = await erstellePartnerLink();
-      setLink(`${window.location.origin}/partner/${schluessel}`);
-      setStatus(await fetchPartnerLinkStatus());
-    } catch (e) {
-      setFehler(e instanceof Error ? e.message : "Der Link konnte nicht erstellt werden.");
-    } finally {
-      setLaeuft(false);
-    }
-  }
-
-  async function beenden() {
-    setLaeuft(true);
-    setFehler(null);
-    try {
-      await beendePartnerLink();
-      setLink(null);
-      setSicherBeenden(false);
-      setStatus(await fetchPartnerLinkStatus());
-    } catch (e) {
-      setFehler(e instanceof Error ? e.message : "Der Zugang konnte nicht beendet werden.");
-    } finally {
-      setLaeuft(false);
-    }
-  }
-
-  async function kopieren() {
-    if (!link) return;
-    try {
-      await navigator.clipboard.writeText(link);
-      setKopiert(true);
-      setTimeout(() => setKopiert(false), 2500);
-    } catch {
-      setFehler("Kopieren ging nicht – bitte den Link oben markieren und kopieren.");
-    }
-  }
-
-  async function teilen() {
-    if (!link) return;
-    try {
-      await navigator.share({ title: "Mein Schichtplan", text: "Hier siehst du meinen Schichtplan und kannst deine Arbeitstage eintragen:", url: link });
-    } catch {
-      // abgebrochen – nichts zu tun
-    }
-  }
-
-  const kannTeilen = typeof navigator !== "undefined" && typeof navigator.share === "function";
-
-  return createPortal(
-    <Blatt>
-      <button
-        type="button"
-        aria-label="Schließen"
-        className="absolute inset-0 cursor-default bg-black/40"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-label="Partner einladen"
-        className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl"
-      >
-        <div className="bg-surface-sunken px-5 py-4">
-          <p className="text-[17px] font-semibold">Partner einladen</p>
-        </div>
-
-        <div className="space-y-4 px-5 py-4 text-[14px] leading-relaxed">
-          <ul className="space-y-1.5 text-ink-muted">
-            <li>✓ Dein Partner sieht deinen Schichtplan – Früh, Spät, Nacht, Frei.</li>
-            <li>✓ Er trägt seine Arbeitstage selbst ein, du siehst sie hier.</li>
-            <li>✗ Urlaub, Krankheit, Kollegen und alles andere sieht er nicht.</li>
-          </ul>
-
-          {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-crit-fg">{fehler}</p> : null}
-
-          {link ? (
-            <div className="space-y-2 rounded-2xl border border-line p-3">
-              <p className="text-[13px] font-semibold">Dein Link – nur jetzt sichtbar:</p>
-              <p className="select-all break-all rounded-lg bg-surface-muted px-3 py-2 font-mono text-[12px]">{link}</p>
-              <div className="flex gap-2">
-                {kannTeilen ? (
-                  <button
-                    type="button"
-                    onClick={teilen}
-                    className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 font-semibold text-white"
-                  >
-                    <Share2 className="h-4 w-4" /> Teilen
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={kopieren}
-                  className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-surface-muted font-semibold text-brand-600"
-                >
-                  {kopiert ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  {kopiert ? "Kopiert" : "Kopieren"}
-                </button>
-              </div>
-              <p className="text-[12px] text-ink-faint">
-                Wer den Link hat, sieht deinen Plan. Gib ihn nur deinem Partner.
-              </p>
-            </div>
-          ) : status === null && !fehler ? (
-            <p className="text-ink-muted">wird geladen …</p>
-          ) : status?.aktiv ? (
-            <div className="space-y-1 rounded-2xl border border-line p-3">
-              <p className="font-semibold">Dein Partner hat Zugang.</p>
-              <p className="text-[13px] text-ink-muted">
-                Link erstellt am {status.erstelltAm ? formatZeitpunkt(status.erstelltAm) : "–"}
-                {status.zuletztGenutzt
-                  ? ` · zuletzt geöffnet am ${formatZeitpunkt(status.zuletztGenutzt)}`
-                  : " · noch nicht geöffnet"}
-              </p>
-            </div>
-          ) : null}
-
-          {!link && status ? (
-            <button
-              type="button"
-              disabled={laeuft}
-              onClick={erstellen}
-              className="h-12 w-full rounded-xl bg-brand-500 text-[15px] font-semibold text-white disabled:opacity-60"
-            >
-              {status.aktiv ? "Neuen Link erstellen" : "Einladungslink erstellen"}
-            </button>
-          ) : null}
-          {!link && status?.aktiv ? (
-            <p className="text-[12px] text-ink-faint">
-              Ein neuer Link ersetzt den alten – der alte funktioniert dann nicht mehr.
-            </p>
-          ) : null}
-
-          {status?.aktiv ? (
-            sicherBeenden ? (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={laeuft}
-                  onClick={beenden}
-                  className="h-11 flex-1 rounded-xl bg-crit-bg font-semibold text-crit-fg"
-                >
-                  Ja, Zugang beenden
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSicherBeenden(false)}
-                  className="h-11 flex-1 rounded-xl bg-surface-muted font-semibold text-ink-muted"
-                >
-                  Abbrechen
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSicherBeenden(true)}
-                className="text-[14px] font-semibold text-crit-fg"
-              >
-                Zugang beenden
-              </button>
-            )
-          ) : null}
-        </div>
-
-        <div className="border-t border-line pb-[env(safe-area-inset-bottom)]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-14 w-full text-[16px] font-semibold text-ink-muted"
           >
             Schließen
           </button>

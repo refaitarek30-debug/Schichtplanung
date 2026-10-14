@@ -93,18 +93,22 @@ function BildPartner() {
         <span className="flex min-w-0 flex-1 items-center gap-1 truncate rounded-lg bg-surface-muted px-2 py-1 font-mono text-[10px] text-ink-muted">
           <Link2 className="h-3 w-3 shrink-0" /> …/partner/k3x9…
         </span>
-        <span className="rounded-lg bg-brand-500 px-2 py-1 text-[11px] font-semibold text-white">Teilen</span>
+        <span className="rounded-lg bg-brand-500 px-2 py-1 text-[11px] font-semibold text-white">Einladen</span>
       </div>
       <div className="grid grid-cols-4 gap-1 rounded-2xl border border-line bg-surface p-2">
         {[
           ["Früh", F, "Arbeit"],
           ["Spät", S, "Arbeit"],
-          ["Nacht", N, "Frei"],
-          ["Frei", X, "Arbeit"],
+          ["Urlaub", "bg-shift-urlaub text-shift-urlaub-ink", "Frei"],
+          ["Frei", X, "Urlaub"],
         ].map(([a, k, p], i) => (
           <div key={i} className="space-y-0.5">
             <Kaestchen t={a!} k={k!} />
-            <Kaestchen t={p!} k="ring-brand-600/70 text-brand-700" umriss />
+            <Kaestchen
+              t={p!}
+              k={p === "Urlaub" ? "ring-shift-urlaub-ink/70 text-shift-urlaub-ink" : "ring-brand-600/70 text-brand-700"}
+              umriss
+            />
           </div>
         ))}
       </div>
@@ -114,18 +118,18 @@ function BildPartner() {
 
 const SCHRITTE = [
   {
-    titel: "Dein Monat auf einen Blick",
-    text: "Hier steht nur dein eigener Schichtplan. Wischen oder die Pfeile wechseln den Monat.",
+    titel: "Dein Kalender",
+    text: "Deine Schichten im Monat. Wischen wechselt den Monat.",
     bild: <BildMonat />,
   },
   {
-    titel: "Tag antippen",
-    text: "Du siehst Schicht, Uhrzeit und Stunden. Trag eigene Termine ein – sie bleiben nur auf deinem Handy.",
+    titel: "Termine",
+    text: "Tag antippen – Termine eintragen, ansehen und ändern.",
     bild: <BildBlase />,
   },
   {
-    titel: "Partner einladen",
-    text: "Oben auf das Personen-Symbol: Dein Partner bekommt einen Link, sieht deinen Plan (ohne Urlaub oder Krankheit) und trägt seine Arbeit selbst ein. Mit „Partner“ neben dem Monat blendest du sie aus.",
+    titel: "Mit deinem Partner",
+    text: "Oben auf das Personen-Symbol tippen und einladen. Ihr seht beide eure Schichten, Urlaub und Termine.",
     bild: <BildPartner />,
   },
 ];

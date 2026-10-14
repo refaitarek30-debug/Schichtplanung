@@ -11,17 +11,30 @@ import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { TerminBlatt, termineAm, useTermine, type Termin } from "./termine";
+import {
+  TerminBlatt,
+  alteLokaleTermine,
+  termineAm,
+  vergissLokaleTermine,
+  type Termin,
+  type TerminEingabe,
+} from "./termine";
+import { KalenderTeilen } from "./teilen";
 import {
   PARTNER_FARBE,
   PartnerBlatt,
-  PartnerEinladen,
   alteLokalePartnerTage,
   partnerText,
   vergissLokalePartnerTage,
   type PartnerSchicht,
 } from "./partner";
-import { fetchMeinePartnerTage, setzeMeinePartnerTage } from "@/lib/data/partner";
+import {
+  fetchMeinePartnerTage,
+  fetchMeineTermine,
+  loescheTermin,
+  setzeMeinePartnerTage,
+  speichereTermin,
+} from "@/lib/data/partner";
 import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
@@ -287,7 +300,65 @@ export function MeinKalender() {
   }, [schichten]);
 
   // ---- Termine (nur auf diesem Gerät) ---------------------------------
-  const { termine, speichern, loeschen } = useTermine(profile.id);
+  // In der Datenbank: eigene und die des Partners (0139).
+  const [termine, setTermine] = useState<Termin[]>([]);
+  const ladeTermine = useCallback(async () => {
+    try {
+      setTermine(await fetchMeineTermine());
+    } catch {
+      // Termine sind Beiwerk – der Kalender steht auch ohne sie.
+    }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void ladeTermine();
+    // Termine des Partners kommen von seinem Handy – beim Zurückkehren holen.
+    const sichtbar = () => {
+      if (document.visibilityState === "visible") void ladeTermine();
+    };
+    document.addEventListener("visibilitychange", sichtbar);
+    return () => document.removeEventListener("visibilitychange", sichtbar);
+  }, [ladeTermine]);
+  // Termine lagen anfangs nur im Browser – einmal übernehmen.
+  useEffect(() => {
+    const alt = alteLokaleTermine(profile.id);
+    if (!alt) return;
+    let aus = false;
+    void (async () => {
+      try {
+        for (const t of alt) {
+          if (aus) return;
+          await speichereTermin(t);
+        }
+        vergissLokaleTermine(profile.id);
+        if (!aus) void ladeTermine();
+      } catch {
+        // beim nächsten Öffnen noch einmal
+      }
+    })();
+    return () => {
+      aus = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile.id]);
+  async function terminSpeichern(t: TerminEingabe) {
+    try {
+      await speichereTermin(t);
+      setFehler(null);
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gespeichert werden.");
+    }
+    void ladeTermine();
+  }
+  async function terminLoeschen(id: string) {
+    try {
+      await loescheTermin(id);
+      setFehler(null);
+    } catch (err) {
+      setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gelöscht werden.");
+    }
+    void ladeTermine();
+  }
   // ---- Arbeitstage des Partners (Datenbank, nur Inhaber + Partner) -----
   const [partnerZeigen, setPartnerZeigen] = useLokaleEinstellung(
     `schichtplan.partner-zeigen.${profile.id}`,
@@ -300,7 +371,7 @@ export function MeinKalender() {
     setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
   }, []);
   // Einführung (drei Fenster) beim ersten Öffnen.
-  const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung.${profile.id}`, false, true);
+  const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
   async function partnerSetzen(von: string, anzahl: number, code: PartnerSchicht | null) {
     try {
       await setzeMeinePartnerTage(von, anzahl, code);
@@ -647,7 +718,12 @@ export function MeinKalender() {
                     !imM && "opacity-45",
                   )}
                 >
-                  <span className="mr-0.5 inline-block h-1.5 w-1.5 rounded-full bg-ink-faint align-middle" />
+                  <span
+                    className={cn(
+                      "mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle",
+                      ts[0]!.vonPartner ? "bg-brand-500" : "bg-ink-faint",
+                    )}
+                  />
                   {ts[0]!.titel || "Termin"}
                   {ts.length > 1 ? ` +${ts.length - 1}` : ""}
                 </span>
@@ -704,12 +780,17 @@ export function MeinKalender() {
         <TerminBlatt
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
+          hinweis={
+            terminBlatt.termin?.vonPartner
+              ? "Von deinem Partner eingetragen. Ihr seht ihn beide."
+              : "Dein Partner sieht deine Termine nur, wenn du sie beim Teilen freigibst."
+          }
           onSpeichern={(t) => {
-            speichern(t);
+            void terminSpeichern(t);
             setTerminBlatt(null);
           }}
           onLoeschen={(id) => {
-            loeschen(id);
+            void terminLoeschen(id);
             setTerminBlatt(null);
           }}
           onClose={() => setTerminBlatt(null)}
@@ -734,11 +815,11 @@ export function MeinKalender() {
         />
       ) : null}
 
-      {einladen ? <PartnerEinladen onClose={() => setEinladen(false)} /> : null}
+      {einladen ? <KalenderTeilen vorname={profile.firstName} onClose={() => setEinladen(false)} /> : null}
 
       {!einfuehrungGesehen ? (
         <KalenderEinfuehrung
-          onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung.${profile.id}`, true)}
+          onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true)}
         />
       ) : null}
 
@@ -855,7 +936,14 @@ function Sprechblase({
                 onClick={() => onTermin(t)}
                 className="flex w-full items-baseline justify-between gap-3 py-2 text-left text-[15px]"
               >
-                <span className="min-w-0 truncate">{t.titel || "Ohne Titel"}</span>
+                <span className="min-w-0 truncate">
+                  {t.titel || "Ohne Titel"}
+                  {t.vonPartner ? (
+                    <span className="ml-1.5 rounded bg-brand-50 px-1 py-px text-[11px] font-semibold text-brand-700">
+                      Partner
+                    </span>
+                  ) : null}
+                </span>
                 <span className="tnum shrink-0 text-[13px] text-ink-muted">
                   {t.ganztaegig ? "Ganztägig" : `${t.von} – ${t.bis}`}
                 </span>
