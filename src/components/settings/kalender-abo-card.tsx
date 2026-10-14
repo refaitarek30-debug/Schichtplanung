@@ -7,7 +7,7 @@ import { formatZeitpunkt } from "@/lib/dates";
 import { ABO_TEILE, type AboTeil } from "@/lib/abo/ics";
 import { beendeAbo, erstelleAbo, fetchAboStatus, hatKalenderAbo, type AboStatus } from "@/lib/data/abo";
 
-const TEILE: AboTeil[] = ["frueh", "spaet", "nacht", "frei"];
+const TEILE: AboTeil[] = ["frueh", "spaet", "nacht", "frei", "termine"];
 
 const webcal = (basis: string, teil: AboTeil) => (basis + ABO_TEILE[teil].datei).replace(/^https?:/, "webcal:");
 
@@ -98,7 +98,7 @@ export function KalenderAboCard() {
           </p>
         ) : (
           <p className="text-ink-muted">
-            Schichten, Urlaub und Schulungen erscheinen im Kalender. Keine Kollegen, keine Gründe für Abwesenheit.
+            Schichten, Urlaub, Schulungen und deine eigenen Termine erscheinen im Kalender. Keine Kollegen, keine Gründe für Abwesenheit.
             Wer den Link kennt, sieht deinen Plan – gib ihn nicht weiter.
           </p>
         )}
@@ -128,7 +128,7 @@ export function KalenderAboCard() {
               <p className="font-medium">Lieber eigene Farben je Schicht?</p>
               <p className="text-xs text-ink-muted">
                 Auf dem iPhone hat jeder Kalender genau eine Farbe. Statt des Kalenders oben abonnierst du dann diese
-                vier einzeln – jeder bekommt seine Farbe (änderbar in der Kalender-App unter „Kalender“).
+                einzeln – jeder bekommt seine Farbe (änderbar in der Kalender-App unter „Kalender“).
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {TEILE.map((teil) => (

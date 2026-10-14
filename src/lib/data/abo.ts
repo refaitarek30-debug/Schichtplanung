@@ -16,11 +16,18 @@ function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string)
   throw new AboFehler(dataErrorMessage(error) ?? standard);
 }
 
-export async function hatKalenderAbo(): Promise<boolean> {
+/** Ist eine noch nicht allgemein freigegebene Funktion für mich frei? */
+export async function hatFunktion(name: "kalender_abo" | "termin_sprache"): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
-  const { data, error } = await createClient().rpc("hat_funktion", { p_name: "kalender_abo" });
-  return !error && data === true;
+  try {
+    const { data, error } = await createClient().rpc("hat_funktion", { p_name: name });
+    return !error && data === true;
+  } catch {
+    return false;
+  }
 }
+
+export const hatKalenderAbo = () => hatFunktion("kalender_abo");
 
 export async function fetchAboStatus(): Promise<AboStatus> {
   const { data, error } = await createClient().rpc("abo_status");

@@ -407,11 +407,22 @@ export default function DatenschutzPage() {
           <strong>Kalender-Abo:</strong> Eine Person kann ihren Plan als Kalender-Link
           (iCalendar) in die Kalender-App ihres Handys übernehmen. Der Link enthält Schichten
           mit Uhrzeit sowie Urlaub, Schulung und sonstige Abwesenheit – letztere nur als
-          „Abwesend“, <strong>ohne Grund</strong>. Keine Kolleginnen und Kollegen, keine
-          Termine. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
+          „Abwesend“, <strong>ohne Grund</strong>, sowie die eigenen Termine aus{" "}
+          <em>Mein Kalender</em> (nicht die der Vertrauensperson). Keine Kolleginnen und
+          Kollegen. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
           der Link erstellt, zuletzt abgerufen und beendet wurde. Was die Kalender-App des
           Handys bzw. deren Anbieter (z. B. Apple, Google) mit den abgerufenen Daten macht,
           richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.{" "}
+          <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
+        </Absatz>
+        <Absatz>
+          <strong>Termin per Sprache:</strong> Wer einen Termin spricht oder einen Satz dazu
+          eintippt, schickt diesen Satz zusammen mit dem heutigen Datum und dem eigenen
+          Schichtplan der nächsten sechs Wochen (Schichtnamen und -zeiten, freie Tage; Abwesenheiten
+          nur als „frei“, ohne Grund) an den KI-Dienst Anthropic (Abschnitt 9). Zurück kommt ein
+          Terminvorschlag; eingetragen wird erst, wenn die Person ihn im Terminformular speichert.
+          Der Satz selbst wird in der Anwendung nicht gespeichert. Die Funktion ist freiwillig;
+          bitte keine Gesundheitsangaben oder Daten anderer Personen diktieren.{" "}
           <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
         </Absatz>
         <Absatz>
@@ -451,18 +462,28 @@ export default function DatenschutzPage() {
             oder Abwesenheitsdaten der Anwendung.
           </li>
           <li>
+            <strong>Anthropic</strong> (Anthropic, PBC, USA) – KI-Auswertung bei „Termin per
+            Sprache“ (Abschnitt 8): nur der diktierte Satz und der dafür nötige eigene
+            Schichtplan, nur wenn die Person die Funktion nutzt.{" "}
+            <Platzhalter>
+              AVV/Datenverarbeitungsbedingungen und Aufbewahrung bei Anthropic prüfen und bestätigen
+            </Platzhalter>
+          </li>
+          <li>
             <strong>Mailversand:</strong>{" "}
             <Platzhalter>SMTP-Anbieter, Sitz, Region – oder streichen, falls kein externer Anbieter</Platzhalter>
           </li>
         </Liste>
         <Absatz>
-          <strong>Drittlandbezug:</strong> Supabase, Inc. und Vercel, Inc. haben Sitz in den
-          USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
-          ausgeschlossen werden kann, stützt er sich auf einen Angemessenheitsbeschluss der
+          <strong>Drittlandbezug:</strong> Supabase, Inc., Vercel, Inc. und Anthropic, PBC
+          haben Sitz in den USA. Die Verarbeitung durch Supabase und Vercel erfolgt in der EU;
+          die KI-Auswertung bei Anthropic kann in den USA stattfinden. Soweit Daten in ein
+          Drittland gelangen oder ein Zugriff von dort nicht ausgeschlossen werden kann, stützt
+          sich das auf einen Angemessenheitsbeschluss der
           Europäischen Kommission (EU-US Data Privacy Framework) oder auf
           Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.{" "}
           <Platzhalter>
-            Betreiber: Abschluss der Auftragsverarbeitungsverträge mit Supabase, Vercel und
+            Betreiber: Abschluss der Auftragsverarbeitungsverträge mit Supabase, Vercel, Anthropic und
             Mailanbieter sowie aktuellen Zertifizierungs-/Klauselstand prüfen und bestätigen
           </Platzhalter>
         </Absatz>

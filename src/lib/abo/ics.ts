@@ -23,7 +23,20 @@ export interface AboTag {
  * Teilkalender. Auf dem iPhone hat jeder Kalender genau eine Farbe – wer
  * Früh, Spät und Nacht farbig getrennt sehen will, abonniert sie einzeln.
  */
-export type AboTeil = "alles" | "frueh" | "spaet" | "nacht" | "frei";
+export type AboTeil = "alles" | "frueh" | "spaet" | "nacht" | "frei" | "termine";
+
+/** Eigener Termin aus „Mein Kalender“ (abo_termine, Migration 0145). */
+export interface AboTermin {
+  id: string;
+  datum: string; // YYYY-MM-DD
+  titel: string;
+  ganztaegig: boolean;
+  beginn: string | null; // HH:MM
+  ende: string | null; // HH:MM
+  wiederholung: "nie" | "taeglich" | "woechentlich" | "monatlich";
+  notiz: string;
+  ort: string;
+}
 
 export const ABO_TEILE: Record<AboTeil, { datei: string; name: string; farbe: string; css: string }> = {
   alles: { datei: "plan.ics", name: "Schichtplan", farbe: "#2F5BEA", css: "royalblue" },
@@ -31,6 +44,14 @@ export const ABO_TEILE: Record<AboTeil, { datei: string; name: string; farbe: st
   spaet: { datei: "spaet.ics", name: "Spätschicht", farbe: "#16A34A", css: "green" },
   nacht: { datei: "nacht.ics", name: "Nachtschicht", farbe: "#2563EB", css: "blue" },
   frei: { datei: "urlaub.ics", name: "Urlaub & Abwesenheit", farbe: "#9333EA", css: "purple" },
+  termine: { datei: "termine.ics", name: "Meine Termine", farbe: "#0D9488", css: "teal" },
+};
+
+const RRULE: Record<AboTermin["wiederholung"], string | null> = {
+  nie: null,
+  taeglich: "FREQ=DAILY",
+  woechentlich: "FREQ=WEEKLY",
+  monatlich: "FREQ=MONTHLY",
 };
 
 export function teilAusDatei(datei: string): AboTeil | null {
@@ -57,7 +78,7 @@ export function schichtTeil(t: Pick<AboTag, "name" | "von">): "frueh" | "spaet" 
   return "nacht";
 }
 
-function teilVon(t: AboTag): Exclude<AboTeil, "alles"> {
+function teilVon(t: AboTag): Exclude<AboTeil, "alles" | "termine"> {
   return t.art === "schicht" ? schichtTeil(t) : "frei";
 }
 
@@ -100,7 +121,40 @@ function zeitStempel(jetzt: Date): string {
   return jetzt.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 }
 
-export function baueIcs(tage: AboTag[], teil: AboTeil = "alles", jetzt: Date = new Date()): string {
+function plusStunde(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  return `${String((h + 1) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+function terminZeilen(t: AboTermin, stempel: string): string[] {
+  const zeit = /^\d{2}:\d{2}$/;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t.datum)) return [];
+  const ev = ["BEGIN:VEVENT", `UID:termin-${t.id}@schichtplan`, `DTSTAMP:${stempel}`];
+  if (!t.ganztaegig && t.beginn && zeit.test(t.beginn)) {
+    const ende = t.ende && zeit.test(t.ende) ? t.ende : plusStunde(t.beginn);
+    const endTag = ende <= t.beginn ? plusTage(t.datum, 1) : t.datum;
+    ev.push(
+      `DTSTART:${ohneStriche(t.datum)}T${t.beginn.replace(":", "")}00`,
+      `DTEND:${ohneStriche(endTag)}T${ende.replace(":", "")}00`,
+    );
+  } else {
+    ev.push(`DTSTART;VALUE=DATE:${ohneStriche(t.datum)}`, `DTEND;VALUE=DATE:${ohneStriche(plusTage(t.datum, 1))}`);
+  }
+  const regel = RRULE[t.wiederholung];
+  if (regel) ev.push(`RRULE:${regel}`);
+  ev.push(`SUMMARY:${icsText(t.titel || "Termin")}`);
+  if (t.ort) ev.push(`LOCATION:${icsText(t.ort)}`);
+  if (t.notiz) ev.push(`DESCRIPTION:${icsText(t.notiz)}`);
+  ev.push(`COLOR:${ABO_TEILE.termine.css}`, "END:VEVENT");
+  return ev;
+}
+
+export function baueIcs(
+  tage: AboTag[],
+  teil: AboTeil = "alles",
+  jetzt: Date = new Date(),
+  termine: AboTermin[] = [],
+): string {
   const kopf = ABO_TEILE[teil];
   const zeilen: string[] = [
     "BEGIN:VCALENDAR",
@@ -147,6 +201,10 @@ export function baueIcs(tage: AboTag[], teil: AboTeil = "alles", jetzt: Date = n
     }
     ev.push(`COLOR:${ABO_TEILE[eigenerTeil].css}`, "END:VEVENT");
     zeilen.push(...ev);
+  }
+
+  if (teil === "alles" || teil === "termine") {
+    for (const t of termine) zeilen.push(...terminZeilen(t, stempel));
   }
 
   zeilen.push("END:VCALENDAR");
