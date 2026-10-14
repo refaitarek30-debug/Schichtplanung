@@ -230,6 +230,20 @@ export function MeinKalender() {
   const [blase, setBlase] = useState<{ oben: number; pfeil: number; unten: boolean } | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
   const flaeche = useRef<HTMLDivElement>(null);
+
+  // Auf dem Handy steht der Kalender fest – die Seite dahinter soll nicht
+  // mitscrollen (sonst zieht der Finger beim Wischen den Rahmen mit).
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) return;
+    const html = document.documentElement;
+    const vorher = { html: html.style.overflow, body: document.body.style.overflow };
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = vorher.html;
+      document.body.style.overflow = vorher.body;
+    };
+  }, []);
   const blaseRef = useRef<HTMLDivElement>(null);
   const gewischt = useRef(false);
   const blaseZelle = useRef<{ oben: number; unten: number } | null>(null);
@@ -370,10 +384,12 @@ export function MeinKalender() {
   return (
     <div
       className={cn(
-        // Randlos auf dem Handy: die Seitenränder des Rahmens zurücknehmen
-        // und die Höhe bis zur Navigation unten ausfüllen.
-        "-mx-4 -mt-6 flex flex-col sm:-mx-6 lg:mx-0 lg:mt-0",
-        "h-[calc(100dvh-4rem-3.75rem-env(safe-area-inset-bottom))] min-h-[520px] lg:h-[calc(100dvh-7rem)]",
+        // Handy: genau ein Bildschirm, fest zwischen Kopfleiste (4rem) und
+        // Navigation unten. Nichts scrollt, nichts schiebt den Kalender weg
+        // – auch nicht der Installationshinweis darüber. Ab Desktop steht
+        // er normal im Seitenrahmen.
+        "fixed inset-x-0 top-16 bottom-[calc(3.85rem+env(safe-area-inset-bottom))] z-10 flex flex-col bg-surface-muted",
+        "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px]",
       )}
     >
       <div className="flex items-center justify-between gap-3 px-4 pb-2 pt-3 sm:px-6 lg:px-0">
