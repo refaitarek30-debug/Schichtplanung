@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
+  CalendarHeart,
   ArrowRight,
   BadgeCheck,
   Bell,
@@ -131,6 +132,7 @@ const ROLLEN = [
       "Eigene Schichten und den Plan der Gruppe sehen",
       "Urlaub direkt aus dem Plan beantragen",
       "Stand von Anträgen und Urlaubskonto jederzeit abrufbar",
+      "Eigener Kalender mit Terminen, auf Wunsch mit dem Partner geteilt",
     ],
   },
 ];
@@ -148,6 +150,7 @@ const FUNKTIONSUEBERSICHT: { icon: ReactNode; text: string }[] = [
   { icon: <Bell className="h-4 w-4" />, text: "Benachrichtigungen und Mitteilungen in der Anwendung" },
   { icon: <Download className="h-4 w-4" />, text: "Export des Schichtplans als Tabellendatei (CSV)" },
   { icon: <CalendarDays className="h-4 w-4" />, text: "Feiertage nach Bundesland, Schulferien im Plan" },
+  { icon: <CalendarHeart className="h-4 w-4" />, text: "Persönlicher Kalender mit Terminen, Partner per Link einladen" },
   { icon: <Smartphone className="h-4 w-4" />, text: "Auf dem Handy als App installierbar, mit Dunkelmodus" },
   { icon: <ShieldCheck className="h-4 w-4" />, text: "Datenschutz-Einstellungen je Mitarbeiter" },
 ];

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/config";
 import { heuteInBerlin } from "@/lib/dates";
-import { baueIcs, type AboTag } from "@/lib/abo/ics";
+import { baueIcs, teilAusDatei, type AboTag } from "@/lib/abo/ics";
 
 /**
  * Öffentlicher Kalender-Abo-Link. Der Schlüssel im Link ist der einzige
@@ -33,12 +33,13 @@ async function hole(token: string, von: string): Promise<{ status: number; tage:
   return { status: 200, tage: (await antwort.json()) as AboTag[] };
 }
 
-export async function GET(_anfrage: Request, { params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export async function GET(_anfrage: Request, { params }: { params: Promise<{ token: string; datei: string }> }) {
+  const { token, datei } = await params;
   const text = (s: string, status: number) =>
     new NextResponse(s, { status, headers: { ...KOPF, "Content-Type": "text/plain; charset=utf-8" } });
 
-  if (!/^[0-9a-f]{32,128}$/.test(token)) return text("Dieser Link ist nicht mehr gültig.", 404);
+  const teil = teilAusDatei(datei);
+  if (!teil || !/^[0-9a-f]{32,128}$/.test(token)) return text("Dieser Link ist nicht mehr gültig.", 404);
   if (!isSupabaseConfigured) return text("Der Dienst ist gerade nicht erreichbar.", 503);
 
   // Zwei Abfragen: 14 Tage zurück bis rund drei Monate voraus.
@@ -49,12 +50,12 @@ export async function GET(_anfrage: Request, { params }: { params: Promise<{ tok
       if (r.status === 404) return text("Dieser Link ist nicht mehr gültig.", 404);
       if (r.status !== 200) return text("Der Plan konnte gerade nicht geladen werden.", 503);
     }
-    const ics = baueIcs([...a.tage, ...b.tage]);
+    const ics = baueIcs([...a.tage, ...b.tage], teil);
     return new NextResponse(ics, {
       headers: {
         ...KOPF,
         "Content-Type": "text/calendar; charset=utf-8",
-        "Content-Disposition": 'inline; filename="schichtplan.ics"',
+        "Content-Disposition": `inline; filename="${datei}"`,
       },
     });
   } catch {

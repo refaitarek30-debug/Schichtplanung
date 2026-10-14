@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Eye, LogOut, UserRound, X } from "lucide-react";
+import { ChevronDown, Cog, Eye, LogOut, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
@@ -107,6 +107,14 @@ export function Topbar() {
               >
                 <UserRound className="h-4 w-4" strokeWidth={1.8} />
                 Mein Profil
+              </Link>
+              <Link
+                href="/einstellungen"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted"
+              >
+                <Cog className="h-4 w-4" strokeWidth={1.8} />
+                Einstellungen
               </Link>
 
               {mode === "demo" ? (
