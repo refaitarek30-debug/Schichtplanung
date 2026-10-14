@@ -27,13 +27,6 @@ export default async function LoginPage({
         </Alert>
       ) : null}
 
-      {params.fehler === "inaktiv" ? (
-        <Alert tone="warning" className="mt-4">
-          Du wurdest nach 10 Minuten ohne Aktivität automatisch abgemeldet. Bitte melde
-          dich erneut an.
-        </Alert>
-      ) : null}
-
       {params.fehler === "link" || params.fehler === "abgelaufen" || params.fehler === "verbraucht" ? (
         <Alert tone="error" className="mt-4">
           {params.fehler === "verbraucht"

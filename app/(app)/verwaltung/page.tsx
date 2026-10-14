@@ -2,18 +2,19 @@
 
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CakeSlice, Layers, Scale, Users } from "lucide-react";
+import { CakeSlice, Layers, Scale, Users, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Alert } from "@/components/ui/alert";
 import { EmployeesView } from "@/components/admin/employees-view";
 import { ShiftsView } from "@/components/admin/shifts-view";
 import { RulesView } from "@/components/admin/rules-view";
+import { TeamUebersicht } from "@/components/admin/team-uebersicht";
 import { AgeLeaveTable } from "../altersfreizeit/age-leave-table";
 import { useSession } from "@/context/session";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type Bereich = "mitarbeiter" | "schichten" | "regeln" | "altersfreizeit";
+type Bereich = "mitarbeiter" | "schichtgruppen" | "schichten" | "regeln" | "altersfreizeit";
 
 const BEREICHE: {
   wert: Bereich;
@@ -22,6 +23,8 @@ const BEREICHE: {
   roles: Role[];
 }[] = [
   { wert: "mitarbeiter", label: "Mitarbeiter", icon: Users, roles: ["shift_leader", "admin"] },
+  // Früher „Meine Schichten“ im Hauptmenü – dort steht jetzt der Kalender.
+  { wert: "schichtgruppen", label: "Schichtgruppen", icon: UsersRound, roles: ["shift_leader", "admin"] },
   { wert: "schichten", label: "Schichten", icon: Layers, roles: ["admin"] },
   { wert: "regeln", label: "Regeln", icon: Scale, roles: ["admin"] },
   // Die Menge der Altersfreizeit wird Person für Person festgelegt und
@@ -105,6 +108,8 @@ function VerwaltungInhalt() {
 
       {aktiv === "mitarbeiter" ? (
         <EmployeesView />
+      ) : aktiv === "schichtgruppen" ? (
+        <TeamUebersicht />
       ) : aktiv === "schichten" ? (
         <ShiftsView />
       ) : aktiv === "altersfreizeit" ? (

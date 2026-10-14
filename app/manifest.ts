@@ -42,7 +42,7 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       { name: "Schichtplan", url: "/schichtplan" },
       { name: "Urlaub beantragen", url: "/urlaub" },
-      { name: "Meine Schichten", url: "/meine-schichten" },
+      { name: "Mein Kalender", url: "/meine-schichten" },
     ],
   };
 }

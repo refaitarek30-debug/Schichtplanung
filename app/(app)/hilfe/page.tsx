@@ -70,6 +70,11 @@ const guides: { id: string; label: string; forRole: string[]; steps: Step[] }[] 
         title: "3. Deine eigene Zeile finden",
         body: "Deine Schichtgruppe (A, B, C oder D) steht als Überschrift. Suche deinen Namen – die Kästchen in deiner Zeile sind dein persönlicher Plan.",
       },
+      {
+        icon: CalendarDays,
+        title: "4. Oder: nur deinen Monat im Kalender",
+        body: "Unten auf „Kalender“ tippen. Dort steht nur dein eigener Plan als Monat. Wischen oder die Pfeile wechseln den Monat. Ein Tipp auf einen Tag zeigt Schicht und Uhrzeit – dort kannst du auch einen eigenen Termin eintragen (nur auf deinem Gerät gespeichert).",
+      },
     ],
   },
   {

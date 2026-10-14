@@ -1,6 +1,7 @@
 import {
   CakeSlice,
   CalendarDays,
+  CalendarRange,
   ClipboardCheck,
   Cog,
   Layers,
@@ -10,7 +11,6 @@ import {
   Megaphone,
   Palmtree,
   ScrollText,
-  Timer,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -54,10 +54,13 @@ export const navItems: NavItem[] = [
     primary: true,
   },
   {
+    // Der eigene Schichtplan als Monatskalender. Die Adresse ist die alte
+    // von „Meine Schichten“ – Lesezeichen und die installierte App zeigen
+    // dorthin. Die Teamübersicht von damals steht unter Verwaltung.
     href: "/meine-schichten",
-    label: "Meine Schichten",
-    short: "Schichten",
-    icon: Timer,
+    label: "Mein Kalender",
+    short: "Kalender",
+    icon: CalendarRange,
     roles: ["employee", "shift_leader", "admin"],
     primary: true,
   },
