@@ -10,6 +10,7 @@ import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { hatFunktionServer } from "@/lib/server/funktion";
+import { GlasProfil } from "@/components/layout/glas-profil";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -50,7 +51,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {/* Die Abmeldefrist laeuft auch waehrend der Datenschutzabfrage. Sonst
           bliebe ein unbeaufsichtigtes Geraet mit offener Sitzung stehen,
           nur weil die Abfrage noch nicht beantwortet ist. */}
-      {glasLeiste ? <span hidden data-glas-leiste /> : null}
+      {glasLeiste ? (
+        <>
+          <span hidden data-glas-leiste />
+          <GlasProfil />
+        </>
+      ) : null}
       <IdleLogout fristMs={FRIST_NACH_ROLLE[session.profile.role]} />
       <StartWeiterleitung startSeite={session.profile.startSeite ?? null} />
       {privacyOnboardingRequired ? (

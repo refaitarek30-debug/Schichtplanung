@@ -364,7 +364,7 @@ body {
  * data-glas-seite enthält; alle anderen Seiten bleiben unverändert.
  */
 @media (max-width: 1023px) {
-  body:has([data-glas-seite]) [data-app-topbar] {
+  body:has([data-glas-seite], [data-glas-leiste]) [data-app-topbar] {
     display: none;
   }
   body:has([data-glas-seite], [data-glas-leiste]) [data-mobile-nav] {
@@ -419,5 +419,32 @@ body {
       top: 4rem;
       padding-top: 0.25rem;
     }
+  }
+}
+
+/*
+ * Alle Seiten (Handy, nur freigeschaltet): Farbverlauf als Grund, Apple-Schrift,
+ * große Seitenüberschrift und oben eine freie Zeile für den runden Profil-Knopf
+ * (data-glas-profil, fest am oberen Rand). Der Kalender hat seine eigene
+ * Kopfzeile mit eigenem Profil-Knopf.
+ */
+@media (max-width: 1023px) {
+  body:has([data-glas-leiste]) {
+    background-image: var(--glas-hinter);
+    background-attachment: fixed;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+  }
+  body:has([data-glas-leiste]) main {
+    padding-top: calc(max(0.5rem, env(safe-area-inset-top)) + 2.9rem);
+  }
+  body:has([data-glas-leiste]) main h1 {
+    font-size: 1.875rem;
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  body:has([data-glas-seite]) [data-glas-profil] {
+    display: none;
   }
 }
