@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="14. Oktober 2026"
+      updated="15. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -136,7 +136,10 @@ export default function DatenschutzPage() {
           <li>Kommentare im Schichtplan (Freitext, siehe Abschnitt 7)</li>
           <li>Freigaben zur Sichtbarkeit von Abwesenheitsgründen (Abschnitt 5)</li>
           <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite oder die beim Öffnen gewählte Startseite</li>
-          <li>Persönlicher Kalender: eigene Termine, Partner-Link und Kalender-Abo (Abschnitt 8)</li>
+          <li>
+            Persönlicher Kalender: eigene Termine, eigene Farben und eigene Einträge, Partner-Link und
+            Kalender-Abo (Abschnitt 8)
+          </li>
         </Liste>
 
         <Absatz className="pt-1">
@@ -371,7 +374,7 @@ export default function DatenschutzPage() {
       <Abschnitt titel="8. Persönlicher Kalender, Partner-Link und Kalender-Abo">
         <Absatz>
           Unter <em>Mein Kalender</em> sieht jede Person ihren eigenen Plan und kann freiwillig
-          zusätzliche Angaben machen. Alle drei Funktionen sind freiwillig; wer sie nicht nutzt,
+          zusätzliche Angaben machen. Alle diese Funktionen sind freiwillig; wer sie nicht nutzt,
           hat keinen Nachteil, und es werden dafür keine Daten gespeichert.
         </Absatz>
         <Absatz>
@@ -380,6 +383,20 @@ export default function DatenschutzPage() {
           wenn sie das beim Partner-Link ausdrücklich einschaltet – ihr Partner. Kolleginnen und
           Kollegen, Schichtleitung und Administration des Unternehmens haben keinen Zugriff; die
           Datenbank lässt Abfragen darauf nur für die Person selbst zu.
+        </Absatz>
+        <Absatz>
+          <strong>Eigene Farben und eigene Einträge:</strong> In der neueren Ansicht von{" "}
+          <em>Mein Kalender</em> kann eine Person die Farben ihrer Schichten und Abwesenheiten für
+          sich ändern und eigene Einträge anlegen, zum Beispiel „Nebenjob“ oder „Schicht getauscht“
+          (Name, Kürzel, Farbe, auf Wunsch eine Uhrzeit), und einzelnen Tagen zuordnen. Das ist
+          eine rein persönliche Ergänzung: Der Schichtplan, die Besetzung, die Urlaubs- und
+          Stundenkonten und die Auswertungen des Unternehmens werden davon nicht verändert. Die
+          Farben und Einträge sieht nur die Person selbst – keine Kolleginnen und Kollegen, keine
+          Schichtleitung und keine Administration des Unternehmens; die Datenbank lässt Abfragen
+          und Änderungen darauf nur für die Person selbst zu. Sie erscheinen weder im Partner-Link
+          noch im Kalender-Abo. Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
+          oder Angaben zu anderen Personen enthalten.{" "}
+          <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
         </Absatz>
         <Absatz>
           <strong>Partner-Link:</strong> Eine Person kann einer Vertrauensperson (z. B. Partnerin
@@ -525,8 +542,9 @@ export default function DatenschutzPage() {
             Fehlermeldungen nach 90 Tagen, Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
-            Persönlicher Kalender (Abschnitt 8): eigene Termine und die Einträge der
-            Vertrauensperson bleiben, bis die Person sie löscht oder ihr Zugang gelöscht wird.
+            Persönlicher Kalender (Abschnitt 8): eigene Termine, eigene Farben und eigene
+            Einträge sowie die Einträge der Vertrauensperson bleiben, bis die Person sie löscht
+            oder ihr Zugang gelöscht wird.
             Ein beendeter Partner-Link oder ein beendetes Kalender-Abo funktioniert sofort
             nicht mehr.
           </li>
