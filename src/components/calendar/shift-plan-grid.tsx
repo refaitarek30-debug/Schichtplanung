@@ -1430,6 +1430,7 @@ export function ShiftPlanGrid({
         <div
           role="dialog"
           aria-label="Tag bearbeiten"
+          data-ueber-leiste
           className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[65vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -1582,6 +1583,7 @@ export function ShiftPlanGrid({
         <div
           role="dialog"
           aria-label="Kommentare"
+          data-ueber-leiste
           className="fixed inset-x-0 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto max-h-[60vh] max-w-2xl overflow-y-auto rounded-t-2xl border border-line bg-surface px-3 py-3 shadow-pop sm:px-4 lg:bottom-4 lg:rounded-2xl"
         >
           <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium">
