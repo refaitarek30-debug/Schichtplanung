@@ -310,7 +310,7 @@ export function PrivatKalender() {
         // Genau ein Bildschirm: zwischen Statusleiste und schwebender Leiste.
         "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6",
         pinselAn
-          ? "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+9.4rem)]"
+          ? "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+10.2rem)]"
           : "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
       )}
     >
@@ -437,9 +437,9 @@ export function PrivatKalender() {
       </div>
 
       {pinselAn && schichtarten ? (
-        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto max-w-3xl rounded-[24px] px-2.5 py-2">
+        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto flex h-[5.2rem] max-w-3xl touch-none flex-col justify-center overflow-hidden rounded-[24px] px-2.5">
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
+            <div className="flex min-w-0 flex-1 touch-pan-x gap-1.5 overflow-x-auto overflow-y-hidden overscroll-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {schichtarten.map((a) => (
                 <button
                   key={a.id}
@@ -448,7 +448,7 @@ export function PrivatKalender() {
                   aria-pressed={pinsel === a.id}
                   className={cn(
                     "h-10 shrink-0 rounded-[13px] px-3.5 text-[13.5px] font-semibold transition-transform",
-                    pinsel === a.id ? "scale-105 ring-2 ring-ink/80 ring-offset-2 ring-offset-surface" : "opacity-90",
+                    pinsel === a.id ? "ring-2 ring-inset ring-ink/80 shadow-md" : "opacity-80",
                   )}
                   style={farbStil(a.farbe)}
                 >
@@ -461,7 +461,7 @@ export function PrivatKalender() {
                 aria-pressed={pinsel === "leer"}
                 className={cn(
                   "flex h-10 shrink-0 items-center gap-1 rounded-[13px] bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold text-ink-muted",
-                  pinsel === "leer" && "ring-2 ring-ink/80 ring-offset-2 ring-offset-surface",
+                  pinsel === "leer" && "ring-2 ring-inset ring-ink/80",
                 )}
               >
                 <Eraser className="h-4 w-4" /> Leeren
@@ -476,8 +476,8 @@ export function PrivatKalender() {
               <X className="h-5 w-5" />
             </button>
           </div>
-          <p className="px-1 pt-1 text-[11.5px] text-ink-muted">
-            Tage antippen. Urlaub und Krank kommen zur Schicht dazu, statt sie zu ersetzen.
+          <p className="truncate px-1 pt-0.5 text-[11.5px] text-ink-muted">
+            Tage antippen · Urlaub und Krank kommen zur Schicht dazu
           </p>
         </div>
       ) : null}
