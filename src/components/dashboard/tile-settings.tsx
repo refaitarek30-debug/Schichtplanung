@@ -34,39 +34,22 @@ export function kachelSichtbar(gespeichert: Set<string>, key: string, optIn = fa
  * Sie wirkt sofort und wird im Hintergrund gespeichert; scheitert das
  * Speichern, sagt die Karte es, statt still zum alten Stand zu springen.
  */
-export function TileSettings({
+export function KachelListe({
   profileId,
   optionen,
   versteckt,
   onChange,
+  blatt = false,
 }: {
   profileId: string;
   optionen: TileOption[];
   versteckt: Set<string>;
   onChange: (naechste: Set<string>) => void;
+  /** Im Profil-Fenster: größere Zeilen ohne eigenen Rahmen. */
+  blatt?: boolean;
 }) {
-  const [offen, setOffen] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const box = useRef<HTMLDivElement>(null);
-
-  // Klick daneben und Escape schließen das Menü – sonst bleibt es beim
-  // Weiterscrollen offen über dem Inhalt stehen.
-  useEffect(() => {
-    if (!offen) return;
-    function beiKlick(e: MouseEvent) {
-      if (box.current && !box.current.contains(e.target as Node)) setOffen(false);
-    }
-    function beiTaste(e: KeyboardEvent) {
-      if (e.key === "Escape") setOffen(false);
-    }
-    document.addEventListener("mousedown", beiKlick);
-    document.addEventListener("keydown", beiTaste);
-    return () => {
-      document.removeEventListener("mousedown", beiKlick);
-      document.removeEventListener("keydown", beiTaste);
-    };
-  }, [offen]);
 
   function umschalten(key: string, optIn = false) {
     const naechste = new Set(versteckt);
@@ -94,6 +77,70 @@ export function TileSettings({
     });
   }
 
+  return (
+    <>
+      {optionen.map((o) => {
+        const an = kachelSichtbar(versteckt, o.key, o.optIn);
+        return (
+          <label
+            key={o.key}
+            className={cn(
+              "flex cursor-pointer items-center gap-2.5 rounded-lg px-2 hover:bg-surface-muted",
+              blatt ? "py-2.5 text-[15px]" : "py-1.5 text-[13px]",
+              pending && "opacity-60",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={an}
+              onChange={() => umschalten(o.key, o.optIn)}
+              className={cn("rounded border-line accent-brand-500", blatt ? "h-5 w-5" : "h-4 w-4")}
+            />
+            <span>{o.label}</span>
+          </label>
+        );
+      })}
+      {fehler ? (
+        <p className="px-2 pb-1 pt-2 text-[12px] text-crit-fg">{fehler}</p>
+      ) : (
+        <p className="px-2 pb-1 pt-2 text-[11px] text-ink-faint">Gilt nur für dich, auf allen Geräten.</p>
+      )}
+    </>
+  );
+}
+
+export function TileSettings({
+  profileId,
+  optionen,
+  versteckt,
+  onChange,
+}: {
+  profileId: string;
+  optionen: TileOption[];
+  versteckt: Set<string>;
+  onChange: (naechste: Set<string>) => void;
+}) {
+  const [offen, setOffen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  // Klick daneben und Escape schließen das Menü – sonst bleibt es beim
+  // Weiterscrollen offen über dem Inhalt stehen.
+  useEffect(() => {
+    if (!offen) return;
+    function beiKlick(e: MouseEvent) {
+      if (box.current && !box.current.contains(e.target as Node)) setOffen(false);
+    }
+    function beiTaste(e: KeyboardEvent) {
+      if (e.key === "Escape") setOffen(false);
+    }
+    document.addEventListener("mousedown", beiKlick);
+    document.addEventListener("keydown", beiTaste);
+    return () => {
+      document.removeEventListener("mousedown", beiKlick);
+      document.removeEventListener("keydown", beiTaste);
+    };
+  }, [offen]);
+
   const sichtbar = optionen.filter((o) => kachelSichtbar(versteckt, o.key, o.optIn)).length;
 
   return (
@@ -117,33 +164,7 @@ export function TileSettings({
           <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
             Auf meinem Dashboard
           </p>
-          {optionen.map((o) => {
-            const an = kachelSichtbar(versteckt, o.key, o.optIn);
-            return (
-              <label
-                key={o.key}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] hover:bg-surface-muted",
-                  pending && "opacity-60",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={an}
-                  onChange={() => umschalten(o.key, o.optIn)}
-                  className="h-4 w-4 rounded border-line accent-brand-500"
-                />
-                <span>{o.label}</span>
-              </label>
-            );
-          })}
-          {fehler ? (
-            <p className="px-2 pb-1 pt-2 text-[12px] text-crit-fg">{fehler}</p>
-          ) : (
-            <p className="px-2 pb-1 pt-2 text-[11px] text-ink-faint">
-              Gilt nur für dich, auf allen Geräten.
-            </p>
-          )}
+          <KachelListe profileId={profileId} optionen={optionen} versteckt={versteckt} onChange={onChange} />
         </div>
       ) : null}
     </div>

@@ -148,7 +148,28 @@ export function dataErrorMessage(error: FehlerInfo | null) {
   // Konten) – sie soll unverändert bei der Person ankommen, die den Antrag
   // gestellt hat, statt hinter einer generischen Meldung zu verschwinden.
   if (code === "P0001" && error.message) {
-    return error.message;
+    return verstaendlich(error.message);
   }
   return "Die Daten konnten nicht geladen werden.";
+}
+
+/**
+ * Zwei Meldungen der Datenbank, die Mitarbeitende nicht verstanden haben
+ * („eingeplanter Arbeitstag ohne bestehenden Eintrag“): hier in einfachen
+ * Worten. Alle anderen Meldungen bleiben unverändert.
+ */
+function verstaendlich(message: string): string {
+  if (message.includes("keinen eingeplanten Arbeitstag ohne bestehenden Eintrag")) {
+    return (
+      "Es wurde nichts eingetragen: In diesem Zeitraum sind alle Arbeitstage " +
+      "schon eingetragen, oder du hast an diesen Tagen frei. Bitte prüfe die Daten."
+    );
+  }
+  if (message.includes("hast du keinen eingeplanten Arbeitstag")) {
+    return (
+      "Es wurde nichts eingetragen: In diesem Zeitraum hast du keinen Arbeitstag " +
+      "im Schichtplan. Bitte prüfe die Daten."
+    );
+  }
+  return message;
 }
