@@ -356,3 +356,42 @@ body {
 .glas-linie {
   border-color: var(--glas-linie);
 }
+
+/*
+ * Neuer Kalender (Mein Kalender, Glas) auf dem Handy: ganzer Bildschirm.
+ * Die Kopfleiste entfällt, die untere Leiste schwebt im Glas-Stil – so wie
+ * im Privatkalender. Greift nur, solange die Seite ein Element mit
+ * data-glas-seite enthält; alle anderen Seiten bleiben unverändert.
+ */
+@media (max-width: 1023px) {
+  body:has([data-glas-seite]) [data-app-topbar] {
+    display: none;
+  }
+  body:has([data-glas-seite]) [data-mobile-nav] {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: max(0.6rem, env(safe-area-inset-bottom));
+    max-width: 28rem;
+    margin-inline: auto;
+    padding: 0.25rem;
+    border: 1px solid var(--glas-rand);
+    border-radius: 28px;
+    background-color: rgb(var(--c-surface) / 0.55);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+    box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+  }
+  body:has([data-glas-seite]) [data-mobile-nav] a,
+  body:has([data-glas-seite]) [data-mobile-nav] button {
+    gap: 2px;
+    padding-block: 0.45rem;
+    border-radius: 22px;
+    font-weight: 600;
+  }
+  body:has([data-glas-seite]) [data-mobile-nav] a[aria-current="page"] {
+    background-color: rgb(var(--c-surface) / 0.7);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+  }
+}

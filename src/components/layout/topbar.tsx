@@ -51,7 +51,7 @@ export function Topbar() {
   }, [open]);
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
+    <header data-app-topbar className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
       <Link href="/dashboard" aria-label="Schichtplan – Startseite" className="min-w-0 lg:hidden">
         <p className="text-sm font-semibold tracking-tight">Schichtplan</p>
         <p className="truncate text-[11px] text-ink-faint">{company.name}</p>
