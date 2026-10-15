@@ -580,8 +580,10 @@ function Chip({ art, klein }: { art: Schichtart; klein?: boolean }) {
   return (
     <span
       className={cn(
-        "shrink-0 truncate rounded-[7px] px-0.5 font-semibold leading-tight",
+        "shrink-0 truncate rounded-[7px] px-0.5 font-semibold",
         klein ? "py-px text-[10.5px] [@media(max-height:750px)]:py-0 [@media(max-height:750px)]:text-[10px]" : "py-[2px] text-[11.5px]",
+        // Nach der Schriftgröße – sonst verwirft cn() die Zeilenhöhe.
+        "leading-tight",
       )}
       style={farbStil(art.farbe)}
     >

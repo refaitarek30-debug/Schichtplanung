@@ -1,26 +1,14 @@
-"use client";
+import { hatFunktionServer } from "@/lib/server/funktion";
+import { MeinKalenderSeite } from "./seite";
 
-import { Alert } from "@/components/ui/alert";
-import { MeinKalender } from "@/components/kalender/mein-kalender";
-import { useSession } from "@/context/session";
+// Die Freischaltung hängt an der angemeldeten Person – nie vorab bauen.
+export const dynamic = "force-dynamic";
 
 /**
- * Mein Kalender – der eigene Schichtplan als Monat, für alle Rollen.
- *
- * Die Adresse bleibt /meine-schichten, weil Lesezeichen und die
- * Verknüpfung der installierten App dorthin zeigen. Die frühere
- * Teamübersicht (Schichtgruppen mit Konten) liegt für Schichtleitung und
- * Administration jetzt unter Verwaltung → Schichtgruppen.
+ * Mein Kalender. Ob der neue Kalender gilt, wird schon auf dem Server
+ * geprüft – so blitzt nie kurz der falsche auf.
  */
-export default function MeinKalenderSeite() {
-  const { mode } = useSession();
-
-  if (mode !== "live") {
-    return (
-      <Alert tone="warning">
-        Der Kalender zeigt echte Daten aus Supabase und ist im Demo-Modus nicht verfügbar.
-      </Alert>
-    );
-  }
-  return <MeinKalender />;
+export default async function Page() {
+  const neu = await hatFunktionServer("kalender_neu");
+  return <MeinKalenderSeite neu={neu} />;
 }
