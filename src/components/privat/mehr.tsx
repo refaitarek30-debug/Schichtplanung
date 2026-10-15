@@ -7,7 +7,7 @@ import { LogOut, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/layout/theme";
 import { signOut } from "@/lib/auth/actions";
-import { loeschePrivatkonto, speicherePrivatEinstellungen } from "@/lib/privat/actions";
+import { loeschePrivatkonto, speicherePrivatEinstellungen, speicherePrivatEmail } from "@/lib/privat/actions";
 import { BUNDESLAENDER } from "@/lib/privat/daten";
 import type { FormState } from "@/lib/auth/form-state";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
@@ -25,6 +25,7 @@ export function PrivatMehr() {
   const [laeuft, starte] = useTransition();
   const [loeschen, setLoeschen] = useState(false);
   const [loeschStand, loeschAktion] = useActionState(loeschePrivatkonto, {} as FormState);
+  const [emailStand, emailAktion, emailLaeuft] = useActionState(speicherePrivatEmail, {} as FormState);
 
   function speichere(werte: Parameters<typeof speicherePrivatEinstellungen>[0]) {
     setMeldung(null);
@@ -129,6 +130,31 @@ export function PrivatMehr() {
             <ThemeToggle />
           </div>
         </div>
+      </PrivatKarte>
+
+      <PrivatKarte titel="Passwort vergessen?">
+        <form action={emailAktion} className="space-y-2 px-4 py-4">
+          <p className="text-[13px] text-ink-muted">
+            {konto.email
+              ? `Hinterlegt: ${konto.email}. Darüber kannst du dein Passwort zurücksetzen.`
+              : "Du hast dich mit Spitzname angemeldet. Trag freiwillig eine E-Mail-Adresse ein, dann kannst du dein Passwort bei Bedarf zurücksetzen. Ohne Adresse ist ein vergessenes Passwort nicht zu retten."}
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              name="email"
+              autoComplete="email"
+              required
+              placeholder="du@beispiel.de"
+              className={feld}
+            />
+            <button type="submit" disabled={emailLaeuft} className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white">
+              {konto.email ? "Ändern" : "Speichern"}
+            </button>
+          </div>
+          {emailStand.error ? <Alert tone="error">{emailStand.error}</Alert> : null}
+          {emailStand.success ? <Alert tone="success">{emailStand.success}</Alert> : null}
+        </form>
       </PrivatKarte>
 
       {meldung ? <Alert tone={meldung.ok ? "success" : "error"}>{meldung.text}</Alert> : null}

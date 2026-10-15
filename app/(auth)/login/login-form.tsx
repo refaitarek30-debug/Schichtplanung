@@ -29,11 +29,14 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
     <form action={formAction} className="mt-6 space-y-4">
       <input type="hidden" name="weiter" value={next} />
 
-      <Field label="E-Mail">
+      <Field label="E-Mail oder Spitzname">
         <Input
-          type="email"
+          type="text"
           name="email"
-          autoComplete="email"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           required
           placeholder="name@unternehmen.de"
           disabled={disabled}

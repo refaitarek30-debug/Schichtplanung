@@ -24,13 +24,21 @@ export function PrivatRegistrierung({ disabled }: { disabled?: boolean }) {
 
   return (
     <form action={action} className="mt-6 space-y-4">
-      <Field label="Name">
-        <Input name="name" autoComplete="name" required maxLength={80} placeholder="Vorname Nachname" disabled={disabled} />
+      <Field label="Spitzname" hint="3–24 Zeichen: a–z, Ziffern, . _ -">
+        <Input
+          name="spitzname"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          required
+          minLength={3}
+          maxLength={24}
+          placeholder="z. B. tarek_nachtschicht"
+          disabled={disabled}
+        />
       </Field>
-      <Field label="E-Mail">
-        <Input type="email" name="email" autoComplete="email" required placeholder="du@beispiel.de" disabled={disabled} />
-      </Field>
-      <Field label="Passwort" hint="mindestens 8 Zeichen">
+      <Field label="Passwort" hint="mindestens 8 Zeichen – bitte merken, es gibt keine Bestätigungsmail">
         <Input
           type="password"
           name="password"

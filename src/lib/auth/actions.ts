@@ -13,6 +13,7 @@ import { grantAccess, siteOrigin } from "./invite";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
+import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, mitFrist, protokolliere } from "./protokoll-server";
 
 export type { FormState } from "./form-state";
@@ -47,15 +48,17 @@ async function protokolliereFehlanmeldung(email: string) {
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
-  const email = String(formData.get("email") ?? "").trim();
+  const eingabe = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const next = String(formData.get("weiter") ?? "");
 
-  if (!email || !password) {
-    return { error: "Bitte E-Mail und Passwort eingeben." };
+  if (!eingabe || !password) {
+    return { error: "Bitte E-Mail oder Spitzname und Passwort eingeben." };
   }
+  // Privatkonten melden sich mit Spitzname an – intern eine reservierte Adresse.
+  const email = anmeldeEingabeZuEmail(eingabe);
 
-  if (password.length > PASSWORT_MAX) return { error: "E-Mail oder Passwort ist falsch." };
+  if (password.length > PASSWORT_MAX) return { error: "E-Mail, Spitzname oder Passwort ist falsch." };
 
   // Bremse gegen automatisiertes Durchprobieren: je Adresse des Aufrufers
   // und je Konto. Die Zähler laufen in der Datenbank, nicht im Speicher.

@@ -456,7 +456,12 @@ export default function DatenschutzPage() {
           Daten.
         </Absatz>
         <Liste>
-          <li>Name, E-Mail-Adresse, Passwort (nur als Hash) und Zeitpunkt der Registrierung</li>
+          <li>
+            frei gewählter Spitzname (ein Klarname ist nicht nötig), Passwort (nur als Hash) und
+            Zeitpunkt der Registrierung. Eine E-Mail-Adresse ist <strong>nicht erforderlich</strong>;
+            wer möchte, hinterlegt sie freiwillig, damit „Passwort vergessen“ funktioniert. Ohne
+            Adresse kann ein vergessenes Passwort nicht zurückgesetzt werden
+          </li>
           <li>
             die eigenen Schichtarten (Name, Kürzel, Farbe, Uhrzeit, Stunden) und die eingetragenen
             Tage, Bundesland für die Feiertage, optional die Wochenstunden für die Auswertung
