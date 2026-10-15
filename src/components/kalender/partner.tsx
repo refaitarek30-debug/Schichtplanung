@@ -83,8 +83,17 @@ export function vergissLokalePartnerTage(benutzer: string) {
 
 const ANZAHL = [1, 3, 5, 7, 14];
 
-function Blatt({ children }: { children: React.ReactNode }) {
-  return <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">{children}</div>;
+function Blatt({ children, glas = false }: { children: React.ReactNode; glas?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex items-end justify-center lg:items-center",
+        glas && "privat-schrift px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function PartnerBlatt({
@@ -94,6 +103,7 @@ export function PartnerBlatt({
   onWahl,
   onClose,
   onEinladen,
+  glas = false,
 }: {
   datum: string;
   aktuell: PartnerSchicht | null;
@@ -103,23 +113,28 @@ export function PartnerBlatt({
   onClose: () => void;
   /** Nur beim Inhaber: Verweis auf die Einladung. */
   onEinladen?: () => void;
+  /** Schwebendes Glasblatt (neuer Kalender) statt Blatt am unteren Rand. */
+  glas?: boolean;
 }) {
   const [anzahl, setAnzahl] = useState(1);
 
   return createPortal(
-    <Blatt>
+    <Blatt glas={glas}>
       <button
         type="button"
         aria-label="Schließen"
-        className="absolute inset-0 cursor-default bg-black/40"
+        className={cn("absolute inset-0 cursor-default", glas ? "bg-black/25 backdrop-blur-[3px]" : "bg-black/40")}
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-label="Arbeitstag des Partners"
-        className="relative w-full max-w-lg overflow-hidden rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl"
+        className={cn(
+          "relative w-full max-w-lg overflow-hidden",
+          glas ? "glas-dicht rounded-[30px]" : "rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl",
+        )}
       >
-        <div className="flex items-baseline justify-between bg-surface-sunken px-5 py-4">
+        <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">{formatDE(datum)}</span>
           <span className="text-[15px] text-ink-muted">Partner</span>
         </div>
@@ -153,7 +168,7 @@ export function PartnerBlatt({
                 aria-pressed={anzahl === n}
                 className={cn(
                   "rounded-full px-3.5 py-2 text-[14px] font-semibold",
-                  anzahl === n ? "bg-brand-500 text-white" : "bg-surface-muted text-ink-muted",
+                  anzahl === n ? "bg-brand-500 text-white" : glas ? "bg-ink/[0.07] text-ink-muted" : "bg-surface-muted text-ink-muted",
                 )}
               >
                 {n === 1 ? "1 Tag" : `${n} Tage`}
@@ -173,7 +188,7 @@ export function PartnerBlatt({
           ) : null}
         </div>
 
-        <div className="flex items-center border-t border-line pb-[env(safe-area-inset-bottom)]">
+        <div className={cn("flex items-center border-t", glas ? "glas-linie" : "border-line pb-[env(safe-area-inset-bottom)]")}>
           <button
             type="button"
             onClick={() => onWahl(null, anzahl)}
