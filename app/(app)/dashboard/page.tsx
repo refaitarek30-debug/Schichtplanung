@@ -27,6 +27,7 @@ import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
 import { TileSettings, kachelSichtbar, type TileOption } from "@/components/dashboard/tile-settings";
+import { ProfilInline } from "@/components/layout/glas-profil";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -296,7 +297,7 @@ export default function DashboardPage() {
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
       <MyReplacementRequests />
 
-      <header className="flex items-start justify-between gap-3">
+      <header className="dash-kopf relative flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
             {greeting()}, {profile.firstName} 👋
@@ -310,6 +311,7 @@ export default function DashboardPage() {
             onChange={setVersteckt}
           />
         ) : null}
+        <ProfilInline />
       </header>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">

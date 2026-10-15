@@ -435,14 +435,32 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
       "Helvetica Neue", Arial, sans-serif;
   }
+  /* Platz oben: knapp, weil der Knopf in der Titelzeile steht. */
   body:has([data-glas-leiste]) main {
+    padding-top: calc(max(0.5rem, env(safe-area-inset-top)) + 0.9rem);
+  }
+  /* Ohne eigene Titelzeile springt der feste Knopf ein und braucht eine freie Zeile. */
+  body:has([data-glas-profil-fix]) main {
     padding-top: calc(max(0.5rem, env(safe-area-inset-top)) + 2.9rem);
   }
-  body:has([data-glas-leiste]) main h1 {
+  /* Titel im Kalender-Stil; der Kalender selbst hat seine eigene Kopfzeile. */
+  body:has([data-glas-leiste]) main > :not([data-glas-seite]) h1 {
     font-size: 1.875rem;
     line-height: 1.12;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+  /* Platz für den runden Knopf rechts neben dem Titel; kleine Überzeile entfällt. */
+  body:has([data-glas-leiste]) main > :not([data-glas-seite]) header h1 {
+    padding-right: 3.1rem;
+  }
+  body:has([data-glas-leiste]) main > :not([data-glas-seite]) header p.uppercase {
+    display: none;
+  }
+  /* Dashboard: „Kacheln“ steht unter dem Titel statt daneben. */
+  body:has([data-glas-leiste]) main > :not([data-glas-seite]) header.dash-kopf {
+    flex-direction: column;
+    align-items: flex-start;
   }
   body:has([data-glas-seite]) [data-glas-profil] {
     display: none;
