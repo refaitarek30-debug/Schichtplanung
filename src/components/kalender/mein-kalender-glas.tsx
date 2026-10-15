@@ -606,10 +606,17 @@ export function MeinKalenderGlas() {
 
   return (
     <div
+      // Markiert die Seite: blendet auf dem Handy die Kopfleiste aus und
+      // macht die untere Leiste zur schwebenden Glas-Leiste (globals.css).
+      data-glas-seite
       className={cn(
-        // Handy: genau ein Bildschirm zwischen Kopfleiste und Navigation.
-        "privat fixed inset-x-0 top-16 bottom-[calc(3.85rem+env(safe-area-inset-bottom))] z-10 flex flex-col px-3 pb-2 sm:px-6",
-        "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px] lg:rounded-[28px] lg:px-4 lg:pb-4",
+        // Handy: der ganze Bildschirm, ohne Kopfleiste, bis über die
+        // schwebende Leiste unten. Desktop: normal im Seitenrahmen.
+        // Die Fläche reicht bis ganz nach unten (so läuft der Farbverlauf
+        // hinter der schwebenden Leiste weiter); der Platz für die Leiste
+        // kommt über den Innenabstand.
+        "privat fixed inset-0 z-10 flex flex-col px-3 pb-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.5rem)] pt-[max(0.25rem,env(safe-area-inset-top))] sm:px-6",
+        "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px] lg:rounded-[28px] lg:px-4 lg:pb-4 lg:pt-0",
       )}
     >
       <header className="flex items-center justify-between gap-2 pb-2.5 pt-3 [@media(max-height:700px)]:pb-1.5 [@media(max-height:700px)]:pt-1.5">

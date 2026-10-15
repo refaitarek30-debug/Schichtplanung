@@ -79,6 +79,7 @@ export function MobileNav() {
         wirkt, als rutsche sie ins Bild.
       */}
       <nav
+        data-mobile-nav
         className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
         style={{ position: "fixed" }}
       >
@@ -90,6 +91,7 @@ export function MobileNav() {
               <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex flex-col items-center gap-1 py-2.5 text-[11px]",
                     active ? "text-brand-600" : "text-ink-faint",
