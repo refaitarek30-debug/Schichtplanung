@@ -28,14 +28,20 @@ export function Blatt({
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-black/40" onClick={onClose} />
+    <div className="privat-schrift fixed inset-0 z-50 flex items-end justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center">
+      <button
+        type="button"
+        aria-label="Schließen"
+        className="absolute inset-0 cursor-default bg-black/25 backdrop-blur-[3px]"
+        onClick={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"
-        className="relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop sm:rounded-3xl"
+        className="glas-dicht relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-[30px]"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-line px-5 pb-3 pt-4">
+        <span aria-hidden className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-ink/15" />
+        <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-2">
           <div className="min-w-0">
             <h2 className="text-[18px] font-semibold leading-tight">{titel}</h2>
             {unter ? <div className="mt-0.5 text-[13px] text-ink-muted">{unter}</div> : null}
@@ -44,14 +50,14 @@ export function Blatt({
             type="button"
             onClick={onClose}
             aria-label="Schließen"
-            className="-mr-1 rounded-full p-1.5 text-ink-muted hover:bg-surface-muted"
+            className="-mr-1 flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
           >
-            <X className="h-5 w-5" />
+            <X className="h-[18px] w-[18px]" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-2">{children}</div>
         {fuss ? (
-          <div className="border-t border-line px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{fuss}</div>
+          <div className="glas-linie border-t px-5 pb-4 pt-3">{fuss}</div>
         ) : null}
       </div>
     </div>,

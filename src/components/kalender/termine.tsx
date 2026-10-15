@@ -104,6 +104,7 @@ export function TerminBlatt({
   onLoeschen,
   hinweis,
   nurLesen = false,
+  glas = false,
   onClose,
 }: {
   datum: string;
@@ -114,10 +115,13 @@ export function TerminBlatt({
   hinweis: string;
   /** Nur ansehen (Termin der anderen Person). */
   nurLesen?: boolean;
+  /** Glas-Stil des Privatbereichs (schwebende Karte). */
+  glas?: boolean;
   onClose: () => void;
 }) {
   const id = useId();
   const [titel, setTitel] = useState(termin?.titel ?? "");
+  const zeile = glas ? feld.replace("border-line", "glas-linie") : feld;
   const [ganz, setGanz] = useState(termin?.ganztaegig ?? false);
   const [von, setVon] = useState(termin?.von ?? "12:00");
   const [bis, setBis] = useState(termin?.bis ?? "13:00");
@@ -146,20 +150,28 @@ export function TerminBlatt({
   // Ebene unter der Navigation) – im Kalender selbst läge das Blatt sonst
   // unter der Navigationsleiste, und „Speichern“ wäre nicht zu erreichen.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex items-end justify-center lg:items-center",
+        glas && "privat-schrift px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]",
+      )}
+    >
       <button
         type="button"
         aria-label="Schließen"
-        className="absolute inset-0 cursor-default bg-black/40"
+        className={cn("absolute inset-0 cursor-default", glas ? "bg-black/25 backdrop-blur-[3px]" : "bg-black/40")}
         onClick={onClose}
       />
       <form
         onSubmit={speichern}
         role="dialog"
         aria-label={termin ? "Termin bearbeiten" : "Neuer Termin"}
-        className="relative flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl"
+        className={cn(
+          "relative flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden",
+          glas ? "glas-dicht max-h-[88dvh] rounded-[30px]" : "rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl",
+        )}
       >
-        <div className="flex items-baseline justify-between bg-surface-sunken px-5 py-4">
+        <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">
             {termin?.wiederholung && termin.wiederholung !== "nie" ? "ab " : ""}
             {formatDE(tag)}
@@ -169,7 +181,7 @@ export function TerminBlatt({
 
         <div className="overflow-y-auto px-5">
           <fieldset disabled={nurLesen} className="m-0 min-w-0 border-0 p-0">
-          <label className={feld}>
+          <label className={zeile}>
             <span className="shrink-0">Titel</span>
             <input
               id={`${id}-titel`}
@@ -181,7 +193,7 @@ export function TerminBlatt({
               className={eingabe}
             />
           </label>
-          <div className={feld}>
+          <div className={zeile}>
             <span id={`${id}-ganz`}>Ganztägig</span>
             <button
               type="button"
@@ -191,7 +203,7 @@ export function TerminBlatt({
               onClick={() => setGanz((g) => !g)}
               className={cn(
                 "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
-                ganz ? "bg-brand-500" : "bg-surface-sunken ring-1 ring-inset ring-line",
+                ganz ? "bg-brand-500" : glas ? "bg-ink/[0.12]" : "bg-surface-sunken ring-1 ring-inset ring-line",
               )}
             >
               <span
@@ -204,7 +216,7 @@ export function TerminBlatt({
           </div>
           {!ganz ? (
             <>
-              <label className={feld}>
+              <label className={zeile}>
                 <span>Start</span>
                 <input
                   id={`${id}-von`}
@@ -215,7 +227,7 @@ export function TerminBlatt({
                   required
                 />
               </label>
-              <label className={feld}>
+              <label className={zeile}>
                 <span>Ende</span>
                 <input
                   id={`${id}-bis`}
@@ -228,7 +240,7 @@ export function TerminBlatt({
               </label>
             </>
           ) : null}
-          <label className={feld}>
+          <label className={zeile}>
             <span>Wiederholen</span>
             <select
               id={`${id}-wdh`}
@@ -243,7 +255,7 @@ export function TerminBlatt({
             </select>
           </label>
 
-          <div className="my-4 overflow-hidden rounded-2xl border border-line">
+          <div className={cn("my-4 overflow-hidden rounded-2xl", glas ? "bg-ink/[0.05]" : "border border-line")}>
             <textarea
               id={`${id}-notiz`}
               value={notiz}
@@ -260,7 +272,7 @@ export function TerminBlatt({
               placeholder="Ort"
               maxLength={120}
               autoComplete="off"
-              className="block w-full border-t border-line bg-transparent px-4 py-3 text-[16px] outline-none placeholder:text-ink-faint"
+              className={cn("block w-full border-t bg-transparent px-4 py-3 text-[16px] outline-none placeholder:text-ink-faint", glas ? "glas-linie" : "border-line")}
             />
           </div>
           </fieldset>
@@ -269,7 +281,7 @@ export function TerminBlatt({
           </p>
         </div>
 
-        <div className="flex items-center border-t border-line pb-[env(safe-area-inset-bottom)]">
+        <div className={cn("flex items-center border-t", glas ? "glas-linie" : "border-line pb-[env(safe-area-inset-bottom)]")}>
           {termin && !nurLesen ? (
             <button
               type="button"

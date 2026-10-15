@@ -94,26 +94,41 @@ export async function loescheSchichtart(id: string): Promise<void> {
   if (error) fehler(error, "Die Schicht konnte nicht gelöscht werden.");
 }
 
-/** Tag -> Schichtart-Id für einen Zeitraum (beide Enden eingeschlossen). */
-export async function ladeTage(von: string, bis: string): Promise<Record<string, string>> {
+/**
+ * Bis zu zwei Einträge je Tag (Migration 0148): `schicht` (Ebene 1, z. B.
+ * aus der Schichtfolge) und `zusatz` (Ebene 2, z. B. Urlaub an dem Tag).
+ */
+export interface TagEintrag {
+  schicht: string | null;
+  zusatz: string | null;
+}
+
+export type Ebene = 1 | 2;
+
+/** Tag -> Einträge für einen Zeitraum (beide Enden eingeschlossen). */
+export async function ladeTage(von: string, bis: string): Promise<Record<string, TagEintrag>> {
   const { data, error } = await createClient()
     .from("privat_tage")
-    .select("tag, schichtart_id")
+    .select("tag, ebene, schichtart_id")
     .gte("tag", von)
     .lte("tag", bis)
-    .limit(2000);
+    .limit(4000);
   if (error) fehler(error, "Der Kalender konnte nicht geladen werden.");
-  const tage: Record<string, string> = {};
-  for (const z of (data ?? []) as { tag: string; schichtart_id: string }[]) tage[z.tag] = z.schichtart_id;
+  const tage: Record<string, TagEintrag> = {};
+  for (const z of (data ?? []) as { tag: string; ebene: number; schichtart_id: string }[]) {
+    const e = (tage[z.tag] ??= { schicht: null, zusatz: null });
+    if (z.ebene === 2) e.zusatz = z.schichtart_id;
+    else e.schicht = z.schichtart_id;
+  }
   return tage;
 }
 
-/** Einen oder mehrere Tage setzen (null = leeren). */
-export async function setzeTage(tage: string[], schichtartId: string | null): Promise<void> {
+/** Eine Ebene an einem oder mehreren Tagen setzen (null = leeren). */
+export async function setzeTage(tage: string[], schichtartId: string | null, ebene: Ebene = 1): Promise<void> {
   if (!tage.length) return;
   const supabase = createClient();
   if (schichtartId === null) {
-    const { error } = await supabase.from("privat_tage").delete().in("tag", tage);
+    const { error } = await supabase.from("privat_tage").delete().in("tag", tage).eq("ebene", ebene);
     if (error) fehler(error, "Das konnte nicht gespeichert werden.");
     return;
   }
@@ -122,9 +137,21 @@ export async function setzeTage(tage: string[], schichtartId: string | null): Pr
   if (!userId) throw new PrivatFehler("Deine Sitzung ist abgelaufen.");
   const { error } = await supabase
     .from("privat_tage")
-    .upsert(tage.map((tag) => ({ user_id: userId, tag, schichtart_id: schichtartId })), { onConflict: "user_id,tag" });
+    .upsert(tage.map((tag) => ({ user_id: userId, tag, ebene, schichtart_id: schichtartId })), {
+      onConflict: "user_id,tag,ebene",
+    });
   if (error) fehler(error, "Das konnte nicht gespeichert werden.");
 }
+
+/** Alles an diesen Tagen leeren (beide Ebenen). */
+export async function leereTage(tage: string[]): Promise<void> {
+  if (!tage.length) return;
+  const { error } = await createClient().from("privat_tage").delete().in("tag", tage);
+  if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
+/** Abwesenheiten (Urlaub, Krank) kommen als Zusatz auf eine Schicht. */
+export const istAbwesenheit = (a: Pick<Schichtart, "art"> | undefined) => a?.art === "urlaub" || a?.art === "krank";
 
 export async function wendeRotationAn(
   start: string,

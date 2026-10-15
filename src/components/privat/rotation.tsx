@@ -102,7 +102,7 @@ export function RotationBlatt({
             type="button"
             onClick={anwenden}
             disabled={laeuft || !muster.length}
-            className="w-full rounded-xl bg-brand-500 px-4 py-3 text-[15px] font-semibold text-white disabled:opacity-50"
+            className="w-full rounded-[16px] bg-brand-500 px-4 py-3.5 text-[15px] font-semibold text-white disabled:opacity-50"
           >
             {laeuft ? "Wird eingetragen …" : `Eintragen bis ${formatDE(bis)}`}
           </button>
@@ -118,7 +118,7 @@ export function RotationBlatt({
                 key={v.kurz}
                 type="button"
                 onClick={() => setMuster(v.folge.map((k) => nachKuerzel.get(k)!.id))}
-                className="rounded-xl border border-line px-3 py-2 text-left text-[13px] hover:bg-surface-muted"
+                className="rounded-[14px] bg-ink/[0.06] px-3 py-2 text-left text-[13px] hover:bg-ink/[0.1]"
               >
                 {v.name}
               </button>
@@ -130,7 +130,7 @@ export function RotationBlatt({
       <p className="mb-2 text-[13px] font-semibold text-ink-muted">
         Deine Folge {muster.length ? <span className="font-normal">· {muster.length} Tage</span> : null}
       </p>
-      <div className="min-h-[52px] rounded-xl border border-line bg-surface-muted p-2">
+      <div className="min-h-[52px] rounded-[16px] bg-ink/[0.05] p-2">
         {muster.length ? (
           <ol className="flex flex-wrap gap-1.5">
             {muster.map((id, i) => {
@@ -140,7 +140,7 @@ export function RotationBlatt({
                   key={i}
                   className={cn(
                     "flex h-9 min-w-9 items-center justify-center rounded-lg px-1.5 text-[13px] font-bold",
-                    !a && "border border-dashed border-line text-ink-faint",
+                    !a && "border border-dashed border-ink/20 text-ink-faint",
                   )}
                   style={a ? farbStil(a.farbe) : undefined}
                   title={`Tag ${i + 1}: ${a?.name ?? "nichts"}`}
@@ -159,7 +159,7 @@ export function RotationBlatt({
           type="button"
           onClick={() => setMuster(muster.slice(0, -1))}
           disabled={!muster.length}
-          className="flex h-11 items-center justify-center gap-2 rounded-[12px] border border-line bg-surface text-[14px] font-semibold text-ink disabled:opacity-40"
+          className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-ink/[0.07] text-[14px] font-semibold text-ink disabled:opacity-40"
         >
           <Delete className="h-[18px] w-[18px]" /> Letzten entfernen
         </button>
@@ -167,7 +167,7 @@ export function RotationBlatt({
           type="button"
           onClick={() => setMuster([])}
           disabled={!muster.length}
-          className="flex h-11 items-center justify-center gap-2 rounded-[12px] border border-line bg-surface text-[14px] font-semibold text-ink disabled:opacity-40"
+          className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-ink/[0.07] text-[14px] font-semibold text-ink disabled:opacity-40"
         >
           <Trash2 className="h-[18px] w-[18px]" /> Neu beginnen
         </button>
@@ -179,7 +179,7 @@ export function RotationBlatt({
             key={a.id}
             type="button"
             onClick={() => muster.length < 56 && setMuster([...muster, a.id])}
-            className="h-11 rounded-[12px] px-2 text-[14px] font-semibold"
+            className="h-11 rounded-[14px] px-2 text-[14px] font-semibold"
             style={farbStil(a.farbe)}
           >
             + {a.name}
@@ -188,7 +188,7 @@ export function RotationBlatt({
         <button
           type="button"
           onClick={() => muster.length < 56 && setMuster([...muster, null])}
-          className="h-11 rounded-[12px] border border-dashed border-line px-2 text-[13px] font-semibold text-ink-muted"
+          className="h-11 rounded-[14px] border border-dashed border-ink/20 px-2 text-[13px] font-semibold text-ink-muted"
           title="An diesem Tag nichts eintragen"
         >
           + leer lassen
@@ -202,7 +202,7 @@ export function RotationBlatt({
             type="date"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]"
+            className="w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
           />
         </label>
         <label className="block">
@@ -210,7 +210,7 @@ export function RotationBlatt({
           <select
             value={monate}
             onChange={(e) => setMonate(Number(e.target.value))}
-            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]"
+            className="w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
           >
             {DAUER.map((d) => (
               <option key={d.monate} value={d.monate}>
@@ -235,7 +235,7 @@ export function RotationBlatt({
                     {WT[fromISO(iso).getDay()]} {fromISO(iso).getDate()}.
                   </div>
                   <div
-                    className={cn("mt-0.5 rounded-md py-1 text-[12px] font-bold", !a && "bg-surface-sunken text-ink-faint")}
+                    className={cn("mt-0.5 rounded-md py-1 text-[12px] font-bold", !a && "bg-ink/[0.06] text-ink-faint")}
                     style={a ? farbStil(a.farbe) : undefined}
                   >
                     {a?.kuerzel ?? "–"}
