@@ -437,9 +437,9 @@ export function PrivatKalender() {
       </div>
 
       {pinselAn && schichtarten ? (
-        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto flex h-[5.2rem] max-w-3xl touch-none flex-col justify-center overflow-hidden rounded-[24px] px-2.5">
+        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto flex h-[5.2rem] max-w-3xl touch-pan-x select-none flex-col justify-center overflow-hidden rounded-[24px] px-2.5">
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 touch-pan-x gap-1.5 overflow-x-auto overflow-y-hidden overscroll-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex min-w-0 flex-1 touch-pan-x snap-x gap-1.5 overflow-x-auto overflow-y-hidden overscroll-contain px-1 py-1 [-webkit-mask-image:linear-gradient(to_right,transparent,#000_10px,#000_calc(100%-14px),transparent)] [mask-image:linear-gradient(to_right,transparent,#000_10px,#000_calc(100%-14px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {schichtarten.map((a) => (
                 <button
                   key={a.id}
@@ -447,7 +447,7 @@ export function PrivatKalender() {
                   onClick={() => setPinsel(a.id)}
                   aria-pressed={pinsel === a.id}
                   className={cn(
-                    "h-10 shrink-0 rounded-[13px] px-3.5 text-[13.5px] font-semibold transition-transform",
+                    "h-10 shrink-0 snap-start rounded-[13px] px-3.5 text-[13.5px] font-semibold",
                     pinsel === a.id ? "ring-2 ring-inset ring-ink/80 shadow-md" : "opacity-80",
                   )}
                   style={farbStil(a.farbe)}
@@ -460,7 +460,7 @@ export function PrivatKalender() {
                 onClick={() => setPinsel("leer")}
                 aria-pressed={pinsel === "leer"}
                 className={cn(
-                  "flex h-10 shrink-0 items-center gap-1 rounded-[13px] bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold text-ink-muted",
+                  "flex h-10 shrink-0 snap-start items-center gap-1 rounded-[13px] bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold text-ink-muted",
                   pinsel === "leer" && "ring-2 ring-inset ring-ink/80",
                 )}
               >
