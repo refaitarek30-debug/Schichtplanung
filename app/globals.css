@@ -289,3 +289,70 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Privatbereich: Glas-Stil (angelehnt an iOS). Halbdurchsichtige Flächen mit
+ * Unschärfe über einem weichen Farbverlauf. Nur unter .privat wirksam – die
+ * Firmenansicht bleibt unverändert.
+ */
+:root {
+  --glas-rand: rgba(255, 255, 255, 0.65);
+  --glas-licht: rgba(255, 255, 255, 0.8);
+  --glas-schatten: 0 10px 34px rgba(31, 41, 77, 0.1);
+  --glas-linie: rgba(17, 24, 39, 0.07);
+  --glas-hinter: radial-gradient(at 12% 8%, rgba(96, 132, 255, 0.28) 0, transparent 46%),
+    radial-gradient(at 92% 14%, rgba(255, 150, 200, 0.24) 0, transparent 44%),
+    radial-gradient(at 78% 92%, rgba(94, 214, 196, 0.24) 0, transparent 48%),
+    radial-gradient(at 8% 88%, rgba(255, 196, 120, 0.22) 0, transparent 46%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glas-rand: rgba(255, 255, 255, 0.09);
+    --glas-licht: rgba(255, 255, 255, 0.06);
+    --glas-schatten: 0 12px 38px rgba(0, 0, 0, 0.45);
+    --glas-linie: rgba(255, 255, 255, 0.07);
+    --glas-hinter: radial-gradient(at 12% 8%, rgba(70, 100, 230, 0.32) 0, transparent 46%),
+      radial-gradient(at 92% 14%, rgba(190, 70, 140, 0.22) 0, transparent 44%),
+      radial-gradient(at 78% 92%, rgba(30, 150, 140, 0.24) 0, transparent 48%),
+      radial-gradient(at 8% 88%, rgba(200, 120, 40, 0.16) 0, transparent 46%);
+  }
+}
+:root[data-theme="dark"] {
+  --glas-rand: rgba(255, 255, 255, 0.09);
+  --glas-licht: rgba(255, 255, 255, 0.06);
+  --glas-schatten: 0 12px 38px rgba(0, 0, 0, 0.45);
+  --glas-linie: rgba(255, 255, 255, 0.07);
+  --glas-hinter: radial-gradient(at 12% 8%, rgba(70, 100, 230, 0.32) 0, transparent 46%),
+    radial-gradient(at 92% 14%, rgba(190, 70, 140, 0.22) 0, transparent 44%),
+    radial-gradient(at 78% 92%, rgba(30, 150, 140, 0.24) 0, transparent 48%),
+    radial-gradient(at 8% 88%, rgba(200, 120, 40, 0.16) 0, transparent 46%);
+}
+
+.privat,
+.privat-schrift {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.privat {
+  background-color: rgb(var(--c-surface-muted));
+  background-image: var(--glas-hinter);
+  background-attachment: fixed;
+}
+.glas {
+  background-color: rgb(var(--c-surface) / 0.55);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid var(--glas-rand);
+  box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
+}
+.glas-dicht {
+  background-color: rgb(var(--c-surface) / 0.78);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glas-rand);
+  box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
+}
+.glas-linie {
+  border-color: var(--glas-linie);
+}

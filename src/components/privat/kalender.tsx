@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Eraser, Paintbrush, Repeat, X } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Eraser, Layers, Paintbrush, Repeat, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import { PARTNER_FARBE, partnerText, type PartnerSchicht } from "@/components/kalender/partner";
@@ -13,7 +13,17 @@ import {
   speichereTermin,
 } from "@/lib/data/partner";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { farbStil, ladeFeiertage, ladeTage, setzeTage, type Schichtart } from "@/lib/privat/daten";
+import {
+  farbStil,
+  istAbwesenheit,
+  ladeFeiertage,
+  ladeTage,
+  leereTage,
+  setzeTage,
+  type Ebene,
+  type Schichtart,
+  type TagEintrag,
+} from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
@@ -23,6 +33,9 @@ import { RotationBlatt } from "./rotation";
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
  * Antippen (Tagesblatt), per Pinsel (mehrere Tage nacheinander) oder als
  * Schichtfolge (Rotation).
+ *
+ * Je Tag bis zu zwei Einträge: die Schicht (Ebene 1) und ein Zusatz wie
+ * Urlaub (Ebene 2). Die Schicht bleibt stehen, bis sie jemand entfernt.
  */
 
 type Ansicht = "woche" | "monat" | "jahr";
@@ -30,6 +43,7 @@ type Ansicht = "woche" | "monat" | "jahr";
 const ANSICHT_SCHLUESSEL = "schichtplan.privat-ansicht";
 const WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+const LEER: TagEintrag = { schicht: null, zusatz: null };
 
 /** 0 = Montag … 6 = Sonntag */
 const wochentag = (iso: string) => (fromISO(iso).getDay() + 6) % 7;
@@ -55,6 +69,12 @@ function zeitText(a: Schichtart): string {
   return a.beginn && a.ende ? `${a.beginn}–${a.ende}` : "";
 }
 
+/** Die Einträge eines Tages als Schichtarten, in Anzeige-Reihenfolge. */
+function arten(e: TagEintrag | undefined, artNach: Map<string, Schichtart>): Schichtart[] {
+  if (!e) return [];
+  return [e.schicht, e.zusatz].map((id) => (id ? artNach.get(id) : undefined)).filter((a): a is Schichtart => !!a);
+}
+
 export function PrivatKalender() {
   const { konto, schichtarten, artNach, artenFehler } = usePrivat();
   const heute = heuteInBerlin();
@@ -71,7 +91,7 @@ export function PrivatKalender() {
   }, []);
   const [anker, setAnker] = useState(heute);
 
-  const [tage, setTage] = useState<Record<string, string>>({});
+  const [tage, setTage] = useState<Record<string, TagEintrag>>({});
   const [feiertage, setFeiertage] = useState<Record<string, string>>({});
   const geladen = useRef(new Set<number>());
   const [laedt, setLaedt] = useState(true);
@@ -83,64 +103,58 @@ export function PrivatKalender() {
   const [tagBlatt, setTagBlatt] = useState<string | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
   const [rotation, setRotation] = useState(false);
-  /** Pinsel: Schichtart-Id, "leer" zum Löschen, null = aus */
+  /** Pinsel: Schichtart-Id oder "leer" zum Löschen */
   const [pinsel, setPinsel] = useState<string | null>(null);
   const [pinselAn, setPinselAn] = useState(false);
 
   // ---- sichtbarer Zeitraum ----------------------------------------------
   const ankerD = fromISO(anker);
   const bereich = useMemo(() => {
+    const d = fromISO(anker);
     if (ansicht === "jahr") {
-      const j = ankerD.getFullYear();
+      const j = d.getFullYear();
       return { von: `${j}-01-01`, bis: `${j}-12-31` };
     }
     if (ansicht === "woche") {
       const von = montagVon(anker);
       return { von, bis: addDays(von, 6) };
     }
-    const { start, wochen } = monatRaster(ankerD.getFullYear(), ankerD.getMonth());
+    const { start, wochen } = monatRaster(d.getFullYear(), d.getMonth());
     return { von: start, bis: addDays(start, wochen * 7 - 1) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ansicht, anker]);
 
-  const ladeJahre = useCallback(
-    async (jahre: number[], erneut = false) => {
-      const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
-      if (!fehlend.length) return;
-      setLaedt(true);
-      try {
-        const ergebnisse = await Promise.all(
-          fehlend.map(async (j) => {
-            const [t, f] = await Promise.all([
-              ladeTage(`${j}-01-01`, `${j}-12-31`),
-              ladeFeiertage(j),
-            ]);
-            return { j, t, f };
-          }),
-        );
-        setTage((alt) => {
-          const neu = { ...alt };
-          for (const { j, t } of ergebnisse) {
-            for (const k of Object.keys(neu)) if (k.startsWith(`${j}-`)) delete neu[k];
-            Object.assign(neu, t);
-          }
-          return neu;
-        });
-        setFeiertage((alt) => {
-          const neu = { ...alt };
-          for (const { f } of ergebnisse) for (const h of f) neu[h.tag] = h.name;
-          return neu;
-        });
-        for (const { j } of ergebnisse) geladen.current.add(j);
-        setFehler(null);
-      } catch (e) {
-        setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
-      } finally {
-        setLaedt(false);
-      }
-    },
-    [],
-  );
+  const ladeJahre = useCallback(async (jahre: number[], erneut = false) => {
+    const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
+    if (!fehlend.length) return;
+    setLaedt(true);
+    try {
+      const ergebnisse = await Promise.all(
+        fehlend.map(async (j) => {
+          const [t, f] = await Promise.all([ladeTage(`${j}-01-01`, `${j}-12-31`), ladeFeiertage(j)]);
+          return { j, t, f };
+        }),
+      );
+      setTage((alt) => {
+        const neu = { ...alt };
+        for (const { j, t } of ergebnisse) {
+          for (const k of Object.keys(neu)) if (k.startsWith(`${j}-`)) delete neu[k];
+          Object.assign(neu, t);
+        }
+        return neu;
+      });
+      setFeiertage((alt) => {
+        const neu = { ...alt };
+        for (const { f } of ergebnisse) for (const h of f) neu[h.tag] = h.name;
+        return neu;
+      });
+      for (const { j } of ergebnisse) geladen.current.add(j);
+      setFehler(null);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
+    } finally {
+      setLaedt(false);
+    }
+  }, []);
 
   useEffect(() => {
     const jahre = new Set([fromISO(bereich.von).getFullYear(), fromISO(bereich.bis).getFullYear()]);
@@ -170,29 +184,65 @@ export function PrivatKalender() {
   }, [ansicht, bereich]);
 
   // ---- Schreiben -----------------------------------------------------------
-  async function setzen(liste: string[], artId: string | null) {
-    const vorher = { ...tage };
+  /** Eine Ebene setzen (null = diese Ebene leeren); optimistisch. */
+  async function setzen(liste: string[], artId: string | null, ebene: Ebene) {
+    const vorher = tage;
     setTage((alt) => {
       const neu = { ...alt };
       for (const t of liste) {
-        if (artId) neu[t] = artId;
-        else delete neu[t];
+        const e = { ...(neu[t] ?? LEER) };
+        if (ebene === 1) e.schicht = artId;
+        else e.zusatz = artId;
+        if (!e.schicht && !e.zusatz) delete neu[t];
+        else neu[t] = e;
       }
       return neu;
     });
     try {
-      await setzeTage(liste, artId);
+      await setzeTage(liste, artId, ebene);
     } catch (e) {
       setTage(vorher);
       setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
     }
   }
 
+  async function leeren(liste: string[]) {
+    const vorher = tage;
+    setTage((alt) => {
+      const neu = { ...alt };
+      for (const t of liste) delete neu[t];
+      return neu;
+    });
+    try {
+      await leereTage(liste);
+    } catch (e) {
+      setTage(vorher);
+      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+    }
+  }
+
+  /**
+   * Wohin ein neuer Eintrag gehört: Ist der Tag leer, wird es die Schicht.
+   * Steht schon eine Schicht da, kommt der neue Eintrag als Zusatz dazu –
+   * außer beide sind Arbeitsschichten im Pinsel: dann wird ersetzt.
+   */
+  function hinzufuegen(iso: string, artId: string, ersetzenWennArbeit: boolean) {
+    const e = tage[iso] ?? LEER;
+    const neu = artNach.get(artId);
+    if (!e.schicht) return void setzen([iso], artId, 1);
+    if (e.schicht === artId) return;
+    const alt = artNach.get(e.schicht);
+    if (ersetzenWennArbeit && !istAbwesenheit(neu) && !istAbwesenheit(alt)) return void setzen([iso], artId, 1);
+    void setzen([iso], artId, 2);
+  }
+
   function tagAntippen(iso: string) {
     if (pinselAn && pinsel) {
-      const ziel = pinsel === "leer" ? null : pinsel;
-      if ((tage[iso] ?? null) === ziel) return;
-      void setzen([iso], ziel);
+      if (pinsel === "leer") {
+        if (tage[iso]) void leeren([iso]);
+        return;
+      }
+      hinzufuegen(iso, pinsel, true);
       return;
     }
     setTagBlatt(iso);
@@ -213,8 +263,7 @@ export function PrivatKalender() {
     }
   }
 
-  const zeigeFeiertage = konto.feiertageZeigen;
-  const feiertagVon = (iso: string) => (zeigeFeiertage ? feiertage[iso] : undefined);
+  const feiertagVon = (iso: string) => (konto.feiertageZeigen ? feiertage[iso] : undefined);
 
   const titel =
     ansicht === "jahr"
@@ -259,16 +308,16 @@ export function PrivatKalender() {
     <div
       className={cn(
         // Genau ein Bildschirm: zwischen Statusleiste und schwebender Leiste.
-        "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col bg-surface-muted px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6",
+        "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6",
         pinselAn
           ? "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+9.4rem)]"
-          : "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.4rem)]",
+          : "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
       )}
     >
-      <header className="flex items-center justify-between gap-2 pb-2">
+      <header className="flex items-center justify-between gap-2 pb-2.5">
         <div className="min-w-0">
-          <h1 className="truncate text-[26px] font-bold leading-tight tracking-tight">{titel}</h1>
-          <p className="tnum truncate text-[13px] font-medium text-ink-muted">
+          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em]">{titel}</h1>
+          <p className="tnum truncate text-[14px] font-medium text-ink-muted">
             {unter}
             {!heuteSichtbar ? (
               <>
@@ -280,8 +329,8 @@ export function PrivatKalender() {
             ) : null}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span className="hidden gap-1.5 sm:flex">
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>
@@ -305,7 +354,7 @@ export function PrivatKalender() {
         </div>
       </header>
 
-      <div role="tablist" aria-label="Ansicht" className="mb-2 grid grid-cols-3 rounded-[12px] bg-ink/[0.06] p-[3px]">
+      <div role="tablist" aria-label="Ansicht" className="glas mb-2.5 grid grid-cols-3 rounded-[14px] p-[3px]">
         {(["woche", "monat", "jahr"] as const).map((a) => (
           <button
             key={a}
@@ -314,8 +363,8 @@ export function PrivatKalender() {
             aria-selected={ansicht === a}
             onClick={() => waehleAnsicht(a)}
             className={cn(
-              "rounded-[9px] py-1 text-[13px] font-semibold transition-colors",
-              ansicht === a ? "bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "text-ink-muted",
+              "rounded-[11px] py-1.5 text-[13px] font-semibold transition-all",
+              ansicht === a ? "bg-surface text-ink shadow-[0_2px_8px_rgba(0,0,0,0.1)]" : "text-ink-muted",
             )}
           >
             {a === "woche" ? "Woche" : a === "monat" ? "Monat" : "Jahr"}
@@ -330,15 +379,13 @@ export function PrivatKalender() {
       ) : null}
 
       {leer ? (
-        <button
-          type="button"
-          onClick={() => setRotation(true)}
-          className="mb-2 flex w-full items-center gap-2.5 rounded-[14px] bg-brand-500/10 px-3 py-2.5 text-left"
-        >
-          <Repeat className="h-5 w-5 shrink-0 text-brand-600" />
-          <span className="text-[13px] leading-snug">
-            <b className="font-semibold">Los geht&apos;s:</b> Schichtfolge einmal eintragen – der Kalender füllt sich
-            von selbst.
+        <button type="button" onClick={() => setRotation(true)} className="glas mb-2.5 flex w-full items-center gap-3 rounded-[18px] px-3.5 py-3 text-left">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+            <Repeat className="h-[18px] w-[18px]" />
+          </span>
+          <span className="text-[13.5px] leading-snug">
+            <b className="font-semibold">Los geht&apos;s:</b> Trag deine Schichtfolge einmal ein – der Kalender füllt
+            sich von selbst.
           </span>
         </button>
       ) : null}
@@ -390,7 +437,7 @@ export function PrivatKalender() {
       </div>
 
       {pinselAn && schichtarten ? (
-        <div className="fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.4rem)] z-20 mx-auto max-w-3xl rounded-[22px] border border-line/60 bg-surface/75 px-2.5 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl backdrop-saturate-150">
+        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto max-w-3xl rounded-[24px] px-2.5 py-2">
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto">
               {schichtarten.map((a) => (
@@ -400,8 +447,8 @@ export function PrivatKalender() {
                   onClick={() => setPinsel(a.id)}
                   aria-pressed={pinsel === a.id}
                   className={cn(
-                    "h-9 shrink-0 rounded-[11px] px-3 text-[13px] font-semibold",
-                    pinsel === a.id && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
+                    "h-10 shrink-0 rounded-[13px] px-3.5 text-[13.5px] font-semibold transition-transform",
+                    pinsel === a.id ? "scale-105 ring-2 ring-ink/80 ring-offset-2 ring-offset-surface" : "opacity-90",
                   )}
                   style={farbStil(a.farbe)}
                 >
@@ -413,8 +460,8 @@ export function PrivatKalender() {
                 onClick={() => setPinsel("leer")}
                 aria-pressed={pinsel === "leer"}
                 className={cn(
-                  "flex h-9 shrink-0 items-center gap-1 rounded-[11px] bg-ink/[0.06] px-3 text-[13px] font-semibold text-ink-muted",
-                  pinsel === "leer" && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
+                  "flex h-10 shrink-0 items-center gap-1 rounded-[13px] bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold text-ink-muted",
+                  pinsel === "leer" && "ring-2 ring-ink/80 ring-offset-2 ring-offset-surface",
                 )}
               >
                 <Eraser className="h-4 w-4" /> Leeren
@@ -424,28 +471,29 @@ export function PrivatKalender() {
               type="button"
               onClick={() => setPinselAn(false)}
               aria-label="Pinsel beenden"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink/[0.06] text-ink-muted"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
-          <p className="px-1 pt-1 text-[11.5px] text-ink-faint">Tippe die Tage an, die du eintragen willst.</p>
+          <p className="px-1 pt-1 text-[11.5px] text-ink-muted">
+            Tage antippen. Urlaub und Krank kommen zur Schicht dazu, statt sie zu ersetzen.
+          </p>
         </div>
       ) : null}
 
       {tagBlatt ? (
         <TagBlatt
           iso={tagBlatt}
-          artId={tage[tagBlatt] ?? null}
+          eintrag={tage[tagBlatt] ?? LEER}
           arten={schichtarten ?? []}
+          artNach={artNach}
           feiertag={feiertagVon(tagBlatt)}
           termine={termineAm(termine, tagBlatt)}
           partner={partner[tagBlatt] ?? null}
-          onWahl={(id) => void setzen([tagBlatt], id)}
-          onSchnellTermin={async (t) => {
-            await speichereTermin(t);
-            await ladeTermine();
-          }}
+          onHinzufuegen={(id) => hinzufuegen(tagBlatt, id, false)}
+          onEntfernen={(ebene) => void setzen([tagBlatt], null, ebene)}
+          onErsetzen={(ebene, id) => void setzen([tagBlatt], id, ebene)}
           onTermin={(t) => {
             setTerminBlatt({ datum: tagBlatt, termin: t });
             setTagBlatt(null);
@@ -456,6 +504,7 @@ export function PrivatKalender() {
 
       {terminBlatt ? (
         <TerminBlatt
+          glas
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
           hinweis={
@@ -517,8 +566,8 @@ function GlasKnopf({
       aria-pressed={aktiv}
       title={label}
       className={cn(
-        "flex h-10 w-10 items-center justify-center rounded-full border shadow-[0_2px_10px_rgba(0,0,0,0.06)] backdrop-blur-xl transition-colors",
-        aktiv ? "border-brand-500 bg-brand-500 text-white" : "border-line/60 bg-surface/80 text-ink-muted hover:text-ink",
+        "flex h-11 w-11 items-center justify-center rounded-full transition-colors",
+        aktiv ? "bg-brand-500 text-white shadow-[0_6px_18px_rgba(47,91,234,0.4)]" : "glas text-ink",
       )}
     >
       {children}
@@ -526,9 +575,24 @@ function GlasKnopf({
   );
 }
 
+/** Kleines Kästchen für einen Eintrag in einer Zelle. */
+function Chip({ art, klein }: { art: Schichtart; klein?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "shrink-0 truncate rounded-[7px] px-0.5 font-semibold leading-tight",
+        klein ? "py-px text-[10.5px] [@media(max-height:750px)]:py-0 [@media(max-height:750px)]:text-[10px]" : "py-[2px] text-[11.5px]",
+      )}
+      style={farbStil(art.farbe)}
+    >
+      {art.name}
+    </span>
+  );
+}
+
 interface AnsichtProps {
   heute: string;
-  tage: Record<string, string>;
+  tage: Record<string, TagEintrag>;
   artNach: Map<string, Schichtart>;
   feiertagVon: (iso: string) => string | undefined;
 }
@@ -554,45 +618,53 @@ function MonatsAnsicht({
   const liste = Array.from({ length: wochen * 7 }, (_, i) => addDays(start, i));
   return (
     <div
-      className="grid h-full grid-cols-7 overflow-hidden rounded-[18px] border border-line/70 bg-surface"
+      className="glas grid h-full grid-cols-7 overflow-hidden rounded-[22px]"
       style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
     >
       {WT.map((w, i) => (
-        <span key={w} className={cn("py-1 text-center text-[11px] font-semibold", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>
+        <span key={w} className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>
           {w}
         </span>
       ))}
       {liste.map((iso, i) => {
         const d = fromISO(iso);
         const imMonat = d.getMonth() === monat;
-        const art = tage[iso] ? artNach.get(tage[iso]!) : undefined;
+        const eintraege = arten(tage[iso], artNach);
+        const zwei = eintraege.length === 2;
         const fei = feiertagVon(iso);
         const ts = termineAm(termine, iso);
         const p = partner[iso];
+        // Höchstens so viele Terminzeilen, wie sicher ganz in die Zelle passen.
+        const zeilen = Math.max(0, 2 - (p ? 1 : 0) - (zwei ? 1 : 0));
+        const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
+        const rest = ts.length - zeigen.length;
         return (
           <button
             key={iso}
             type="button"
             onClick={() => onTag(iso)}
-            aria-label={`${WT_LANG[i % 7]}, ${formatDE(iso)}${art ? `: ${art.name}` : ""}${fei ? `, ${fei}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+            aria-label={`${WT_LANG[i % 7]}, ${formatDE(iso)}${eintraege.length ? `: ${eintraege.map((a) => a.name).join(" und ")}` : ""}${fei ? `, ${fei}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
             className={cn(
               // Feste Zellgröße: Inhalt wird abgeschnitten, nie gestreckt.
-              "flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t border-line/70 px-[2px] pb-0.5 pt-[3px] text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+              "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
               i % 7 !== 0 && "border-l",
               i % 7 >= 5 && "bg-ink/[0.025]",
-              !imMonat && "opacity-40",
+              !imMonat && "opacity-35",
             )}
           >
             <span className="relative mx-auto shrink-0">
               <span
                 className={cn(
-                  "tnum flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1 text-[14px] leading-none",
-                  iso === heute ? "bg-ink font-bold text-surface" : fei ? "font-semibold text-crit-fg" : "font-medium",
+                  "tnum flex h-[24px] min-w-[24px] items-center justify-center rounded-full px-1 text-[14.5px] leading-none [@media(max-height:750px)]:h-[21px] [@media(max-height:750px)]:min-w-[21px] [@media(max-height:750px)]:text-[13.5px]",
+                  iso === heute
+                    ? "bg-[#ff3b30] font-bold text-white shadow-[0_2px_8px_rgba(255,59,48,0.45)]"
+                    : fei
+                      ? "font-semibold text-[#e5484d]"
+                      : "font-medium",
                 )}
               >
                 {d.getDate()}
               </span>
-              {/* Kleine Handys: Punkte statt Terminzeilen. */}
               {ts.length ? (
                 <span aria-hidden className="absolute -right-2.5 top-0.5 hidden gap-px [@media(max-height:750px)]:flex">
                   {ts.slice(0, 3).map((t) => (
@@ -601,40 +673,26 @@ function MonatsAnsicht({
                 </span>
               ) : null}
             </span>
-            {art ? (
-              <span className="shrink-0 truncate rounded-[6px] px-0.5 py-[2px] text-[11.5px] font-semibold leading-tight" style={farbStil(art.farbe)}>
-                {art.name}
-              </span>
-            ) : null}
+            {eintraege.map((a) => (
+              <Chip key={a.id} art={a} klein={zwei} />
+            ))}
             {p ? (
-              <span className={cn("shrink-0 truncate rounded-[6px] px-0.5 py-px text-[10.5px] font-semibold leading-tight ring-[1.5px] ring-inset", PARTNER_FARBE[p])}>
+              <span className={cn("shrink-0 truncate rounded-[7px] px-0.5 py-px text-[10.5px] font-semibold leading-tight ring-[1.5px] ring-inset", PARTNER_FARBE[p])}>
                 {partnerText(p)}
               </span>
             ) : null}
-            {fei ? <span className="shrink-0 truncate text-[9.5px] leading-tight text-crit-fg">{fei}</span> : null}
-            {(() => {
-              // Höchstens so viele Zeilen, wie sicher ganz in die Zelle passen –
-              // nie eine halb abgeschnittene.
-              const zeilen = Math.max(0, 2 - (p ? 1 : 0));
-              if (!ts.length || !zeilen) return null;
-              const zeigen = ts.length > zeilen ? ts.slice(0, zeilen - 1) : ts;
-              const rest = ts.length - zeigen.length;
-              return (
-                <>
-                  {zeigen.map((t) => (
-                    <span key={t.id} className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden">
-                      <span className={cn("mr-0.5 inline-block h-[5px] w-[5px] rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
-                      {t.titel || "Termin"}
-                    </span>
-                  ))}
-                  {rest > 0 ? (
-                    <span className="shrink-0 text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
-                      +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
-                    </span>
-                  ) : null}
-                </>
-              );
-            })()}
+            {fei ? <span className="shrink-0 truncate text-[9.5px] leading-tight text-[#e5484d]">{fei}</span> : null}
+            {zeigen.map((t) => (
+              <span key={t.id} className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden">
+                <span className={cn("mr-0.5 inline-block h-[5px] w-[5px] rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
+                {t.titel || "Termin"}
+              </span>
+            ))}
+            {rest > 0 && zeilen > 0 ? (
+              <span className="shrink-0 text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
+                +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
+              </span>
+            ) : null}
           </button>
         );
       })}
@@ -658,44 +716,50 @@ function WochenAnsicht({
   onTag: (iso: string) => void;
 }) {
   return (
-    <ul className="grid h-full grid-rows-7 divide-y divide-line/70 overflow-hidden rounded-[18px] border border-line/70 bg-surface">
+    <ul className="glas grid h-full grid-rows-7 overflow-hidden rounded-[22px]">
       {Array.from({ length: 7 }, (_, i) => addDays(von, i)).map((iso, i) => {
-        const art = tage[iso] ? artNach.get(tage[iso]!) : undefined;
+        const eintraege = arten(tage[iso], artNach);
         const fei = feiertagVon(iso);
         const ts = termineAm(termine, iso);
         const p = partner[iso];
         return (
-          <li key={iso} className="min-h-0">
+          <li key={iso} className={cn("min-h-0", i > 0 && "glas-linie border-t")}>
             <button
               type="button"
               onClick={() => onTag(iso)}
-              className={cn("flex h-full w-full items-center gap-3 overflow-hidden px-3 text-left", iso === heute && "bg-brand-500/[0.07]")}
+              className={cn("flex h-full w-full items-center gap-3 overflow-hidden px-3 text-left active:bg-ink/[0.06]", iso === heute && "bg-[#ff3b30]/[0.06]")}
             >
               <span className="flex w-10 shrink-0 flex-col items-center">
-                <span className={cn("text-[11px] font-semibold", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>{WT[i]}</span>
+                <span className={cn("text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>{WT[i]}</span>
                 <span
                   className={cn(
-                    "tnum flex h-7 min-w-7 items-center justify-center rounded-full text-[17px] font-semibold",
-                    iso === heute ? "bg-ink text-surface" : fei ? "text-crit-fg" : "",
+                    "tnum flex h-8 min-w-8 items-center justify-center rounded-full text-[18px] font-semibold",
+                    iso === heute ? "bg-[#ff3b30] text-white" : fei ? "text-[#e5484d]" : "",
                   )}
                 >
                   {fromISO(iso).getDate()}
                 </span>
               </span>
               <span className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                {art ? (
-                  <span className="flex items-center justify-between gap-2 rounded-[10px] px-2.5 py-1.5" style={farbStil(art.farbe)}>
-                    <span className="truncate text-[14px] font-semibold">{art.name}</span>
-                    <span className="tnum shrink-0 text-[12px] font-medium opacity-90">{zeitText(art)}</span>
+                {eintraege.length ? (
+                  <span className="flex min-w-0 gap-1.5">
+                    {eintraege.map((a) => (
+                      <span key={a.id} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[12px] px-2.5 py-1.5" style={farbStil(a.farbe)}>
+                        <span className="truncate text-[14px] font-semibold">{a.name}</span>
+                        {zeitText(a) && eintraege.length === 1 ? (
+                          <span className="tnum shrink-0 text-[12px] font-medium opacity-90">{zeitText(a)}</span>
+                        ) : null}
+                      </span>
+                    ))}
                   </span>
                 ) : (
                   <span className="text-[13px] text-ink-faint">Nichts eingetragen</span>
                 )}
                 {fei || p || ts.length ? (
                   <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] text-ink-muted">
-                    {fei ? <span className="shrink-0 font-medium text-crit-fg">{fei}</span> : null}
+                    {fei ? <span className="shrink-0 font-medium text-[#e5484d]">{fei}</span> : null}
                     {p ? (
-                      <span className={cn("shrink-0 rounded-[6px] px-1.5 py-px text-[11px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[p])}>
+                      <span className={cn("shrink-0 rounded-[7px] px-1.5 py-px text-[11px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[p])}>
                         {partnerText(p)}
                       </span>
                     ) : null}
@@ -733,7 +797,7 @@ function JahresAnsicht({
               key={m}
               type="button"
               onClick={() => onMonat(m)}
-              className="flex flex-col justify-start rounded-[16px] border border-line/70 bg-surface p-2 text-left"
+              className="glas flex flex-col justify-start rounded-[18px] p-2 text-left"
               aria-label={`${monthName(m)} ${jahr} öffnen`}
             >
               <span className="mb-1 block text-[13px] font-semibold">{monthName(m)}</span>
@@ -741,19 +805,28 @@ function JahresAnsicht({
                 {Array.from({ length: wochen * 7 }, (_, i) => {
                   const iso = addDays(start, i);
                   if (fromISO(iso).getMonth() !== m) return <span key={iso} className="aspect-square" />;
-                  const art = tage[iso] ? artNach.get(tage[iso]!) : undefined;
+                  const [a1, a2] = arten(tage[iso], artNach);
                   const fei = feiertagVon(iso);
+                  // Zwei Einträge: diagonal geteilt.
+                  const stil = a1
+                    ? a2
+                      ? {
+                          backgroundImage: `linear-gradient(135deg, ${a1.farbe} 50%, ${a2.farbe} 50%)`,
+                          color: farbStil(a2.farbe).color,
+                        }
+                      : farbStil(a1.farbe)
+                    : undefined;
                   return (
                     <span
                       key={iso}
-                      title={`${formatDE(iso)}${art ? `: ${art.name}` : ""}${fei ? ` · ${fei}` : ""}`}
+                      title={`${formatDE(iso)}${a1 ? `: ${[a1, a2].filter(Boolean).map((a) => a!.name).join(" + ")}` : ""}${fei ? ` · ${fei}` : ""}`}
                       className={cn(
-                        "tnum flex aspect-square items-center justify-center rounded-[4px] text-[8.5px] font-semibold leading-none",
-                        !art && "bg-ink/[0.05] text-ink-faint",
-                        iso === heute && "ring-2 ring-ink",
-                        fei && !art && "text-crit-fg",
+                        "tnum flex aspect-square items-center justify-center rounded-[5px] text-[8.5px] font-semibold leading-none",
+                        !a1 && "bg-ink/[0.06] text-ink-faint",
+                        iso === heute && "ring-2 ring-[#ff3b30]",
+                        fei && !a1 && "text-[#e5484d]",
                       )}
-                      style={art ? farbStil(art.farbe) : undefined}
+                      style={stil}
                     >
                       {fromISO(iso).getDate()}
                     </span>
@@ -771,73 +844,47 @@ function JahresAnsicht({
 /** Stunden, z. B. 8 oder 7,5 */
 const h = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 
-function plusStunde(hhmm: string): string {
-  const [st, mi] = hhmm.split(":").map(Number);
-  return `${String(((st ?? 0) + 1) % 24).padStart(2, "0")}:${String(mi ?? 0).padStart(2, "0")}`;
-}
-
 /**
- * Tagesblatt: oben die Schicht (kompakt – eingetragen ist sie nur eine
- * Zeile), darunter das große Feld für einen neuen Termin und die Termine.
+ * Tagesblatt wie bei iOS: oben die Einträge des Tages (je eine Zeile mit
+ * Entfernen), dann zwei große Knöpfe „Schicht“ und „Termin“, darunter die
+ * Termine.
  */
 function TagBlatt({
   iso,
-  artId,
-  arten,
+  eintrag,
+  arten: alleArten,
+  artNach,
   feiertag,
   termine,
   partner,
-  onWahl,
-  onSchnellTermin,
+  onHinzufuegen,
+  onEntfernen,
+  onErsetzen,
   onTermin,
   onClose,
 }: {
   iso: string;
-  artId: string | null;
+  eintrag: TagEintrag;
   arten: Schichtart[];
+  artNach: Map<string, Schichtart>;
   feiertag?: string;
   termine: Termin[];
   partner: PartnerSchicht | null;
-  onWahl: (id: string | null) => void;
-  onSchnellTermin: (t: TerminEingabe) => Promise<void>;
+  onHinzufuegen: (id: string) => void;
+  onEntfernen: (ebene: Ebene) => void;
+  onErsetzen: (ebene: Ebene, id: string) => void;
   onTermin: (t: Termin | null) => void;
   onClose: () => void;
 }) {
-  const art = artId ? arten.find((a) => a.id === artId) : undefined;
-  const [aendern, setAendern] = useState(!art);
-  const [titel, setTitel] = useState("");
-  const [von, setVon] = useState("");
-  const [bis, setBis] = useState("");
-  const [laeuft, setLaeuft] = useState(false);
-  const [fehler, setFehler] = useState<string | null>(null);
-
-  async function hinzufuegen(e: React.FormEvent) {
-    e.preventDefault();
-    if (!titel.trim()) return;
-    setLaeuft(true);
-    setFehler(null);
-    try {
-      const mitZeit = /^\d{2}:\d{2}$/.test(von);
-      await onSchnellTermin({
-        id: null,
-        datum: iso,
-        titel: titel.trim().slice(0, 80),
-        ganztaegig: !mitZeit,
-        von: mitZeit ? von : "",
-        bis: mitZeit ? (/^\d{2}:\d{2}$/.test(bis) ? bis : plusStunde(von)) : "",
-        wiederholung: "nie",
-        notiz: "",
-        ort: "",
-      });
-      setTitel("");
-      setVon("");
-      setBis("");
-    } catch (err) {
-      setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gespeichert werden.");
-    } finally {
-      setLaeuft(false);
-    }
-  }
+  const zeilen: { ebene: Ebene; art: Schichtart }[] = [];
+  const s = eintrag.schicht ? artNach.get(eintrag.schicht) : undefined;
+  const z = eintrag.zusatz ? artNach.get(eintrag.zusatz) : undefined;
+  if (s) zeilen.push({ ebene: 1, art: s });
+  if (z) zeilen.push({ ebene: 2, art: z });
+  const voll = zeilen.length === 2;
+  const [auswahl, setAuswahl] = useState(zeilen.length === 0);
+  /** Welche Zeile gerade getauscht wird (bei zwei Einträgen). */
+  const [tauschen, setTauschen] = useState<Ebene | null>(null);
 
   const d = fromISO(iso);
   return (
@@ -846,7 +893,7 @@ function TagBlatt({
       unter={
         feiertag || partner ? (
           <>
-            {feiertag ? <span className="font-medium text-crit-fg">{feiertag}</span> : null}
+            {feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : null}
             {feiertag && partner ? " · " : null}
             {partner ? <>Partner: {partnerText(partner, true)}</> : null}
           </>
@@ -854,142 +901,120 @@ function TagBlatt({
       }
       onClose={onClose}
     >
-      {/* Schicht */}
-      {art && !aendern ? (
-        <div className="flex items-center gap-3 rounded-[14px] px-3 py-2.5" style={farbStil(art.farbe)}>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[16px] font-semibold">{art.name}</span>
-            <span className="tnum block text-[12.5px] opacity-90">
-              {zeitText(art) || "ohne Uhrzeit"}
-              {art.stunden ? ` · ${h(art.stunden)} h` : ""}
-            </span>
-          </span>
-          <button
-            type="button"
-            onClick={() => setAendern(true)}
-            className="shrink-0 rounded-full bg-black/15 px-3 py-1.5 text-[13px] font-semibold"
-          >
-            Ändern
-          </button>
-        </div>
-      ) : (
-        <div>
-          <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Schicht</p>
-          <div className="flex flex-wrap gap-1.5">
-            {arten.map((a) => (
+      {zeilen.length ? (
+        <ul className="space-y-2">
+          {zeilen.map(({ ebene, art }) => (
+            <li key={ebene} className="flex items-center gap-3 rounded-[16px] px-3.5 py-2.5" style={farbStil(art.farbe)}>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[16px] font-semibold">{art.name}</span>
+                <span className="tnum block text-[12.5px] opacity-90">
+                  {zeitText(art) || (art.art === "arbeit" ? "ohne Uhrzeit" : art.art === "frei" ? "frei" : "ganztägig")}
+                  {art.stunden ? ` · ${h(art.stunden)} h` : ""}
+                </span>
+              </span>
+              {voll ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTauschen(ebene);
+                    setAuswahl(true);
+                  }}
+                  className="shrink-0 rounded-full bg-black/15 px-3 py-1.5 text-[13px] font-semibold"
+                >
+                  Tauschen
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onEntfernen(ebene)}
+                aria-label={`${art.name} entfernen`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/15"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setTauschen(voll ? 2 : null);
+            setAuswahl(!auswahl);
+          }}
+          aria-expanded={auswahl}
+          className={cn(
+            "flex h-[52px] items-center justify-center gap-2 rounded-[16px] text-[15px] font-semibold transition-colors",
+            auswahl ? "bg-brand-500 text-white" : "bg-ink/[0.07] text-ink",
+          )}
+        >
+          <Layers className="h-5 w-5" /> {zeilen.length ? "Schicht dazu" : "Schicht"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onTermin(null)}
+          className="flex h-[52px] items-center justify-center gap-2 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold text-ink"
+        >
+          <CalendarPlus className="h-5 w-5" /> Termin
+        </button>
+      </div>
+
+      {auswahl ? (
+        <div className="mt-3">
+          <p className="mb-2 text-[12.5px] text-ink-muted">
+            {tauschen
+              ? `Ersetzt „${(tauschen === 1 ? s : z)?.name ?? ""}“.`
+              : zeilen.length
+                ? "Kommt zur Schicht dazu – die Schicht bleibt stehen."
+                : "Was steht an diesem Tag an?"}
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {alleArten.map((a) => (
               <button
                 key={a.id}
                 type="button"
                 onClick={() => {
-                  onWahl(a.id === artId ? null : a.id);
-                  setAendern(false);
+                  if (tauschen) onErsetzen(tauschen, a.id);
+                  else onHinzufuegen(a.id);
+                  setAuswahl(false);
+                  setTauschen(null);
                 }}
-                aria-pressed={a.id === artId}
-                className={cn(
-                  "h-9 rounded-[11px] px-3 text-[13.5px] font-semibold",
-                  a.id === artId && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
-                )}
+                className="h-11 truncate rounded-[13px] px-2 text-[14px] font-semibold active:scale-[0.97]"
                 style={farbStil(a.farbe)}
               >
                 {a.name}
               </button>
             ))}
-            {artId ? (
-              <button
-                type="button"
-                onClick={() => {
-                  onWahl(null);
-                  setAendern(true);
-                }}
-                className="flex h-9 items-center gap-1 rounded-[11px] bg-ink/[0.06] px-3 text-[13.5px] font-semibold text-ink-muted"
-              >
-                <Eraser className="h-4 w-4" /> Leeren
-              </button>
-            ) : null}
           </div>
         </div>
-      )}
-
-      {/* Termin: großes Feld */}
-      <form onSubmit={hinzufuegen} className="mt-5">
-        <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Termin</p>
-        <div className="overflow-hidden rounded-[14px] border border-line bg-surface-muted focus-within:border-brand-500">
-          <input
-            id="tag-termin"
-            value={titel}
-            onChange={(e) => setTitel(e.target.value)}
-            maxLength={80}
-            autoComplete="off"
-            enterKeyHint="done"
-            placeholder="Neuer Termin, z. B. Zahnarzt"
-            className="block h-14 w-full bg-transparent px-4 text-[17px] outline-none placeholder:text-ink-faint"
-          />
-          <div className="flex items-center gap-2 border-t border-line/70 px-3 py-2">
-            <label className="flex items-center gap-1.5 text-[13px] text-ink-muted">
-              von
-              <input
-                type="time"
-                value={von}
-                onChange={(e) => setVon(e.target.value)}
-                className="rounded-lg bg-surface px-2 py-1 text-[14px] text-ink"
-              />
-            </label>
-            <label className="flex items-center gap-1.5 text-[13px] text-ink-muted">
-              bis
-              <input
-                type="time"
-                value={bis}
-                onChange={(e) => setBis(e.target.value)}
-                className="rounded-lg bg-surface px-2 py-1 text-[14px] text-ink"
-              />
-            </label>
-          </div>
-        </div>
-        <p className="mt-1 text-[12px] text-ink-faint">Ohne Uhrzeit ist der Termin ganztägig.</p>
-        {fehler ? (
-          <div className="mt-2">
-            <Alert tone="error">{fehler}</Alert>
-          </div>
-        ) : null}
-        <div className="mt-3 flex gap-2">
-          <button
-            type="submit"
-            disabled={laeuft || !titel.trim()}
-            className="h-11 flex-1 rounded-[12px] bg-brand-500 text-[15px] font-semibold text-white disabled:opacity-40"
-          >
-            {laeuft ? "Speichert …" : "Hinzufügen"}
-          </button>
-          <button
-            type="button"
-            onClick={() => onTermin(null)}
-            className="h-11 rounded-[12px] bg-ink/[0.06] px-4 text-[14px] font-semibold text-ink-muted"
-          >
-            Mehr Optionen
-          </button>
-        </div>
-      </form>
+      ) : null}
 
       {termine.length ? (
-        <ul className="mt-4 divide-y divide-line overflow-hidden rounded-[14px] border border-line">
-          {termine.map((t) => (
-            <li key={t.id}>
-              <button
-                type="button"
-                onClick={() => onTermin(t)}
-                className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left hover:bg-surface-muted"
-              >
-                <span className="min-w-0 truncate text-[15px]">
-                  <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
-                  {t.titel || "Termin"}
-                  {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· Partner</span> : null}
-                </span>
-                <span className="tnum shrink-0 text-[13px] text-ink-muted">
-                  {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-4">
+          <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Termine</p>
+          <ul className="overflow-hidden rounded-[16px] bg-ink/[0.04]">
+            {termine.map((t, i) => (
+              <li key={t.id} className={cn(i > 0 && "glas-linie border-t")}>
+                <button
+                  type="button"
+                  onClick={() => onTermin(t)}
+                  className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left active:bg-ink/[0.05]"
+                >
+                  <span className="min-w-0 truncate text-[15px]">
+                    <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
+                    {t.titel || "Termin"}
+                    {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· Partner</span> : null}
+                  </span>
+                  <span className="tnum shrink-0 text-[13px] text-ink-muted">
+                    {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </Blatt>
   );

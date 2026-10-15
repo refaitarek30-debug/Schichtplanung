@@ -38,7 +38,7 @@ export function PrivatMehr() {
     });
   }
 
-  const feld = "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]";
+  const feld = "w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40";
 
   return (
     <div className="space-y-4">
@@ -145,7 +145,7 @@ export function PrivatMehr() {
             <LogOut className="h-5 w-5 text-ink-muted" /> Abmelden
           </button>
         </form>
-        <div className="border-t border-line">
+        <div className="glas-linie border-t">
           {!loeschen ? (
             <button
               type="button"

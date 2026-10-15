@@ -50,13 +50,13 @@ export function PrivatSchichten() {
         }
       />
       {artenFehler ? <Alert tone="error">{artenFehler}</Alert> : null}
-      <ul aria-busy={!schichtarten} className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
+      <ul aria-busy={!schichtarten} className="glas overflow-hidden rounded-[22px]">
         {(schichtarten ?? []).map((a) => (
-          <li key={a.id}>
+          <li key={a.id} className="glas-linie border-b last:border-b-0">
             <button
               type="button"
               onClick={() => setOffen({ ...a })}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-muted"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-ink/[0.04]"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[13px] font-bold" style={farbStil(a.farbe)}>
                 {a.kuerzel}
@@ -76,7 +76,7 @@ export function PrivatSchichten() {
       <button
         type="button"
         onClick={neu}
-        className="flex w-full items-center justify-center gap-2 rounded-card border border-dashed border-line py-3 text-[14px] font-semibold text-brand-600"
+        className="flex w-full items-center justify-center gap-2 glas rounded-[18px] py-3.5 text-[14px] font-semibold text-brand-600"
       >
         <Plus className="h-4 w-4" /> Schicht hinzufügen
       </button>
@@ -156,7 +156,7 @@ function SchichtBlatt({
     }
   }
 
-  const feld = "w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px]";
+  const feld = "w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40";
 
   return (
     <Blatt
@@ -236,7 +236,7 @@ function SchichtBlatt({
 
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Art</span>
-          <div className="grid grid-cols-4 gap-1 rounded-xl bg-surface-sunken p-1">
+          <div className="grid grid-cols-4 gap-1 rounded-[14px] bg-ink/[0.06] p-1">
             {(Object.keys(ART_TEXT) as SchichtArt[]).map((a) => (
               <button
                 key={a}

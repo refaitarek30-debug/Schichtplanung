@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { farbStil, ladeTage } from "@/lib/privat/daten";
+import { farbStil, istAbwesenheit, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
@@ -25,7 +25,7 @@ export function PrivatAuswertung() {
   const [zeitraum, setZeitraum] = useState<Zeitraum>("jahr");
   const [anker, setAnker] = useState(heute);
   const [bisHeute, setBisHeute] = useState(false);
-  const [tage, setTage] = useState<Record<string, string> | null>(null);
+  const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
 
   const d = fromISO(anker);
@@ -48,12 +48,19 @@ export function PrivatAuswertung() {
   const wochenstunden = konto.wochenstunden;
   const werte = (() => {
     if (!tage || !schichtarten) return null;
+    const nach = new Map(schichtarten.map((a) => [a.id, a]));
     const anzahl = new Map<string, number>();
-    for (const [tag, id] of Object.entries(tage)) {
+    const stunden = new Map<string, number>();
+    for (const [tag, e] of Object.entries(tage)) {
       if (tag < von || tag > bis) continue;
-      anzahl.set(id, (anzahl.get(id) ?? 0) + 1);
+      const ids = [e.schicht, e.zusatz].filter((x): x is string => !!x);
+      for (const id of ids) anzahl.set(id, (anzahl.get(id) ?? 0) + 1);
+      // Stunden: Ist an dem Tag Urlaub oder Krank eingetragen, zählen dessen
+      // Stunden – die Schicht darunter nicht noch einmal.
+      const abw = ids.filter((id) => istAbwesenheit(nach.get(id)));
+      for (const id of abw.length ? abw : ids) stunden.set(id, (stunden.get(id) ?? 0) + (nach.get(id)?.stunden ?? 0));
     }
-    const zeilen = schichtarten.map((a) => ({ art: a, anzahl: anzahl.get(a.id) ?? 0, stunden: (anzahl.get(a.id) ?? 0) * a.stunden }));
+    const zeilen = schichtarten.map((a) => ({ art: a, anzahl: anzahl.get(a.id) ?? 0, stunden: stunden.get(a.id) ?? 0 }));
     const gesamtAnzahl = zeilen.reduce((s, z) => s + z.anzahl, 0);
     const gesamtStunden = zeilen.reduce((s, z) => s + z.stunden, 0);
     // Soll erst ab dem ersten eingetragenen Tag – wer im Oktober anfängt,
@@ -100,7 +107,7 @@ export function PrivatAuswertung() {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div role="tablist" aria-label="Zeitraum" className="inline-flex rounded-xl bg-surface-sunken p-1">
+        <div role="tablist" aria-label="Zeitraum" className="glas inline-flex rounded-[14px] p-1">
           {(["monat", "jahr"] as const).map((z) => (
             <button
               key={z}
@@ -161,8 +168,8 @@ export function PrivatAuswertung() {
           )}
         </PrivatKarte>
         <p className="text-[12px] leading-snug text-ink-faint">
-          Gearbeitet zählt die Stunden aller eingetragenen Tage (Urlaub und Krank mit den Stunden, die du bei der Schicht
-          hinterlegt hast). Soll: Wochenstunden verteilt auf Montag bis Freitag, ab deinem ersten eingetragenen Tag.
+          Gearbeitet zählt die Stunden aller eingetragenen Tage. Steht an einem Tag Urlaub oder Krank, zählen dessen Stunden
+          (wie bei der Schicht hinterlegt) statt der Schicht darunter. Soll: Wochenstunden verteilt auf Montag bis Freitag, ab deinem ersten eingetragenen Tag.
         </p>
       </div>
     </div>
