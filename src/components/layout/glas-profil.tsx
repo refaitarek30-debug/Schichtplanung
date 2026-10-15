@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 const HANDY = "(max-width: 1023px)";
 
-function useGlasModus() {
+export function useGlasModus() {
   return useSyncExternalStore(
     (rueckruf) => {
       const m = window.matchMedia(HANDY);

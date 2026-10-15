@@ -27,7 +27,8 @@ import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
 import { TileSettings, kachelSichtbar, type TileOption } from "@/components/dashboard/tile-settings";
-import { ProfilInline } from "@/components/layout/glas-profil";
+import { ProfilInline, useGlasModus } from "@/components/layout/glas-profil";
+import { setzeKachelAuswahl } from "@/lib/kachel-auswahl";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
 import { fetchShiftOptions } from "@/lib/data/shifts";
 import { fetchStaffingRange } from "@/lib/data/staffing";
@@ -258,6 +259,14 @@ export default function DashboardPage() {
     return liste;
   }, [role, hatVKonto]);
 
+  // Auf dem Handy (neue Oberfläche) steht die Auswahl im Profil-Fenster.
+  const glas = useGlasModus();
+  useEffect(() => {
+    if (mode !== "live" || !glas) return;
+    setzeKachelAuswahl({ profileId: profile.id, optionen: kachelOptionen, versteckt, onChange: setVersteckt });
+    return () => setzeKachelAuswahl(null);
+  }, [mode, glas, profile.id, kachelOptionen, versteckt]);
+
   // Mitteilungen: im Live-Modus das, was die Führung auf der Regeln-Seite
   // geschrieben hat, plus jede aktive Urlaubssperre als eigener Eintrag.
   // Gesperrte Zeiträume, die schon vorbei sind, fallen raus.
@@ -303,7 +312,7 @@ export default function DashboardPage() {
             {greeting()}, {profile.firstName} 👋
           </h1>
         </div>
-        {mode === "live" ? (
+        {mode === "live" && !glas ? (
           <TileSettings
             profileId={profile.id}
             optionen={kachelOptionen}

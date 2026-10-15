@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Cog, LogOut, UserRound } from "lucide-react";
+import { Bell, Cog, LayoutGrid, LogOut, UserRound } from "lucide-react";
+import { KachelListe } from "@/components/dashboard/tile-settings";
+import { useKachelAuswahl } from "@/lib/kachel-auswahl";
 import { Blatt } from "@/components/privat/blatt";
 import { Avatar } from "@/components/ui/avatar";
 import { useSession } from "@/context/session";
@@ -77,6 +79,7 @@ export function ProfilBlatt({
   const { role, profile, echteRolle, ansicht, setAnsicht } = useSession();
   const ansichten = ROLLEN.filter((r) => ROLLEN.indexOf(r) < ROLLEN.indexOf(echteRolle));
   const ungelesen = (items ?? []).filter((n) => !n.readAt).length;
+  const kacheln = useKachelAuswahl();
 
   // Beim Öffnen die ungelesenen als gelesen markieren – wie die Glocke.
   // Die Hervorhebung bleibt, bis das Fenster zugeht.
@@ -113,6 +116,17 @@ export function ProfilBlatt({
           <Cog className="h-5 w-5 text-ink-muted" strokeWidth={1.8} /> Einstellungen
         </Link>
       </div>
+
+      {kacheln ? (
+        <>
+          <p className="mb-1.5 mt-5 flex items-center gap-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+            <LayoutGrid className="h-3.5 w-3.5" /> Kacheln auf dem Start
+          </p>
+          <div className="rounded-[16px] bg-ink/[0.04] p-1.5">
+            <KachelListe {...kacheln} blatt />
+          </div>
+        </>
+      ) : null}
 
       <p className="mb-1.5 mt-5 flex items-center gap-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
         <Bell className="h-3.5 w-3.5" /> Benachrichtigungen
