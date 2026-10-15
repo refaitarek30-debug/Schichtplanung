@@ -19,14 +19,15 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
   const pfad = usePathname();
   return (
     <div className="min-h-dvh bg-surface-muted">
-      <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
         {children}
       </main>
+      {/* Schwebende Leiste im Glas-Stil – fest am unteren Rand. */}
       <nav
         aria-label="Bereiche"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        className="fixed inset-x-3 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-md rounded-[26px] border border-line/60 bg-surface/70 p-1 shadow-[0_10px_34px_rgba(0,0,0,0.16)] backdrop-blur-2xl backdrop-saturate-150"
       >
-        <ul className="mx-auto flex max-w-lg items-stretch">
+        <ul className="flex items-stretch">
           {NAV.map((n) => {
             const aktiv = n.href === "/privat" ? pfad === "/privat" : pfad.startsWith(n.href);
             return (
@@ -35,11 +36,11 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
                   href={n.href}
                   aria-current={aktiv ? "page" : undefined}
                   className={cn(
-                    "flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium",
-                    aktiv ? "text-brand-600" : "text-ink-faint hover:text-ink-muted",
+                    "flex flex-col items-center gap-0.5 rounded-[22px] py-1.5 text-[10.5px] font-semibold transition-colors",
+                    aktiv ? "bg-ink/[0.07] text-brand-600" : "text-ink-muted hover:text-ink",
                   )}
                 >
-                  <n.icon className="h-5 w-5" strokeWidth={aktiv ? 2.2 : 1.8} />
+                  <n.icon className="h-[22px] w-[22px]" strokeWidth={aktiv ? 2.2 : 1.8} />
                   {n.text}
                 </Link>
               </li>
@@ -85,7 +86,7 @@ export function RundKnopf({
       title={label}
       className={cn(
         "flex h-10 w-10 items-center justify-center rounded-full ring-1 ring-inset transition-colors",
-        aktiv ? "bg-brand-500 text-white ring-brand-500" : "bg-surface text-ink-muted ring-line hover:text-ink",
+        aktiv ? "bg-brand-500 text-white ring-brand-500" : "bg-surface/80 text-ink-muted ring-line/60 backdrop-blur-xl hover:text-ink",
       )}
     >
       {children}
@@ -96,7 +97,7 @@ export function RundKnopf({
 /** Weiße Karte mit Überschrift – wie in der Auswertung. */
 export function PrivatKarte({ titel, children, className }: { titel?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("rounded-card border border-line bg-surface shadow-card", className)}>
+    <section className={cn("overflow-hidden rounded-[18px] border border-line/70 bg-surface", className)}>
       {titel ? <h2 className="border-b border-line px-4 py-3 text-center text-[16px] font-semibold">{titel}</h2> : null}
       {children}
     </section>

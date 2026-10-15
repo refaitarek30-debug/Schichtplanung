@@ -154,22 +154,22 @@ export function RotationBlatt({
           <p className="px-1 py-2 text-[13px] text-ink-faint">Tippe unten die Schichten in der richtigen Reihenfolge an.</p>
         )}
       </div>
-      <div className="mt-2 flex gap-3">
+      <div className="mt-2 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => setMuster(muster.slice(0, -1))}
           disabled={!muster.length}
-          className="flex items-center gap-1 text-[13px] font-semibold text-ink-muted disabled:opacity-40"
+          className="flex h-11 items-center justify-center gap-2 rounded-[12px] border border-line bg-surface text-[14px] font-semibold text-ink disabled:opacity-40"
         >
-          <Delete className="h-4 w-4" /> Letzten entfernen
+          <Delete className="h-[18px] w-[18px]" /> Letzten entfernen
         </button>
         <button
           type="button"
           onClick={() => setMuster([])}
           disabled={!muster.length}
-          className="flex items-center gap-1 text-[13px] font-semibold text-ink-muted disabled:opacity-40"
+          className="flex h-11 items-center justify-center gap-2 rounded-[12px] border border-line bg-surface text-[14px] font-semibold text-ink disabled:opacity-40"
         >
-          <Trash2 className="h-4 w-4" /> Neu beginnen
+          <Trash2 className="h-[18px] w-[18px]" /> Neu beginnen
         </button>
       </div>
 
@@ -179,7 +179,7 @@ export function RotationBlatt({
             key={a.id}
             type="button"
             onClick={() => muster.length < 56 && setMuster([...muster, a.id])}
-            className="rounded-xl px-2 py-2.5 text-[14px] font-semibold"
+            className="h-11 rounded-[12px] px-2 text-[14px] font-semibold"
             style={farbStil(a.farbe)}
           >
             + {a.name}
@@ -188,7 +188,7 @@ export function RotationBlatt({
         <button
           type="button"
           onClick={() => muster.length < 56 && setMuster([...muster, null])}
-          className="rounded-xl border border-dashed border-line px-2 py-2.5 text-[13px] font-semibold text-ink-muted"
+          className="h-11 rounded-[12px] border border-dashed border-line px-2 text-[13px] font-semibold text-ink-muted"
           title="An diesem Tag nichts eintragen"
         >
           + leer lassen
