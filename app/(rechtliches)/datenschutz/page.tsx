@@ -395,8 +395,7 @@ export default function DatenschutzPage() {
           Schichtleitung und keine Administration des Unternehmens; die Datenbank lässt Abfragen
           und Änderungen darauf nur für die Person selbst zu. Sie erscheinen weder im Partner-Link
           noch im Kalender-Abo. Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
-          oder Angaben zu anderen Personen enthalten.{" "}
-          <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
+          oder Angaben zu anderen Personen enthalten.
         </Absatz>
         <Absatz>
           <strong>Partner-Link:</strong> Eine Person kann einer Vertrauensperson (z. B. Partnerin
@@ -429,8 +428,7 @@ export default function DatenschutzPage() {
           Kollegen. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
           der Link erstellt, zuletzt abgerufen und beendet wurde. Was die Kalender-App des
           Handys bzw. deren Anbieter (z. B. Apple, Google) mit den abgerufenen Daten macht,
-          richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.{" "}
-          <Platzhalter>derzeit nur für einzelne freigeschaltete Personen verfügbar</Platzhalter>
+          richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.
         </Absatz>
         <Absatz>
           <strong>Schutz der Links:</strong> Partner-Link und Kalender-Abo funktionieren ohne

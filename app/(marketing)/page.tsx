@@ -495,6 +495,12 @@ export default function LandingPage() {
               Live-Demo
             </CtaLink>
           </div>
+          <p className="mt-8 text-[14px] text-ink-muted">
+            Nur einen eigenen Schichtkalender für privat?{" "}
+            <a href="/privat/registrieren" className="font-medium text-brand-600 hover:underline">
+              Kostenlos für Privatpersonen
+            </a>
+          </p>
         </div>
       </section>
     </>
