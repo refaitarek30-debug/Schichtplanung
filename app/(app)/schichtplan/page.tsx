@@ -37,6 +37,8 @@ export default function ShiftPlanPage() {
 
   return (
     <div className="space-y-5">
+      {/* Im neuen Stil bleibt der Schichtplan einfach weiß (globals.css). */}
+      <span hidden data-seite-weiss />
       <PageHeader
         eyebrow="Übersicht"
         title="Schichtplan"
