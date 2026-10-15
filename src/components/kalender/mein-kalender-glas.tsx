@@ -49,6 +49,8 @@ import { PARTNER_FARBE, PartnerBlatt, partnerText, type PartnerSchicht } from ".
 import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
+import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
+import { Avatar } from "@/components/ui/avatar";
 
 /**
  * Mein Kalender im Stil des Privatkalenders (Glas, Tagesfenster) – zunächst
@@ -515,6 +517,9 @@ export function MeinKalenderGlas() {
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<string | null>(null);
   const [anpassen, setAnpassen] = useState(false);
+  const [profilOffen, setProfilOffen] = useState(false);
+  const { items: meldungen, setItems: setMeldungen } = useBenachrichtigungen();
+  const ungelesen = (meldungen ?? []).some((n) => !n.readAt);
   /** Editor für eigene Einträge – und wohin es danach zurückgeht. */
   const [editor, setEditor] = useState<{ wert: EigeneArtEingabe; zurueck: "anpassen" | string | null } | null>(null);
 
@@ -621,7 +626,7 @@ export function MeinKalenderGlas() {
     >
       <header className="flex items-center justify-between gap-2 pb-2.5 pt-3 [@media(max-height:700px)]:pb-1.5 [@media(max-height:700px)]:pt-1.5">
         <div className="min-w-0">
-          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em] [@media(max-height:700px)]:text-[25px]">
+          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em] [@media(max-height:700px)]:text-[25px] [@media(max-width:360px)]:text-[23px]">
             {monthName(monat.monat)}
           </h1>
           <p className="tnum truncate text-[14px] font-medium text-ink-muted">
@@ -636,7 +641,7 @@ export function MeinKalenderGlas() {
             ) : null}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorheriger Monat" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
@@ -661,6 +666,18 @@ export function MeinKalenderGlas() {
           <GlasKnopf label="Partner einladen" onClick={() => setEinladen(true)}>
             <UserPlus className="h-[18px] w-[18px]" />
           </GlasKnopf>
+          {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
+          <span className="relative lg:hidden">
+            <GlasKnopf
+              label={ungelesen ? "Profil, ungelesene Benachrichtigungen" : "Profil"}
+              onClick={() => setProfilOffen(true)}
+            >
+              <Avatar employee={profile} className="h-7 w-7 bg-ink/[0.08] text-[11px]" />
+            </GlasKnopf>
+            {ungelesen ? (
+              <span aria-hidden className="absolute right-0 top-0 h-3 w-3 rounded-full bg-crit-dot ring-2 ring-white/80" />
+            ) : null}
+          </span>
         </div>
       </header>
 
@@ -892,6 +909,10 @@ export function MeinKalenderGlas() {
         />
       ) : null}
 
+      {profilOffen ? (
+        <ProfilBlatt items={meldungen} setItems={setMeldungen} onClose={() => setProfilOffen(false)} />
+      ) : null}
+
       {editor ? <EigeneArtBlatt wert={editor.wert} onClose={() => editorZu(false)} onFertig={() => editorZu(true)} /> : null}
 
       {terminBlatt ? (
@@ -965,7 +986,7 @@ function GlasKnopf({
       aria-pressed={aktiv}
       title={label}
       className={cn(
-        "flex h-10 w-10 items-center justify-center rounded-full transition-colors sm:h-11 sm:w-11",
+        "flex h-10 w-10 items-center justify-center rounded-full transition-colors sm:h-11 sm:w-11 [@media(max-width:360px)]:h-9 [@media(max-width:360px)]:w-9",
         aktiv ? "bg-brand-500 text-white shadow-[0_6px_18px_rgba(47,91,234,0.4)]" : "glas text-ink",
       )}
     >

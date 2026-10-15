@@ -165,7 +165,7 @@ export function PlanLeaveRequest({
   // genau die Zeile verdecken, in der man als Nächstes tippen will.
   if (!fertig) {
     return (
-      <div role="dialog" aria-label="Urlaub beantragen" className={leiste}>
+      <div role="dialog" aria-label="Urlaub beantragen" data-ueber-leiste className={leiste}>
         <p className="tnum text-[14px] font-semibold">Beginn: {formatDE(von)}</p>
         <KontoUebersicht konto={konto} kontingente={kontingente} />
         <p className="mt-0.5 text-[12px] text-ink-muted">
@@ -191,6 +191,7 @@ export function PlanLeaveRequest({
     <div
       role="dialog"
       aria-label="Urlaub beantragen"
+      data-ueber-leiste
       className={`${leiste} max-h-[60vh] overflow-y-auto`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
