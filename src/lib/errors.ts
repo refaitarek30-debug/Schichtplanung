@@ -4,7 +4,7 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
   const message = (error.message ?? "").toLowerCase();
 
   if (message.includes("invalid login credentials")) {
-    return "E-Mail oder Passwort ist falsch.";
+    return "E-Mail, Spitzname oder Passwort ist falsch.";
   }
   if (message.includes("email not confirmed")) {
     return "Dieses Konto ist noch nicht bestätigt. Bitte den Link aus der E-Mail öffnen, die wir dir geschickt haben.";
@@ -12,7 +12,7 @@ export function authErrorMessage(error: { message?: string; status?: number } | 
   // Bewusst dieselbe Meldung wie bei falschem Passwort: sonst ließe sich
   // abfragen, wer ein Konto hat.
   if (message.includes("user not found")) {
-    return "E-Mail oder Passwort ist falsch.";
+    return "E-Mail, Spitzname oder Passwort ist falsch.";
   }
   if (message.includes("password should be at least")) {
     return "Das Passwort muss mindestens 8 Zeichen lang sein.";
