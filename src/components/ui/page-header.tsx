@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ProfilInline } from "@/components/layout/glas-profil";
 
 export function PageHeader({
   eyebrow,
@@ -12,7 +13,7 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <header className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
@@ -27,6 +28,7 @@ export function PageHeader({
         ) : null}
       </div>
       {action}
+      <ProfilInline />
     </header>
   );
 }
