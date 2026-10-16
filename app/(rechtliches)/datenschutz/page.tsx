@@ -400,8 +400,14 @@ export default function DatenschutzPage() {
           Auswertung und keine künstliche Intelligenz. Sieht nur die Person selbst.
         </Absatz>
         <Absatz>
-          <strong>Erinnerungen per Mitteilung:</strong> Wer auf einem Gerät Mitteilungen erlaubt,
-          bekommt Erinnerungen an Termine und To-dos als Push-Mitteilung. Dafür speichert die
+          <strong>Mitteilungen aufs Handy:</strong> Wer auf einem Gerät Mitteilungen erlaubt,
+          bekommt als Push-Mitteilung: Erinnerungen an Termine und To-dos, die Benachrichtigungen
+          der Glocke (z. B. Urlaub genehmigt oder abgelehnt, neuer Antrag für die Leitung,
+          eingetragene Fehlzeit, Frage zum Einspringen), Änderungen des eigenen Plans durch die
+          Schichtleitung (Datum und neue Schicht, mehrere Tage zusammengefasst) und Hinweise, wenn
+          eingeladene oder verbundene Personen etwas eintragen, sich verbinden oder einer Gruppe
+          beitreten. Jede Art lässt sich einzeln abschalten. Bis zum Versand (meist unter einer
+          Minute) liegen Mitteilungen in einer Warteschlange, die nach 7 Tagen gelöscht wird. Dafür speichert die
           Anwendung je Gerät die vom Browser vergebene Zustelladresse mit den zugehörigen
           Schlüsseln und die Gerätart (z. B. „iPhone“), höchstens 10 Geräte je Person, sowie
           welche Erinnerung wann verschickt wurde (nach 3 Tagen gelöscht). Zugestellt wird über

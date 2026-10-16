@@ -1,5 +1,6 @@
 "use client";
 
+import { PushAnstoss } from "./erinnerungen";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Bell, Cog, LayoutGrid, LogOut, UserRound } from "lucide-react";
@@ -132,6 +133,7 @@ export function ProfilBlatt({
         <Bell className="h-3.5 w-3.5" /> Benachrichtigungen
         {ungelesen > 0 ? <span className="rounded-full bg-crit-dot px-1.5 text-[10.5px] text-white">{ungelesen}</span> : null}
       </p>
+      <PushAnstoss className="mb-2" />
       <div className="max-h-64 overflow-y-auto rounded-[16px] bg-ink/[0.04]">
         {items === null ? (
           <p className="px-4 py-5 text-center text-[14px] text-ink-muted">wird geladen …</p>

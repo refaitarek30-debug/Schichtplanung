@@ -88,3 +88,17 @@ export async function pushAusschalten(): Promise<PushStatus> {
   }
   return "aus";
 }
+
+/** Arten von Mitteilungen, die man abschalten kann (Migration 0159). */
+export type MitteilungsArt = "antraege" | "plan" | "einspringen" | "teilen";
+
+export async function fetchPushAus(): Promise<MitteilungsArt[]> {
+  const { data, error } = await createClient().rpc("meine_push_vorlieben");
+  if (error) return [];
+  return ((data ?? []) as MitteilungsArt[]).filter(Boolean);
+}
+
+export async function pushAusSetzen(aus: MitteilungsArt[]) {
+  const { error } = await createClient().rpc("push_vorlieben_setzen", { p_aus: aus });
+  if (error) throw new Error(dataErrorMessage(error) ?? "Das konnte nicht gespeichert werden.");
+}

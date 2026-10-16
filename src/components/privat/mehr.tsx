@@ -46,7 +46,7 @@ export function PrivatMehr() {
     <div className="space-y-4">
       <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" />
 
-      <PrivatKarte titel="Erinnerungen & Vorschläge">
+      <PrivatKarte titel="Mitteilungen & Vorschläge">
         <div className="px-4 py-4">
           <KalenderVorliebenInhalt />
         </div>

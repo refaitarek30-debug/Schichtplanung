@@ -4,7 +4,8 @@ import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/server";
 
 /**
- * Versand der Erinnerungen (Termine, To-dos) als Mitteilung. Wird jede
+ * Versand der Mitteilungen aufs Handy: Erinnerungen (Termine, To-dos) und
+ * die Warteschlange (Glocke, Planänderung, Partner & Familie; Migration 0159). Wird jede
  * Minute aus der Datenbank angestoßen (pg_cron → erinnerungen_anstossen,
  * Migration 0155) – aber nur, wenn etwas fällig ist. Ohne das Geheimnis im
  * Kopf passiert nichts.
@@ -65,26 +66,39 @@ export async function POST(anfrage: Request) {
   webpush.setVapidDetails("https://ready-flame.vercel.app", oeffentlich, privat);
   const db = createAdminClient();
 
-  const { data: faellig, error } = await db.rpc("faellige_erinnerungen");
+  const [{ data: faellig, error }, { data: schlange }] = await Promise.all([
+    db.rpc("faellige_erinnerungen"),
+    db.rpc("push_warteschlange_holen"),
+  ]);
   if (error) return NextResponse.json({ fehler: "datenbank" }, { status: 500 });
-  const liste = (faellig ?? []) as Faellig[];
-  if (!liste.length) return NextResponse.json({ gesendet: 0 });
+  const nachrichten: { user_id: string; titel: string; text: string; tag: string; url: string }[] = [
+    ...((faellig ?? []) as Faellig[]).map((f) => ({
+      user_id: f.user_id,
+      titel: `${f.art === "todo" ? "✅" : "🔔"} ${f.titel || (f.art === "todo" ? "To-do" : "Termin")}`,
+      text: wann(f),
+      tag: `${f.art}-${f.ref_id}`,
+      url: "/start",
+    })),
+    ...((schlange ?? []) as { user_id: string; titel: string; text: string; url: string; tag: string | null }[]).map((w) => ({
+      user_id: w.user_id,
+      titel: w.titel,
+      text: w.text,
+      tag: w.tag ?? "mitteilung",
+      url: w.url || "/start",
+    })),
+  ];
+  if (!nachrichten.length) return NextResponse.json({ gesendet: 0 });
 
-  const { data: abos } = await db.rpc("push_abos_fuer", { p_users: [...new Set(liste.map((f) => f.user_id))] });
+  const { data: abos } = await db.rpc("push_abos_fuer", { p_users: [...new Set(nachrichten.map((f) => f.user_id))] });
   const nachPerson = new Map<string, Abo[]>();
   for (const a of (abos ?? []) as Abo[]) nachPerson.set(a.user_id, [...(nachPerson.get(a.user_id) ?? []), a]);
 
   let gesendet = 0;
   const ungueltig = new Set<string>();
   await Promise.allSettled(
-    liste.flatMap((f) =>
-      (nachPerson.get(f.user_id) ?? []).map(async (a) => {
-        const inhalt = JSON.stringify({
-          titel: `${f.art === "todo" ? "✅" : "🔔"} ${f.titel || (f.art === "todo" ? "To-do" : "Termin")}`,
-          text: wann(f),
-          tag: `${f.art}-${f.ref_id}`,
-          url: "/start",
-        });
+    nachrichten.flatMap((n) =>
+      (nachPerson.get(n.user_id) ?? []).map(async (a) => {
+        const inhalt = JSON.stringify({ titel: n.titel, text: n.text, tag: n.tag, url: n.url });
         try {
           await webpush.sendNotification({ endpoint: a.endpoint, keys: { p256dh: a.p256dh, auth: a.auth } }, inhalt, {
             TTL: 60 * 60,
