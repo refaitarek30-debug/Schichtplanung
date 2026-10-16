@@ -29,6 +29,8 @@ export type AboTeil = "alles" | "frueh" | "spaet" | "nacht" | "frei" | "termine"
 export interface AboTermin {
   id: string;
   datum: string; // YYYY-MM-DD
+  /** Letzter Tag eines mehrtägigen ganztägigen Termins (Migration 0154). */
+  bis?: string | null;
   titel: string;
   ganztaegig: boolean;
   beginn: string | null; // HH:MM
@@ -138,7 +140,8 @@ function terminZeilen(t: AboTermin, stempel: string): string[] {
       `DTEND:${ohneStriche(endTag)}T${ende.replace(":", "")}00`,
     );
   } else {
-    ev.push(`DTSTART;VALUE=DATE:${ohneStriche(t.datum)}`, `DTEND;VALUE=DATE:${ohneStriche(plusTage(t.datum, 1))}`);
+    const letzter = t.bis && /^\d{4}-\d{2}-\d{2}$/.test(t.bis) && t.bis > t.datum ? t.bis : t.datum;
+    ev.push(`DTSTART;VALUE=DATE:${ohneStriche(t.datum)}`, `DTEND;VALUE=DATE:${ohneStriche(plusTage(letzter, 1))}`);
   }
   const regel = RRULE[t.wiederholung];
   if (regel) ev.push(`RRULE:${regel}`);

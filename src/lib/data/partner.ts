@@ -15,6 +15,13 @@ export type PartnerCode = "F" | "S" | "N" | "T" | "U" | "X";
 
 export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich";
 
+/**
+ * Erinnerung vor einem Termin (Migration 0154). Mit Uhrzeit: 10 Minuten,
+ * 1 Stunde, 1 Tag vorher, morgens um 8. Ganztägig: am Vortag um 18 Uhr,
+ * am Tag um 8 Uhr, 2 Tage vorher.
+ */
+export type Erinnerung = "m10" | "h1" | "d1" | "morgens8" | "vortag18" | "tag8" | "d2";
+
 export interface Termin {
   id: string;
   /** Von einer eingeladenen Person eingetragen (über ihren Link). */
@@ -23,6 +30,8 @@ export interface Termin {
   personId?: string | null;
   /** Erster Tag, "YYYY-MM-DD". */
   datum: string;
+  /** Letzter Tag, wenn ein ganztägiger Termin mehrere Tage dauert. */
+  bisDatum?: string | null;
   titel: string;
   ganztaegig: boolean;
   von: string;
@@ -30,6 +39,7 @@ export interface Termin {
   wiederholung: Wiederholung;
   notiz: string;
   ort: string;
+  erinnerung?: Erinnerung | null;
 }
 
 /** Neuer Termin hat noch keine Id. */
@@ -82,6 +92,8 @@ interface TerminZeile {
   von_partner: boolean;
   person_id?: string | null;
   datum: string;
+  bis_datum?: string | null;
+  erinnerung?: Erinnerung | null;
   titel: string;
   ganztaegig: boolean;
   beginn: string | null;
@@ -100,6 +112,7 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
     vonPartner: z.von_partner,
     personId: z.person_id ?? null,
     datum: z.datum,
+    bisDatum: z.bis_datum ?? null,
     titel: z.titel,
     ganztaegig: z.ganztaegig,
     von: z.beginn ?? "",
@@ -107,11 +120,16 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
     wiederholung: z.wiederholung,
     notiz: z.notiz,
     ort: z.ort,
+    erinnerung: z.erinnerung ?? null,
   }));
 }
 
 export async function speichereTermin(t: TerminEingabe): Promise<string> {
-  const { data, error } = await createClient().rpc("termin_speichern", terminParameter(t));
+  const { data, error } = await createClient().rpc("termin_sichern", {
+    ...terminParameter(t),
+    p_bis_datum: t.ganztaegig && t.bisDatum && t.bisDatum > t.datum ? t.bisDatum : null,
+    p_erinnerung: t.erinnerung ?? null,
+  });
   if (error) fehler(error, "Der Termin konnte nicht gespeichert werden.");
   return data as string;
 }

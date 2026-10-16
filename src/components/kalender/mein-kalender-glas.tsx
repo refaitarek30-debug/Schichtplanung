@@ -2,18 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import {
-  CalendarPlus,
-  ChevronLeft,
-  ChevronRight,
-  Eraser,
-  Layers,
-  Paintbrush,
-  Plus,
-  SlidersHorizontal,
-  Users,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Paintbrush, Plus, SlidersHorizontal, Users, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -43,6 +32,9 @@ import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
+import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
+import { useVorlieben } from "./vorschlaege";
+import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
 import { PartnerBlatt, type PartnerSchicht } from "./partner";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } from "./andere";
@@ -120,18 +112,6 @@ function schichtKurz(name: string): string {
   return kurz || name;
 }
 
-/** Stunden zwischen zwei Uhrzeiten, über Mitternacht hinweg. */
-function stunden(von: string, bis: string): string | null {
-  if (!von || !bis) return null;
-  const [vh, vm] = von.split(":").map(Number);
-  const [bh, bm] = bis.split(":").map(Number);
-  if ([vh, vm, bh, bm].some((n) => n === undefined || Number.isNaN(n))) return null;
-  let minuten = bh! * 60 + bm! - (vh! * 60 + vm!);
-  if (minuten <= 0) minuten += 24 * 60;
-  const h = Math.floor(minuten / 60);
-  const rest = minuten % 60;
-  return rest ? `${h} Std. ${rest} Min.` : `${h} Std.`;
-}
 
 /** Erster Tag des Rasters (Montag) und Zahl der Wochen eines Monats. */
 function raster(jahr: number, monat: number) {
@@ -399,6 +379,35 @@ export function MeinKalenderGlas() {
 
   const sichtbareTermine = useMemo(() => termine.filter(andere.terminSichtbar), [termine, andere.terminSichtbar]);
 
+  async function terminVerschieben(t: Termin, von: string, bis: string) {
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
+    await terminSpeichern({ ...t, von, bis });
+  }
+
+  // ---- To-dos (nur für mich) ----------------------------------------------
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const { vorlieben } = useVorlieben();
+  const ladeTodos = useCallback(async () => {
+    try {
+      setTodos(await fetchTodos());
+    } catch {
+      // To-dos sind Beiwerk.
+    }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void ladeTodos();
+  }, [ladeTodos]);
+  async function todoSetzen(id: string, an: boolean) {
+    setTodos((alt) => alt.map((t) => (t.id === id ? { ...t, erledigt: an } : t)));
+    try {
+      await todoErledigt(id, an);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
+      void ladeTodos();
+    }
+  }
+
   // ---- Teilen ------------------------------------------------------------
   const [einladen, setEinladen] = useState(false);
   useEffect(() => {
@@ -533,7 +542,10 @@ export function MeinKalenderGlas() {
 
   // ---- Blätter -----------------------------------------------------------
   const [tagBlatt, setTagBlatt] = useState<{ iso: string; auswahl: boolean } | null>(null);
-  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
+  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
+  const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
+  const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
+  const [schnell, setSchnell] = useState<{ iso: string; rect: DOMRect } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<{ iso: string; person: string | null } | null>(null);
   const [anpassen, setAnpassen] = useState(false);
   const [profilOffen, setProfilOffen] = useState(false);
@@ -604,7 +616,12 @@ export function MeinKalenderGlas() {
     }
   }
 
+  const langDruck = useLangDruck((iso, rect) => {
+    if (pinselAn || !arten?.length) return;
+    setSchnell({ iso, rect });
+  });
   function tippen(iso: string) {
+    if (langDruck.geschluckt()) return;
     if (gewischt.current) {
       gewischt.current = false;
       return;
@@ -752,10 +769,11 @@ export function MeinKalenderGlas() {
             <button
               key={iso}
               type="button"
+              {...langDruck.zelle(iso)}
               onClick={() => tippen(iso)}
               aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
-                "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+                "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
                 i % 7 >= 5 && "bg-ink/[0.025]",
                 !imM && "opacity-35",
@@ -871,7 +889,6 @@ export function MeinKalenderGlas() {
         <TagBlatt
           key={tagBlatt.iso}
           iso={tagBlatt.iso}
-          auswahlOffen={tagBlatt.auswahl}
           info={tagInfo(zellen.get(tagBlatt.iso))}
           geladen={!!sichtbar}
           farben={farben}
@@ -882,8 +899,18 @@ export function MeinKalenderGlas() {
           eigen={eigene[tagBlatt.iso] ? artNach.get(eigene[tagBlatt.iso]!) : undefined}
           arten={arten ?? []}
           termine={termineAm(sichtbareTermine, tagBlatt.iso)}
+          todos={todosAm(todos, tagBlatt.iso)}
           andere={andere.amTag(tagBlatt.iso)}
           terminVon={andere.terminVon}
+          onTodo={(id, an) => void todoSetzen(id, an)}
+          onTodos={() => {
+            setTodoBlatt({ datum: tagBlatt.iso });
+            setTagBlatt(null);
+          }}
+          onTag={() => {
+            setTagAnsicht(tagBlatt.iso);
+            setTagBlatt(null);
+          }}
           onEigen={(id) => {
             merke([tagBlatt.iso], id ? "{n} geändert" : "Eintrag entfernt");
             void eigenSetzen([tagBlatt.iso], id);
@@ -902,6 +929,95 @@ export function MeinKalenderGlas() {
             setTagBlatt(null);
           }}
           onClose={() => setTagBlatt(null)}
+        />
+      ) : null}
+
+      {tagAnsicht ? (
+        <Tagesansicht
+          iso={tagAnsicht}
+          heute={heute}
+          onIso={(iso) => {
+            setTagAnsicht(iso);
+            const d = fromISO(iso);
+            if (d.getFullYear() !== monat.jahr || d.getMonth() !== monat.monat) setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
+          }}
+          baender={(iso) => {
+            const liste: Band[] = [];
+            const z = zellen.get(iso);
+            const info = tagInfo(z);
+            const det = z?.shiftName ? uhrzeit.get(z.shiftName) : undefined;
+            const abw = info.abwesenheit;
+            if (info.schichtName && det?.startTime && det.endTime && !(abw && abw === abw.toUpperCase())) {
+              liste.push({
+                name: info.schichtName,
+                beginn: det.startTime,
+                ende: det.endTime,
+                farbe: farbeFuer(schichtSchluessel(info.schichtCode, info.schichtName), farben) ?? SONSTIGE_SCHICHT_FARBE,
+              });
+            }
+            const e = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
+            if (e?.beginn && e.ende) liste.push({ name: e.name, beginn: e.beginn, ende: e.ende, farbe: e.farbe });
+            return liste;
+          }}
+          ganztaegig={(iso) => {
+            const info = tagInfo(zellen.get(iso));
+            const abw = info.abwesenheit;
+            const liste: { name: string; farbe: string }[] = [];
+            if (abw && abw === abw.toUpperCase()) {
+              liste.push({ name: ABWESENHEIT[abw]?.lang ?? "Abwesend", farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]! });
+            }
+            const e = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
+            if (e && (!e.beginn || !e.ende)) liste.push({ name: e.name, farbe: e.farbe });
+            return liste;
+          }}
+          termineAm={(iso) => termineAm(sichtbareTermine, iso)}
+          todos={todos}
+          terminVon={andere.terminVon}
+          onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
+          onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
+          onTodo={(id, an) => void todoSetzen(id, an)}
+          onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
+          onClose={() => setTagAnsicht(null)}
+        />
+      ) : null}
+
+      {todoBlatt ? (
+        <TodoBlatt
+          todos={todos}
+          heute={heute}
+          datum={todoBlatt.datum}
+          rollen={vorlieben?.rollen ?? []}
+          onNeu={async (t) => {
+            await todoSpeichern({ id: null, ...t });
+            await ladeTodos();
+          }}
+          onErledigt={(id, an) => void todoSetzen(id, an)}
+          onLoeschen={(id) => {
+            setTodos((alt) => alt.filter((t) => t.id !== id));
+            void todoLoeschen(id).catch((e: unknown) => {
+              setFehler(e instanceof Error ? e.message : "Das To-do konnte nicht gelöscht werden.");
+              void ladeTodos();
+            });
+          }}
+          onClose={() => setTodoBlatt(null)}
+        />
+      ) : null}
+
+      {schnell && arten?.length ? (
+        <SchnellWahl
+          rect={schnell.rect}
+          titel={`${formatDE(schnell.iso)} · nur für dich`}
+          eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe }))}
+          aktiv={eigene[schnell.iso] ?? null}
+          mitLeeren={!!eigene[schnell.iso]}
+          onWahl={(id) => {
+            const iso = schnell.iso;
+            setSchnell(null);
+            if ((eigene[iso] ?? null) === id) return;
+            merke([iso], id ? `{n} auf ${artNach.get(id)?.name ?? "neu"} gesetzt` : "{n} geleert");
+            void eigenSetzen([iso], id);
+          }}
+          onClose={() => setSchnell(null)}
         />
       ) : null}
 
@@ -932,6 +1048,8 @@ export function MeinKalenderGlas() {
       {terminBlatt ? (
         <TerminBlatt
           glas
+          vorschlaege
+          startZeit={terminBlatt.startZeit}
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
           hinweis={
@@ -1057,39 +1175,13 @@ function Chip({ text, stil, klein }: { text: string; stil: Stil; klein: boolean 
   );
 }
 
-/** Eine Zeile im Tagesfenster. */
-function Zeile({
-  stil,
-  titel,
-  unter,
-  marke,
-  children,
-}: {
-  stil: Stil;
-  titel: string;
-  unter?: string | null;
-  marke?: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <li className={cn("flex items-center gap-3 rounded-[16px] px-3.5 py-2.5", stil.klasse)} style={stil.style}>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[16px] font-semibold">{titel}</span>
-        {unter ? <span className="tnum block text-[12.5px] opacity-90">{unter}</span> : null}
-      </span>
-      {marke ? (
-        <span className="shrink-0 rounded-full bg-black/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.04em]">
-          {marke}
-        </span>
-      ) : null}
-      {children}
-    </li>
-  );
-}
-
+/**
+ * Tagesfenster: oben klein der Plan und der eigene Eintrag, darunter die
+ * eigenen Einträge als Leiste (nur für mich – der Schichtplan bleibt), dann
+ * was am Tag ansteht und die Knöpfe Termin, To-do und Tag.
+ */
 function TagBlatt({
   iso,
-  auswahlOffen,
   info,
   geladen,
   farben,
@@ -1097,16 +1189,19 @@ function TagBlatt({
   eigen,
   arten,
   termine,
+  todos,
   andere,
   terminVon,
   onEigen,
   onNeueArt,
   onTermin,
+  onTodo,
+  onTodos,
+  onTag,
   onPartner,
   onClose,
 }: {
   iso: string;
-  auswahlOffen: boolean;
   info: TagInfo;
   geladen: boolean;
   farben: Record<string, string>;
@@ -1114,178 +1209,110 @@ function TagBlatt({
   eigen: EigeneArt | undefined;
   arten: EigeneArt[];
   termine: Termin[];
+  todos: Todo[];
   andere: AndererEintrag[];
   terminVon: (t: Termin) => { name: string; farbe: string } | null;
   onEigen: (id: string | null) => void;
   onNeueArt: () => void;
   onTermin: (t: Termin | null) => void;
+  onTodo: (id: string, an: boolean) => void;
+  onTodos: () => void;
+  onTag: () => void;
   /** Tag einer Person selbst eintragen (ohne Angabe: die erste). */
   onPartner: (key?: string) => void;
   onClose: () => void;
 }) {
-  const [auswahl, setAuswahl] = useState(auswahlOffen);
   const d = fromISO(iso);
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
   const beantragt = abw !== null && abw !== gross;
+  const [nachricht, setNachricht] = useState(
+    arten.length ? "Antippen = dein eigener Eintrag dazu · der Schichtplan bleibt" : "Leg eigene Einträge an, z. B. Nebenjob oder Sport.",
+  );
 
   // Der Eintrag aus dem Schichtplan – fest, nur zum Ansehen.
-  let planZeile: { stil: Stil; titel: string; unter: string | null } | null = null;
+  let plan: { name: string; zeit: string | null; farbe: string } | null = null;
   if (geladen) {
     if (abw && !beantragt) {
-      planZeile = {
-        stil: gefuellt(farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]!),
-        titel: ABWESENHEIT[abw]?.lang ?? "Abwesend",
-        unter: info.schichtName ? `statt ${info.schichtName}` : null,
+      plan = {
+        name: ABWESENHEIT[abw]?.lang ?? "Abwesend",
+        zeit: info.schichtName ? `statt ${info.schichtName}` : null,
+        farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]!,
       };
     } else if (info.schichtName) {
-      const zeit = schicht?.startTime && schicht.endTime ? `${schicht.startTime}–${schicht.endTime} Uhr` : null;
-      const dauer = schicht?.startTime && schicht.endTime ? stunden(schicht.startTime, schicht.endTime) : null;
-      planZeile = {
-        stil: gefuellt(farbeFuer(schichtSchluessel(info.schichtCode, info.schichtName), farben)),
-        titel: info.schichtName,
-        unter: [zeit, dauer].filter(Boolean).join(" · ") || null,
+      plan = {
+        name: info.schichtName,
+        zeit: schicht?.startTime && schicht.endTime ? `${schicht.startTime}–${schicht.endTime}` : null,
+        farbe: farbeFuer(schichtSchluessel(info.schichtCode, info.schichtName), farben) ?? SONSTIGE_SCHICHT_FARBE,
       };
     } else {
-      planZeile = { stil: gefuellt(farbeFuer("frei", farben)), titel: "Frei", unter: null };
+      plan = { name: "Frei", zeit: null, farbe: farbeFuer("frei", farben) ?? "#C9CDD4" };
     }
+  }
+
+  function tipp(id: string) {
+    const a = arten.find((x) => x.id === id);
+    if (!a) return;
+    if (eigen?.id === id) {
+      setNachricht(`${a.name} ist schon eingetragen – der Schichtplan selbst bleibt immer.`);
+      return;
+    }
+    onEigen(id);
+    setNachricht(eigen ? `${a.name} statt ${eigen.name} · nur für dich` : `${a.name} als 2. Eintrag · nur für dich`);
   }
 
   return (
     <Blatt
       titel={`${WOCHENTAG_LANG[d.getDay()]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
+      unter={
+        <span className="mt-1 flex flex-wrap gap-1.5">
+          {plan ? <EintragPille name={plan.name} zeit={plan.zeit} farbe={plan.farbe} marke="Plan" /> : null}
+          {beantragt && gross ? (
+            <EintragPille
+              name={`${ABWESENHEIT[gross]?.lang ?? "Antrag"} beantragt`}
+              farbe={farbeFuer(`abw:${gross}`, farben) ?? "#5B6472"}
+            />
+          ) : null}
+          {eigen ? (
+            <EintragPille
+              name={eigen.name}
+              zeit={eigen.beginn && eigen.ende ? `${eigen.beginn}–${eigen.ende}` : null}
+              farbe={eigen.farbe}
+              onEntfernen={() => {
+                onEigen(null);
+                setNachricht("Eintrag entfernt.");
+              }}
+            />
+          ) : null}
+        </span>
+      }
       onClose={onClose}
     >
-      <ul className="space-y-2">
-        {planZeile ? <Zeile stil={planZeile.stil} titel={planZeile.titel} unter={planZeile.unter} marke="Plan" /> : null}
-        {beantragt && gross ? (
-          <Zeile
-            stil={beantragtStil(farbeFuer(`abw:${gross}`, farben))}
-            titel={`${ABWESENHEIT[gross]?.lang ?? "Antrag"} beantragt`}
-            unter="Noch nicht genehmigt."
-          />
-        ) : null}
-        {eigen ? (
-          <Zeile
-            stil={eigenStil(eigen.farbe)}
-            titel={eigen.name}
-            unter={eigen.beginn && eigen.ende ? `${eigen.beginn}–${eigen.ende} Uhr · nur für dich` : "Nur für dich"}
+      <SchichtLeiste
+        eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe, rang: eigen?.id === a.id ? 2 : 0 }))}
+        onTipp={tipp}
+        nachricht={nachricht}
+        ende={
+          <button
+            type="button"
+            onClick={onNeueArt}
+            className="flex h-11 shrink-0 items-center gap-1 rounded-full border-[1.5px] border-dashed border-ink/25 px-4 text-[14px] font-semibold text-ink-muted"
           >
-            <button
-              type="button"
-              onClick={() => setAuswahl(true)}
-              className="shrink-0 rounded-full bg-black/15 px-3 py-1.5 text-[13px] font-semibold"
-            >
-              Tauschen
-            </button>
-            <button
-              type="button"
-              onClick={() => onEigen(null)}
-              aria-label={`${eigen.name} entfernen`}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/15"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </Zeile>
-        ) : null}
-      </ul>
+            <Plus className="h-4 w-4" /> {arten.length ? "Neu" : "Eigenen Eintrag anlegen"}
+          </button>
+        }
+      />
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          onClick={() => setAuswahl(!auswahl)}
-          aria-expanded={auswahl}
-          className={cn(
-            "flex h-[52px] items-center justify-center gap-1.5 rounded-[16px] text-[14.5px] font-semibold transition-colors",
-            auswahl ? "bg-brand-500 text-white" : "bg-ink/[0.07] text-ink",
-          )}
-        >
-          <Layers className="h-5 w-5" /> Eintrag
-        </button>
-        <button
-          type="button"
-          onClick={() => onTermin(null)}
-          className="flex h-[52px] items-center justify-center gap-1.5 rounded-[16px] bg-ink/[0.07] text-[14.5px] font-semibold text-ink"
-        >
-          <CalendarPlus className="h-5 w-5" /> Termin
-        </button>
-        <button
-          type="button"
-          onClick={() => onPartner()}
-          className="flex h-[52px] items-center justify-center gap-1.5 rounded-[16px] bg-ink/[0.07] text-[14.5px] font-semibold text-ink"
-        >
-          <Users className="h-5 w-5" /> Andere
-        </button>
-      </div>
-
-      {auswahl ? (
-        <div className="mt-3">
-          <p className="mb-2 text-[12.5px] text-ink-muted">
-            {eigen ? `Ersetzt „${eigen.name}“. ` : ""}Nur für dich sichtbar – der Schichtplan bleibt, wie er ist.
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {arten.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => {
-                  onEigen(a.id);
-                  setAuswahl(false);
-                }}
-                aria-pressed={eigen?.id === a.id}
-                className="h-11 truncate rounded-[13px] px-2 text-[14px] font-semibold active:scale-[0.97]"
-                style={farbStil(a.farbe)}
-              >
-                {a.name}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={onNeueArt}
-              className={cn(
-                "flex h-11 items-center justify-center gap-1 rounded-[13px] border border-dashed border-ink/25 px-2 text-[13.5px] font-semibold text-ink-muted",
-                !arten.length && "col-span-3",
-              )}
-            >
-              <Plus className="h-4 w-4" /> {arten.length ? "Neu" : "Eigenen Eintrag anlegen"}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
+      <AmTag termine={termine} todos={todos} terminVon={terminVon} onTermin={onTermin} onTodo={onTodo} />
       <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
-
-      {termine.length ? (
-        <div className="mt-4">
-          <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Termine</p>
-          <ul className="overflow-hidden rounded-[16px] bg-ink/[0.04]">
-            {termine.map((t, i) => {
-              const von = terminVon(t);
-              return (
-              <li key={t.id} className={cn(i > 0 && "glas-linie border-t")}>
-                <button
-                  type="button"
-                  onClick={() => onTermin(t)}
-                  className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left active:bg-ink/[0.05]"
-                >
-                  <span className="min-w-0 truncate text-[15px]">
-                    <span
-                      className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
-                      style={von ? { backgroundColor: von.farbe } : undefined}
-                    />
-                    {t.titel || "Termin"}
-                    {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
-                  </span>
-                  <span className="tnum shrink-0 text-[13px] text-ink-muted">
-                    {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
-                  </span>
-                </button>
-              </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
+      <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
+      <button
+        type="button"
+        onClick={() => onPartner()}
+        className="mx-auto mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-ink-muted"
+      >
+        <Users className="h-4 w-4" /> Für Partner oder Familie eintragen
+      </button>
     </Blatt>
   );
 }

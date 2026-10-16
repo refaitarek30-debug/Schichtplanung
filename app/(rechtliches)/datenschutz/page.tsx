@@ -378,12 +378,38 @@ export default function DatenschutzPage() {
           hat keinen Nachteil, und es werden dafür keine Daten gespeichert.
         </Absatz>
         <Absatz>
-          <strong>Eigene Termine:</strong> Titel, Datum, Uhrzeit oder ganztägig, Wiederholung,
-          Ort und Notiz (je mit Längenbegrenzung). Die Termine sieht nur die Person selbst und –
+          <strong>Eigene Termine:</strong> Titel, Datum (bei ganztägigen Terminen auf Wunsch bis
+          zu einem Enddatum), Uhrzeit oder ganztägig, Wiederholung, Ort, Notiz (je mit
+          Längenbegrenzung) und auf Wunsch eine Erinnerung. Die Termine sieht nur die Person selbst und –
           wenn sie das beim Teilen für eine eingeladene Person ausdrücklich einschaltet – diese
           Person. Kolleginnen und
           Kollegen, Schichtleitung und Administration des Unternehmens haben keinen Zugriff; die
           Datenbank lässt Abfragen darauf nur für die Person selbst zu.
+        </Absatz>
+        <Absatz>
+          <strong>To-dos:</strong> Eine Person kann sich Aufgaben notieren (Text, auf Wunsch ein
+          Tag und eine Uhrzeit für die Erinnerung, erledigt ja/nein). To-dos sieht nur die Person
+          selbst; sie erscheinen weder in geteilten Links noch in Gruppen noch im Kalender-Abo.
+          Erledigte To-dos werden nach 30 Tagen automatisch gelöscht.
+        </Absatz>
+        <Absatz>
+          <strong>Vorschläge:</strong> Auf Wunsch gibt eine Person an, wofür sie den Kalender
+          nutzt (Schule, Studium, angestellt, Schichtarbeit, Eltern, Sonstiges), und kann eigene
+          Vorlagen für Termine speichern (Name, Symbol, Dauer). Das dient nur dazu, passende
+          Vorschläge anzuzeigen; die Vorschläge stehen fest in der Anwendung, es gibt keine
+          Auswertung und keine künstliche Intelligenz. Sieht nur die Person selbst.
+        </Absatz>
+        <Absatz>
+          <strong>Erinnerungen per Mitteilung:</strong> Wer auf einem Gerät Mitteilungen erlaubt,
+          bekommt Erinnerungen an Termine und To-dos als Push-Mitteilung. Dafür speichert die
+          Anwendung je Gerät die vom Browser vergebene Zustelladresse mit den zugehörigen
+          Schlüsseln und die Gerätart (z. B. „iPhone“), höchstens 10 Geräte je Person, sowie
+          welche Erinnerung wann verschickt wurde (nach 3 Tagen gelöscht). Zugestellt wird über
+          den Push-Dienst des Browser- bzw. Geräteherstellers (z. B. Apple, Google, Mozilla); an
+          diesen geht der Inhalt der Mitteilung – Titel des Termins bzw. To-dos und der Zeitpunkt –
+          verschlüsselt (Web-Push-Verschlüsselung nach RFC 8291), sodass der Dienst ihn nicht
+          lesen kann. Mitteilungen lassen sich jederzeit unter den Einstellungen des Kalenders
+          oder in den Einstellungen des Geräts abschalten; dann wird die Adresse gelöscht.
         </Absatz>
         <Absatz>
           <strong>Eigene Farben und eigene Einträge:</strong> In der neueren Ansicht von{" "}
@@ -519,6 +545,12 @@ export default function DatenschutzPage() {
             oder Abwesenheitsdaten der Anwendung.
           </li>
           <li>
+            <strong>Push-Dienste</strong> der Geräte- bzw. Browserhersteller (z. B. Apple, Google,
+            Mozilla) – nur, wenn eine Person auf ihrem Gerät Mitteilungen erlaubt; der Inhalt geht
+            verschlüsselt durch (Abschnitt 8). Diese Dienste können ihren Sitz auch außerhalb der
+            EU haben.
+          </li>
+          <li>
             <strong>Mailversand:</strong>{" "}
             <Platzhalter>SMTP-Anbieter, Sitz, Region – oder streichen, falls kein externer Anbieter</Platzhalter>
           </li>
@@ -563,8 +595,8 @@ export default function DatenschutzPage() {
             Fehlermeldungen nach 90 Tagen, Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
-            Persönlicher Kalender (Abschnitt 8): eigene Termine, eigene Farben und eigene
-            Einträge sowie die Einträge eingeladener Personen bleiben, bis die Person sie löscht,
+            Persönlicher Kalender (Abschnitt 8): eigene Termine, To-dos, Vorlieben für Vorschläge,
+            eigene Farben und eigene Einträge sowie die Einträge eingeladener Personen bleiben, bis die Person sie löscht,
             die eingeladene Person entfernt oder ihr Zugang gelöscht wird. Die Mitgliedschaft in
             einer Gruppe endet mit dem Austreten.
             Ein beendeter Link oder ein beendetes Kalender-Abo funktioniert sofort nicht mehr.

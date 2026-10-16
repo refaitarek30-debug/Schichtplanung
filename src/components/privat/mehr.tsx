@@ -14,6 +14,7 @@ import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf } from "./rahmen";
+import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstellungen";
 
 /** Einstellungen, Abmelden, Konto löschen. */
 export function PrivatMehr() {
@@ -44,6 +45,12 @@ export function PrivatMehr() {
   return (
     <div className="space-y-4">
       <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" />
+
+      <PrivatKarte titel="Erinnerungen & Vorschläge">
+        <div className="px-4 py-4">
+          <KalenderVorliebenInhalt />
+        </div>
+      </PrivatKarte>
 
       <PrivatKarte titel="Kalender">
         <div className="space-y-4 px-4 py-4">

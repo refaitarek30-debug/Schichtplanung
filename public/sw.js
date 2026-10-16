@@ -71,3 +71,38 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// ---- Erinnerungen (Termine, To-dos) ----------------------------------------
+self.addEventListener("push", (event) => {
+  let daten = {};
+  try {
+    daten = event.data ? event.data.json() : {};
+  } catch {
+    daten = { titel: "Erinnerung", text: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(daten.titel || "Erinnerung", {
+      body: daten.text || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: daten.tag,
+      data: { url: daten.url || "/start" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const ziel = new URL((event.notification.data && event.notification.data.url) || "/start", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((fenster) => {
+      for (const f of fenster) {
+        if (f.url.startsWith(self.location.origin) && "focus" in f) {
+          f.navigate(ziel).catch(() => undefined);
+          return f.focus();
+        }
+      }
+      return self.clients.openWindow(ziel);
+    }),
+  );
+});
