@@ -104,6 +104,9 @@ export function PartnerBlatt({
   onClose,
   onEinladen,
   glas = false,
+  personen,
+  person,
+  onPerson,
 }: {
   datum: string;
   aktuell: PartnerSchicht | null;
@@ -115,6 +118,10 @@ export function PartnerBlatt({
   onEinladen?: () => void;
   /** Schwebendes Glasblatt (neuer Kalender) statt Blatt am unteren Rand. */
   glas?: boolean;
+  /** Mehrere Personen: für wen eingetragen wird. */
+  personen?: { key: string; name: string; farbe: string }[];
+  person?: string | null;
+  onPerson?: (key: string) => void;
 }) {
   const [anzahl, setAnzahl] = useState(1);
 
@@ -136,10 +143,32 @@ export function PartnerBlatt({
       >
         <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">{formatDE(datum)}</span>
-          <span className="text-[15px] text-ink-muted">Partner</span>
+          <span className="text-[15px] text-ink-muted">
+            {personen?.find((p) => p.key === person)?.name ?? "Partner"}
+          </span>
         </div>
 
         <div className="space-y-4 px-5 py-4">
+          {personen && personen.length > 1 && onPerson ? (
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Für wen">
+              {personen.map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={person === p.key}
+                  onClick={() => onPerson(p.key)}
+                  className={cn(
+                    "h-9 rounded-full px-3.5 text-[14px] font-semibold",
+                    person === p.key ? "text-white" : glas ? "bg-ink/[0.07] text-ink" : "bg-surface-muted text-ink",
+                  )}
+                  style={person === p.key ? { backgroundColor: p.farbe } : undefined}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
             {PARTNER_SCHICHTEN.map((s) => (
               <button
@@ -183,7 +212,7 @@ export function PartnerBlatt({
               onClick={onEinladen}
               className="text-[14px] font-semibold text-brand-600 underline"
             >
-              Partner einladen, damit er selbst einträgt
+              Einladen, damit selbst eingetragen wird
             </button>
           ) : null}
         </div>

@@ -11,7 +11,6 @@ import {
   Paintbrush,
   Plus,
   SlidersHorizontal,
-  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -21,9 +20,9 @@ import { useSession } from "@/context/session";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import {
-  fetchMeinePartnerTage,
   fetchMeineTermine,
   loescheTermin,
+  personTageSetzen,
   setzeMeinePartnerTage,
   speichereTermin,
 } from "@/lib/data/partner";
@@ -45,8 +44,9 @@ import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
 import { KalenderTeilen } from "./teilen";
-import { PARTNER_FARBE, PartnerBlatt, partnerText, type PartnerSchicht } from "./partner";
-import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
+import { PartnerBlatt, type PartnerSchicht } from "./partner";
+import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } from "./andere";
+import { setzeLokal, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
@@ -161,7 +161,6 @@ interface Stand {
   schluessel: string;
   tage: Map<string, LiveShiftPlanCell>;
   imPlan: boolean;
-  partner: Record<string, PartnerSchicht>;
 }
 
 /** Aussehen eines Kästchens: gefüllt, beantragt (Umriss) oder eigener Eintrag (gestrichelt). */
@@ -259,13 +258,10 @@ export function MeinKalenderGlas() {
 
   const holen = useCallback(
     async (s: string, n: number): Promise<Stand> => {
-      const [zellen, partner] = await Promise.all([
-        fetchShiftPlanGrid(company.id, s, n),
-        fetchMeinePartnerTage(s, addDays(s, n - 1)).catch(() => ({})),
-      ]);
+      const zellen = await fetchShiftPlanGrid(company.id, s, n);
       const tage = new Map<string, LiveShiftPlanCell>();
       for (const z of zellen) if (z.isMe) tage.set(z.day, z);
-      const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0, partner };
+      const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0 };
       inZwischenspeicher(schluessel(s, n), ergebnis);
       return ergebnis;
     },
@@ -328,28 +324,18 @@ export function MeinKalenderGlas() {
     };
   }, [laden]);
 
-  // Partnertage alle 20 Sekunden frisch, solange sichtbar.
+  // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
+  const andere = useAndere({ benutzer: profile.id, von: start, bis: ende });
+  const neuLadenAndere = andere.neuLaden;
+  // Was Eingeladene eintragen, alle 20 Sekunden frisch, solange sichtbar.
   useEffect(() => {
-    const s = start;
-    const n = tageImRaster;
-    const k = schluessel(s, n);
-    const takt = window.setInterval(async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const partner = await fetchMeinePartnerTage(s, addDays(s, n - 1));
-        setStand((alt) => {
-          if (!alt || alt.schluessel !== k) return alt;
-          if (JSON.stringify(alt.partner) === JSON.stringify(partner)) return alt;
-          const neu = { ...alt, partner };
-          inZwischenspeicher(k, neu);
-          return neu;
-        });
-      } catch {
-        // nächster Takt
-      }
+    const takt = window.setInterval(() => {
+      if (document.visibilityState === "visible") void neuLadenAndere();
     }, 20_000);
     return () => window.clearInterval(takt);
-  }, [start, tageImRaster, schluessel]);
+    // Nur einmal einrichten – neuLaden bleibt aktuell genug.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, ende]);
 
   useEffect(() => {
     let aus = false;
@@ -411,21 +397,24 @@ export function MeinKalenderGlas() {
     void ladeTermine();
   }
 
-  // ---- Partner (wie im bisherigen Kalender) ------------------------------
-  const [partnerZeigen, setPartnerZeigen] = useLokaleEinstellung(`schichtplan.partner-zeigen.${profile.id}`, true);
+  const sichtbareTermine = useMemo(() => termine.filter(andere.terminSichtbar), [termine, andere.terminSichtbar]);
+
+  // ---- Teilen ------------------------------------------------------------
   const [einladen, setEinladen] = useState(false);
   useEffect(() => {
     setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
   }, []);
   const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
-  async function partnerSetzen(von: string, anzahl: number, code: PartnerSchicht | null) {
+  /** Tag einer eingeladenen Person selbst eintragen (ohne Personen: „Partner“). */
+  async function partnerSetzen(person: string | null, von: string, anzahl: number, code: PartnerSchicht | null) {
     try {
-      await setzeMeinePartnerTage(von, anzahl, code);
+      if (person) await personTageSetzen(person, von, anzahl, code);
+      else await setzeMeinePartnerTage(von, anzahl, code);
       setFehler(null);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : "Das konnte nicht gespeichert werden.");
     }
-    void laden();
+    void andere.neuLaden();
   }
 
   // ---- Eigene Farben und eigene Einträge (nur für mich) ------------------
@@ -512,10 +501,40 @@ export function MeinKalenderGlas() {
   const [pinselAn, setPinselAn] = useState(false);
   const [pinsel, setPinsel] = useState<string | null>(null);
 
+  // ---- Rückgängig (eigene Einträge) ---------------------------------------
+  const [rueck, setRueck] = useState<{ text: string; vorher: Record<string, string | undefined> } | null>(null);
+  const rueckUhr = useRef<number | null>(null);
+  function merke(liste: string[], text: string) {
+    setRueck((alt) => {
+      const vorher: Record<string, string | undefined> = { ...(alt && rueckUhr.current ? alt.vorher : {}) };
+      for (const t of liste) if (!(t in vorher)) vorher[t] = eigene[t];
+      const n = Object.keys(vorher).length;
+      return { text: text.replace("{n}", n === 1 ? "1 Tag" : `${n} Tage`), vorher };
+    });
+    if (rueckUhr.current) window.clearTimeout(rueckUhr.current);
+    rueckUhr.current = window.setTimeout(() => {
+      rueckUhr.current = null;
+      setRueck(null);
+    }, 7000);
+  }
+  function rueckgaengig() {
+    const r = rueck;
+    if (!r) return;
+    if (rueckUhr.current) window.clearTimeout(rueckUhr.current);
+    rueckUhr.current = null;
+    setRueck(null);
+    const nachWert = new Map<string | null, string[]>();
+    for (const [tag, id] of Object.entries(r.vorher)) {
+      const k = id ?? null;
+      nachWert.set(k, [...(nachWert.get(k) ?? []), tag]);
+    }
+    for (const [id, liste] of nachWert) void eigenSetzen(liste, id);
+  }
+
   // ---- Blätter -----------------------------------------------------------
   const [tagBlatt, setTagBlatt] = useState<{ iso: string; auswahl: boolean } | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
-  const [partnerBlatt, setPartnerBlatt] = useState<string | null>(null);
+  const [partnerBlatt, setPartnerBlatt] = useState<{ iso: string; person: string | null } | null>(null);
   const [anpassen, setAnpassen] = useState(false);
   const [profilOffen, setProfilOffen] = useState(false);
   const { items: meldungen, setItems: setMeldungen } = useBenachrichtigungen();
@@ -591,6 +610,8 @@ export function MeinKalenderGlas() {
       return;
     }
     if (pinselAn && pinsel && (pinsel === "leer" || artNach.has(pinsel))) {
+      if (pinsel === "leer" && !eigene[iso]) return;
+      merke([iso], pinsel === "leer" ? "{n} geleert" : `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
       void eigenSetzen([iso], pinsel === "leer" ? null : pinsel);
       return;
     }
@@ -603,7 +624,6 @@ export function MeinKalenderGlas() {
   const sichtbar =
     stand?.schluessel === aktuellerSchluessel ? stand : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
   const zellen = sichtbar?.tage ?? new Map<string, LiveShiftPlanCell>();
-  const partnerTage = sichtbar?.partner ?? {};
   const istAktuellerMonat = (() => {
     const d = fromISO(heute);
     return d.getFullYear() === monat.jahr && d.getMonth() === monat.monat;
@@ -663,9 +683,7 @@ export function MeinKalenderGlas() {
           <GlasKnopf label="Kalender anpassen" onClick={() => setAnpassen(true)}>
             <SlidersHorizontal className="h-[18px] w-[18px]" />
           </GlasKnopf>
-          <GlasKnopf label="Partner einladen" onClick={() => setEinladen(true)}>
-            <UserPlus className="h-[18px] w-[18px]" />
-          </GlasKnopf>
+          <WenSeheIch andere={andere} glas onVerwalten={() => setEinladen(true)} />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
             <GlasKnopf
@@ -718,10 +736,11 @@ export function MeinKalenderGlas() {
           const imM = d.getMonth() === monat.monat;
           const plan = sichtbar ? planKaestchen(info, farben) : [];
           const eigen = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
-          const partner = partnerZeigen ? (partnerTage[iso] ?? null) : null;
-          const ts = termineAm(termine, iso);
-          // Wird es eng (Schicht + Antrag + eigener Eintrag, oder dazu der
-          // Partner), steht der eigene Eintrag als Punkt an der Tageszahl.
+          const andereAm = andere.amTag(iso);
+          const partner = andereAm.length > 0;
+          const ts = termineAm(sichtbareTermine, iso);
+          // Wird es eng (Schicht + Antrag + eigener Eintrag, oder dazu
+          // Eingeladene), steht der eigene Eintrag als Punkt an der Tageszahl.
           const eigenAlsPunkt = !!eigen && plan.length + 1 + (partner ? 1 : 0) >= 3;
           const kaestchen = plan.length + (eigen && !eigenAlsPunkt ? 1 : 0);
           const klein = kaestchen >= 2;
@@ -734,7 +753,7 @@ export function MeinKalenderGlas() {
               key={iso}
               type="button"
               onClick={() => tippen(iso)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${partner ? `, Partner: ${partnerText(partner, true)}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
                 "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
@@ -772,16 +791,7 @@ export function MeinKalenderGlas() {
                 <span className="h-5 shrink-0 animate-pulse rounded-[7px] bg-ink/[0.07]" />
               )}
               {eigen && !eigenAlsPunkt ? <Chip text={eigen.name} stil={eigenStil(eigen.farbe)} klein={klein} /> : null}
-              {partner ? (
-                <span
-                  className={cn(
-                    "shrink-0 truncate rounded-[7px] px-0.5 py-px text-[10.5px] font-semibold leading-tight ring-[1.5px] ring-inset",
-                    PARTNER_FARBE[partner],
-                  )}
-                >
-                  {partnerText(partner)}
-                </span>
-              ) : null}
+              <AndereTags eintraege={andereAm} />
               {zeigen.map((t) => (
                 <span
                   key={t.id}
@@ -837,7 +847,9 @@ export function MeinKalenderGlas() {
                 <PinselZu onClick={() => setPinselAn(false)} />
               </div>
               <p className="truncate px-1 pt-0.5 text-[11.5px] text-ink-muted [@media(max-height:700px)]:hidden">
-                Tage antippen · nur für dich, der Schichtplan bleibt
+                {pinsel === "leer"
+                  ? "Tage antippen, um sie zu leeren · nur für dich"
+                  : `Tage antippen – sie werden ${artNach.get(pinsel ?? "")?.name ?? "eingetragen"} · nur für dich`}
               </p>
             </>
           ) : (
@@ -869,9 +881,13 @@ export function MeinKalenderGlas() {
           })()}
           eigen={eigene[tagBlatt.iso] ? artNach.get(eigene[tagBlatt.iso]!) : undefined}
           arten={arten ?? []}
-          termine={termineAm(termine, tagBlatt.iso)}
-          partner={partnerZeigen ? (partnerTage[tagBlatt.iso] ?? null) : null}
-          onEigen={(id) => void eigenSetzen([tagBlatt.iso], id)}
+          termine={termineAm(sichtbareTermine, tagBlatt.iso)}
+          andere={andere.amTag(tagBlatt.iso)}
+          terminVon={andere.terminVon}
+          onEigen={(id) => {
+            merke([tagBlatt.iso], id ? "{n} geändert" : "Eintrag entfernt");
+            void eigenSetzen([tagBlatt.iso], id);
+          }}
           onNeueArt={() => {
             const iso = tagBlatt.iso;
             setTagBlatt(null);
@@ -881,8 +897,8 @@ export function MeinKalenderGlas() {
             setTerminBlatt({ datum: tagBlatt.iso, termin: t });
             setTagBlatt(null);
           }}
-          onPartner={() => {
-            setPartnerBlatt(tagBlatt.iso);
+          onPartner={(key) => {
+            setPartnerBlatt({ iso: tagBlatt.iso, person: key ?? andere.knoten[0]?.key ?? null });
             setTagBlatt(null);
           }}
           onClose={() => setTagBlatt(null)}
@@ -894,8 +910,6 @@ export function MeinKalenderGlas() {
           schichten={schichten}
           farben={farben}
           arten={arten}
-          partnerZeigen={partnerZeigen}
-          onPartnerZeigen={setPartnerZeigen}
           onFarbe={(s, f) => void farbeSetzen(s, f)}
           onArt={(a) => {
             setAnpassen(false);
@@ -922,8 +936,8 @@ export function MeinKalenderGlas() {
           termin={terminBlatt.termin}
           hinweis={
             terminBlatt.termin?.vonPartner
-              ? "Von deinem Partner eingetragen. Ihr seht ihn beide."
-              : "Dein Partner sieht deine Termine nur, wenn du sie beim Teilen freigibst."
+              ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen. Ihr seht ihn beide.`
+              : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
           }
           onSpeichern={(t) => {
             void terminSpeichern(t);
@@ -940,12 +954,14 @@ export function MeinKalenderGlas() {
       {partnerBlatt ? (
         <PartnerBlatt
           glas
-          datum={partnerBlatt}
-          aktuell={partnerTage[partnerBlatt] ?? null}
-          hinweis="Das siehst nur du – und dein Partner, wenn du ihn einlädst."
+          datum={partnerBlatt.iso}
+          aktuell={partnerBlatt.person ? andere.rohTag(partnerBlatt.person, partnerBlatt.iso) : null}
+          hinweis="Das siehst du – und die Person, wenn sie eingeladen ist."
+          personen={andere.knoten}
+          person={partnerBlatt.person}
+          onPerson={(key) => setPartnerBlatt({ ...partnerBlatt, person: key })}
           onWahl={(code, anzahl) => {
-            if (!partnerZeigen) setPartnerZeigen(true);
-            void partnerSetzen(partnerBlatt, anzahl, code);
+            void partnerSetzen(partnerBlatt.person, partnerBlatt.iso, anzahl, code);
             setPartnerBlatt(null);
           }}
           onClose={() => setPartnerBlatt(null)}
@@ -956,7 +972,21 @@ export function MeinKalenderGlas() {
         />
       ) : null}
 
-      {einladen ? <KalenderTeilen vorname={profile.firstName} onClose={() => setEinladen(false)} /> : null}
+      {einladen ? (
+        <KalenderTeilen vorname={profile.firstName} onGeaendert={() => void andere.neuLaden()} onClose={() => setEinladen(false)} />
+      ) : null}
+
+      {rueck ? (
+        <div
+          role="status"
+          className="fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+0.25rem)] z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[16px] bg-ink px-4 py-3 text-[14px] text-surface shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+        >
+          <span className="min-w-0 truncate">{rueck.text}</span>
+          <button type="button" onClick={rueckgaengig} className="shrink-0 font-bold text-[#8fb0ff]">
+            Rückgängig
+          </button>
+        </div>
+      ) : null}
 
       {!einfuehrungGesehen ? (
         <KalenderEinfuehrung onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true)} />
@@ -1067,7 +1097,8 @@ function TagBlatt({
   eigen,
   arten,
   termine,
-  partner,
+  andere,
+  terminVon,
   onEigen,
   onNeueArt,
   onTermin,
@@ -1083,11 +1114,13 @@ function TagBlatt({
   eigen: EigeneArt | undefined;
   arten: EigeneArt[];
   termine: Termin[];
-  partner: PartnerSchicht | null;
+  andere: AndererEintrag[];
+  terminVon: (t: Termin) => { name: string; farbe: string } | null;
   onEigen: (id: string | null) => void;
   onNeueArt: () => void;
   onTermin: (t: Termin | null) => void;
-  onPartner: () => void;
+  /** Tag einer Person selbst eintragen (ohne Angabe: die erste). */
+  onPartner: (key?: string) => void;
   onClose: () => void;
 }) {
   const [auswahl, setAuswahl] = useState(auswahlOffen);
@@ -1121,7 +1154,6 @@ function TagBlatt({
   return (
     <Blatt
       titel={`${WOCHENTAG_LANG[d.getDay()]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
-      unter={partner ? <>Partner: {partnerText(partner, true)}</> : undefined}
       onClose={onClose}
     >
       <ul className="space-y-2">
@@ -1179,10 +1211,10 @@ function TagBlatt({
         </button>
         <button
           type="button"
-          onClick={onPartner}
+          onClick={() => onPartner()}
           className="flex h-[52px] items-center justify-center gap-1.5 rounded-[16px] bg-ink/[0.07] text-[14.5px] font-semibold text-ink"
         >
-          <Users className="h-5 w-5" /> Partner
+          <Users className="h-5 w-5" /> Andere
         </button>
       </div>
 
@@ -1221,24 +1253,15 @@ function TagBlatt({
         </div>
       ) : null}
 
-      {partner ? (
-        <button
-          type="button"
-          onClick={onPartner}
-          className="mt-3 flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.04] px-3.5 py-2.5 text-left text-[15px]"
-        >
-          <span className={cn("rounded-md px-2 py-0.5 text-[13px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[partner])}>
-            {partnerText(partner)}
-          </span>
-          <span className="text-ink-muted">Partner: {partnerText(partner, true)}</span>
-        </button>
-      ) : null}
+      <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
 
       {termine.length ? (
         <div className="mt-4">
           <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Termine</p>
           <ul className="overflow-hidden rounded-[16px] bg-ink/[0.04]">
-            {termine.map((t, i) => (
+            {termine.map((t, i) => {
+              const von = terminVon(t);
+              return (
               <li key={t.id} className={cn(i > 0 && "glas-linie border-t")}>
                 <button
                   type="button"
@@ -1246,16 +1269,20 @@ function TagBlatt({
                   className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left active:bg-ink/[0.05]"
                 >
                   <span className="min-w-0 truncate text-[15px]">
-                    <span className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
+                    <span
+                      className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
+                      style={von ? { backgroundColor: von.farbe } : undefined}
+                    />
                     {t.titel || "Termin"}
-                    {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· Partner</span> : null}
+                    {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
                   </span>
                   <span className="tnum shrink-0 text-[13px] text-ink-muted">
                     {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
                   </span>
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       ) : null}
@@ -1267,8 +1294,6 @@ function AnpassenBlatt({
   schichten,
   farben,
   arten,
-  partnerZeigen,
-  onPartnerZeigen,
   onFarbe,
   onArt,
   onNeueArt,
@@ -1277,8 +1302,6 @@ function AnpassenBlatt({
   schichten: ShiftDetail[];
   farben: Record<string, string>;
   arten: EigeneArt[] | null;
-  partnerZeigen: boolean;
-  onPartnerZeigen: (an: boolean) => void;
   onFarbe: (schluessel: string, farbe: string | null) => void;
   onArt: (a: EigeneArt) => void;
   onNeueArt: () => void;
@@ -1345,27 +1368,6 @@ function AnpassenBlatt({
         Zum Beispiel „Nebenjob“ oder „Schicht getauscht“ – im Kalender mit gestricheltem Rand, nur für dich sichtbar.
       </p>
 
-      <p className="mb-1.5 mt-5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Anzeige</p>
-      <div className="flex items-center justify-between gap-3 rounded-[18px] bg-ink/[0.04] px-4 py-3">
-        <span id="anpassen-partner" className="text-[15.5px]">
-          Schichten des Partners zeigen
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={partnerZeigen}
-          aria-labelledby="anpassen-partner"
-          onClick={() => onPartnerZeigen(!partnerZeigen)}
-          className={cn("relative h-8 w-[52px] shrink-0 rounded-full transition-colors", partnerZeigen ? "bg-brand-500" : "bg-ink/[0.12]")}
-        >
-          <span
-            className={cn(
-              "absolute left-1 top-1 h-6 w-6 rounded-full bg-white shadow transition-transform motion-reduce:transition-none",
-              partnerZeigen && "translate-x-5",
-            )}
-          />
-        </button>
-      </div>
     </Blatt>
   );
 }

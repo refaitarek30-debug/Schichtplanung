@@ -57,6 +57,8 @@ export function PartnerAnsicht({ token }: { token: string }) {
 
   const [stand, setStand] = useState<Stand | null>(null);
   const [name, setName] = useState("");
+  /** Nur ansehen oder auch eintragen – legt die einladende Person fest. */
+  const [darf, setDarf] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
   const [ungueltig, setUngueltig] = useState(false);
   /** Tag, dessen Übersicht offen ist. */
@@ -73,6 +75,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
       if (nr !== ladeNr.current) return;
       setStand({ schluessel: `${start}:${anzahl}`, name: k.name, tage: k.tage, termine: k.termine });
       setName(k.name);
+      setDarf(k.darfEintragen);
       setFehler(null);
     } catch (e) {
       if (nr !== ladeNr.current) return;
@@ -187,9 +190,11 @@ export function PartnerAnsicht({ token }: { token: string }) {
             <h1 className="text-[28px] font-bold leading-tight tracking-tight">{monthName(monat.monat)}</h1>
             <p className="tnum text-[13px] font-medium text-ink-muted">
               {monat.jahr}
-              <span className="ml-2 text-[12px] text-ink-faint">
-                Gefüllt: du · Umriss: {name || "Plan"}
-              </span>
+              {darf ? (
+                <span className="ml-2 text-[12px] text-ink-faint">
+                  Gefüllt: du · Umriss: {name || "Plan"}
+                </span>
+              ) : null}
               {!istAktuell ? (
                 <>
                   {" · "}
@@ -340,6 +345,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
         <TagBlatt
           iso={tag}
           name={name}
+          darf={darf}
           eigen={sichtbar?.tage.get(tag)?.[0] ?? null}
           partner={sichtbar?.tage.get(tag)?.[1] ?? null}
           termine={termineAm(termine, tag)}
@@ -355,7 +361,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
         />
       ) : null}
 
-      {blatt ? (
+      {blatt && darf ? (
         <PartnerBlatt
           datum={blatt}
           aktuell={sichtbar?.tage.get(blatt)?.[1] ?? null}
@@ -369,7 +375,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
         <TerminBlatt
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
-          nurLesen={!!terminBlatt.termin && !terminBlatt.termin.vonPartner}
+          nurLesen={!darf || (!!terminBlatt.termin && !terminBlatt.termin.vonPartner)}
           hinweis={
             terminBlatt.termin && !terminBlatt.termin.vonPartner
               ? `Termin von ${name || "deinem Partner"} – nur zum Ansehen.`
@@ -388,6 +394,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
 function TagBlatt({
   iso,
   name,
+  darf,
   eigen,
   partner,
   termine,
@@ -397,6 +404,8 @@ function TagBlatt({
 }: {
   iso: string;
   name: string;
+  /** Darf eintragen – sonst nur die Übersicht. */
+  darf: boolean;
   eigen: PartnerCode | null;
   partner: PartnerCode | null;
   termine: Termin[];
@@ -415,6 +424,7 @@ function TagBlatt({
           </p>
         </div>
         <div className="space-y-2 px-5 py-4">
+          {darf ? (
           <div className="flex items-center justify-between gap-3">
             <span className="text-[15px] text-ink-muted">Du</span>
             {partner ? (
@@ -425,6 +435,7 @@ function TagBlatt({
               <span className="text-[14px] text-ink-faint">nichts eingetragen</span>
             )}
           </div>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <span className="text-[15px] text-ink-muted">{name || "Plan"}</span>
             <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[eigen ?? "X"])}>
@@ -457,6 +468,7 @@ function TagBlatt({
             </ul>
           ) : null}
         </div>
+        {darf ? (
         <div className="grid grid-cols-2 border-t border-line">
           <button
             type="button"
@@ -475,6 +487,7 @@ function TagBlatt({
             Schicht / Urlaub
           </button>
         </div>
+        ) : null}
         <div className="border-t border-line pb-[env(safe-area-inset-bottom)] text-center">
           <Link href="/datenschutz" className="inline-block py-3 text-[12px] text-ink-faint underline">
             Datenschutz
