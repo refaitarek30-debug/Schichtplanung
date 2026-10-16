@@ -1,17 +1,20 @@
 "use client";
 
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/ui/page-header";
 import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
+import { createClient } from "@/lib/supabase/client";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
-import Link from "next/link";
 import { ThemeToggle } from "@/components/layout/theme";
 import { PrivacySettingsPanel } from "./privacy-settings-panel";
 import { StartSeiteCard } from "@/components/settings/start-seite-card";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
+import { Gruppe, LinkZeile, Zeile } from "@/components/settings/gruppe";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -47,170 +50,98 @@ const permissions: { role: Role; items: string[] }[] = [
 export default function SettingsPage() {
   const { company, mode, profile } = useSession();
   const istAdmin = profile?.role === "admin";
+  const live = mode === "live";
+  const [aktive, setAktive] = useState<number | null>(live ? null : employees.filter((e) => e.active).length);
+
+  useEffect(() => {
+    if (!live || !istAdmin) return;
+    let aktiv = true;
+    createClient()
+      .from("employees")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true)
+      .then(({ count }) => {
+        if (aktiv) setAktive(count ?? null);
+      });
+    return () => {
+      aktiv = false;
+    };
+  }, [live, istAdmin]);
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="Verwaltung"
-        title="Einstellungen"
-        description="Unternehmensdaten, Rollen und der Stand der technischen Anbindung."
-      />
+    <div className="mx-auto w-full max-w-2xl space-y-7">
+      <PageHeader title="Einstellungen" description={istAdmin ? "Deine Einstellungen und der Betrieb." : "Deine persönlichen Einstellungen."} />
 
-      <Card>
-        <CardHeader
-          title="Darstellung"
-          hint="gilt nur auf diesem Gerät – für die Nachtschicht meist dunkel"
-        />
-        <CardBody>
-          <ThemeToggle />
-        </CardBody>
-      </Card>
+      <Gruppe>
+        <Link
+          href="/profil"
+          className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-muted sm:px-5"
+        >
+          <Avatar employee={profile} className="h-12 w-12 text-[15px]" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[16px] font-semibold">
+              {profile.firstName} {profile.lastName}
+            </span>
+            <span className="block truncate text-[13px] text-ink-muted">
+              {roleLabels[profile.role]} · {company.name}
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={2} />
+        </Link>
+      </Gruppe>
 
-      {mode === "live" ? <StartSeiteCard /> : null}
+      <Gruppe titel="Darstellung">
+        <Zeile titel="Farbschema" text="Gilt nur auf diesem Gerät – für die Nachtschicht meist dunkel." rechts={<ThemeToggle />} />
+      </Gruppe>
 
-      {mode === "live" ? <KalenderAboCard /> : null}
+      {live ? <StartSeiteCard /> : null}
 
-      {mode === "live" ? (
-        <Card>
-          <CardHeader
-            title="Datenschutz & Sichtbarkeit"
-            hint="Jede und jeder Mitarbeiter entscheidet selbst. Die Einstellung kann jederzeit geändert werden."
-          />
-          <CardBody>
-            <PrivacySettingsPanel />
-          </CardBody>
-        </Card>
-      ) : null}
+      {live ? <PrivacySettingsPanel /> : null}
 
-      {mode === "live" ? (
-        <Card>
-          <CardHeader
-            title="Was meine Schicht von mir sieht"
-            hint="Gilt nur für dich. Jede und jeder entscheidet das selbst."
-          />
-          <CardBody className="flex flex-wrap items-center justify-between gap-3">
-            <p className="max-w-prose text-sm text-ink-muted">
-              Du legst fest, ob Kolleginnen und Kollegen deiner Schicht den
-              Grund deiner Abwesenheit sehen – Urlaub, V-Tag oder Schulung –
-              oder nur „Abwesend“. Krankheit ist davon getrennt und
-              standardmäßig privat. Ohne deine Freigabe sieht niemand einen
-              Grund; du kannst sie jederzeit wieder zurücknehmen.
-            </p>
-            <Link
-              href="/profil/datenschutz"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted"
-            >
-              Sichtbarkeit festlegen
-            </Link>
-          </CardBody>
-        </Card>
-      ) : null}
+      {live ? <KalenderAboCard /> : null}
 
-      {mode === "live" ? <NotificationSettings /> : null}
-      {mode === "live" && istAdmin ? <MailDeliveryCard /> : null}
-
-      {mode === "live" && istAdmin ? (
-        <Card>
-          <CardHeader
-            title="Einrichtung"
-            hint="Feiertage, Schichtmuster und Mitarbeiter in drei geführten Schritten."
-          />
-          <CardBody className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-ink-muted">
-              {company.setupCompletedAt
-                ? "Abgeschlossen. Der Assistent lässt sich jederzeit erneut durchgehen – geändert wird nur, was du speicherst."
-                : "Noch offen. Ohne hinterlegte Feiertage rechnet die Urlaubsberechnung falsch."}
-            </p>
-            <Link
+      {live && istAdmin ? (
+        <>
+          <Gruppe titel="Unternehmen">
+            <Zeile titel="Name" inline rechts={<span className="text-[15px] text-ink-muted">{company.name}</span>} />
+            <Zeile
+              titel="Aktive Mitarbeiter"
+              inline
+              rechts={<span className="tnum text-[15px] text-ink-muted">{aktive ?? "…"}</span>}
+            />
+            <LinkZeile
               href="/einrichtung"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted"
-            >
-              {company.setupCompletedAt ? "Assistent öffnen" : "Einrichtung fortsetzen"}
-            </Link>
-          </CardBody>
-        </Card>
+              titel="Einrichtung"
+              text={
+                company.setupCompletedAt
+                  ? "Abgeschlossen – der Assistent lässt sich jederzeit erneut durchgehen."
+                  : "Noch offen. Ohne hinterlegte Feiertage rechnet die Urlaubsberechnung falsch."
+              }
+            />
+          </Gruppe>
+          <NotificationSettings />
+          <MailDeliveryCard />
+        </>
       ) : null}
 
-      <Card>
-        <CardHeader title="Unternehmen" />
-        <CardBody className="grid gap-3 sm:grid-cols-3">
-          <Detail label="Name" value={company.name} />
-          <Detail
-            label="Aktive Mitarbeiter"
-            value={String(employees.filter((e) => e.active).length)}
-          />
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Rollen und Berechtigungen"
-          hint="Wird in Phase 2 zusätzlich über Supabase Row Level Security erzwungen."
-        />
-        <CardBody className="space-y-3">
-          {permissions.map((group) => (
-            <div key={group.role} className="rounded-xl border border-line px-4 py-3">
-              <p className="mb-2 text-sm font-medium">{roleLabels[group.role]}</p>
-              <ul className="space-y-1 text-[13px] text-ink-muted">
-                {group.items.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-faint" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader title="Technischer Stand" />
-        <CardBody className="space-y-2 text-sm">
-          <Row label="Frontend, Designsystem, Rollenlogik" status="Phase 1 – fertig" tone="ok" />
-          <Row
-            label="Supabase Auth, Datenbank, RLS"
-            status={mode === "live" ? "Phase 2 – aktiv" : "Phase 2 – Demo-Modus"}
-            tone={mode === "live" ? "ok" : "neutral"}
-          />
-          <Row
-            label="Urlaubskonto, Anträge, Genehmigungsworkflow"
-            status={mode === "live" ? "Phase 3 – aktiv" : "Phase 3 – Demo-Modus"}
-            tone={mode === "live" ? "ok" : "neutral"}
-          />
-          <Row
-            label="Schichtzuordnung und Besetzungsprüfung serverseitig"
-            status={mode === "live" ? "Phase 4 – aktiv" : "Phase 4 – Demo-Modus"}
-            tone={mode === "live" ? "ok" : "neutral"}
-          />
-        </CardBody>
-      </Card>
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-surface-muted px-4 py-3">
-      <p className="text-[12px] text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-sm font-medium">{value}</p>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  status,
-  tone,
-}: {
-  label: string;
-  status: string;
-  tone: "ok" | "neutral";
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-line px-4 py-2.5">
-      <span>{label}</span>
-      <Badge tone={tone}>{status}</Badge>
+      <Gruppe titel="Rollen und Berechtigungen">
+        {permissions.map((group) => (
+          <details key={group.role} className="group px-4 py-3.5 sm:px-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[15px] font-medium [&::-webkit-details-marker]:hidden">
+              {roleLabels[group.role]}
+              <ChevronDown className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="mt-2.5 space-y-1.5 text-[13px] leading-snug text-ink-muted">
+              {group.items.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ink-faint" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </Gruppe>
     </div>
   );
 }
