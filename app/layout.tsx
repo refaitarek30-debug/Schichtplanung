@@ -30,6 +30,11 @@ export const metadata: Metadata = {
   // Macht die Seite auf dem Handy installierbar (siehe app/manifest.ts).
   manifest: "/manifest.webmanifest",
   applicationName: "Schichtplan",
+  // Bestätigung für die Google Search Console (Methode „HTML-Tag“). Der Code
+  // ist öffentlich; ohne Variable entfällt das Tag.
+  ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } }
+    : {}),
   appleWebApp: {
     capable: true,
     title: "Schichtplan",

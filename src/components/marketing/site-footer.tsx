@@ -5,9 +5,9 @@ const SPALTEN = [
   {
     titel: "Produkt",
     links: [
+      { href: "/#kalender", label: "Schichtkalender" },
+      { href: "/#unternehmen", label: "Für Unternehmen" },
       { href: "/#funktionen", label: "Funktionen" },
-      { href: "/#besetzung", label: "Besetzungskontrolle" },
-      { href: "/#preise", label: "Preise" },
       { href: ZIELE.demo, label: "Demo" },
     ],
   },
