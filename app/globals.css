@@ -474,3 +474,24 @@ body {
     background-color: rgb(var(--c-surface));
   }
 }
+
+/*
+ * iPhone: Felder unter 16 px Schrift lösen beim Antippen ein automatisches
+ * Hineinzoomen aus – danach steht die untere Leiste mitten im Bild und die
+ * Seite wirkt verrutscht. Auf dem Handy deshalb immer mindestens 16 px.
+ * Datumsfelder bringen auf iOS eine eigene Mindestbreite mit und ragten
+ * sonst über die Karte hinaus.
+ */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
