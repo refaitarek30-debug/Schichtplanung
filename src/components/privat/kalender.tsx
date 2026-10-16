@@ -2,9 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight, Eraser, Layers, Paintbrush, Repeat, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Paintbrush, Repeat, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
+import {
+  AmTag,
+  EintragPille,
+  SchichtLeiste,
+  SchnellWahl,
+  TagKnoepfe,
+  Tagesansicht,
+  TodoBlatt,
+  useLangDruck,
+} from "@/components/kalender/tag";
+import { useVorlieben } from "@/components/kalender/vorschlaege";
+import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import {
@@ -104,7 +116,15 @@ export function PrivatKalender() {
   const rueckUhr = useRef<number | null>(null);
 
   const [tagBlatt, setTagBlatt] = useState<string | null>(null);
-  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null } | null>(null);
+  const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
+  /** Tagesansicht mit Zeitleiste */
+  const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
+  /** To-do-Liste; datum = vorgeschlagener Tag für neue */
+  const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
+  /** Schnellauswahl nach langem Drücken */
+  const [schnell, setSchnell] = useState<{ iso: string; rect: DOMRect } | null>(null);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const { vorlieben } = useVorlieben();
   const [rotation, setRotation] = useState(false);
   /** Pinsel: Schichtart-Id oder "leer" zum Löschen */
   const [pinsel, setPinsel] = useState<string | null>(null);
@@ -174,6 +194,38 @@ export function PrivatKalender() {
   useEffect(() => {
     void ladeTermine();
   }, [ladeTermine]);
+
+  const ladeTodos = useCallback(async () => {
+    try {
+      setTodos(await fetchTodos());
+    } catch {
+      // To-dos sind Beiwerk.
+    }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void ladeTodos();
+  }, [ladeTodos]);
+
+  async function todoSetzen(id: string, an: boolean) {
+    setTodos((alt) => alt.map((t) => (t.id === id ? { ...t, erledigt: an } : t)));
+    try {
+      await todoErledigt(id, an);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
+      void ladeTodos();
+    }
+  }
+
+  async function terminVerschieben(t: Termin, von: string, bis: string) {
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
+    try {
+      await speichereTermin({ ...t, von, bis });
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
+    }
+    void ladeTermine();
+  }
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
   const andere = useAndere({ benutzer: konto.userId, von: bereich.von, bis: bereich.bis, aktiv: ansicht !== "jahr" });
@@ -252,6 +304,27 @@ export function PrivatKalender() {
     });
     try {
       await leereTage(liste);
+    } catch (e) {
+      setTage(vorher);
+      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+    }
+  }
+
+  /** Beide Einträge eines Tages auf einmal setzen; optimistisch. */
+  async function tagSetzen(iso: string, schicht: string | null, zusatz: string | null) {
+    const vorher = tage;
+    setTage((alt) => {
+      const neu = { ...alt };
+      if (!schicht && !zusatz) delete neu[iso];
+      else neu[iso] = { schicht, zusatz };
+      return neu;
+    });
+    try {
+      if (!schicht && !zusatz) await leereTage([iso]);
+      else {
+        await setzeTage([iso], schicht, 1);
+        await setzeTage([iso], zusatz, 2);
+      }
     } catch (e) {
       setTage(vorher);
       setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
@@ -338,8 +411,12 @@ export function PrivatKalender() {
       springe(dx < 0 ? 1 : -1);
     }
   }
+  const langDruck = useLangDruck((iso, rect) => {
+    if (pinselAn || !schichtarten?.length) return;
+    setSchnell({ iso, rect });
+  });
   function tippen(iso: string) {
-    if (gewischt.current) return;
+    if (langDruck.geschluckt() || gewischt.current) return;
     tagAntippen(iso);
   }
 
@@ -450,6 +527,7 @@ export function PrivatKalender() {
             termine={sichtbareTermine}
             andere={andere}
             onTag={tippen}
+            zelle={langDruck.zelle}
           />
         ) : ansicht === "woche" ? (
           <WochenAnsicht
@@ -461,6 +539,7 @@ export function PrivatKalender() {
             termine={sichtbareTermine}
             andere={andere}
             onTag={tippen}
+            zelle={langDruck.zelle}
           />
         ) : (
           <JahresAnsicht
@@ -540,37 +619,119 @@ export function PrivatKalender() {
 
       {tagBlatt ? (
         <TagBlatt
+          key={tagBlatt}
           iso={tagBlatt}
           eintrag={tage[tagBlatt] ?? LEER}
           arten={schichtarten ?? []}
           artNach={artNach}
           feiertag={feiertagVon(tagBlatt)}
           termine={termineAm(sichtbareTermine, tagBlatt)}
+          todos={todosAm(todos, tagBlatt)}
           andere={andere.amTag(tagBlatt)}
           terminVon={andere.terminVon}
-          onHinzufuegen={(id) => {
-            merke([tagBlatt], "{n} geändert");
-            hinzufuegen(tagBlatt, id, false);
-          }}
-          onEntfernen={(ebene) => {
-            merke([tagBlatt], "Eintrag entfernt");
-            void setzen([tagBlatt], null, ebene);
-          }}
-          onErsetzen={(ebene, id) => {
-            merke([tagBlatt], "{n} geändert");
-            void setzen([tagBlatt], id, ebene);
+          onSetzen={(schicht, zusatz, text) => {
+            merke([tagBlatt], text);
+            void tagSetzen(tagBlatt, schicht, zusatz);
           }}
           onTermin={(t) => {
             setTerminBlatt({ datum: tagBlatt, termin: t });
+            setTagBlatt(null);
+          }}
+          onTodo={(id, an) => void todoSetzen(id, an)}
+          onTodos={() => {
+            setTodoBlatt({ datum: tagBlatt });
+            setTagBlatt(null);
+          }}
+          onTag={() => {
+            setTagAnsicht(tagBlatt);
             setTagBlatt(null);
           }}
           onClose={() => setTagBlatt(null)}
         />
       ) : null}
 
+      {tagAnsicht ? (
+        <Tagesansicht
+          iso={tagAnsicht}
+          heute={heute}
+          onIso={(iso) => {
+            setTagAnsicht(iso);
+            const j = fromISO(iso).getFullYear();
+            if (!geladen.current.has(j)) void ladeJahre([j]);
+          }}
+          baender={(iso) =>
+            arten(tage[iso], artNach)
+              .filter((a) => a.beginn && a.ende)
+              .map((a) => ({ name: a.name, beginn: a.beginn, ende: a.ende, farbe: a.farbe }))
+          }
+          ganztaegig={(iso) => [
+            ...arten(tage[iso], artNach)
+              .filter((a) => !a.beginn || !a.ende)
+              .map((a) => ({ name: a.name, farbe: a.farbe })),
+            ...(feiertagVon(iso) ? [{ name: `🎉 ${feiertagVon(iso)}`, farbe: "#FCE7D6" }] : []),
+          ]}
+          termineAm={(iso) => termineAm(sichtbareTermine, iso)}
+          todos={todos}
+          terminVon={andere.terminVon}
+          onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
+          onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
+          onTodo={(id, an) => void todoSetzen(id, an)}
+          onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
+          onClose={() => setTagAnsicht(null)}
+        />
+      ) : null}
+
+      {todoBlatt ? (
+        <TodoBlatt
+          todos={todos}
+          heute={heute}
+          datum={todoBlatt.datum}
+          rollen={vorlieben?.rollen ?? []}
+          onNeu={async (t) => {
+            await todoSpeichern({ id: null, ...t });
+            await ladeTodos();
+          }}
+          onErledigt={(id, an) => void todoSetzen(id, an)}
+          onLoeschen={(id) => {
+            setTodos((alt) => alt.filter((t) => t.id !== id));
+            void todoLoeschen(id).catch((e: unknown) => {
+              setFehler(e instanceof Error ? e.message : "Das To-do konnte nicht gelöscht werden.");
+              void ladeTodos();
+            });
+          }}
+          onClose={() => setTodoBlatt(null)}
+        />
+      ) : null}
+
+      {schnell && schichtarten ? (
+        <SchnellWahl
+          rect={schnell.rect}
+          titel={formatDE(schnell.iso)}
+          eintraege={schichtarten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe }))}
+          aktiv={tage[schnell.iso]?.schicht ?? null}
+          mitLeeren={!!tage[schnell.iso]}
+          onWahl={(id) => {
+            const iso = schnell.iso;
+            setSchnell(null);
+            const e = tage[iso] ?? LEER;
+            if (!id) {
+              merke([iso], "{n} geleert");
+              void leeren([iso]);
+              return;
+            }
+            if (e.schicht === id) return;
+            merke([iso], `{n} auf ${artNach.get(id)?.name ?? "neu"} gesetzt`);
+            void tagSetzen(iso, id, e.zusatz === id ? null : e.zusatz);
+          }}
+          onClose={() => setSchnell(null)}
+        />
+      ) : null}
+
       {terminBlatt ? (
         <TerminBlatt
           glas
+          vorschlaege
+          startZeit={terminBlatt.startZeit}
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
           hinweis={
@@ -666,6 +827,11 @@ function Chip({ art, klein }: { art: Schichtart; klein?: boolean }) {
   );
 }
 
+type ZellGriffe = (iso: string) => Pick<
+  React.HTMLAttributes<HTMLElement>,
+  "onPointerDown" | "onPointerMove" | "onPointerUp" | "onPointerCancel" | "onContextMenu"
+>;
+
 interface AnsichtProps {
   heute: string;
   tage: Record<string, TagEintrag>;
@@ -683,12 +849,14 @@ function MonatsAnsicht({
   termine,
   andere,
   onTag,
+  zelle,
 }: AnsichtProps & {
   jahr: number;
   monat: number;
   termine: Termin[];
   andere: Andere;
   onTag: (iso: string) => void;
+  zelle?: ZellGriffe;
 }) {
   const { start, wochen } = monatRaster(jahr, monat);
   const liste = Array.from({ length: wochen * 7 }, (_, i) => addDays(start, i));
@@ -718,11 +886,12 @@ function MonatsAnsicht({
           <button
             key={iso}
             type="button"
+            {...zelle?.(iso)}
             onClick={() => onTag(iso)}
             aria-label={`${WT_LANG[i % 7]}, ${formatDE(iso)}${eintraege.length ? `: ${eintraege.map((a) => a.name).join(" und ")}` : ""}${fei ? `, ${fei}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
             className={cn(
               // Feste Zellgröße: Inhalt wird abgeschnitten, nie gestreckt.
-              "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+              "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
               i % 7 !== 0 && "border-l",
               i % 7 >= 5 && "bg-ink/[0.025]",
               !imMonat && "opacity-35",
@@ -781,11 +950,13 @@ function WochenAnsicht({
   termine,
   andere,
   onTag,
+  zelle,
 }: AnsichtProps & {
   von: string;
   termine: Termin[];
   andere: Andere;
   onTag: (iso: string) => void;
+  zelle?: ZellGriffe;
 }) {
   return (
     <ul className="glas grid h-full grid-rows-7 overflow-hidden rounded-[22px]">
@@ -798,8 +969,9 @@ function WochenAnsicht({
           <li key={iso} className={cn("min-h-0", i > 0 && "glas-linie border-t")}>
             <button
               type="button"
+              {...zelle?.(iso)}
               onClick={() => onTag(iso)}
-              className={cn("flex h-full w-full items-center gap-3 overflow-hidden px-3 text-left active:bg-ink/[0.06]", iso === heute && "bg-[#ff3b30]/[0.06]")}
+              className={cn("flex h-full w-full items-center gap-3 [-webkit-touch-callout:none] overflow-hidden px-3 text-left active:bg-ink/[0.06]", iso === heute && "bg-[#ff3b30]/[0.06]")}
             >
               <span className="flex w-10 shrink-0 flex-col items-center">
                 <span className={cn("text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>{WT[i]}</span>
@@ -909,13 +1081,10 @@ function JahresAnsicht({
   );
 }
 
-/** Stunden, z. B. 8 oder 7,5 */
-const h = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 2 });
-
 /**
- * Tagesblatt: oben die Einträge des Tages, darunter alle Schichtarten zum
- * Ändern mit einem Tipp, dann „Termin“ und „2. Eintrag“, wer von den
- * Eingeladenen an dem Tag arbeitet, und die Termine.
+ * Tagesblatt: oben klein, was eingetragen ist; darunter die Schichten als
+ * Leiste. Antippen = 2. Eintrag, dieselbe Schicht nochmal = nur noch diese.
+ * Dann was am Tag ansteht und die Knöpfe Termin, To-do und Tag.
  */
 function TagBlatt({
   iso,
@@ -924,12 +1093,14 @@ function TagBlatt({
   artNach,
   feiertag,
   termine,
+  todos,
   andere,
   terminVon,
-  onHinzufuegen,
-  onEntfernen,
-  onErsetzen,
+  onSetzen,
   onTermin,
+  onTodo,
+  onTodos,
+  onTag,
   onClose,
 }: {
   iso: string;
@@ -938,162 +1109,78 @@ function TagBlatt({
   artNach: Map<string, Schichtart>;
   feiertag?: string;
   termine: Termin[];
+  todos: Todo[];
   andere: AndererEintrag[];
   terminVon: (t: Termin) => { name: string; farbe: string } | null;
-  onHinzufuegen: (id: string) => void;
-  onEntfernen: (ebene: Ebene) => void;
-  onErsetzen: (ebene: Ebene, id: string) => void;
+  /** Beide Einträge setzen; text für „Rückgängig“ */
+  onSetzen: (schicht: string | null, zusatz: string | null, text: string) => void;
   onTermin: (t: Termin | null) => void;
+  onTodo: (id: string, an: boolean) => void;
+  onTodos: () => void;
+  onTag: () => void;
   onClose: () => void;
 }) {
-  const zeilen: { ebene: Ebene; art: Schichtart }[] = [];
   const s = eintrag.schicht ? artNach.get(eintrag.schicht) : undefined;
   const z = eintrag.zusatz ? artNach.get(eintrag.zusatz) : undefined;
-  if (s) zeilen.push({ ebene: 1, art: s });
-  if (z) zeilen.push({ ebene: 2, art: z });
-  const voll = zeilen.length === 2;
-  /** „aendern“: ersetzt die Schicht · „dazu“: zweiter Eintrag · Ebene: diese Zeile tauschen */
-  const [modus, setModus] = useState<"aendern" | "dazu" | Ebene>("aendern");
+  const erster = s ?? z;
+  const zweiter = s && z ? z : undefined;
+  const [nachricht, setNachricht] = useState(
+    erster ? "Tippen = 2. Eintrag · nochmal tippen = nur diese Schicht" : "Was steht an diesem Tag an?",
+  );
 
-  const hinweis =
-    zeilen.length === 0
-      ? "Was steht an diesem Tag an?"
-      : modus === "dazu"
-        ? "Kommt als 2. Eintrag dazu – die Schicht bleibt stehen."
-        : typeof modus === "number"
-          ? `Ersetzt „${(modus === 1 ? s : z)?.name ?? ""}“.`
-          : "Ändern mit einem Tipp";
+  function tipp(id: string) {
+    const neu = artNach.get(id);
+    if (!neu) return;
+    if (!erster) {
+      onSetzen(id, null, "{n} geändert");
+      setNachricht(`${neu.name} eingetragen.`);
+    } else if (erster.id !== id && zweiter?.id !== id) {
+      onSetzen(erster.id, id, "{n} geändert");
+      setNachricht(`${neu.name} als 2. Eintrag · nochmal tippen = nur ${neu.name}.`);
+    } else if (zweiter) {
+      const weg = erster.id === id ? zweiter : erster;
+      onSetzen(id, null, "{n} geändert");
+      setNachricht(`Nur noch ${neu.name} – ${weg.name} ist weg.`);
+    } else {
+      setNachricht(`${neu.name} ist schon eingetragen.`);
+    }
+  }
 
-  function waehlen(id: string) {
-    if (zeilen.length === 0 || modus === "dazu") onHinzufuegen(id);
-    else if (typeof modus === "number") onErsetzen(modus, id);
-    else onErsetzen(1, id);
-    setModus("aendern");
-    // Erledigt – zu, damit der Kalender (und „Rückgängig“) zu sehen ist.
-    onClose();
+  function entfernen(id: string) {
+    const rest = [erster, zweiter].filter((a): a is Schichtart => !!a && a.id !== id);
+    onSetzen(rest[0]?.id ?? null, null, "Eintrag entfernt");
+    setNachricht("Eintrag entfernt.");
   }
 
   const d = fromISO(iso);
+  const zeit = (a: Schichtart) => zeitText(a) || (a.art === "arbeit" ? null : a.art === "frei" ? "frei" : "ganztägig");
   return (
     <Blatt
       titel={`${WT_LANG[wochentag(iso)]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
-      unter={feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : undefined}
+      unter={
+        <span className="mt-1 flex flex-wrap gap-1.5">
+          {feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : null}
+          {[erster, zweiter].map((a) =>
+            a ? <EintragPille key={a.id} name={a.name} zeit={zeit(a)} farbe={a.farbe} onEntfernen={() => entfernen(a.id)} /> : null,
+          )}
+        </span>
+      }
       onClose={onClose}
     >
-      {zeilen.length ? (
-        <ul className="space-y-2">
-          {zeilen.map(({ ebene, art }) => (
-            <li key={ebene} className="flex items-center gap-3 rounded-[16px] px-3.5 py-2.5" style={farbStil(art.farbe)}>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] font-semibold">{art.name}</span>
-                <span className="tnum block text-[12.5px] opacity-90">
-                  {zeitText(art) || (art.art === "arbeit" ? "ohne Uhrzeit" : art.art === "frei" ? "frei" : "ganztägig")}
-                  {art.stunden ? ` · ${h(art.stunden)} h` : ""}
-                </span>
-              </span>
-              {voll ? (
-                <button
-                  type="button"
-                  onClick={() => setModus(modus === ebene ? "aendern" : ebene)}
-                  aria-pressed={modus === ebene}
-                  className={cn("shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold", modus === ebene ? "bg-black/35" : "bg-black/15")}
-                >
-                  Tauschen
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => onEntfernen(ebene)}
-                aria-label={`${art.name} entfernen`}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/15"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <SchichtLeiste
+        eintraege={alleArten.map((a) => ({
+          id: a.id,
+          name: a.name,
+          farbe: a.farbe,
+          rang: erster?.id === a.id ? 1 : zweiter?.id === a.id ? 2 : 0,
+        }))}
+        onTipp={tipp}
+        nachricht={nachricht}
+      />
 
-      <div className="mt-3">
-        <p className="mb-2 text-[12.5px] font-semibold text-ink-muted">{hinweis}</p>
-        <div className="grid grid-cols-3 gap-2">
-          {alleArten.map((a) => {
-            const gewaehlt = a.id === eintrag.schicht || a.id === eintrag.zusatz;
-            return (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => waehlen(a.id)}
-                aria-pressed={gewaehlt}
-                className={cn(
-                  "h-11 truncate rounded-[13px] px-2 text-[14px] font-semibold active:scale-[0.97]",
-                  gewaehlt && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
-                )}
-                style={farbStil(a.farbe)}
-              >
-                {a.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={cn("mt-3 grid gap-2", zeilen.length === 1 ? "grid-cols-2" : "grid-cols-1")}>
-        <button
-          type="button"
-          onClick={() => onTermin(null)}
-          className="flex h-[52px] items-center justify-center gap-2 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold text-ink"
-        >
-          <CalendarPlus className="h-5 w-5" /> Termin
-        </button>
-        {zeilen.length === 1 ? (
-          <button
-            type="button"
-            onClick={() => setModus(modus === "dazu" ? "aendern" : "dazu")}
-            aria-pressed={modus === "dazu"}
-            className={cn(
-              "flex h-[52px] items-center justify-center gap-2 rounded-[16px] text-[15px] font-semibold transition-colors",
-              modus === "dazu" ? "bg-brand-500 text-white" : "bg-ink/[0.07] text-ink",
-            )}
-          >
-            <Layers className="h-5 w-5" /> 2. Eintrag
-          </button>
-        ) : null}
-      </div>
-
-      <AnDiesemTag eintraege={andere} className="mt-4" />
-
-      {termine.length ? (
-        <div className="mt-4">
-          <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Termine</p>
-          <ul className="overflow-hidden rounded-[16px] bg-ink/[0.04]">
-            {termine.map((t, i) => {
-              const von = terminVon(t);
-              return (
-                <li key={t.id} className={cn(i > 0 && "glas-linie border-t")}>
-                  <button
-                    type="button"
-                    onClick={() => onTermin(t)}
-                    className="flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left active:bg-ink/[0.05]"
-                  >
-                    <span className="min-w-0 truncate text-[15px]">
-                      <span
-                        className={cn("mr-2 inline-block h-2 w-2 rounded-full align-middle", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
-                        style={von ? { backgroundColor: von.farbe } : undefined}
-                      />
-                      {t.titel || "Termin"}
-                      {t.vonPartner ? <span className="ml-1 text-[12px] text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
-                    </span>
-                    <span className="tnum shrink-0 text-[13px] text-ink-muted">
-                      {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
+      <AmTag termine={termine} todos={todos} terminVon={terminVon} onTermin={onTermin} onTodo={onTodo} />
+      <AnDiesemTag eintraege={andere} className="mt-3" />
+      <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
     </Blatt>
   );
 }

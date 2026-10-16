@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/layout/theme";
 import { PrivacySettingsPanel } from "./privacy-settings-panel";
 import { StartSeiteCard } from "@/components/settings/start-seite-card";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
+import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstellungen";
 import { Gruppe, LinkZeile, Zeile } from "@/components/settings/gruppe";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
@@ -97,6 +98,14 @@ export default function SettingsPage() {
       {live ? <StartSeiteCard /> : null}
 
       {live ? <PrivacySettingsPanel /> : null}
+
+      {live ? (
+        <Gruppe titel="Kalender: Erinnerungen und Vorschläge">
+          <div className="px-4 py-4 sm:px-5">
+            <KalenderVorliebenInhalt />
+          </div>
+        </Gruppe>
+      ) : null}
 
       {live ? <KalenderAboCard /> : null}
 

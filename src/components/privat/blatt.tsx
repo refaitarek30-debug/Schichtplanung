@@ -32,7 +32,7 @@ export function Blatt({
       <button
         type="button"
         aria-label="Schließen"
-        className="absolute inset-0 cursor-default bg-black/25 backdrop-blur-[3px]"
+        className="absolute inset-0 cursor-default bg-black/20"
         onClick={onClose}
       />
       <div

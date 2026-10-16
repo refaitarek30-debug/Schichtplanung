@@ -188,7 +188,7 @@ export function dauerStunden(beginn: string, ende: string): number | null {
 }
 
 /** Helle Farben bekommen dunkle Schrift, dunkle helle – in beiden Themen lesbar. */
-function textFarbe(farbe: string): string {
+export function textFarbe(farbe: string): string {
   const n = Number.parseInt(farbe.slice(1), 16);
   if (Number.isNaN(n)) return "#fff";
   const kanal = (c: number) => {
