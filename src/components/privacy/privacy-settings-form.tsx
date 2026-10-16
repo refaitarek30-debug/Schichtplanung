@@ -4,7 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Gruppe, WahlZeile } from "@/components/settings/gruppe";
 import { savePrivacySettings } from "@/lib/auth/privacy-actions";
 import type { FormState } from "@/lib/auth/form-state";
 
@@ -40,7 +40,7 @@ export function PrivacySettingsForm({
   }, [state.success]);
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-5">
       <input type="hidden" name="privacy_notice_acknowledged" value="on" />
       {!freigabeAktiv ? (
         <Alert tone="info">
@@ -50,93 +50,47 @@ export function PrivacySettingsForm({
           für Kollegen wieder freigibt.
         </Alert>
       ) : null}
-      <Card>
-        <CardHeader
-          title="Meine Kollegen sehen"
-          hint="Die Einstellung gilt sofort und kann jederzeit widerrufen werden."
+
+      <Gruppe titel="Meine Kollegen sehen" hinweis="Die Einstellung gilt sofort und kann jederzeit widerrufen werden.">
+        <WahlZeile
+          name="absence_visibility"
+          value="minimal"
+          aktiv={absenceVisibility === "minimal"}
+          onChange={() => setAbsenceVisibility("minimal")}
+          titel="Nur „Abwesend“"
+          text="Kolleginnen und Kollegen sehen keinen konkreten Abwesenheitsgrund."
         />
-        <CardBody className="space-y-3">
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-            <input
-              type="radio"
-              name="absence_visibility"
-              value="minimal"
-              checked={absenceVisibility === "minimal"}
-              onChange={() => setAbsenceVisibility("minimal")}
-              className="mt-1"
-            />
-            <span>
-              <span className="block text-sm font-medium">Nur „Abwesend“</span>
-              <span className="block text-[12px] text-ink-muted">
-                Kolleginnen und Kollegen sehen keinen konkreten Abwesenheitsgrund.
-              </span>
-            </span>
-          </label>
-
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-            <input
-              type="radio"
-              name="absence_visibility"
-              value="shift"
-              checked={absenceVisibility === "shift"}
-              onChange={() => setAbsenceVisibility("shift")}
-              className="mt-1"
-            />
-            <span>
-              <span className="block text-sm font-medium">Abwesenheitsgrund in meiner Schicht</span>
-              <span className="block text-[12px] text-ink-muted">
-                Nur Kolleginnen und Kollegen derselben betrieblichen Schichtgruppe sehen z. B. Urlaub, V-Tag oder Schulung.
-              </span>
-            </span>
-          </label>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader
-          title="Krankheit"
-          hint="Krankheit wird unabhängig von der allgemeinen Abwesenheitsfreigabe behandelt."
+        <WahlZeile
+          name="absence_visibility"
+          value="shift"
+          aktiv={absenceVisibility === "shift"}
+          onChange={() => setAbsenceVisibility("shift")}
+          titel="Abwesenheitsgrund in meiner Schicht"
+          text="Nur Kolleginnen und Kollegen derselben betrieblichen Schichtgruppe sehen z. B. Urlaub, V-Tag oder Schulung."
         />
-        <CardBody className="space-y-3">
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-            <input
-              type="radio"
-              name="sickness_visibility"
-              value="private"
-              checked={sicknessVisibility === "private"}
-              onChange={() => setSicknessVisibility("private")}
-              className="mt-1"
-            />
-            <span>
-              <span className="block text-sm font-medium">Nicht sichtbar</span>
-              <span className="block text-[12px] text-ink-muted">
-                Andere Kolleginnen und Kollegen sehen nur „Abwesend“.
-              </span>
-            </span>
-          </label>
+      </Gruppe>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
-            <input
-              type="radio"
-              name="sickness_visibility"
-              value="shift"
-              checked={sicknessVisibility === "shift"}
-              onChange={() => setSicknessVisibility("shift")}
-              className="mt-1"
-            />
-            <span>
-              <span className="block text-sm font-medium">Für meine Schicht sichtbar</span>
-              <span className="block text-[12px] text-ink-muted">
-                Nur Kolleginnen und Kollegen derselben Schichtgruppe sehen „Krank“.
-              </span>
-            </span>
-          </label>
-
-          <p className="text-[12px] leading-snug text-ink-faint">
-            Es werden keine Diagnosen oder medizinischen Freitexte erfasst.
-          </p>
-        </CardBody>
-      </Card>
+      <Gruppe
+        titel="Krankheit"
+        hinweis="Krankheit wird unabhängig von der allgemeinen Abwesenheitsfreigabe behandelt. Es werden keine Diagnosen oder medizinischen Freitexte erfasst."
+      >
+        <WahlZeile
+          name="sickness_visibility"
+          value="private"
+          aktiv={sicknessVisibility === "private"}
+          onChange={() => setSicknessVisibility("private")}
+          titel="Nicht sichtbar"
+          text="Andere Kolleginnen und Kollegen sehen nur „Abwesend“."
+        />
+        <WahlZeile
+          name="sickness_visibility"
+          value="shift"
+          aktiv={sicknessVisibility === "shift"}
+          onChange={() => setSicknessVisibility("shift")}
+          titel="Für meine Schicht sichtbar"
+          text="Nur Kolleginnen und Kollegen derselben Schichtgruppe sehen „Krank“."
+        />
+      </Gruppe>
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       {state.success ? <Alert tone="success">{state.success}</Alert> : null}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { ChevronDown } from "lucide-react";
+import { Gruppe, Zeile } from "./gruppe";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { fetchMailPostausgang, type MailPostausgang } from "@/lib/data/notifications";
@@ -32,11 +33,12 @@ export function MailDeliveryCard() {
   const laeuft = !staut && (stand?.gesendet ?? 0) > 0;
 
   return (
-    <Card>
-      <CardHeader
-        title="Mailversand"
-        hint="Benachrichtigungen an die Schichtleitung gehen über einen Postausgang."
-        action={
+    <Gruppe titel="Mailversand">
+      <Zeile
+        titel="Postausgang"
+        text="Benachrichtigungen an die Schichtleitung gehen über einen Postausgang."
+        inline
+        rechts={
           geladen ? (
             <Badge tone={laeuft ? "ok" : staut ? "warn" : "neutral"}>
               {laeuft ? "läuft" : staut ? "steht" : "noch nichts versendet"}
@@ -44,59 +46,55 @@ export function MailDeliveryCard() {
           ) : null
         }
       />
-      <CardBody className="space-y-4">
-        {!geladen ? (
-          <p className="text-sm text-ink-muted">wird geladen …</p>
-        ) : (
-          <>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Zahl label="wartet" wert={stand?.offen ?? 0} betont={staut} />
-              <Zahl label="versendet" wert={stand?.gesendet ?? 0} />
-              <Zahl label="gescheitert" wert={stand?.fehler ?? 0} betont={(stand?.fehler ?? 0) > 0} />
+      {!geladen ? (
+        <p className="px-4 py-3.5 text-sm text-ink-muted sm:px-5">wird geladen …</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2 px-4 py-3.5 sm:px-5">
+            <Zahl label="wartet" wert={stand?.offen ?? 0} betont={staut} />
+            <Zahl label="versendet" wert={stand?.gesendet ?? 0} />
+            <Zahl label="gescheitert" wert={stand?.fehler ?? 0} betont={(stand?.fehler ?? 0) > 0} />
+          </div>
+
+          {stand?.letzterVersand || stand?.letzterFehler || staut ? (
+            <div className="space-y-2 px-4 py-3.5 sm:px-5">
+              {stand?.letzterVersand ? (
+                <p className="text-[13px] text-ink-muted">Zuletzt versendet am {formatDE(stand.letzterVersand.slice(0, 10))}.</p>
+              ) : null}
+              {stand?.letzterFehler ? <Alert tone="error">Letzter Fehler: {stand.letzterFehler}</Alert> : null}
+              {staut ? (
+                <Alert tone="warning">
+                  {stand?.offen === 1
+                    ? "Eine Nachricht wartet im Postausgang."
+                    : `${stand?.offen} Nachrichten warten im Postausgang.`}{" "}
+                  Solange kein eigener SMTP-Versand eingerichtet ist, bleiben sie dort stehen – verloren geht nichts.
+                </Alert>
+              ) : null}
             </div>
+          ) : null}
 
-            {stand?.letzterVersand ? (
-              <p className="text-[13px] text-ink-muted">
-                Zuletzt versendet am {formatDE(stand.letzterVersand.slice(0, 10))}.
-              </p>
-            ) : null}
-
-            {stand?.letzterFehler ? (
-              <Alert tone="error">Letzter Fehler: {stand.letzterFehler}</Alert>
-            ) : null}
-
-            {staut ? (
-              <Alert tone="warning">
-                {stand?.offen === 1
-                  ? "Eine Nachricht wartet im Postausgang."
-                  : `${stand?.offen} Nachrichten warten im Postausgang.`}{" "}
-                Solange kein eigener SMTP-Versand eingerichtet ist, bleiben sie dort
-                stehen – verloren geht nichts.
-              </Alert>
-            ) : null}
-
-            <div className="rounded-xl border border-line bg-surface-muted px-4 py-3">
-              <p className="text-[13px] font-semibold">
-                Einrichtung des eigenen Versands
-              </p>
-              <p className="mt-1 text-[13px] leading-relaxed text-ink-muted">
-                Der eingebaute Versand von Supabase ist nur zum Ausprobieren gedacht –
-                wenige Mails pro Stunde, je nach Projekt nur an Adressen des
-                Projektteams. Für den Betrieb braucht es einen eigenen SMTP-Zugang.
+          <details className="group px-4 py-3.5 sm:px-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-[15px] font-medium [&::-webkit-details-marker]:hidden">
+              Einrichtung des eigenen Versands
+              <ChevronDown className="h-4 w-4 text-ink-faint transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-3">
+              <p className="text-[13px] leading-relaxed text-ink-muted">
+                Der eingebaute Versand von Supabase ist nur zum Ausprobieren gedacht – wenige Mails pro Stunde, je nach
+                Projekt nur an Adressen des Projektteams. Für den Betrieb braucht es einen eigenen SMTP-Zugang.
               </p>
               <ol className="mt-2 ml-4 list-decimal space-y-1 text-[13px] leading-relaxed text-ink-muted marker:text-ink-faint">
                 <li>
-                  Supabase → Authentication → Emails → SMTP Settings: eigenen Zugang
-                  hinterlegen (gilt für Bestätigungs- und Einladungsmails).
+                  Supabase → Authentication → Emails → SMTP Settings: eigenen Zugang hinterlegen (gilt für Bestätigungs-
+                  und Einladungsmails).
                 </li>
                 <li>
-                  Supabase → Edge Functions → Secrets: <Code>SMTP_HOST</Code>,{" "}
-                  <Code>SMTP_PORT</Code>, <Code>SMTP_USER</Code>, <Code>SMTP_PASS</Code>{" "}
-                  und <Code>SMTP_FROM</Code> setzen (gilt für diese Benachrichtigungen).
+                  Supabase → Edge Functions → Secrets: <Code>SMTP_HOST</Code>, <Code>SMTP_PORT</Code>,{" "}
+                  <Code>SMTP_USER</Code>, <Code>SMTP_PASS</Code> und <Code>SMTP_FROM</Code> setzen (gilt für diese
+                  Benachrichtigungen).
                 </li>
                 <li>
-                  Supabase → Integrations → Cron: die Funktion{" "}
-                  <Code>mail-versand</Code> minütlich aufrufen lassen.
+                  Supabase → Integrations → Cron: die Funktion <Code>mail-versand</Code> minütlich aufrufen lassen.
                 </li>
               </ol>
               <p className="mt-2 text-[13px] leading-relaxed text-ink-muted">
@@ -104,16 +102,16 @@ export function MailDeliveryCard() {
                 <Code>supabase/email-templates/README.md</Code>.
               </p>
             </div>
-          </>
-        )}
-      </CardBody>
-    </Card>
+          </details>
+        </>
+      )}
+    </Gruppe>
   );
 }
 
 function Zahl({ label, wert, betont }: { label: string; wert: number; betont?: boolean }) {
   return (
-    <div className="rounded-xl bg-surface-muted px-4 py-3">
+    <div className="rounded-xl bg-surface-muted px-3 py-2.5">
       <p className="text-[12px] text-ink-muted">{label}</p>
       <p className={`tnum mt-0.5 text-lg font-semibold ${betont ? "text-warn-fg" : ""}`}>
         {wert}

@@ -2,12 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Gruppe, WahlZeile } from "./gruppe";
 import { createClient } from "@/lib/supabase/client";
 import { STARTSEITEN, type StartSeite } from "@/lib/start-seite";
 import { useSession } from "@/context/session";
-import { cn } from "@/lib/utils";
 
 /** Jede Person wählt, was beim Öffnen der App zuerst kommt. */
 export function StartSeiteCard() {
@@ -40,41 +38,23 @@ export function StartSeiteCard() {
   }
 
   return (
-    <Card>
-      <CardHeader
-        title="Startseite"
-        hint="Was soll beim Öffnen der App zuerst kommen? Gilt für dich auf allen Geräten."
-      />
-      <CardBody className="space-y-2">
-        <div role="radiogroup" aria-label="Startseite" className="grid gap-2 sm:grid-cols-3">
-          {STARTSEITEN.map((s) => (
-            <button
-              key={s.wert}
-              type="button"
-              role="radio"
-              aria-checked={wahl === s.wert}
-              disabled={laeuft}
-              onClick={() => waehlen(s.wert)}
-              className={cn(
-                "flex items-start justify-between gap-2 rounded-xl border px-3.5 py-3 text-left transition-colors",
-                wahl === s.wert
-                  ? "border-brand-600 bg-brand-50"
-                  : "border-line bg-surface hover:bg-surface-muted",
-              )}
-            >
-              <span>
-                <span className="block text-[15px] font-semibold">{s.label}</span>
-                <span className="block text-[13px] text-ink-muted">{s.text}</span>
-              </span>
-              {wahl === s.wert ? <Check className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" /> : null}
-            </button>
-          ))}
-        </div>
-        {fehler ? <p className="text-[13px] text-crit-fg">{fehler}</p> : null}
-        {gespeichert && !fehler ? (
-          <p className="text-[13px] text-ok-fg">Gespeichert – gilt ab dem nächsten Öffnen.</p>
-        ) : null}
-      </CardBody>
-    </Card>
+    <Gruppe
+      titel="Startseite"
+      hinweis={
+        fehler ? (
+          <span className="text-crit-fg">{fehler}</span>
+        ) : gespeichert ? (
+          <span className="text-ok-fg">Gespeichert – gilt ab dem nächsten Öffnen.</span>
+        ) : (
+          "Was beim Öffnen der App zuerst kommt. Gilt für dich auf allen Geräten."
+        )
+      }
+    >
+      <div role="radiogroup" aria-label="Startseite" className="divide-y divide-line">
+        {STARTSEITEN.map((s) => (
+          <WahlZeile key={s.wert} aktiv={wahl === s.wert} titel={s.label} text={s.text} disabled={laeuft} onClick={() => waehlen(s.wert)} />
+        ))}
+      </div>
+    </Gruppe>
   );
 }
