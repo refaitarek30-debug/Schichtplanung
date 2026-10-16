@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { useSession } from "@/context/session";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PushAnstoss } from "@/components/kalender/erinnerungen";
 import {
   fetchNotifications,
   markAllNotificationsRead,
@@ -131,6 +132,7 @@ export function NotificationBell() {
           <p className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
             Benachrichtigungen
           </p>
+          <PushAnstoss className="mx-1 mb-2" />
           <div className="max-h-80 overflow-y-auto">
             {items === null ? (
               <p className="px-2.5 py-6 text-center text-sm text-ink-muted">wird geladen …</p>

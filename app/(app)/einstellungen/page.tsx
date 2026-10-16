@@ -100,9 +100,9 @@ export default function SettingsPage() {
       {live ? <PrivacySettingsPanel /> : null}
 
       {live ? (
-        <Gruppe titel="Kalender: Erinnerungen und Vorschläge">
+        <Gruppe titel="Mitteilungen aufs Handy und Vorschläge">
           <div className="px-4 py-4 sm:px-5">
-            <KalenderVorliebenInhalt />
+            <KalenderVorliebenInhalt firma />
           </div>
         </Gruppe>
       ) : null}
