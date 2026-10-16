@@ -6,9 +6,12 @@ import { PrivatRegistrierung } from "./formular";
 
 export const metadata = {
   title: "Schichtkalender kostenlos – Schichtplan",
-  description: "Dein Schichtkalender mit Rotation, Feiertagen, Auswertung und Partner-Ansicht. Kostenlos.",
-  // Noch nicht öffentlich: erst nach Freigabe in Suchmaschinen.
-  robots: { index: false, follow: false },
+  description:
+    "Dein Schichtkalender mit Schichtfolge, Feiertagen, Auswertung, Partner-Ansicht und Kalender-Abo fürs Handy. Kostenlos, ohne Werbung, nur Spitzname und Passwort.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ready-flame.vercel.app"),
+  alternates: { canonical: "/privat/registrieren" },
+  // Öffentlich: darf in Suchmaschinen erscheinen.
+  robots: { index: true, follow: true },
 };
 
 const PUNKTE = [
