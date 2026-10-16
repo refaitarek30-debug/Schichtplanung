@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="15. Oktober 2026"
+      updated="16. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -137,8 +137,8 @@ export default function DatenschutzPage() {
           <li>Freigaben zur Sichtbarkeit von Abwesenheitsgründen (Abschnitt 5)</li>
           <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite oder die beim Öffnen gewählte Startseite</li>
           <li>
-            Persönlicher Kalender: eigene Termine, eigene Farben und eigene Einträge, Partner-Link und
-            Kalender-Abo (Abschnitt 8)
+            Persönlicher Kalender: eigene Termine, eigene Farben und eigene Einträge, geteilte Links
+            mit eingeladenen Personen, Gruppen und Kalender-Abo (Abschnitt 8)
           </li>
         </Liste>
 
@@ -371,7 +371,7 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
-      <Abschnitt titel="8. Persönlicher Kalender, Partner-Link und Kalender-Abo">
+      <Abschnitt titel="8. Persönlicher Kalender, Teilen, Gruppen und Kalender-Abo">
         <Absatz>
           Unter <em>Mein Kalender</em> sieht jede Person ihren eigenen Plan und kann freiwillig
           zusätzliche Angaben machen. Alle diese Funktionen sind freiwillig; wer sie nicht nutzt,
@@ -380,7 +380,8 @@ export default function DatenschutzPage() {
         <Absatz>
           <strong>Eigene Termine:</strong> Titel, Datum, Uhrzeit oder ganztägig, Wiederholung,
           Ort und Notiz (je mit Längenbegrenzung). Die Termine sieht nur die Person selbst und –
-          wenn sie das beim Partner-Link ausdrücklich einschaltet – ihr Partner. Kolleginnen und
+          wenn sie das beim Teilen für eine eingeladene Person ausdrücklich einschaltet – diese
+          Person. Kolleginnen und
           Kollegen, Schichtleitung und Administration des Unternehmens haben keinen Zugriff; die
           Datenbank lässt Abfragen darauf nur für die Person selbst zu.
         </Absatz>
@@ -393,14 +394,17 @@ export default function DatenschutzPage() {
           Stundenkonten und die Auswertungen des Unternehmens werden davon nicht verändert. Die
           Farben und Einträge sieht nur die Person selbst – keine Kolleginnen und Kollegen, keine
           Schichtleitung und keine Administration des Unternehmens; die Datenbank lässt Abfragen
-          und Änderungen darauf nur für die Person selbst zu. Sie erscheinen weder im Partner-Link
-          noch im Kalender-Abo. Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
+          und Änderungen darauf nur für die Person selbst zu. Sie erscheinen weder in geteilten
+          Links noch in Gruppen noch im Kalender-Abo. Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
           oder Angaben zu anderen Personen enthalten.
         </Absatz>
         <Absatz>
-          <strong>Partner-Link:</strong> Eine Person kann einer Vertrauensperson (z. B. Partnerin
-          oder Partner) einen Link schicken. Wer den Link öffnet, braucht kein Konto und sieht
-          ohne Anmeldung:
+          <strong>Teilen mit Personen (Partner, Familie, Freunde, Kollegen):</strong> Eine Person
+          kann bis zu 20 Personen ihres Vertrauens je einen eigenen Link schicken. Dafür speichert
+          sie einen frei gewählten Namen (z. B. „Mama“), die Art der Beziehung und für jede Person,
+          ob sie <em>nur ansehen</em> oder <em>ansehen und eintragen</em> darf und ob sie die
+          eigenen Termine sieht. Wer einen Link öffnet, braucht kein Konto und sieht ohne
+          Anmeldung:
         </Absatz>
         <Liste>
           <li>den Vornamen der einladenden Person und deren Schichten (Früh, Spät, Nacht, frei)</li>
@@ -408,33 +412,46 @@ export default function DatenschutzPage() {
             Abwesenheiten nur als „Urlaub“ bzw. frei – <strong>ohne Grund</strong>; eine
             Krankheit ist nicht erkennbar
           </li>
-          <li>die eigenen Termine der einladenden Person nur, wenn diese das Teilen eingeschaltet hat</li>
+          <li>die eigenen Termine der einladenden Person nur, wenn diese es für diese Person erlaubt hat</li>
         </Liste>
         <Absatz>
-          Die Vertrauensperson kann über den Link ihre eigenen Arbeitstage (Kürzel wie Früh,
-          Spät, Nacht, Urlaub) und eigene Termine eintragen. Diese Angaben stammen von einer
-          Person, die selbst keinen Zugang zur Anwendung hat; sie werden der einladenden Person
-          zugeordnet und sind nur für diese beiden sichtbar. Gespeichert werden außerdem
-          Zeitpunkt der Erstellung, der letzten Nutzung (höchstens alle 5 Minuten
-          aktualisiert) und des Beendens des Links. Keine IP-Adresse, kein Name der
-          Vertrauensperson.
+          Darf die eingeladene Person eintragen, kann sie über ihren Link eigene Arbeitstage
+          (Kürzel wie Früh, Spät, Nacht, Urlaub) und eigene Termine eintragen. Diese Angaben sind
+          nur für sie und die einladende Person sichtbar – nicht für andere eingeladene Personen.
+          Gespeichert werden außerdem Zeitpunkt der Erstellung und der letzten Nutzung des Links
+          (höchstens alle 5 Minuten aktualisiert). Keine IP-Adresse. Wird eine Person entfernt,
+          werden auch die Tage und Termine gelöscht, die sie eingetragen hat. In der eigenen
+          Ansicht lässt sich auswählen, wessen Schichten und Termine eingeblendet werden; diese
+          Auswahl wird nur im Browser des Geräts gespeichert.
+        </Absatz>
+        <Absatz>
+          <strong>Gruppen:</strong> Personen, die selbst einen Schichtkalender nutzen (mit Konto
+          eines Unternehmens oder als Privatperson), können eine Gruppe bilden (z. B. Familie,
+          Freunde; bis zu 20 Personen) und per Einladungslink beitreten. In der Gruppe sehen die
+          Mitglieder gegenseitig den Vornamen und für jeden Tag nur, ob gearbeitet wird (Früh,
+          Spät, Nacht oder Arbeit) oder frei ist – Abwesenheiten <strong>ohne Grund</strong>,
+          keine Termine, keine Kolleginnen und Kollegen. Gespeichert werden Name der Gruppe,
+          Mitglieder und Beitrittszeitpunkt. Jede Person kann jederzeit austreten; tritt die
+          letzte Person aus, wird die Gruppe gelöscht. Das Unternehmen hat keinen Zugriff auf
+          Gruppen.
         </Absatz>
         <Absatz>
           <strong>Kalender-Abo:</strong> Eine Person kann ihren Plan als Kalender-Link
           (iCalendar) in die Kalender-App ihres Handys übernehmen. Der Link enthält Schichten
           mit Uhrzeit sowie Urlaub, Schulung und sonstige Abwesenheit – letztere nur als
           „Abwesend“, <strong>ohne Grund</strong>, sowie die eigenen Termine aus{" "}
-          <em>Mein Kalender</em> (nicht die der Vertrauensperson). Keine Kolleginnen und
+          <em>Mein Kalender</em> (nicht die eingeladener Personen). Keine Kolleginnen und
           Kollegen. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
           der Link erstellt, zuletzt abgerufen und beendet wurde. Was die Kalender-App des
           Handys bzw. deren Anbieter (z. B. Apple, Google) mit den abgerufenen Daten macht,
           richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.
         </Absatz>
         <Absatz>
-          <strong>Schutz der Links:</strong> Partner-Link und Kalender-Abo funktionieren ohne
-          Anmeldung, der Link selbst ist der Schlüssel. Er ist zufällig (192 Bit) und wird in
-          der Datenbank nur als Hashwert gespeichert. Jede Person hat höchstens einen aktiven Link je Funktion und kann ihn
-          jederzeit erneuern (der alte wird sofort ungültig) oder beenden. Wer den Link kennt,
+          <strong>Schutz der Links:</strong> Geteilte Links und Kalender-Abo funktionieren ohne
+          Anmeldung, der Link selbst ist der Schlüssel (Gruppen-Einladungen setzen zusätzlich ein
+          eigenes Konto voraus). Er ist zufällig (192 Bit) und wird in der Datenbank nur als
+          Hashwert gespeichert. Jeder Link lässt sich jederzeit erneuern (der alte wird sofort
+          ungültig) oder beenden. Wer den Link kennt,
           sieht die genannten Daten – er sollte deshalb nicht weitergegeben werden.
         </Absatz>
         <Absatz>
@@ -467,9 +484,10 @@ export default function DatenschutzPage() {
             Tage, Bundesland für die Feiertage, optional die Wochenstunden für die Auswertung
           </li>
           <li>
-            optional Termine, Partner-Link und Kalender-Abo wie in Abschnitt 8 beschrieben. Ein
-            Eintrag „Krank“ ist eine freiwillige eigene Angabe; die Vertrauensperson sieht ihn
-            nur als „Urlaub“, das Kalender-Abo als „Abwesend“
+            optional Termine, geteilte Links, Gruppen und Kalender-Abo wie in Abschnitt 8
+            beschrieben. Ein Eintrag „Krank“ ist eine freiwillige eigene Angabe; eingeladene
+            Personen und Gruppen sehen ihn nur als „Urlaub“ bzw. frei, das Kalender-Abo als
+            „Abwesend“
           </li>
         </Liste>
         <Absatz>
@@ -546,10 +564,10 @@ export default function DatenschutzPage() {
           </li>
           <li>
             Persönlicher Kalender (Abschnitt 8): eigene Termine, eigene Farben und eigene
-            Einträge sowie die Einträge der Vertrauensperson bleiben, bis die Person sie löscht
-            oder ihr Zugang gelöscht wird.
-            Ein beendeter Partner-Link oder ein beendetes Kalender-Abo funktioniert sofort
-            nicht mehr.
+            Einträge sowie die Einträge eingeladener Personen bleiben, bis die Person sie löscht,
+            die eingeladene Person entfernt oder ihr Zugang gelöscht wird. Die Mitgliedschaft in
+            einer Gruppe endet mit dem Austreten.
+            Ein beendeter Link oder ein beendetes Kalender-Abo funktioniert sofort nicht mehr.
           </li>
           <li>
             Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach

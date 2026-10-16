@@ -17,8 +17,10 @@ export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich";
 
 export interface Termin {
   id: string;
-  /** Vom Partner eingetragen (über den Link). */
+  /** Von einer eingeladenen Person eingetragen (über ihren Link). */
   vonPartner: boolean;
+  /** Welche Person ihn eingetragen hat – nur in der eigenen Ansicht. */
+  personId?: string | null;
   /** Erster Tag, "YYYY-MM-DD". */
   datum: string;
   titel: string;
@@ -31,7 +33,7 @@ export interface Termin {
 }
 
 /** Neuer Termin hat noch keine Id. */
-export type TerminEingabe = Omit<Termin, "id" | "vonPartner"> & { id: string | null };
+export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId"> & { id: string | null };
 
 export class PartnerFehler extends Error {}
 
@@ -78,6 +80,7 @@ export async function setzeMeinePartnerTage(von: string, anzahl: number, code: P
 interface TerminZeile {
   id: string;
   von_partner: boolean;
+  person_id?: string | null;
   datum: string;
   titel: string;
   ganztaegig: boolean;
@@ -95,6 +98,7 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
   return ((data ?? []) as TerminZeile[]).map((z) => ({
     id: z.id,
     vonPartner: z.von_partner,
+    personId: z.person_id ?? null,
     datum: z.datum,
     titel: z.titel,
     ganztaegig: z.ganztaegig,
@@ -152,10 +156,134 @@ export async function beendePartnerLink() {
   if (error) fehler(error, "Der Zugang konnte nicht beendet werden.");
 }
 
+// ---- Personen (mehrere Freigaben, Migration 0151) ---------------------------
+
+export type PersonArt = "partner" | "familie" | "freunde" | "kollegen";
+
+export const PERSON_ARTEN: { art: PersonArt; text: string; mehrzahl: string }[] = [
+  { art: "partner", text: "Partner", mehrzahl: "Partner" },
+  { art: "familie", text: "Familie", mehrzahl: "Familie" },
+  { art: "freunde", text: "Freunde", mehrzahl: "Freunde" },
+  { art: "kollegen", text: "Kollege", mehrzahl: "Kollegen" },
+];
+
+export interface Person {
+  id: string;
+  name: string;
+  art: PersonArt;
+  darfEintragen: boolean;
+  termineSehen: boolean;
+  linkAktiv: boolean;
+  linkErstelltAm: string | null;
+  zuletztGenutzt: string | null;
+}
+
+export async function fetchPersonen(): Promise<Person[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await createClient().rpc("meine_personen");
+  if (error) fehler(error, "Die Personen konnten nicht geladen werden.");
+  return (
+    (data ?? []) as {
+      id: string;
+      name: string;
+      art: PersonArt;
+      darf_eintragen: boolean;
+      termine_sehen: boolean;
+      link_aktiv: boolean;
+      link_erstellt_am: string | null;
+      zuletzt_genutzt: string | null;
+    }[]
+  ).map((z) => ({
+    id: z.id,
+    name: z.name,
+    art: z.art,
+    darfEintragen: z.darf_eintragen,
+    termineSehen: z.termine_sehen,
+    linkAktiv: z.link_aktiv,
+    linkErstelltAm: z.link_erstellt_am,
+    zuletztGenutzt: z.zuletzt_genutzt,
+  }));
+}
+
+export interface PersonEingabe {
+  name: string;
+  art: PersonArt;
+  darfEintragen: boolean;
+  termineSehen: boolean;
+}
+
+/** Legt die Person an und liefert den Schlüssel für ihren Link. */
+export async function personAnlegen(p: PersonEingabe): Promise<{ id: string; schluessel: string }> {
+  const { data, error } = await createClient().rpc("person_anlegen", {
+    p_name: p.name,
+    p_art: p.art,
+    p_darf_eintragen: p.darfEintragen,
+    p_termine_sehen: p.termineSehen,
+  });
+  const z = data as { id?: string; schluessel?: string } | null;
+  if (error || !z?.id || !z.schluessel) fehler(error, "Die Einladung konnte nicht erstellt werden.");
+  return { id: z!.id!, schluessel: z!.schluessel! };
+}
+
+export async function personAendern(id: string, p: PersonEingabe) {
+  const { error } = await createClient().rpc("person_aendern", {
+    p_id: id,
+    p_name: p.name,
+    p_art: p.art,
+    p_darf_eintragen: p.darfEintragen,
+    p_termine_sehen: p.termineSehen,
+  });
+  if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
+/** Neuer Link – der alte gilt danach nicht mehr. */
+export async function personLinkNeu(id: string): Promise<string> {
+  const { data, error } = await createClient().rpc("person_link_neu", { p_id: id });
+  if (error || typeof data !== "string") fehler(error, "Der Link konnte nicht erstellt werden.");
+  return data as string;
+}
+
+export async function personLinkBeenden(id: string) {
+  const { error } = await createClient().rpc("person_link_beenden", { p_id: id });
+  if (error) fehler(error, "Der Link konnte nicht beendet werden.");
+}
+
+/** Entfernt die Person mit allen Tagen und Terminen, die sie eingetragen hat. */
+export async function personEntfernen(id: string) {
+  const { error } = await createClient().rpc("person_entfernen", { p_id: id });
+  if (error) fehler(error, "Die Person konnte nicht entfernt werden.");
+}
+
+/** Tage aller eigenen Personen: Person -> Tag -> Kürzel. */
+export async function fetchPersonenTage(von: string, bis: string): Promise<Record<string, Record<string, PartnerCode>>> {
+  if (!isSupabaseConfigured) return {};
+  const { data, error } = await createClient().rpc("meine_personen_tage", { p_von: von, p_bis: bis });
+  if (error) fehler(error, "Die Einträge konnten nicht geladen werden.");
+  const ergebnis: Record<string, Record<string, PartnerCode>> = {};
+  for (const z of (data ?? []) as { person_id: string; tag: string; schicht: PartnerCode }[]) {
+    (ergebnis[z.person_id] ??= {})[z.tag] = z.schicht;
+  }
+  return ergebnis;
+}
+
+export async function personTageSetzen(id: string, von: string, anzahl: number, code: PartnerCode | null) {
+  const { error } = await createClient().rpc("person_tage_setzen", {
+    p_id: id,
+    p_von: von,
+    p_anzahl: anzahl,
+    p_schicht: code,
+  });
+  if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
 // ---- Partner (ohne Anmeldung) ---------------------------------------------
 
 export interface PartnerKalender {
   name: string;
+  /** Name, unter dem die eingeladene Person angelegt ist. */
+  gast: string;
+  /** Darf eigene Tage und Termine eintragen (sonst nur ansehen). */
+  darfEintragen: boolean;
   termineGeteilt: boolean;
   /** Tag -> [Schicht des Inhabers, Schicht des Partners]. */
   tage: Map<string, [PartnerCode | null, PartnerCode | null]>;
@@ -180,6 +308,8 @@ export async function fetchPartnerKalender(token: string, von: string, tage: num
   if (error) linkFehler(error, "Der Kalender konnte nicht geladen werden.");
   const roh = data as {
     name: string;
+    gast?: string;
+    darfEintragen?: boolean;
     termineGeteilt?: boolean;
     termine?: Termin[];
     tage: [string, PartnerCode | null, PartnerCode | null][];
@@ -188,6 +318,9 @@ export async function fetchPartnerKalender(token: string, von: string, tage: num
   for (const [tag, eigen, partner] of roh?.tage ?? []) karte.set(tag, [eigen, partner]);
   return {
     name: roh?.name ?? "",
+    gast: roh?.gast ?? "",
+    // Ältere Antworten ohne das Feld: wie bisher eintragen lassen.
+    darfEintragen: roh?.darfEintragen !== false,
     termineGeteilt: roh?.termineGeteilt === true,
     tage: karte,
     termine: roh?.termine ?? [],
