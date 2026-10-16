@@ -6,7 +6,7 @@ const NAV = [
   { href: "/#kalender", label: "Schichtkalender" },
   { href: "/#unternehmen", label: "Für Unternehmen" },
   { href: "/#funktionen", label: "Funktionen" },
-  { href: "/#preise", label: "Preise" },
+  { href: ZIELE.demo, label: "Demo" },
   { href: "/#faq", label: "FAQ" },
 ];
 
