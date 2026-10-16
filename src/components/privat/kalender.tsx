@@ -16,12 +16,12 @@ import {
   useLangDruck,
 } from "@/components/kalender/tag";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
+import { terminLoeschenUeberall, terminSichernUeberall } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import {
   fetchMeineTermine,
-  loescheTermin,
   speichereTermin,
 } from "@/lib/data/partner";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
@@ -229,7 +229,12 @@ export function PrivatKalender() {
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
   const andere = useAndere({ benutzer: konto.userId, von: bereich.von, bis: bereich.bis, aktiv: ansicht !== "jahr" });
-  const sichtbareTermine = useMemo(() => termine.filter(andere.terminSichtbar), [termine, andere.terminSichtbar]);
+  const sichtbareTermine = useMemo(
+    () => [...termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
+    [termine, andere.fremdeTermine, andere.terminSichtbar],
+  );
+  /** Verbundene Konten, bei denen ich eintragen darf. */
+  const ziele = andere.verbindungen.filter((v) => v.erDarf).map((v) => ({ id: v.partner, name: v.name || "Verbunden" }));
 
   /** Vor einer Änderung den Stand merken – danach erscheint „Rückgängig“. */
   function merke(liste: string[], text: string) {
@@ -734,22 +739,32 @@ export function PrivatKalender() {
           startZeit={terminBlatt.startZeit}
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
+          ziele={ziele}
           hinweis={
-            terminBlatt.termin?.vonPartner
-              ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen.`
-              : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
+            terminBlatt.termin?.inhaber
+              ? `Aus dem Kalender von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer verbundenen Person"}.`
+              : terminBlatt.termin?.vonPartner
+                ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen.`
+                : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
           }
-          nurLesen={terminBlatt.termin?.vonPartner === true}
+          nurLesen={
+            terminBlatt.termin?.inhaber
+              ? terminBlatt.termin.vonUser !== konto.userId
+              : terminBlatt.termin?.vonPartner === true && !terminBlatt.termin.vonUser
+          }
           onSpeichern={(t: TerminEingabe) => {
+            const alt = terminBlatt.termin;
             setTerminBlatt(null);
-            void speichereTermin(t)
-              .then(ladeTermine)
+            void terminSichernUeberall(t, alt)
+              .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
               .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));
           }}
-          onLoeschen={(id) => {
+          onLoeschen={() => {
+            const alt = terminBlatt.termin;
             setTerminBlatt(null);
-            void loescheTermin(id)
-              .then(ladeTermine)
+            if (!alt) return;
+            void terminLoeschenUeberall(alt)
+              .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
               .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gelöscht werden."));
           }}
           onClose={() => setTerminBlatt(null)}

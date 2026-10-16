@@ -28,6 +28,10 @@ export interface Termin {
   vonPartner: boolean;
   /** Welche Person ihn eingetragen hat – nur in der eigenen Ansicht. */
   personId?: string | null;
+  /** Termin aus dem Kalender eines verbundenen Kontos: dessen Konto. */
+  inhaber?: string;
+  /** Von einem verbundenen Konto eingetragen (Migration 0157). */
+  vonUser?: string | null;
   /** Erster Tag, "YYYY-MM-DD". */
   datum: string;
   /** Letzter Tag, wenn ein ganztägiger Termin mehrere Tage dauert. */
@@ -43,7 +47,11 @@ export interface Termin {
 }
 
 /** Neuer Termin hat noch keine Id. */
-export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId"> & { id: string | null };
+export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inhaber" | "vonUser"> & {
+  id: string | null;
+  /** In den Kalender eines verbundenen Kontos eintragen (dessen Konto). */
+  ziel?: string | null;
+};
 
 export class PartnerFehler extends Error {}
 
@@ -91,6 +99,7 @@ interface TerminZeile {
   id: string;
   von_partner: boolean;
   person_id?: string | null;
+  von_user?: string | null;
   datum: string;
   bis_datum?: string | null;
   erinnerung?: Erinnerung | null;
@@ -111,6 +120,7 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
     id: z.id,
     vonPartner: z.von_partner,
     personId: z.person_id ?? null,
+    vonUser: z.von_user ?? null,
     datum: z.datum,
     bisDatum: z.bis_datum ?? null,
     titel: z.titel,

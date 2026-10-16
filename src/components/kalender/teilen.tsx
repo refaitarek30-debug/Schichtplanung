@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronLeft, ChevronRight, Copy, Mail, MessageCircle, Share2, UserPlus, Users, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Link2, Mail, MessageCircle, Share2, UserPlus, Users, X } from "lucide-react";
 import { addDays, formatDE, formatZeitpunkt, fromISO, heuteInBerlin } from "@/lib/dates";
 import {
   fetchGruppeTage,
@@ -27,6 +27,8 @@ import {
   type PersonEingabe,
 } from "@/lib/data/partner";
 import { cn } from "@/lib/utils";
+import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
+import { CodeEingeben, CodeZeigen, VerbindungEinstellen, VerbindungenListe } from "./verbinden";
 
 /**
  * Kalender teilen – mit beliebig vielen Personen (Partner, Familie,
@@ -47,7 +49,10 @@ type Ansicht =
   | { art: "person"; id: string }
   | { art: "gruppeNeu" }
   | { art: "gruppe"; id: string }
-  | { art: "senden"; name: string; link: string; gruppe?: boolean };
+  | { art: "senden"; name: string; link: string; gruppe?: boolean }
+  | { art: "code"; person?: { id: string; name: string } }
+  | { art: "codeEingeben" }
+  | { art: "verbindung"; id: string };
 
 /** Farbe je Person – fest nach Reihenfolge, damit sie überall gleich ist. */
 export const PERSON_FARBEN = ["#2f54eb", "#22A06B", "#9B59D0", "#F76B15", "#0E9F9F", "#D6409F", "#8D6E4E", "#E5484D"];
@@ -602,7 +607,7 @@ export function KalenderTeilen({
   vorname: string;
   onClose: () => void;
   /** Direkt mit dem Formular, einer Person oder einer Gruppe beginnen (Privatbereich). */
-  start?: "liste" | "neu" | "gruppeNeu" | { person: string } | { gruppe: string };
+  start?: "liste" | "neu" | "gruppeNeu" | "code" | "codeEingeben" | { person: string } | { gruppe: string } | { verbindung: string };
   /** Nach jeder Änderung – z. B. damit eine eingebettete Liste neu lädt. */
   onGeaendert?: () => void;
 }) {
@@ -611,12 +616,19 @@ export function KalenderTeilen({
       ? { art: "neu" }
       : start === "gruppeNeu"
         ? { art: "gruppeNeu" }
-        : typeof start === "object"
-          ? "person" in start
-            ? { art: "person", id: start.person }
-            : { art: "gruppe", id: start.gruppe }
-          : { art: "liste" },
+        : start === "code"
+          ? { art: "code" }
+          : start === "codeEingeben"
+            ? { art: "codeEingeben" }
+            : typeof start === "object"
+              ? "person" in start
+                ? { art: "person", id: start.person }
+                : "verbindung" in start
+                  ? { art: "verbindung", id: start.verbindung }
+                  : { art: "gruppe", id: start.gruppe }
+              : { art: "liste" },
   );
+  const [verbindungen, setVerbindungen] = useState<Verbindung[] | null>(null);
   const [gruppen, setGruppen] = useState<Gruppe[] | null>(null);
   const [gruppenName, setGruppenName] = useState("");
   const [austretenFrage, setAustretenFrage] = useState(false);
@@ -628,9 +640,10 @@ export function KalenderTeilen({
 
   const laden = useCallback(async () => {
     try {
-      const [p, g] = await Promise.all([fetchPersonen(), fetchGruppen()]);
+      const [p, g, v] = await Promise.all([fetchPersonen(), fetchGruppen(), fetchVerbindungen().catch(() => [])]);
       setPersonen(p);
       setGruppen(g);
+      setVerbindungen(v);
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Fehler beim Laden.");
     }
@@ -678,6 +691,16 @@ export function KalenderTeilen({
               setEntfernenFrage(false);
               setAnsicht({ art: "person", id });
             }}
+          />
+          <p className="mb-2 mt-6 flex items-center gap-2 px-1 text-[13px] font-semibold text-ink-muted">
+            <Link2 className="h-4 w-4" /> Mit eigenem Konto verbunden
+          </p>
+          <VerbindungenListe
+            verbindungen={verbindungen}
+            farbe={(v) => PERSON_FARBEN[((personen?.length ?? 0) + (verbindungen?.indexOf(v) ?? 0)) % PERSON_FARBEN.length]}
+            onVerbindung={(id) => setAnsicht({ art: "verbindung", id })}
+            onCodeZeigen={() => setAnsicht({ art: "code" })}
+            onCodeEingeben={() => setAnsicht({ art: "codeEingeben" })}
           />
           <p className="mb-2 mt-6 flex items-center gap-2 px-1 text-[13px] font-semibold text-ink-muted">
             <Users className="h-4 w-4" /> Gruppen
@@ -807,6 +830,18 @@ export function KalenderTeilen({
         <Kopf titel="Person einladen" onZurueck={zurueckZurListe ? ende : undefined} onClose={onClose} />
         {fehlerBox}
         <div className="pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={() => setAnsicht({ art: "code" })}
+            className="mx-4 mb-5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-[#E6F1E9] px-4 py-3.5 text-left"
+          >
+            <Link2 className="h-5 w-5 shrink-0 text-[#1C6E49]" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">Hat die Person schon einen Kalender?</span>
+              <span className="block text-[12.5px] text-ink-muted">Dann per Code oder QR-Code verbinden – ihr seht euch gegenseitig.</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+          </button>
           <PersonFormular
             start={{ name: "", art: "partner", darfEintragen: false, termineSehen: false }}
             knopf="Einladen"
@@ -846,6 +881,18 @@ export function KalenderTeilen({
                 })
               }
             />
+            <button
+              type="button"
+              onClick={() => setAnsicht({ art: "code", person: { id: p.id, name: p.name } })}
+              className="mx-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-[#E6F1E9] px-4 py-3.5 text-left"
+            >
+              <Link2 className="h-5 w-5 shrink-0 text-[#1C6E49]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">{p.name} hat jetzt einen eigenen Kalender?</span>
+                <span className="block text-[12.5px] text-ink-muted">Mit dem Konto verbinden – alles von {p.name} wird übernommen.</span>
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+            </button>
             <div className="mx-4 overflow-hidden rounded-[18px] bg-surface ring-1 ring-line">
               <button
                 type="button"
@@ -920,6 +967,42 @@ export function KalenderTeilen({
               )}
             </div>
           </div>
+        )}
+      </>
+    );
+  } else if (ansicht.art === "code") {
+    inhalt = (
+      <>
+        <Kopf
+          titel={ansicht.person ? `${ansicht.person.name} verbinden` : "Mein Code"}
+          onZurueck={zurueckZurListe ? ende : undefined}
+          onClose={onClose}
+        />
+        <CodeZeigen person={ansicht.person} />
+      </>
+    );
+  } else if (ansicht.art === "codeEingeben") {
+    inhalt = (
+      <>
+        <Kopf titel="Code eingeben" onZurueck={zurueckZurListe ? ende : undefined} onClose={onClose} />
+        <CodeEingeben
+          onVerbunden={() =>
+            void geaendert().then(() => {
+              ende();
+            })
+          }
+        />
+      </>
+    );
+  } else if (ansicht.art === "verbindung") {
+    const v = verbindungen?.find((x) => x.id === ansicht.id);
+    inhalt = (
+      <>
+        <Kopf titel={v?.name || "Verbindung"} onZurueck={zurueckZurListe ? ende : undefined} onClose={onClose} />
+        {v ? (
+          <VerbindungEinstellen key={v.id} v={v} onFertig={() => void geaendert().then(() => ende())} />
+        ) : (
+          <div className="mx-4 h-40 animate-pulse rounded-[22px] bg-surface-sunken" />
         )}
       </>
     );

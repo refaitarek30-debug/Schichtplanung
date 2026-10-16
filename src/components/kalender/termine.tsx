@@ -172,6 +172,7 @@ export function TerminBlatt({
   glas = false,
   vorschlaege = false,
   startZeit,
+  ziele = [],
   onClose,
 }: {
   datum: string;
@@ -188,6 +189,8 @@ export function TerminBlatt({
   vorschlaege?: boolean;
   /** Beginn für einen neuen Termin (z. B. aus der Tagesansicht). */
   startZeit?: string;
+  /** Verbundene Konten, bei denen man eintragen darf (neuer Termin). */
+  ziele?: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const id = useId();
@@ -202,6 +205,8 @@ export function TerminBlatt({
   const tag = termin?.datum ?? datum;
   const [bisDatum, setBisDatum] = useState<string>(termin?.bisDatum && termin.bisDatum > tag ? termin.bisDatum : tag);
   const [erinnerung, setErinnerung] = useState<Erinnerung | null>(termin?.erinnerung ?? null);
+  /** null = mein Kalender, sonst das Konto einer verbundenen Person */
+  const [ziel, setZiel] = useState<string | null>(null);
 
   const mitVorschlaegen = vorschlaege && !termin && !nurLesen;
   const { vorlieben, setzen } = useVorlieben();
@@ -255,7 +260,8 @@ export function TerminBlatt({
       wiederholung: wdh,
       notiz: notiz.trim(),
       ort: ort.trim(),
-      erinnerung: erinnerungGueltig,
+      erinnerung: ziel ? null : erinnerungGueltig,
+      ziel,
     });
   }
 
@@ -438,6 +444,19 @@ export function TerminBlatt({
             </div>
           ) : null}
 
+          {!termin && !nurLesen && ziele.length ? (
+            <div className="space-y-1.5 pt-4">
+              <p className="text-[12.5px] font-semibold text-ink-muted">Eintragen bei</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[{ id: null as string | null, name: "Mir" }, ...ziele].map((z) => (
+                  <button key={z.id ?? "ich"} type="button" onClick={() => setZiel(z.id)} className={pille(ziel === z.id)}>
+                    {z.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <fieldset disabled={nurLesen} className="m-0 min-w-0 border-0 p-0">
           <label className={zeile}>
             <span className="shrink-0">Titel</span>
@@ -535,7 +554,7 @@ export function TerminBlatt({
             </div>
           ) : null}
 
-          {vorschlaege ? (
+          {vorschlaege && !ziel && !termin?.inhaber ? (
           <div className={cn(zeile, "flex-col items-stretch gap-2 py-3")}>
             <span>🔔 Erinnerung</span>
             <div className="flex flex-wrap gap-1.5">
