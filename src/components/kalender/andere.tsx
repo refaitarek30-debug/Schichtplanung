@@ -12,6 +12,7 @@ import {
   type Termin,
 } from "@/lib/data/partner";
 import { fetchGruppen, fetchGruppenAndere, type Gruppe, type GruppenAnderer } from "@/lib/data/gruppen";
+import { fetchVerbindungen, fetchVerbundeneTage, fetchVerbundeneTermine, type Verbindung } from "@/lib/data/verbindungen";
 import { fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { PERSON_FARBEN, PersonAvatar, kuerzel, personFarbe } from "./teilen";
@@ -76,6 +77,10 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   const geladen = useRef(new Set<string>());
   const [gruppen, setGruppen] = useState<Gruppe[]>([]);
   const [gruppenAndere, setGruppenAndere] = useState<GruppenAnderer[]>([]);
+  /** Verbundene Konten (Migration 0157) – Schlüssel im Baum: "v:<Konto>". */
+  const [verbindungen, setVerbindungen] = useState<Verbindung[]>([]);
+  const [vTage, setVTage] = useState<Record<string, Record<string, PartnerCode>>>({});
+  const [fremdeTermine, setFremdeTermine] = useState<Termin[]>([]);
   const tageAnzahl = Math.round((fromISO(bis).getTime() - fromISO(von).getTime()) / 864e5) + 1;
 
   useEffect(() => {
@@ -94,7 +99,28 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     } catch {
       // Gruppen sind Beiwerk
     }
+    try {
+      setVerbindungen(await fetchVerbindungen());
+    } catch {
+      // Verbindungen sind Beiwerk
+    }
   }, []);
+
+  const ladeVerbunden = useCallback(async () => {
+    if (tageAnzahl < 1 || tageAnzahl > 62) return;
+    try {
+      const [t, termine] = await Promise.all([fetchVerbundeneTage(von, tageAnzahl), fetchVerbundeneTermine()]);
+      setVTage(t);
+      setFremdeTermine(termine);
+    } catch {
+      // Verbindungen sind Beiwerk
+    }
+  }, [von, tageAnzahl]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (aktiv && verbindungen.length) void ladeVerbunden();
+  }, [aktiv, verbindungen.length, ladeVerbunden]);
 
   const ladeGruppenTage = useCallback(async () => {
     if (tageAnzahl < 1 || tageAnzahl > 62) return;
@@ -151,25 +177,36 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     [personen, tage],
   );
 
+  /** Farben: erst die Link-Personen, dann die verbundenen Konten. */
+  const farbListe = useMemo(
+    () => [...(personen ?? []).map((p) => ({ id: p.id })), ...verbindungen.map((v) => ({ id: `v:${v.partner}` }))],
+    [personen, verbindungen],
+  );
+
   const personenZweige: Zweig[] = useMemo(
     () =>
       PERSON_ARTEN.map((a) => ({
         key: `art:${a.art}`,
         titel: a.mehrzahl,
-        knoten: sichtbarePersonen
-          .filter((p) => p.art === a.art)
-          .map((p) => ({ key: p.id, name: p.name, farbe: personFarbe(personen ?? [], p.id) })),
+        knoten: [
+          ...sichtbarePersonen
+            .filter((p) => p.art === a.art)
+            .map((p) => ({ key: p.id, name: p.name, farbe: personFarbe(farbListe, p.id) })),
+          ...verbindungen
+            .filter((v) => v.art === a.art)
+            .map((v) => ({ key: `v:${v.partner}`, name: v.name || "Ohne Namen", farbe: personFarbe(farbListe, `v:${v.partner}`) })),
+        ],
       })).filter((z) => z.knoten.length > 0),
-    [sichtbarePersonen, personen],
+    [sichtbarePersonen, verbindungen, farbListe],
   );
 
   /** Mitglieder der Gruppen – Farben nach den Personen weitergezählt. */
   const gruppenFarbe = useMemo(() => {
-    const versatz = (personen ?? []).length;
+    const versatz = farbListe.length;
     const m = new Map<string, string>();
     gruppenAndere.forEach((g, i) => m.set(g.id, PERSON_FARBEN[(versatz + i) % PERSON_FARBEN.length]));
     return m;
-  }, [gruppenAndere, personen]);
+  }, [gruppenAndere, farbListe]);
 
   const gruppenTage = useMemo(() => new Map(gruppenAndere.map((g) => [`u:${g.id}`, g.tage])), [gruppenAndere]);
 
@@ -227,18 +264,24 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
         for (const k of z.knoten) {
           if (schon.has(k.key) || !schalter(k.key)[0]) continue;
           schon.add(k.key);
-          const code = k.key.startsWith("u:") ? gruppenTage.get(k.key)?.[iso] : tage[k.key]?.[iso];
+          const code = k.key.startsWith("u:")
+            ? gruppenTage.get(k.key)?.[iso]
+            : k.key.startsWith("v:")
+              ? vTage[k.key.slice(2)]?.[iso]
+              : tage[k.key]?.[iso];
           if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code });
         }
       }
       return liste;
     },
-    [zweige, schalter, tage, gruppenTage],
+    [zweige, schalter, tage, gruppenTage, vTage],
   );
 
   /** Eigener Termin oder Termin einer Person – je nach Auswahl. */
   const terminSichtbar = useCallback(
     (t: Termin) => {
+      if (t.inhaber) return schalter(`v:${t.inhaber}`)[1];
+      if (t.vonUser) return schalter(`v:${t.vonUser}`)[1];
       if (!t.vonPartner) return schalter(ICH)[1];
       return t.personId ? schalter(t.personId)[1] : true;
     },
@@ -247,18 +290,26 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
 
   const terminVon = useCallback(
     (t: Termin): { name: string; farbe: string } | null => {
+      const konto = t.inhaber ?? t.vonUser;
+      if (konto) {
+        const v = verbindungen.find((x) => x.partner === konto);
+        return v ? { name: v.name || "Verbunden", farbe: personFarbe(farbListe, `v:${v.partner}`) } : null;
+      }
       if (!t.vonPartner || !t.personId) return null;
       const p = personen?.find((x) => x.id === t.personId);
-      return p ? { name: p.name, farbe: personFarbe(personen ?? [], p.id) } : null;
+      return p ? { name: p.name, farbe: personFarbe(farbListe, p.id) } : null;
     },
-    [personen],
+    [personen, verbindungen, farbListe],
   );
 
   return {
     personen,
     zweige,
-    /** Eingeladene Personen (ohne Gruppen) – für die Auswahl beim Eintragen. */
-    knoten: personenZweige.flatMap((z) => z.knoten),
+    /** Eingeladene Personen (ohne Gruppen und Konten) – für die Auswahl beim Eintragen. */
+    knoten: personenZweige.flatMap((z) => z.knoten).filter((k) => !k.key.startsWith("v:")),
+    verbindungen,
+    /** Termine der verbundenen Konten (die sie teilen, und meine Einträge bei ihnen). */
+    fremdeTermine,
     /** Eintrag einer Person an einem Tag – unabhängig von der Auswahl. */
     rohTag: (key: string, iso: string): PartnerCode | null => tage[key]?.[iso] ?? null,
     schalter,
@@ -271,7 +322,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     /** Nach Änderungen (Einladen, Eintragen) neu laden. */
     neuLaden: async () => {
       geladen.current.clear();
-      await Promise.all([ladePersonen(), ladeTage(true), ladeGruppenTage()]);
+      await Promise.all([ladePersonen(), ladeTage(true), ladeGruppenTage(), ladeVerbunden()]);
     },
     /** Wer gerade eingeblendet ist (jede Person einmal). */
     eingeblendet: [...new Map(zweige.flatMap((z) => z.knoten).map((k) => [k.key, k])).values()].filter(

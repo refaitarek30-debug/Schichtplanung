@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Smartphone, Users } from "lucide-react";
-import { GruppenListe, KalenderTeilen, PersonenListe } from "@/components/kalender/teilen";
+import { Link2, Smartphone, Users } from "lucide-react";
+import { GruppenListe, KalenderTeilen, PERSON_FARBEN, PersonenListe } from "@/components/kalender/teilen";
+import { VerbindungenListe } from "@/components/kalender/verbinden";
+import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
 import { fetchGruppen, type Gruppe } from "@/lib/data/gruppen";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
 import { fetchPersonen, type Person } from "@/lib/data/partner";
@@ -15,14 +17,18 @@ export function PrivatTeilen() {
   const [personen, setPersonen] = useState<Person[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [gruppen, setGruppen] = useState<Gruppe[] | null>(null);
-  const [offen, setOffen] = useState<"neu" | "gruppeNeu" | { person: string } | { gruppe: string } | null>(null);
+  const [verbindungen, setVerbindungen] = useState<Verbindung[] | null>(null);
+  const [offen, setOffen] = useState<
+    "neu" | "gruppeNeu" | "code" | "codeEingeben" | { person: string } | { gruppe: string } | { verbindung: string } | null
+  >(null);
   const vorname = konto.name.split(/\s+/)[0] ?? konto.name;
 
   const laden = useCallback(async () => {
     try {
-      const [p, g] = await Promise.all([fetchPersonen(), fetchGruppen()]);
+      const [p, g, v] = await Promise.all([fetchPersonen(), fetchGruppen(), fetchVerbindungen().catch(() => [])]);
       setPersonen(p);
       setGruppen(g);
+      setVerbindungen(v);
       setFehler(null);
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Die Personen konnten nicht geladen werden.");
@@ -44,6 +50,17 @@ export function PrivatTeilen() {
       </div>
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[13px] text-crit-fg">{fehler}</p> : null}
       <PersonenListe personen={personen} onNeu={() => setOffen("neu")} onPerson={(id) => setOffen({ person: id })} />
+
+      <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
+        <Link2 className="h-4 w-4" /> Mit eigenem Konto verbunden
+      </div>
+      <VerbindungenListe
+        verbindungen={verbindungen}
+        farbe={(v) => PERSON_FARBEN[((personen?.length ?? 0) + (verbindungen?.indexOf(v) ?? 0)) % PERSON_FARBEN.length]}
+        onVerbindung={(id) => setOffen({ verbindung: id })}
+        onCodeZeigen={() => setOffen("code")}
+        onCodeEingeben={() => setOffen("codeEingeben")}
+      />
 
       <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
         <Users className="h-4 w-4" /> Gruppen

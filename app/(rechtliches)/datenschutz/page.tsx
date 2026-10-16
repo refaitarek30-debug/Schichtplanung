@@ -462,6 +462,21 @@ export default function DatenschutzPage() {
           Gruppen.
         </Absatz>
         <Absatz>
+          <strong>Verbundene Konten:</strong> Zwei Personen, die beide einen eigenen Kalender nutzen
+          (mit Konto eines Unternehmens oder als Privatperson), können ihre Konten per Code, QR-Code
+          oder Link verbinden. Der Code hat 6 Zeichen, gilt 24 Stunden und nur einmal und wird nur
+          als Hashwert gespeichert; Fehleingaben werden je Konto gezählt (gegen Durchprobieren) und
+          nach einem Tag gelöscht. Verbundene sehen gegenseitig den Vornamen und für jeden Tag, ob
+          gearbeitet wird (Früh, Spät, Nacht oder Arbeit), frei ist oder Urlaub –{" "}
+          <strong>ohne Grund</strong>. Jede Seite stellt selbst ein, ob die andere ihre Termine sieht
+          und ob sie Termine bei ihr eintragen darf; solche Termine stehen im Kalender der Person, bei
+          der eingetragen wurde, mit dem Vermerk, wer eingetragen hat. War die Person vorher über
+          einen Link eingeladen, werden die über den Link eingetragenen Termine übernommen und die
+          dort eingetragenen Schichten in ihr eigenes Privatkonto kopiert, wo dort noch nichts
+          steht; der Link endet. Jede Seite kann die Verbindung jederzeit beenden. Das Unternehmen
+          hat keinen Zugriff auf Verbindungen.
+        </Absatz>
+        <Absatz>
           <strong>Kalender-Abo:</strong> Eine Person kann ihren Plan als Kalender-Link
           (iCalendar) in die Kalender-App ihres Handys übernehmen. Der Link enthält Schichten
           mit Uhrzeit sowie Urlaub, Schulung und sonstige Abwesenheit – letztere nur als

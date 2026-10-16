@@ -10,10 +10,8 @@ import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import {
   fetchMeineTermine,
-  loescheTermin,
   personTageSetzen,
   setzeMeinePartnerTage,
-  speichereTermin,
 } from "@/lib/data/partner";
 import {
   ladeEigeneArten,
@@ -34,6 +32,7 @@ import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
 import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
+import { terminLoeschenUeberall, terminSichernUeberall } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
 import { PartnerBlatt, type PartnerSchicht } from "./partner";
@@ -358,30 +357,36 @@ export function MeinKalenderGlas() {
       window.clearInterval(takt);
     };
   }, [ladeTermine]);
-  async function terminSpeichern(t: TerminEingabe) {
+  async function terminSpeichern(t: TerminEingabe, alt: Termin | null = null) {
     try {
-      await speichereTermin(t);
+      await terminSichernUeberall(t, alt);
       setFehler(null);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gespeichert werden.");
     }
     void ladeTermine();
   }
-  async function terminLoeschen(id: string) {
+  async function terminLoeschen(t: Termin) {
     try {
-      await loescheTermin(id);
+      await terminLoeschenUeberall(t);
       setFehler(null);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gelöscht werden.");
     }
     void ladeTermine();
+    void andere.neuLaden();
   }
 
-  const sichtbareTermine = useMemo(() => termine.filter(andere.terminSichtbar), [termine, andere.terminSichtbar]);
+  const sichtbareTermine = useMemo(
+    () => [...termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
+    [termine, andere.fremdeTermine, andere.terminSichtbar],
+  );
+  /** Verbundene Konten, bei denen ich eintragen darf. */
+  const ziele = andere.verbindungen.filter((v) => v.erDarf).map((v) => ({ id: v.partner, name: v.name || "Verbunden" }));
 
   async function terminVerschieben(t: Termin, von: string, bis: string) {
     setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
-    await terminSpeichern({ ...t, von, bis });
+    await terminSpeichern({ ...t, von, bis }, t.inhaber ? t : null);
   }
 
   // ---- To-dos (nur für mich) ----------------------------------------------
@@ -1052,17 +1057,21 @@ export function MeinKalenderGlas() {
           startZeit={terminBlatt.startZeit}
           datum={terminBlatt.datum}
           termin={terminBlatt.termin}
+          ziele={ziele}
           hinweis={
-            terminBlatt.termin?.vonPartner
-              ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen. Ihr seht ihn beide.`
-              : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
+            terminBlatt.termin?.inhaber
+              ? `Aus dem Kalender von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer verbundenen Person"}.`
+              : terminBlatt.termin?.vonPartner
+                ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen. Ihr seht ihn beide.`
+                : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
           }
+          nurLesen={terminBlatt.termin?.inhaber ? terminBlatt.termin.vonUser !== profile.id : false}
           onSpeichern={(t) => {
-            void terminSpeichern(t);
+            void terminSpeichern(t, terminBlatt.termin);
             setTerminBlatt(null);
           }}
-          onLoeschen={(id) => {
-            void terminLoeschen(id);
+          onLoeschen={() => {
+            if (terminBlatt.termin) void terminLoeschen(terminBlatt.termin);
             setTerminBlatt(null);
           }}
           onClose={() => setTerminBlatt(null)}
