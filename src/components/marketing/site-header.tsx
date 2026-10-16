@@ -3,9 +3,9 @@ import { Menu } from "lucide-react";
 import { CtaLink, Logo, ZIELE } from "./cta";
 
 const NAV = [
+  { href: "/#kalender", label: "Schichtkalender" },
+  { href: "/#unternehmen", label: "Für Unternehmen" },
   { href: "/#funktionen", label: "Funktionen" },
-  { href: "/#besetzung", label: "Besetzung" },
-  { href: "/#fuer-wen", label: "Für wen" },
   { href: "/#preise", label: "Preise" },
   { href: "/#faq", label: "FAQ" },
 ];
@@ -38,7 +38,7 @@ export function SiteHeader() {
           <CtaLink href={ZIELE.anmelden} variant="ghost">
             Anmelden
           </CtaLink>
-          <CtaLink href={ZIELE.testen}>Kostenlos testen</CtaLink>
+          <CtaLink href={ZIELE.privat}>Kostenlos starten</CtaLink>
         </div>
 
         <details className="relative lg:hidden">
@@ -60,7 +60,7 @@ export function SiteHeader() {
             ))}
             {/* Auf dem Handy stehen die Buttons nicht in der Kopfzeile. */}
             <div className="mt-2 grid gap-2 border-t border-line pt-2 sm:hidden">
-              <CtaLink href={ZIELE.testen}>Kostenlos testen</CtaLink>
+              <CtaLink href={ZIELE.privat}>Kostenlos starten</CtaLink>
               <CtaLink href={ZIELE.anmelden} variant="secondary">
                 Anmelden
               </CtaLink>
