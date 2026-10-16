@@ -44,6 +44,7 @@ export function CtaLink({
 /** Ziele der Handlungsaufforderungen – an einer Stelle, damit sie überall gleich sind. */
 export const ZIELE = {
   testen: "/registrieren",
+  privat: "/privat/registrieren",
   demo: "/demo",
   anmelden: "/login",
 } as const;
