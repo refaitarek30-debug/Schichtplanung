@@ -618,9 +618,10 @@ export function MeinKalenderGlas() {
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    // Nach oben wischen = nächster Monat, nach unten = vorheriger.
+    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.5) {
       gewischt.current = true;
-      springe(dx < 0 ? 1 : -1);
+      springe(dy < 0 ? 1 : -1);
     }
   }
 
@@ -739,7 +740,7 @@ export function MeinKalenderGlas() {
       ) : null}
 
       <div
-        className="glas relative grid min-h-0 flex-1 touch-pan-y select-none grid-cols-7 overflow-hidden rounded-[22px]"
+        className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-[22px]"
         style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
         onPointerDown={wischStart}
         onPointerUp={wischEnde}
