@@ -11,7 +11,16 @@ import type { FormState } from "@/lib/auth/form-state";
 
 const anfang: FormState = {};
 
-export function PrivatRegistrierung({ disabled }: { disabled?: boolean }) {
+export function PrivatRegistrierung({
+  disabled,
+  weiter,
+  knopf = "Kostenlos starten",
+}: {
+  disabled?: boolean;
+  /** Nach dem Anlegen dorthin (Einladung). */
+  weiter?: string;
+  knopf?: string;
+}) {
   const [state, action] = useActionState(registrierePrivat, anfang);
 
   if (state.success) {
@@ -24,6 +33,7 @@ export function PrivatRegistrierung({ disabled }: { disabled?: boolean }) {
 
   return (
     <form action={action} className="mt-6 space-y-4">
+      {weiter ? <input type="hidden" name="weiter" value={weiter} /> : null}
       <Field label="Spitzname" hint="3–24 Zeichen: a–z, Ziffern, . _ -">
         <Input
           name="spitzname"
@@ -66,16 +76,16 @@ export function PrivatRegistrierung({ disabled }: { disabled?: boolean }) {
         </span>
       </label>
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
-      <Absenden disabled={disabled} />
+      <Absenden disabled={disabled} text={knopf} />
     </form>
   );
 }
 
-function Absenden({ disabled }: { disabled?: boolean }) {
+function Absenden({ disabled, text }: { disabled?: boolean; text: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={pending || disabled}>
-      {pending ? "Wird angelegt …" : "Kostenlos starten"}
+      {pending ? "Wird angelegt …" : text}
     </Button>
   );
 }

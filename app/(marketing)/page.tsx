@@ -62,7 +62,7 @@ const HIGHLIGHTS: { icon: ReactNode; titel: string; text: string; bild: ReactNod
   {
     icon: <Heart className="h-5 w-5" />,
     titel: "Partner-Ansicht",
-    text: "Per Link einladen, ohne Konto. Ihr seht sofort, wann ihr beide frei habt.",
+    text: "Per Link einladen – in einer Minute verbunden. Ihr seht sofort, wann ihr beide frei habt.",
     bild: <PartnerBild />,
   },
   {

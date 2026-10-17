@@ -7,6 +7,7 @@ import { Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { gruppeBeitreten, gruppeInfo, type GruppenEinladung } from "@/lib/data/gruppen";
+import { EinladungKonto } from "@/components/privat/einladung-konto";
 
 type Stand =
   | { art: "laedt" }
@@ -66,25 +67,11 @@ export function GruppeBeitreten({ token }: { token: string }) {
             <div>
               <h1 className="text-[24px] font-bold tracking-tight">Du wurdest in eine Gruppe eingeladen</h1>
               <p className="mt-2 text-[15px] leading-relaxed text-ink-muted">
-                In der Gruppe seht ihr, wann wer arbeitet – und wann ihr alle frei habt. Dafür brauchst du einen eigenen
-                Schichtkalender.
+                In der Gruppe seht ihr, wann wer arbeitet – und wann ihr alle frei habt. Leg dir dafür kurz deinen eigenen
+                Kalender an – danach trittst du mit einem Tipp bei.
               </p>
             </div>
-            <div className="space-y-2">
-              <Link
-                href={`/login?weiter=${encodeURIComponent(weiter)}`}
-                className="flex h-12 items-center justify-center rounded-full bg-brand-500 text-[16px] font-semibold text-white"
-              >
-                Anmelden und beitreten
-              </Link>
-              <Link
-                href="/privat/registrieren"
-                className="flex h-12 items-center justify-center rounded-full bg-surface text-[16px] font-semibold text-brand-600 ring-1 ring-line"
-              >
-                Kostenlos Kalender anlegen
-              </Link>
-              <p className="text-[12.5px] text-ink-muted">Danach diesen Link noch einmal öffnen.</p>
-            </div>
+            <EinladungKonto weiter={weiter} knopf="Konto anlegen und beitreten" />
           </>
         ) : null}
 
