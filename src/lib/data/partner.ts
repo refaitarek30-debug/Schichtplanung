@@ -29,7 +29,7 @@ export function farbenAus(roh: unknown): FarbenCodes {
   return aus;
 }
 
-export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich";
+export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich" | "jaehrlich";
 
 /**
  * Erinnerung vor einem Termin (Migration 0154). Mit Uhrzeit: 10 Minuten,

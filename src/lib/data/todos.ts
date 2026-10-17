@@ -69,6 +69,8 @@ export interface Vorlage {
   titel: string;
   /** Dauer in Minuten; 0 = ganztägig. */
   min: number;
+  /** Jedes Jahr wiederholen (z. B. Geburtstag). */
+  jaehrlich?: boolean;
 }
 
 export interface Vorlieben {

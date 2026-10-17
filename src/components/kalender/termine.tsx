@@ -43,7 +43,7 @@ export function alteLokaleTermine(benutzer: string): TerminEingabe[] | null {
         ganztaegig: t.ganztaegig === true,
         von: typeof t.von === "string" ? t.von : "",
         bis: typeof t.bis === "string" ? t.bis : "",
-        wiederholung: (["nie", "taeglich", "woechentlich", "monatlich"].includes(t.wiederholung)
+        wiederholung: (["nie", "taeglich", "woechentlich", "monatlich", "jaehrlich"].includes(t.wiederholung)
           ? t.wiederholung
           : "nie") as Wiederholung,
         notiz: String(t.notiz ?? "").slice(0, 500),
@@ -79,6 +79,11 @@ function beginntAm(t: Termin, iso: string): boolean {
       return tageZwischen(t.datum, iso) % 7 === 0;
     case "monatlich":
       return fromISO(iso).getDate() === fromISO(t.datum).getDate();
+    case "jaehrlich": {
+      const a = fromISO(iso);
+      const b = fromISO(t.datum);
+      return a.getDate() === b.getDate() && a.getMonth() === b.getMonth();
+    }
     default:
       return iso === t.datum;
   }
@@ -234,6 +239,8 @@ export function TerminBlatt({
 
   function waehle(v: Vorlage) {
     setTitel(mitSymbol(v));
+    // Geburtstage gleich jedes Jahr.
+    if (v.jaehrlich) setWdh("jaehrlich");
     if (v.min > 0) {
       setGanz(false);
       setBis(zeitPlus(von, v.min));
@@ -574,6 +581,7 @@ export function TerminBlatt({
               <option value="taeglich">Täglich</option>
               <option value="woechentlich">Wöchentlich</option>
               <option value="monatlich">Monatlich</option>
+              <option value="jaehrlich">Jährlich</option>
             </select>
           </label>
 
