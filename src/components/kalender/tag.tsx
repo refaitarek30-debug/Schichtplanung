@@ -132,6 +132,11 @@ export function EintragPille({
 
 const WISCH_OFFEN = 96;
 
+/** Farbe eigener Termine, wenn keine Person dahintersteht. */
+const EIGEN_TERMIN_FARBE = "#6C8CFF";
+/** Helle Kartenfarbe zu einer Personenfarbe (deckend, damit nichts durchscheint). */
+const karteFarbe = (farbe: string) => `color-mix(in srgb, ${farbe} 20%, #ffffff)`;
+
 /**
  * Eine Termin-Zeile: antippen = öffnen, nach links wischen = „Löschen“ zeigen,
  * lange drücken = Nachfrage zum Löschen.
@@ -254,16 +259,16 @@ function TerminZeile({
         onPointerCancel={abbruch}
         onContextMenu={(e) => e.preventDefault()}
         className={cn(
-          "relative flex w-full touch-pan-y select-none items-center gap-3 rounded-[16px] bg-[#f1f2f5] px-3.5 py-2.5 text-left [-webkit-touch-callout:none] active:brightness-95",
+          "relative flex w-full touch-pan-y select-none items-center gap-3 rounded-[16px] px-3.5 py-2.5 text-left [-webkit-touch-callout:none] active:brightness-95",
           !zieht && "transition-transform duration-200",
         )}
-        style={{ transform: `translateX(${dx}px)` }}
+        style={{
+          transform: `translateX(${dx}px)`,
+          backgroundColor: karteFarbe(von?.farbe ?? EIGEN_TERMIN_FARBE),
+          boxShadow: `inset 4px 0 0 ${von?.farbe ?? EIGEN_TERMIN_FARBE}`,
+        }}
       >
-        <span
-          aria-hidden
-          className={cn("h-2.5 w-2.5 shrink-0 rounded-full", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
-          style={von ? { backgroundColor: von.farbe } : undefined}
-        />
+        <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: von?.farbe ?? EIGEN_TERMIN_FARBE }} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold">
             {t.titel || "Termin"}
@@ -1025,12 +1030,17 @@ export function Tagesansicht({
                     aria-label={`${l.t.titel || "Termin"}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben oder Löschen."}`}
                     className={cn(
                       "absolute z-[2] flex touch-none select-none flex-col overflow-hidden rounded-[12px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
-                      zieht ? "z-[4] bg-[#FFF4E0] shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "bg-surface shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
+                      zieht ? "z-[4] bg-[#FFF4E0] shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
                     )}
                     style={{
                       ...box(zieht && zug ? zug.neu : l.start),
                       ...(wisch?.id === l.t.id ? { transform: `translateX(${wisch.dx}px)`, opacity: wisch.dx <= -70 ? 0.55 : 1 } : null),
-                      ...(von && !zieht ? { boxShadow: `inset 3px 0 0 ${von.farbe}, 0 2px 8px rgba(31,41,77,0.1)` } : null),
+                      ...(zieht
+                        ? null
+                        : {
+                            backgroundColor: karteFarbe(von?.farbe ?? EIGEN_TERMIN_FARBE),
+                            boxShadow: `inset 4px 0 0 ${von?.farbe ?? EIGEN_TERMIN_FARBE}, 0 2px 8px rgba(31,41,77,0.1)`,
+                          }),
                     }}
                   >
                     <span className="truncate text-[13.5px] font-bold leading-tight">{l.t.titel || "Termin"}</span>

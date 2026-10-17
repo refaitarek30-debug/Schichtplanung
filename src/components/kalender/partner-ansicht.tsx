@@ -12,10 +12,19 @@ import {
   partnerTerminSpeichern,
   type Termin,
   type TerminEingabe,
+  type FarbenCodes,
   type PartnerCode,
 } from "@/lib/data/partner";
 import { cn } from "@/lib/utils";
-import { PARTNER_FARBE, PartnerBlatt, VOLL_FARBE, partnerText } from "./partner";
+import {
+  PartnerBlatt,
+  TERMIN_FARBE_GAST,
+  TERMIN_FARBE_INHABER,
+  VOLL_FARBE,
+  codeStil,
+  partnerText,
+  terminKarteStil,
+} from "./partner";
 import { TerminBlatt, termineAm } from "./termine";
 
 const WOCHENTAG_LANG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
@@ -41,6 +50,7 @@ function raster(jahr: number, monat: number) {
 interface Stand {
   schluessel: string;
   name: string;
+  farben: FarbenCodes;
   tage: Map<string, [PartnerCode | null, PartnerCode | null]>;
   termine: Termin[];
 }
@@ -73,7 +83,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
     try {
       const k = await fetchPartnerKalender(token, start, anzahl);
       if (nr !== ladeNr.current) return;
-      setStand({ schluessel: `${start}:${anzahl}`, name: k.name, tage: k.tage, termine: k.termine });
+      setStand({ schluessel: `${start}:${anzahl}`, name: k.name, farben: k.farben, tage: k.tage, termine: k.termine });
       setName(k.name);
       setDarf(k.darfEintragen);
       setFehler(null);
@@ -180,7 +190,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
   })();
 
   return (
-    <main className="fixed inset-0 flex flex-col bg-surface-muted pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+    <main className="privat privat-schrift fixed inset-0 flex flex-col pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
           <div className="min-w-0">
@@ -192,7 +202,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
               {monat.jahr}
               {darf ? (
                 <span className="ml-2 text-[12px] text-ink-faint">
-                  Gefüllt: du · Umriss: {name || "Plan"}
+                  Oben: {name || "Plan"} · darunter: du
                 </span>
               ) : null}
               {!istAktuell ? (
@@ -217,7 +227,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
               type="button"
               onClick={() => springe(-1)}
               aria-label="Vorheriger Monat"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-inset ring-line"
+              className="glas flex h-10 w-10 items-center justify-center rounded-full text-ink-muted"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -225,7 +235,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
               type="button"
               onClick={() => springe(1)}
               aria-label="Nächster Monat"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink-muted ring-1 ring-inset ring-line"
+              className="glas flex h-10 w-10 items-center justify-center rounded-full text-ink-muted"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -235,7 +245,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
         {fehler ? <p className="mx-4 mb-2 rounded-xl bg-crit-bg px-3 py-2 text-[13px] text-crit-fg">{fehler}</p> : null}
 
         <div
-          className="grid min-h-0 flex-1 touch-pan-y select-none grid-cols-7 overflow-hidden bg-surface sm:rounded-2xl sm:border sm:border-line"
+          className="glas mx-3 mb-3 grid min-h-0 flex-1 touch-pan-y select-none grid-cols-7 overflow-hidden rounded-[22px]"
           style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
           aria-busy={!sichtbar}
           onPointerDown={(e) => {
@@ -277,7 +287,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
                 }}
                 aria-label={`${d.getDate()}. ${monthName(d.getMonth())}: ${name || "Plan"} ${eigen ? partnerText(eigen, true) : "–"}${partner ? `, du: ${partnerText(partner, true)}` : ""}`}
                 className={cn(
-                  "flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t border-line px-[2px] pb-1 pt-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+                  "glas-linie flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t px-[2px] pb-1 pt-1 text-center outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                   i % 7 !== 0 && "border-l",
                   i % 7 >= 5 && "bg-surface-muted/70",
                   iso === heute && "bg-ink/[0.07]",
@@ -297,26 +307,26 @@ export function PartnerAnsicht({ token }: { token: string }) {
                 {!sichtbar ? (
                   <span className="h-5 animate-pulse rounded-md bg-surface-sunken" />
                 ) : null}
+                {sichtbar && eigen ? (
+                  <span
+                    className={cn(
+                      "shrink-0 truncate rounded-[8px] px-0.5 py-[3px] text-[12.5px] font-semibold leading-tight",
+                      !imMonat && "opacity-45",
+                    )}
+                    style={codeStil(eigen, sichtbar.farben)}
+                  >
+                    {partnerText(eigen)}
+                  </span>
+                ) : null}
                 {sichtbar && partner ? (
                   <span
                     className={cn(
-                      "shrink-0 truncate rounded-md px-0.5 py-[3px] text-[12.5px] font-medium leading-tight",
+                      "shrink-0 truncate rounded-md px-0.5 py-px text-[11px] font-semibold leading-tight",
                       VOLL_FARBE[partner],
                       !imMonat && "opacity-45",
                     )}
                   >
                     {partnerText(partner)}
-                  </span>
-                ) : null}
-                {sichtbar ? (
-                  <span
-                    className={cn(
-                      "shrink-0 truncate rounded-md px-0.5 py-px text-[11px] font-semibold leading-tight ring-[1.5px] ring-inset",
-                      PARTNER_FARBE[eigen ?? "X"],
-                      !imMonat && "opacity-45",
-                    )}
-                  >
-                    {partnerText(eigen ?? "X")}
                   </span>
                 ) : null}
                 {ts.slice(0, 3).map((t, j) => (
@@ -325,10 +335,8 @@ export function PartnerAnsicht({ token }: { token: string }) {
                     className={cn("shrink-0 truncate text-left text-[11px] leading-tight text-ink-muted", !imMonat && "opacity-45")}
                   >
                     <span
-                      className={cn(
-                        "mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle",
-                        t.vonPartner ? "bg-brand-500" : "bg-ink-faint",
-                      )}
+                      className="mr-0.5 inline-block h-1.5 w-1.5 rounded-full align-middle"
+                      style={{ backgroundColor: t.vonPartner ? TERMIN_FARBE_GAST : TERMIN_FARBE_INHABER }}
                     />
                     {t.titel || "Termin"}
                     {j === 2 && ts.length > 3 ? ` +${ts.length - 3}` : ""}
@@ -347,6 +355,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
           name={name}
           darf={darf}
           eigen={sichtbar?.tage.get(tag)?.[0] ?? null}
+          farben={sichtbar?.farben ?? {}}
           partner={sichtbar?.tage.get(tag)?.[1] ?? null}
           termine={termineAm(termine, tag)}
           onClose={() => setTag(null)}
@@ -396,6 +405,7 @@ function TagBlatt({
   name,
   darf,
   eigen,
+  farben,
   partner,
   termine,
   onClose,
@@ -407,6 +417,7 @@ function TagBlatt({
   /** Darf eintragen – sonst nur die Übersicht. */
   darf: boolean;
   eigen: PartnerCode | null;
+  farben: FarbenCodes;
   partner: PartnerCode | null;
   termine: Termin[];
   onClose: () => void;
@@ -438,18 +449,19 @@ function TagBlatt({
           ) : null}
           <div className="flex items-center justify-between gap-3">
             <span className="text-[15px] text-ink-muted">{name || "Plan"}</span>
-            <span className={cn("rounded-lg px-3 py-1 text-[14px] font-semibold ring-[1.5px] ring-inset", PARTNER_FARBE[eigen ?? "X"])}>
+            <span className="rounded-lg px-3 py-1 text-[14px] font-semibold" style={codeStil(eigen ?? "X", farben)}>
               {partnerText(eigen ?? "X", true)}
             </span>
           </div>
           {termine.length ? (
-            <ul className="border-t border-line pt-1">
+            <ul className="space-y-1.5 border-t border-line pt-2">
               {termine.map((t) => (
                 <li key={t.id}>
                   <button
                     type="button"
                     onClick={() => onTermin(t)}
-                    className="flex w-full items-baseline justify-between gap-3 py-2 text-left text-[15px]"
+                    style={terminKarteStil(t.vonPartner ? TERMIN_FARBE_GAST : TERMIN_FARBE_INHABER)}
+                    className="flex w-full items-baseline justify-between gap-3 rounded-[14px] px-3.5 py-2.5 text-left text-[15px]"
                   >
                     <span className="min-w-0 truncate">
                       {t.titel || "Ohne Titel"}

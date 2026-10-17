@@ -7,6 +7,7 @@ import {
   PERSON_ARTEN,
   fetchPersonen,
   fetchPersonenTage,
+  type FarbenCodes,
   type PartnerCode,
   type Person,
   type Termin,
@@ -16,7 +17,8 @@ import { fetchVerbindungen, fetchVerbundeneTage, fetchVerbundeneTermine, type Ve
 import { fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { PERSON_FARBEN, PersonAvatar, kuerzel, personFarbe } from "./teilen";
-import { partnerText } from "./partner";
+import { codeFarbe, partnerText } from "./partner";
+import { textFarbe } from "@/lib/privat/daten";
 
 /**
  * Andere im eigenen Kalender: Personen, die über ihren Link selbst
@@ -35,8 +37,11 @@ export interface AndererEintrag {
   key: string;
   name: string;
   kurz: string;
+  /** Farbe der Person (Kreis, Name). */
   farbe: string;
   code: PartnerCode;
+  /** Farbe der Schicht – in den Farben der Person selbst. */
+  schichtFarbe: string;
 }
 
 interface Knoten {
@@ -79,7 +84,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   const [gruppenAndere, setGruppenAndere] = useState<GruppenAnderer[]>([]);
   /** Verbundene Konten (Migration 0157) – Schlüssel im Baum: "v:<Konto>". */
   const [verbindungen, setVerbindungen] = useState<Verbindung[]>([]);
-  const [vTage, setVTage] = useState<Record<string, Record<string, PartnerCode>>>({});
+  const [vTage, setVTage] = useState<Record<string, { tage: Record<string, PartnerCode>; farben: FarbenCodes }>>({});
   const [fremdeTermine, setFremdeTermine] = useState<Termin[]>([]);
   const tageAnzahl = Math.round((fromISO(bis).getTime() - fromISO(von).getTime()) / 864e5) + 1;
 
@@ -209,6 +214,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   }, [gruppenAndere, farbListe]);
 
   const gruppenTage = useMemo(() => new Map(gruppenAndere.map((g) => [`u:${g.id}`, g.tage])), [gruppenAndere]);
+  const gruppenFarben = useMemo(() => new Map(gruppenAndere.map((g) => [`u:${g.id}`, g.farben])), [gruppenAndere]);
 
   const zweige: Zweig[] = useMemo(
     () => [
@@ -267,14 +273,16 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
           const code = k.key.startsWith("u:")
             ? gruppenTage.get(k.key)?.[iso]
             : k.key.startsWith("v:")
-              ? vTage[k.key.slice(2)]?.[iso]
+              ? vTage[k.key.slice(2)]?.tage[iso]
               : tage[k.key]?.[iso];
-          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code });
+          // Eigene Farben haben nur Personen mit eigenem Konto.
+          const farben = k.key.startsWith("u:") ? gruppenFarben.get(k.key) : k.key.startsWith("v:") ? vTage[k.key.slice(2)]?.farben : undefined;
+          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code, schichtFarbe: codeFarbe(code, farben) });
         }
       }
       return liste;
     },
-    [zweige, schalter, tage, gruppenTage, vTage],
+    [zweige, schalter, tage, gruppenTage, gruppenFarben, vTage],
   );
 
   /** Eigener Termin oder Termin einer Person – je nach Auswahl. */
@@ -347,10 +355,10 @@ export function AndereTags({ eintraege, max = 2, className }: { eintraege: Ander
             key={e.key}
             title={`${e.name}: ${partnerText(e.code, true)}`}
             className={cn(
-              "flex h-[13px] w-[13px] items-center justify-center rounded-full text-[8px] font-bold leading-none text-white",
-              e.code === "X" && "opacity-40",
+              "flex h-[13px] w-[13px] items-center justify-center rounded-full text-[8px] font-bold leading-none",
+              e.code === "X" && "opacity-60",
             )}
-            style={{ backgroundColor: e.farbe }}
+            style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `0 0 0 1.5px ${e.farbe}` }}
           >
             {e.code === "X" ? "" : e.code === "T" ? "A" : e.code}
           </span>
@@ -366,9 +374,9 @@ export function AndereTags({ eintraege, max = 2, className }: { eintraege: Ander
           title={`${e.name}: ${partnerText(e.code, true)}`}
           className={cn(
             "min-w-0 flex-1 overflow-hidden whitespace-nowrap rounded-[5px] text-center text-[9px] font-bold leading-[14px]",
-            e.code === "X" && "opacity-45",
+            e.code === "X" && "opacity-70",
           )}
-          style={{ boxShadow: `inset 0 0 0 1.5px ${e.farbe}`, color: e.farbe }}
+          style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `inset 0 -2px 0 ${e.farbe}` }}
         >
           {e.kurz.slice(0, 1)}·{e.code === "X" ? "–" : e.code === "T" ? "A" : e.code}
         </span>
@@ -398,8 +406,8 @@ export function AnDiesemTag({
             <PersonAvatar name={e.name} farbe={e.farbe} klein />
             <span className="min-w-0 flex-1 truncate text-[14.5px]">{e.name}</span>
             <span
-              className="shrink-0 rounded-[8px] px-2 py-0.5 text-[12.5px] font-semibold"
-              style={{ boxShadow: `inset 0 0 0 1.5px ${e.farbe}`, color: e.farbe }}
+              className="shrink-0 rounded-[8px] px-2.5 py-0.5 text-[12.5px] font-semibold"
+              style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe) }}
             >
               {partnerText(e.code, true)}
             </span>
