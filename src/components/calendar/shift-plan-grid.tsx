@@ -799,28 +799,19 @@ export function ShiftPlanGrid({
    * Welche Schichtgruppen aufgeklappt sind. `null` heißt: noch nichts von Hand
    * umgestellt, dann gilt die Vorgabe.
    *
-   * Die Führung plant den ganzen Betrieb und bekommt deshalb alle Gruppen
-   * offen. Vorher stand auch für sie nur die eigene Gruppe offen – und wer
-   * selbst nicht im Schichtdienst ist, hat keine. Seit die Schichtgruppe im
-   * Plan nur noch für Schichtarbeiter ausgewiesen wird, fiel eine
-   * Betriebsleiterin damit in die Gruppe „Tagschicht“, und A, B, C und D
-   * standen alle zugeklappt da.
-   *
-   * Mitarbeiter sehen alle Gruppen, aufgeklappt ist aber nur die eigene –
-   * die anderen stehen eingeklappt darunter und lassen sich per Tipp
-   * öffnen. Das ist nur die Voreinstellung der Ansicht, keine Sperre.
-   * Findet sich keine eigene Gruppe, ist alles offen: lieber zu viel Plan
-   * als ein leerer Bildschirm.
-   *
-   * Maßgeblich ist die Rolle aus der Sitzung (`canEdit` = Schichtleitung
-   * oder Administration laut Profil) – nicht ein Name oder eine Eingabe.
+   * Für alle – auch für Schichtleitung und Administration – ist nur die
+   * eigene Gruppe aufgeklappt; die anderen stehen eingeklappt darunter und
+   * lassen sich per Tipp öffnen. Das ist nur die Voreinstellung der Ansicht,
+   * keine Sperre: Ansehen dürfen alle den ganzen Plan.
+   * Findet sich keine eigene Gruppe (z. B. Führung ohne eigene Zeile), ist
+   * alles offen: lieber zu viel Plan als ein leerer Bildschirm.
    */
   const standardOffen = useMemo(() => {
     const alle = () => new Set(groups.map(([teamName]) => teamName));
-    if (canEdit || groups.length <= 1) return alle();
+    if (groups.length <= 1) return alle();
     const eigene = groups.find(([, members]) => members.some((m) => m.isMe));
     return eigene ? new Set([eigene[0]]) : alle();
-  }, [groups, canEdit]);
+  }, [groups]);
 
   const offeneGruppen = aufgeklappt ?? standardOffen;
 
