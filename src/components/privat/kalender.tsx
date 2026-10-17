@@ -233,6 +233,17 @@ export function PrivatKalender() {
     () => [...termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
     [termine, andere.fremdeTermine, andere.terminSichtbar],
   );
+  /** Eigene Termine und Einträge bei Verbundenen darf man löschen – Termine anderer nur ansehen. */
+  const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === konto.userId : !(t.vonPartner && !t.vonUser));
+  async function terminWeg(t: Termin) {
+    try {
+      await terminLoeschenUeberall(t);
+      setFehler(null);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gelöscht werden.");
+    }
+    await Promise.all([ladeTermine(), andere.neuLaden()]);
+  }
   /** Verbundene Konten, bei denen ich eintragen darf. */
   const ziele = andere.verbindungen.filter((v) => v.erDarf).map((v) => ({ id: v.partner, name: v.name || "Verbunden" }));
 
@@ -642,6 +653,8 @@ export function PrivatKalender() {
             setTerminBlatt({ datum: tagBlatt, termin: t });
             setTagBlatt(null);
           }}
+          onTerminLoeschen={(t) => void terminWeg(t)}
+          darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => {
             setTodoBlatt({ datum: tagBlatt });
@@ -680,6 +693,8 @@ export function PrivatKalender() {
           terminVon={andere.terminVon}
           onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
           onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
+          onLoeschen={(t) => void terminWeg(t)}
+          darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
           onClose={() => setTagAnsicht(null)}
@@ -1113,6 +1128,8 @@ function TagBlatt({
   terminVon,
   onSetzen,
   onTermin,
+  onTerminLoeschen,
+  darfLoeschen,
   onTodo,
   onTodos,
   onTag,
@@ -1130,6 +1147,8 @@ function TagBlatt({
   /** Beide Einträge setzen; text für „Rückgängig“ */
   onSetzen: (schicht: string | null, zusatz: string | null, text: string) => void;
   onTermin: (t: Termin | null) => void;
+  onTerminLoeschen: (t: Termin) => void;
+  darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
   onTag: () => void;
@@ -1193,7 +1212,15 @@ function TagBlatt({
         nachricht={nachricht}
       />
 
-      <AmTag termine={termine} todos={todos} terminVon={terminVon} onTermin={onTermin} onTodo={onTodo} />
+      <AmTag
+        termine={termine}
+        todos={todos}
+        terminVon={terminVon}
+        onTermin={onTermin}
+        onTodo={onTodo}
+        onLoeschen={onTerminLoeschen}
+        darfLoeschen={darfLoeschen}
+      />
       <AnDiesemTag eintraege={andere} className="mt-3" />
       <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
     </Blatt>
