@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 
 /** Kalender-Abo (Migration 0143). Nur für freigeschaltete Personen. */
 
@@ -13,7 +13,7 @@ export interface AboStatus {
 export class AboFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new AboFehler(dataErrorMessage(error) ?? standard);
+  throw new AboFehler(datenFehlerText(error, standard));
 }
 
 /** Ist eine noch nicht allgemein freigegebene Funktion für mich frei? */

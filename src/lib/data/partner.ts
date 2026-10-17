@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 
 /**
  * Kalender mit Partner – siehe Migrationen 0138 und 0139.
@@ -76,7 +76,7 @@ export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inh
 export class PartnerFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new PartnerFehler(dataErrorMessage(error) ?? standard);
+  throw new PartnerFehler(datenFehlerText(error, standard));
 }
 
 const zeit = (t: string, ganz: boolean) => (ganz || !t ? null : t);

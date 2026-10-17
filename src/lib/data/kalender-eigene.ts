@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 
 /**
  * Mein Kalender (Firma): eigene Farben und private Einträge (Migration
@@ -23,7 +23,7 @@ export type EigeneArtEingabe = Omit<EigeneArt, "id"> & { id: string | null };
 export class EigeneFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new EigeneFehler(dataErrorMessage(error) ?? standard);
+  throw new EigeneFehler(datenFehlerText(error, standard));
 }
 
 const zeit = (t: string | null) => (t ? t.slice(0, 5) : "");
