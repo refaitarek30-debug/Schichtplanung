@@ -7,7 +7,7 @@ import { VerbindungenListe } from "@/components/kalender/verbinden";
 import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
 import { fetchGruppen, type Gruppe } from "@/lib/data/gruppen";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
-import { fetchPersonen, type Person } from "@/lib/data/partner";
+import { fetchEinladungen, fetchPersonen, type Person } from "@/lib/data/partner";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 
@@ -15,6 +15,7 @@ import { PrivatKopf } from "./rahmen";
 export function PrivatTeilen() {
   const { konto } = usePrivat();
   const [personen, setPersonen] = useState<Person[] | null>(null);
+  const [einladungen, setEinladungen] = useState<Record<string, string>>({});
   const [fehler, setFehler] = useState<string | null>(null);
   const [gruppen, setGruppen] = useState<Gruppe[] | null>(null);
   const [verbindungen, setVerbindungen] = useState<Verbindung[] | null>(null);
@@ -25,8 +26,14 @@ export function PrivatTeilen() {
 
   const laden = useCallback(async () => {
     try {
-      const [p, g, v] = await Promise.all([fetchPersonen(), fetchGruppen(), fetchVerbindungen().catch(() => [])]);
+      const [p, g, v, e] = await Promise.all([
+        fetchPersonen(),
+        fetchGruppen(),
+        fetchVerbindungen().catch(() => []),
+        fetchEinladungen().catch(() => ({})),
+      ]);
       setPersonen(p);
+      setEinladungen(e);
       setGruppen(g);
       setVerbindungen(v);
       setFehler(null);
@@ -49,7 +56,7 @@ export function PrivatTeilen() {
         <Users className="h-4 w-4" /> Partner, Familie, Freunde
       </div>
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[13px] text-crit-fg">{fehler}</p> : null}
-      <PersonenListe personen={personen} onNeu={() => setOffen("neu")} onPerson={(id) => setOffen({ person: id })} />
+      <PersonenListe personen={personen} einladungen={einladungen} onNeu={() => setOffen("neu")} onPerson={(id) => setOffen({ person: id })} />
 
       <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
         <Link2 className="h-4 w-4" /> Mit eigenem Konto verbunden

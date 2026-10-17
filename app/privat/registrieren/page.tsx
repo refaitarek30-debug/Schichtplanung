@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CalendarDays, Repeat, Share2, Smartphone } from "lucide-react";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { PrivatRegistrierung } from "./formular";
+import { PrivatRegistrierung } from "@/components/privat/registrierung";
 
 export const metadata = {
   title: "Schichtkalender kostenlos – Schichtplan",
@@ -17,7 +17,7 @@ export const metadata = {
 const PUNKTE = [
   { icon: Repeat, text: "Schichtfolge einmal eintragen, der Kalender füllt sich selbst" },
   { icon: CalendarDays, text: "Woche, Monat und Jahr – mit Feiertagen deines Bundeslands" },
-  { icon: Share2, text: "Partner per Link einladen, ohne eigenes Konto" },
+  { icon: Share2, text: "Partner einladen – ihr seht gegenseitig eure Schichten" },
   { icon: Smartphone, text: "Im Kalender deines Handys, mit Farben je Schicht" },
 ];
 

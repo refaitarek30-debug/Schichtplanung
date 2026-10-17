@@ -112,7 +112,16 @@ export function CodeZeigen({ person }: { person?: { id: string; name: string } }
 }
 
 /** Code einer anderen Person eingeben (oder aus dem Link übernehmen) und sich verbinden. */
-export function CodeEingeben({ start = "", onVerbunden }: { start?: string; onVerbunden: () => void }) {
+export function CodeEingeben({
+  start = "",
+  sofort = false,
+  onVerbunden,
+}: {
+  start?: string;
+  /** Gleich verbinden (direkt nach dem Anlegen des Kontos aus der Einladung). */
+  sofort?: boolean;
+  onVerbunden: () => void;
+}) {
   const [code, setCode] = useState(start);
   const [info, setInfo] = useState<CodeInfo | null>(null);
   const [laeuft, setLaeuft] = useState(false);
@@ -154,7 +163,7 @@ export function CodeEingeben({ start = "", onVerbunden }: { start?: string; onVe
   // Aus dem Link: gleich prüfen.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (start && start.replace(/[^A-Za-z0-9]/g, "").length === 6) void pruefen();
+    if (start && start.replace(/[^A-Za-z0-9]/g, "").length === 6) void (sofort ? verbinden() : pruefen());
     // nur beim Öffnen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -288,6 +288,33 @@ export async function personAnlegen(p: PersonEingabe): Promise<{ id: string; sch
   return { id: z!.id!, schluessel: z!.schluessel! };
 }
 
+/**
+ * Einladung mit eigenem Konto (Migration 0163): legt die Person mit ihren
+ * Rechten an und liefert den Code für den Link /verbinden/CODE. Mit ihm legt
+ * die Person ein Konto an und ist danach verbunden. 7 Tage, einmal nutzbar.
+ */
+export async function einladungErstellen(p: PersonEingabe): Promise<{ code: string; gueltigBis: string; person: string }> {
+  const { data, error } = await createClient().rpc("einladung_erstellen", {
+    p_name: p.name,
+    p_art: p.art,
+    p_darf_eintragen: p.darfEintragen,
+    p_termine_sehen: p.termineSehen,
+  });
+  const z = data as { code?: string; gueltig_bis?: string; person?: string } | null;
+  if (error || !z?.code || !z.person) fehler(error, "Die Einladung konnte nicht erstellt werden.");
+  return { code: z!.code!, gueltigBis: z!.gueltig_bis ?? "", person: z!.person! };
+}
+
+/** Offene Einladungen: Person -> gültig bis. */
+export async function fetchEinladungen(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured) return {};
+  const { data, error } = await createClient().rpc("meine_einladungen");
+  if (error) fehler(error, "Die Einladungen konnten nicht geladen werden.");
+  const aus: Record<string, string> = {};
+  for (const z of (data ?? []) as { person: string; bis: string }[]) aus[z.person] = z.bis;
+  return aus;
+}
+
 export async function personAendern(id: string, p: PersonEingabe) {
   const { error } = await createClient().rpc("person_aendern", {
     p_id: id,

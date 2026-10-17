@@ -91,7 +91,7 @@ function BildPartner() {
           <UserPlus className="h-4 w-4" />
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-1 truncate rounded-lg bg-surface-muted px-2 py-1 font-mono text-[10px] text-ink-muted">
-          <Link2 className="h-3 w-3 shrink-0" /> …/partner/k3x9…
+          <Link2 className="h-3 w-3 shrink-0" /> …/verbinden/K7P4QX
         </span>
         <span className="rounded-lg bg-brand-500 px-2 py-1 text-[11px] font-semibold text-white">Einladen</span>
       </div>
@@ -129,7 +129,7 @@ const SCHRITTE = [
   },
   {
     titel: "Mit deinem Partner",
-    text: "Oben auf das Personen-Symbol tippen und einladen. Ihr seht beide eure Schichten, Urlaub und Termine.",
+    text: "Oben auf das Personen-Symbol tippen und einladen – mit dem Link legt dein Partner kurz ein Konto an. Ihr seht beide eure Schichten, Urlaub und Termine.",
     bild: <BildPartner />,
   },
 ];

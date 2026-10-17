@@ -12,6 +12,7 @@ import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 import { PRIVAT_DOMAIN, pruefeSpitzname, spitznameZuEmail } from "./spitzname";
 import { siteOrigin } from "@/lib/auth/invite";
 import { PASSWORT_MAX, PASSWORT_MIN } from "@/lib/auth/password-policy";
+import { safeInternalPath } from "@/lib/security/safe-path";
 import type { FormState } from "@/lib/auth/form-state";
 
 /** Konto wieder entfernen, wenn das Anlegen danach scheitert – nur frische, leere Konten. */
@@ -37,6 +38,9 @@ export async function registrierePrivat(_prev: FormState, formData: FormData): P
   const spitzname = String(formData.get("spitzname") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const datenschutz = formData.get("datenschutz") === "on";
+  // Aus einer Einladung: danach zurück zum Link (verbinden oder Gruppe).
+  const weiter = String(formData.get("weiter") ?? "");
+  const ziel = /^\/(verbinden|gruppe)\/[A-Za-z0-9_-]+(\?neu=1)?$/.test(weiter) ? safeInternalPath(weiter, "/privat") : "/privat";
 
   const nameFehler = pruefeSpitzname(spitzname);
   if (nameFehler) return { error: nameFehler };
@@ -100,7 +104,7 @@ export async function registrierePrivat(_prev: FormState, formData: FormData): P
     maxAge: ACTIVITY_COOKIE_MAX_AGE,
   });
   revalidatePath("/", "layout");
-  redirect("/privat");
+  redirect(ziel);
 }
 
 /**

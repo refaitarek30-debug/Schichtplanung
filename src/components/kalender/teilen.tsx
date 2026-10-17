@@ -18,16 +18,16 @@ import {
   PERSON_ARTEN,
   fetchPersonen,
   personAendern,
-  personAnlegen,
+  einladungErstellen,
+  fetchEinladungen,
   personEntfernen,
   personLinkBeenden,
-  personLinkNeu,
   type Person,
   type PersonArt,
   type PersonEingabe,
 } from "@/lib/data/partner";
 import { cn } from "@/lib/utils";
-import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
+import { fetchVerbindungen, verbindungCodeErstellen, type Verbindung } from "@/lib/data/verbindungen";
 import { CodeEingeben, CodeZeigen, VerbindungEinstellen, VerbindungenListe } from "./verbinden";
 
 /**
@@ -37,10 +37,12 @@ import { CodeEingeben, CodeZeigen, VerbindungEinstellen, VerbindungenListe } fro
  *   * Einladen: Name, wer das ist, „nur ansehen“ oder „ansehen und
  *     eintragen“, ob die eigenen Termine sichtbar sind
  *   * Senden: WhatsApp, Nachrichten, E-Mail, Teilen, QR-Code
- *   * Person: Rechte ändern, neuen Link senden, Link beenden, entfernen
+ *   * Person: Rechte ändern, Einladung neu senden, alten Link beenden, entfernen
  *
- * Der Link wird nur direkt nach dem Erstellen angezeigt – gespeichert ist
- * nur sein Fingerabdruck.
+ * Seit Migration 0163 führt jede Einladung zur Anmeldeseite: Die Person legt
+ * Spitzname und Passwort an und ist danach mit dem eigenen Konto verbunden
+ * (Link gilt 7 Tage, einmal). Alte Links ohne Konto laufen weiter, bis sie
+ * beendet werden – neue gibt es nicht mehr.
  */
 
 type Ansicht =
@@ -49,7 +51,7 @@ type Ansicht =
   | { art: "person"; id: string }
   | { art: "gruppeNeu" }
   | { art: "gruppe"; id: string }
-  | { art: "senden"; name: string; link: string; gruppe?: boolean }
+  | { art: "senden"; name: string; link: string; gruppe?: boolean; einladung?: boolean }
   | { art: "code"; person?: { id: string; name: string } }
   | { art: "codeEingeben" }
   | { art: "verbindung"; id: string };
@@ -113,18 +115,22 @@ export function PersonAvatar({ name, farbe, klein }: { name: string; farbe: stri
   );
 }
 
-function zuletzt(p: Person): string {
-  if (!p.linkAktiv) return "Link beendet";
+function zuletzt(p: Person, einladungBis?: string): string {
+  if (einladungBis) return `eingeladen · wartet auf Anmeldung bis ${formatZeitpunkt(einladungBis).replace(/ um .*$/, "")}`;
+  if (!p.linkAktiv) return p.linkErstelltAm ? "Link beendet" : "Einladung abgelaufen – neu senden";
   return p.zuletztGenutzt ? `zuletzt geöffnet ${formatZeitpunkt(p.zuletztGenutzt)}` : "noch nicht geöffnet";
 }
 
 /** Liste der Personen – auch eingebettet (Privatbereich „Teilen“). */
 export function PersonenListe({
   personen,
+  einladungen = {},
   onPerson,
   onNeu,
 }: {
   personen: Person[] | null;
+  /** Offene Einladungen: Person -> gültig bis. */
+  einladungen?: Record<string, string>;
   onPerson: (id: string) => void;
   onNeu: () => void;
 }) {
@@ -141,8 +147,8 @@ export function PersonenListe({
         <div className="h-20 animate-pulse rounded-[22px] bg-surface-sunken" />
       ) : personen.length === 0 ? (
         <p className="rounded-[22px] bg-surface px-4 py-5 text-center text-[14px] text-ink-muted ring-1 ring-line">
-          Noch niemand eingeladen. Lade deinen Partner, deine Familie oder Freunde ein – jede Person bekommt ihren
-          eigenen Link.
+          Noch niemand eingeladen. Lade deinen Partner, deine Familie oder Freunde ein – mit dem Link legen sie ihren
+          eigenen Kalender an und ihr seid verbunden.
         </p>
       ) : (
         <ul className="overflow-hidden rounded-[22px] bg-surface ring-1 ring-line">
@@ -153,7 +159,7 @@ export function PersonenListe({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[16px] font-semibold">{p.name}</span>
                   <span className="block truncate text-[12.5px] text-ink-muted">
-                    {artText(p.art)} · {zuletzt(p)}
+                    {artText(p.art)} · {zuletzt(p, einladungen[p.id])}
                   </span>
                 </span>
                 <span
@@ -286,7 +292,20 @@ function PersonFormular({
   );
 }
 
-function Senden({ name, link, vorname, gruppe = false }: { name: string; link: string; vorname: string; gruppe?: boolean }) {
+function Senden({
+  name,
+  link,
+  vorname,
+  gruppe = false,
+  einladung = false,
+}: {
+  name: string;
+  link: string;
+  vorname: string;
+  gruppe?: boolean;
+  /** Einladung mit eigenem Konto (Link zur Anmeldeseite, 7 Tage). */
+  einladung?: boolean;
+}) {
   const [qr, setQr] = useState<string | null>(null);
   const [kopiert, setKopiert] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -305,7 +324,9 @@ function Senden({ name, link, vorname, gruppe = false }: { name: string; link: s
 
   const nachricht = gruppe
     ? `Komm in unsere Gruppe „${name}“ – dann sehen wir, wann wir alle frei haben: ${link}`
-    : `Hallo ${name}, hier ist mein Schichtplan${vorname ? ` (${vorname})` : ""}: ${link}`;
+    : einladung
+      ? `Hallo ${name}, ich lade dich in meinen Schichtkalender ein${vorname ? ` (${vorname})` : ""}. Leg dir mit dem Link kurz ein Konto an, dann sehen wir gegenseitig unsere Schichten: ${link}`
+      : `Hallo ${name}, hier ist mein Schichtplan${vorname ? ` (${vorname})` : ""}: ${link}`;
 
   async function kopieren() {
     try {
@@ -320,7 +341,7 @@ function Senden({ name, link, vorname, gruppe = false }: { name: string; link: s
   async function sonstige() {
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: "Mein Schichtplan", text: nachricht, url: link });
+        await navigator.share({ title: einladung ? "Einladung zum Schichtkalender" : "Mein Schichtplan", text: nachricht, url: link });
       } catch {
         // abgebrochen
       }
@@ -406,8 +427,10 @@ function Senden({ name, link, vorname, gruppe = false }: { name: string; link: s
         </button>
         <p className="px-2 text-center text-[12px] text-ink-faint">
           {gruppe
-            ? "Wer den Link hat und einen eigenen Schichtkalender nutzt, kann der Gruppe beitreten."
-            : `Der Link wird nur jetzt angezeigt. Wer ihn hat, sieht deinen Kalender – gib ihn nur ${name}.`}
+            ? "Wer den Link hat, legt einen eigenen Kalender an (oder meldet sich an) und kann der Gruppe beitreten."
+            : einladung
+              ? `Der Link gilt 7 Tage und nur einmal. Mit ihm legt ${name} Spitzname und Passwort an und ist danach mit dir verbunden – gib ihn nur ${name}.`
+              : `Der Link wird nur jetzt angezeigt. Wer ihn hat, sieht deinen Kalender – gib ihn nur ${name}.`}
         </p>
       </div>
     </div>
@@ -634,16 +657,23 @@ export function KalenderTeilen({
   const [austretenFrage, setAustretenFrage] = useState(false);
   const zurueckZurListe = start === "liste";
   const [personen, setPersonen] = useState<Person[] | null>(null);
+  const [einladungen, setEinladungen] = useState<Record<string, string>>({});
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState(false);
   const [entfernenFrage, setEntfernenFrage] = useState(false);
 
   const laden = useCallback(async () => {
     try {
-      const [p, g, v] = await Promise.all([fetchPersonen(), fetchGruppen(), fetchVerbindungen().catch(() => [])]);
+      const [p, g, v, e] = await Promise.all([
+        fetchPersonen(),
+        fetchGruppen(),
+        fetchVerbindungen().catch(() => []),
+        fetchEinladungen().catch(() => ({})),
+      ]);
       setPersonen(p);
       setGruppen(g);
       setVerbindungen(v);
+      setEinladungen(e);
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Fehler beim Laden.");
     }
@@ -671,7 +701,7 @@ export function KalenderTeilen({
     }
   }
 
-  const linkZu = (schluessel: string) => `${window.location.origin}/partner/${schluessel}`;
+  const einladungsLink = (code: string) => `${window.location.origin}/verbinden/${code}`;
   const gruppenLink = (schluessel: string) => `${window.location.origin}/gruppe/${schluessel}`;
   const ende = zurueckZurListe ? () => setAnsicht({ art: "liste" }) : onClose;
   const fehlerBox = fehler ? <p className="mx-4 mb-3 rounded-xl bg-crit-bg px-3 py-2 text-[14px] text-crit-fg">{fehler}</p> : null;
@@ -686,6 +716,7 @@ export function KalenderTeilen({
           <p className="mb-3 px-1 text-[14.5px] text-ink-muted">Wer deinen Kalender sehen darf.</p>
           <PersonenListe
             personen={personen}
+            einladungen={einladungen}
             onNeu={() => setAnsicht({ art: "neu" })}
             onPerson={(id) => {
               setEntfernenFrage(false);
@@ -848,9 +879,9 @@ export function KalenderTeilen({
             laeuft={laeuft}
             onSenden={(p) =>
               void ausfuehren(async () => {
-                const { schluessel } = await personAnlegen(p);
+                const { code } = await einladungErstellen(p);
                 await geaendert();
-                setAnsicht({ art: "senden", name: p.name.trim(), link: linkZu(schluessel) });
+                setAnsicht({ art: "senden", name: p.name.trim(), link: einladungsLink(code), einladung: true });
               })
             }
           />
@@ -883,32 +914,29 @@ export function KalenderTeilen({
             />
             <button
               type="button"
-              onClick={() => setAnsicht({ art: "code", person: { id: p.id, name: p.name } })}
+              disabled={laeuft}
+              onClick={() =>
+                void ausfuehren(async () => {
+                  const { code } = await verbindungCodeErstellen(p.id);
+                  await geaendert();
+                  setAnsicht({ art: "senden", name: p.name, link: einladungsLink(code), einladung: true });
+                })
+              }
               className="mx-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-[#E6F1E9] px-4 py-3.5 text-left"
             >
               <Link2 className="h-5 w-5 shrink-0 text-[#1C6E49]" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">{p.name} hat jetzt einen eigenen Kalender?</span>
-                <span className="block text-[12.5px] text-ink-muted">Mit dem Konto verbinden – alles von {p.name} wird übernommen.</span>
+                <span className="block text-[15px] font-semibold">
+                  {einladungen[p.id] ? "Einladung noch einmal senden" : "Einladung senden"}
+                </span>
+                <span className="block text-[12.5px] text-ink-muted">
+                  {p.name} legt mit dem Link ein Konto an (oder meldet sich an) – danach seid ihr verbunden.
+                  {p.linkAktiv ? ` Was ${p.name} bisher eingetragen hat, bleibt.` : ""}
+                </span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
             </button>
             <div className="mx-4 overflow-hidden rounded-[18px] bg-surface ring-1 ring-line">
-              <button
-                type="button"
-                disabled={laeuft}
-                onClick={() =>
-                  void ausfuehren(async () => {
-                    const schluessel = await personLinkNeu(p.id);
-                    await geaendert();
-                    setAnsicht({ art: "senden", name: p.name, link: linkZu(schluessel) });
-                  })
-                }
-                className="flex w-full items-center justify-between px-4 py-3.5 text-left text-[15.5px] font-semibold text-brand-600"
-              >
-                {p.linkAktiv ? "Neuen Link senden" : "Link senden"}
-                <ChevronRight className="h-4 w-4" />
-              </button>
               {p.linkAktiv ? (
                 <button
                   type="button"
@@ -919,9 +947,9 @@ export function KalenderTeilen({
                       await geaendert();
                     })
                   }
-                  className="block w-full border-t border-line px-4 py-3.5 text-left text-[15.5px] font-semibold text-ink"
+                  className="block w-full px-4 py-3.5 text-left text-[15.5px] font-semibold text-ink"
                 >
-                  Link beenden
+                  Alten Link beenden
                   <span className="block text-[12.5px] font-normal text-ink-muted">
                     {p.name} sieht nichts mehr – Einträge bleiben.
                   </span>
@@ -1010,11 +1038,11 @@ export function KalenderTeilen({
     inhalt = (
       <>
         <Kopf
-          titel={ansicht.gruppe ? `Einladen in „${ansicht.name}“` : `Link an ${ansicht.name}`}
+          titel={ansicht.gruppe ? `Einladen in „${ansicht.name}“` : `Einladung an ${ansicht.name}`}
           onZurueck={zurueckZurListe ? ende : undefined}
           onClose={onClose}
         />
-        <Senden name={ansicht.name} link={ansicht.link} vorname={vorname} gruppe={ansicht.gruppe} />
+        <Senden name={ansicht.name} link={ansicht.link} vorname={vorname} gruppe={ansicht.gruppe} einladung={ansicht.einladung} />
       </>
     );
   }

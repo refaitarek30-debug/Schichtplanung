@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="16. Oktober 2026"
+      updated="17. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -432,11 +432,15 @@ export default function DatenschutzPage() {
         </Absatz>
         <Absatz>
           <strong>Teilen mit Personen (Partner, Familie, Freunde, Kollegen):</strong> Eine Person
-          kann bis zu 20 Personen ihres Vertrauens je einen eigenen Link schicken. Dafür speichert
-          sie einen frei gewählten Namen (z. B. „Mama“), die Art der Beziehung und für jede Person,
-          ob sie <em>nur ansehen</em> oder <em>ansehen und eintragen</em> darf und ob sie die
-          eigenen Termine sieht. Wer einen Link öffnet, braucht kein Konto und sieht ohne
-          Anmeldung:
+          kann bis zu 20 Personen ihres Vertrauens einladen. Dafür speichert sie einen frei
+          gewählten Namen (z. B. „Mama“), die Art der Beziehung und für jede Person, ob sie{" "}
+          <em>nur ansehen</em> oder <em>ansehen und eintragen</em> darf und ob sie die eigenen
+          Termine sieht. Die eingeladene Person öffnet einen Einladungslink, legt damit ein eigenes
+          Konto an (Spitzname und Passwort) oder meldet sich an und ist danach mit der einladenden
+          Person verbunden (siehe „Verbundene Konten“); die gewählten Rechte werden übernommen. Bis
+          dahin ist sie als „eingeladen“ vermerkt. Früher verschickte Links ohne Konto gelten
+          weiter, bis sie beendet werden; neue werden nicht mehr erstellt. Wer einen solchen
+          früheren Link öffnet, braucht kein Konto und sieht ohne Anmeldung:
         </Absatz>
         <Liste>
           <li>den Vornamen der einladenden Person und deren Schichten (Früh, Spät, Nacht, frei)</li>
@@ -470,9 +474,13 @@ export default function DatenschutzPage() {
         <Absatz>
           <strong>Verbundene Konten:</strong> Zwei Personen, die beide einen eigenen Kalender nutzen
           (mit Konto eines Unternehmens oder als Privatperson), können ihre Konten per Code, QR-Code
-          oder Link verbinden. Der Code hat 6 Zeichen, gilt 24 Stunden und nur einmal und wird nur
-          als Hashwert gespeichert; Fehleingaben werden je Konto gezählt (gegen Durchprobieren) und
-          nach einem Tag gelöscht. Verbundene sehen gegenseitig den Vornamen und für jeden Tag, ob
+          oder Link verbinden. Der Code hat 6 Zeichen, gilt 24 Stunden – als Einladungslink an eine
+          eingeladene Person 7 Tage – und nur einmal und wird nur als Hashwert gespeichert;
+          Fehleingaben werden je Konto gezählt (gegen Durchprobieren) und nach einem Tag gelöscht.
+          Die Einladungsseite zeigt ohne Anmeldung nur, ob der Link gilt, und den Vornamen der
+          einladenden Person; die Aufrufe werden dafür je Netzwerkadresse als Hashwert gezählt
+          (gegen Durchprobieren). Schichten erscheinen bei Verbundenen, in Gruppen und über
+          frühere Links in den Farben, die die jeweilige Person dafür gewählt hat. Verbundene sehen gegenseitig den Vornamen und für jeden Tag, ob
           gearbeitet wird (Früh, Spät, Nacht oder Arbeit), frei ist oder Urlaub –{" "}
           <strong>ohne Grund</strong>. Jede Seite stellt selbst ein, ob die andere ihre Termine sieht
           und ob sie Termine bei ihr eintragen darf; solche Termine stehen im Kalender der Person, bei
