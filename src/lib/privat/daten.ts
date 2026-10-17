@@ -205,19 +205,39 @@ export function farbStil(farbe: string): { backgroundColor: string; color: strin
   return { backgroundColor: farbe, color: textFarbe(farbe) };
 }
 
+/**
+ * Farbauswahl, nach Farbton sortiert. Gelb und Orange sind klar getrennt
+ * (Zitronengelb – Bernstein – Orange). Gespeicherte Farben bleiben gültig,
+ * auch wenn sie hier nicht mehr stehen.
+ */
 export const FARBEN = [
-  "#F5A524",
-  "#22A06B",
-  "#2F6FDE",
+  // Rot und Pink
   "#E5484D",
-  "#9B59D0",
-  "#F76B15",
-  "#0E9F9F",
+  "#B42318",
   "#D6409F",
+  "#F472B6",
+  // Orange und Gelb
+  "#F76B15",
+  "#F5A524",
+  "#FDE047",
+  // Grün
+  "#84CC16",
+  "#22A06B",
+  "#166534",
+  "#34D399",
+  "#0E9F9F",
+  // Blau
+  "#0EA5E9",
+  "#2F6FDE",
+  "#1E3A8A",
+  // Lila
+  "#C084FC",
+  "#9B59D0",
   "#6E56CF",
+  // Braun, Grau, Schwarz
   "#8D6E4E",
+  "#A1A1AA",
   "#5B6472",
-  "#12A594",
   "#1A1A1A",
 ];
 
