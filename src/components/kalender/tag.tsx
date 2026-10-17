@@ -679,6 +679,8 @@ export function Tagesansicht({
   const [zug, setZug] = useState<{ id: string; start: number; dauer: number; neu: number; y0: number; scroll0: number; bewegt: boolean } | null>(null);
   const halten = useRef<{ uhr: number; x: number; y: number; t: Termin; lage: Lage; wisch: boolean } | null>(null);
   const zugRef = useRef(zug);
+  /** Zeitpunkt, an dem zuletzt gezogen oder gewischt wurde – der Klick danach öffnet nichts. */
+  const nachZug = useRef(0);
   useEffect(() => {
     zugRef.current = zug;
   });
@@ -737,6 +739,7 @@ export function Tagesansicht({
         halten.current = null;
         if (h.wisch) {
           const w = wischRef.current;
+          nachZug.current = Date.now();
           setWisch(null);
           if (w && w.dx <= -70) setFrage(h.t);
           return;
@@ -747,6 +750,7 @@ export function Tagesansicht({
       }
       const z = zugRef.current;
       if (!z) return;
+      nachZug.current = Date.now();
       setZug(null);
       const t = termine.find((x) => x.id === z.id);
       if (t && z.neu !== z.start) onVerschieben(t, hhmm(z.neu), hhmm(Math.min(1439, z.neu + z.dauer)));
@@ -786,7 +790,8 @@ export function Tagesansicht({
   }
 
   function leerGetippt(e: React.MouseEvent<HTMLDivElement>) {
-    if (zug) return;
+    // Direkt nach dem Verschieben oder Wischen: kein neuer Termin.
+    if (zug || Date.now() - nachZug.current < 600) return;
     const r = e.currentTarget.getBoundingClientRect();
     const min = Math.max(0, Math.min(23 * 60 + 30, Math.floor((((e.clientY - r.top) / STUNDE) * 60) / 30) * 30));
     onTermin(null, hhmm(min));
@@ -1024,6 +1029,8 @@ export function Tagesansicht({
                     onClick={(e) => {
                       e.stopPropagation();
                       // Mit der Tastatur: öffnen (Maus und Finger laufen über pointerdown).
+                      // Nie direkt nach dem Verschieben – sonst ginge der Termin auf.
+                      if (Date.now() - nachZug.current < 600 || zugRef.current) return;
                       if (e.detail === 0) onTermin(l.t);
                     }}
                     onContextMenu={(e) => e.preventDefault()}

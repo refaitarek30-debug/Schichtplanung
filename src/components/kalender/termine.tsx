@@ -7,10 +7,10 @@ import { addDays, formatDE, fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 import type { Erinnerung, Termin, TerminEingabe, Wiederholung } from "@/lib/data/partner";
-import type { Rolle, Vorlage } from "@/lib/data/todos";
+import type { Vorlage } from "@/lib/data/todos";
 import type { LoeschModus } from "@/lib/data/verbindungen";
 import { ErinnerungHinweis } from "./erinnerungen";
-import { mitSymbol, rollenReihe, ROLLE_KURZ, TERMIN_VORSCHLAEGE, useVorlieben, WasPasstZuDir } from "./vorschlaege";
+import { mitSymbol, STANDARD_TERMINE, useVorlieben } from "./vorschlaege";
 
 /**
  * Termine im Kalender – Formular und Hilfen.
@@ -228,15 +228,6 @@ export function TerminBlatt({
 
   const mitVorschlaegen = vorschlaege && !termin && !nurLesen;
   const { vorlieben, setzen } = useVorlieben();
-  const [frage, setFrage] = useState(false);
-  useEffect(() => {
-    // Beim ersten Mal kurz fragen, wofür man den Kalender nutzt.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (mitVorschlaegen && vorlieben && !vorlieben.gefragt) setFrage(true);
-  }, [mitVorschlaegen, vorlieben]);
-  const reihe = rollenReihe(vorlieben?.rollen ?? []);
-  const [rolle, setRolle] = useState<Rolle | null>(null);
-  const aktiveRolle = rolle ?? reihe[0] ?? "anders";
   const [eigeneNeu, setEigeneNeu] = useState<{ titel: string; min: number } | null>(null);
   const [bearbeiten, setBearbeiten] = useState(false);
   const [vorlagenFehler, setVorlagenFehler] = useState<string | null>(null);
@@ -283,8 +274,6 @@ export function TerminBlatt({
     });
   }
 
-  if (frage) return <WasPasstZuDir onFertig={() => setFrage(false)} />;
-
   // An den Body gehängt: der Kalender steht auf dem Handy fest (eigene
   // Ebene unter der Navigation) – im Kalender selbst läge das Blatt sonst
   // unter der Navigationsleiste, und „Speichern“ wäre nicht zu erreichen.
@@ -325,28 +314,10 @@ export function TerminBlatt({
           {mitVorschlaegen ? (
             <div className="space-y-3 pt-4">
               <div
-                role="tablist"
-                aria-label="Vorschläge für"
-                className="-mx-5 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                aria-label="Vorschläge"
+                className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                {reihe.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    role="tab"
-                    aria-selected={aktiveRolle === r}
-                    onClick={() => setRolle(r)}
-                    className={cn(
-                      "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-semibold",
-                      aktiveRolle === r ? "bg-[#F5A524] text-ink" : "bg-ink/[0.06] text-ink-muted",
-                    )}
-                  >
-                    {ROLLE_KURZ[r]}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {TERMIN_VORSCHLAEGE[aktiveRolle].map((v) => (
+                {STANDARD_TERMINE.map((v) => (
                   <button key={v.titel} type="button" onClick={() => waehle(v)} className={pille(titel === mitSymbol(v))}>
                     {mitSymbol(v)}
                   </button>

@@ -37,6 +37,18 @@ export const ROLLE_KURZ: Record<Rolle, string> = {
   anders: "✨ Alltag",
 };
 
+/** Standard-Termine für alle: Symbol, Name, Dauer in Minuten (0 = ganztägig). */
+export const STANDARD_TERMINE: Vorlage[] = [
+  { icon: "🩺", titel: "Arzttermin", min: 60 },
+  { icon: "🦷", titel: "Zahnarzt", min: 60 },
+  { icon: "✈️", titel: "Reise", min: 0 },
+  { icon: "🎂", titel: "Geburtstag", min: 0 },
+  { icon: "🏋️", titel: "Sport", min: 60 },
+  { icon: "🎉", titel: "Treffen", min: 120 },
+  { icon: "💇", titel: "Friseur", min: 60 },
+  { icon: "🛒", titel: "Einkaufen", min: 60 },
+];
+
 /** Je Rolle fünf Termine: Symbol, Name, Dauer in Minuten (0 = ganztägig). */
 export const TERMIN_VORSCHLAEGE: Record<Rolle, Vorlage[]> = {
   schule: [
