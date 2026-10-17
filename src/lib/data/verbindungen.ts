@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 import { farbenAus, loescheTermin, speichereTermin, terminAusnahme, type FarbenCodes, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
 
 /**
@@ -38,7 +38,7 @@ export interface CodeInfo {
 class VerbindungsFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new VerbindungsFehler(dataErrorMessage(error) ?? standard);
+  throw new VerbindungsFehler(datenFehlerText(error, standard));
 }
 
 /** "K7P4QX" -> "K7P-4QX" */

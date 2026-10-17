@@ -292,6 +292,24 @@ export function PrivatKalender() {
   }
 
   // ---- Schreiben -----------------------------------------------------------
+  /**
+   * Speichern ging schief: nur die betroffenen Tage zurück wie vorher (andere,
+   * inzwischen gespeicherte Tage bleiben), dann den Stand frisch vom Server
+   * holen – falls ein Teil doch gespeichert wurde. Der Hinweis bleibt stehen.
+   */
+  async function nachFehler(liste: string[], vorher: Record<string, TagEintrag>, e: unknown) {
+    setTage((alt) => {
+      const neu = { ...alt };
+      for (const t of liste) {
+        if (vorher[t]) neu[t] = vorher[t];
+        else delete neu[t];
+      }
+      return neu;
+    });
+    await ladeJahre([...geladen.current], true);
+    setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+  }
+
   /** Eine Ebene setzen (null = diese Ebene leeren); optimistisch. */
   async function setzen(liste: string[], artId: string | null, ebene: Ebene) {
     const vorher = tage;
@@ -309,8 +327,7 @@ export function PrivatKalender() {
     try {
       await setzeTage(liste, artId, ebene);
     } catch (e) {
-      setTage(vorher);
-      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+      await nachFehler(liste, vorher, e);
     }
   }
 
@@ -324,8 +341,7 @@ export function PrivatKalender() {
     try {
       await leereTage(liste);
     } catch (e) {
-      setTage(vorher);
-      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+      await nachFehler(liste, vorher, e);
     }
   }
 
@@ -345,8 +361,7 @@ export function PrivatKalender() {
         await setzeTage([iso], zusatz, 2);
       }
     } catch (e) {
-      setTage(vorher);
-      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+      await nachFehler([iso], vorher, e);
     }
   }
 

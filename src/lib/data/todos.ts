@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 
 /**
  * To-dos und Vorlieben im Kalender – Migration 0154. Beides sieht nur die
@@ -20,7 +20,7 @@ export interface Todo {
 class KalenderFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new KalenderFehler(dataErrorMessage(error) ?? standard);
+  throw new KalenderFehler(datenFehlerText(error, standard));
 }
 
 export async function fetchTodos(): Promise<Todo[]> {

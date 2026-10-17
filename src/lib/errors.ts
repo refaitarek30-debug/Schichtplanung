@@ -124,6 +124,8 @@ export function istVoruebergehendeStoerung(error: FehlerInfo): boolean {
   ].some((muster) => message.includes(muster));
 }
 
+const ALLGEMEINER_DATENFEHLER = "Die Daten konnten nicht geladen werden.";
+
 /** Fehler bei Datenzugriffen – inklusive abgewiesener RLS-Zugriffe. */
 export function dataErrorMessage(error: FehlerInfo | null) {
   if (!error) return null;
@@ -150,7 +152,17 @@ export function dataErrorMessage(error: FehlerInfo | null) {
   if (code === "P0001" && error.message) {
     return verstaendlich(error.message);
   }
-  return "Die Daten konnten nicht geladen werden.";
+  return ALLGEMEINER_DATENFEHLER;
+}
+
+/**
+ * Wie `dataErrorMessage`, aber ohne konkrete Ursache gilt der Text des
+ * Aufrufers – beim Speichern also „…konnte nicht gespeichert werden.“ statt
+ * „…nicht geladen“. Sonst merkt niemand, dass ein Eintrag fehlt.
+ */
+export function datenFehlerText(error: FehlerInfo | null, standard: string): string {
+  const text = dataErrorMessage(error);
+  return !text || text === ALLGEMEINER_DATENFEHLER ? standard : text;
 }
 
 /**

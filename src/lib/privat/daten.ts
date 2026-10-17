@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { dataErrorMessage } from "@/lib/errors";
+import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 
 /** Privatbereich – Lesen und Schreiben im Browser (RLS: nur eigene Zeilen). */
 
@@ -28,7 +28,7 @@ export interface Feiertag {
 export class PrivatFehler extends Error {}
 
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
-  throw new PrivatFehler(dataErrorMessage(error) ?? standard);
+  throw new PrivatFehler(datenFehlerText(error, standard));
 }
 
 const zeit = (t: string | null) => (t ? t.slice(0, 5) : "");

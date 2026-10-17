@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { dataErrorMessage } from "@/lib/errors";
+import { datenFehlerText } from "@/lib/errors";
 import { LINK_UNGUELTIG, PartnerFehler, farbenAus, type FarbenCodes, type PartnerCode } from "./partner";
 
 /**
@@ -25,7 +25,7 @@ export interface GruppenMitglied {
 
 function fehler(error: { message?: string; code?: string } | null, standard: string): never {
   if (error?.code === "PT404") throw new PartnerFehler(LINK_UNGUELTIG);
-  throw new PartnerFehler(dataErrorMessage(error) ?? standard);
+  throw new PartnerFehler(datenFehlerText(error, standard));
 }
 
 export async function fetchGruppen(): Promise<Gruppe[]> {
