@@ -495,3 +495,15 @@ body {
     max-width: 100%;
   }
 }
+
+/* Pinsel-Leiste im Kalender: kommt von unten herein. */
+@keyframes pinsel-hoch {
+  from {
+    transform: translateY(18px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}

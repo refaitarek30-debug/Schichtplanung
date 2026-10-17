@@ -7,7 +7,22 @@ import { loescheEigeneArt, speichereEigeneArt, type EigeneArtEingabe } from "@/l
 import { FARBEN, farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
-/** Eigenen Eintrag anlegen oder bearbeiten: Name, Kürzel, Farbe, Uhrzeit. */
+/**
+ * Kürzel aus dem Namen: zwei Wörter → Anfangsbuchstaben („Halber Tag“ → HT),
+ * ein Wort → die ersten zwei Buchstaben („Nebenjob“ → NE). Ohne Buchstaben
+ * (nur ein Emoji) das erste Zeichen.
+ */
+export function kuerzelAus(name: string): string {
+  const woerter = name
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+  if (woerter.length >= 2) return (Array.from(woerter[0]!)[0]! + Array.from(woerter[1]!)[0]!).toUpperCase();
+  if (woerter.length === 1) return Array.from(woerter[0]!).slice(0, 2).join("").toUpperCase();
+  return Array.from(name.trim()).slice(0, 1).join("");
+}
+
+/** Eigenen Eintrag anlegen oder bearbeiten: Name, Farbe, Uhrzeit. Das Kürzel kommt aus dem Namen. */
 export function EigeneArtBlatt({
   wert,
   onClose,
@@ -28,7 +43,6 @@ export function EigeneArtBlatt({
 
   async function speichern() {
     if (!a.name.trim()) return setFehler("Bitte einen Namen eingeben.");
-    if (!a.kuerzel.trim()) return setFehler("Bitte ein Kürzel (1–3 Zeichen) eingeben.");
     if ((a.beginn && !a.ende) || (!a.beginn && a.ende)) {
       return setFehler("Bitte Beginn und Ende angeben – oder beides leer lassen.");
     }
@@ -116,34 +130,25 @@ export function EigeneArtBlatt({
           >
             {a.kuerzel || "?"}
           </span>
-          <span className="text-[13px] text-ink-muted">So sieht der Eintrag im Kalender aus.</span>
+          <span className="text-[13px] text-ink-muted">
+            {a.kuerzel ? `Kürzel „${a.kuerzel}“ – kommt automatisch aus dem Namen.` : "Das Kürzel kommt automatisch aus dem Namen."}
+          </span>
         </div>
-        <div className="grid grid-cols-[1fr_6rem] gap-3">
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Name</span>
-            <input
-              id="eigen-name"
-              value={a.name}
-              maxLength={30}
-              onChange={(e) => setze("name", e.target.value)}
-              className={feld}
-              placeholder="z. B. Nebenjob"
-              autoComplete="off"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Kürzel</span>
-            <input
-              id="eigen-kuerzel"
-              value={a.kuerzel}
-              maxLength={3}
-              onChange={(e) => setze("kuerzel", e.target.value.toUpperCase())}
-              className={feld}
-              placeholder="NJ"
-              autoComplete="off"
-            />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Name</span>
+          <input
+            id="eigen-name"
+            value={a.name}
+            maxLength={30}
+            onChange={(e) => {
+              const name = e.target.value;
+              setA((alt) => ({ ...alt, name, kuerzel: kuerzelAus(name) }));
+            }}
+            className={feld}
+            placeholder="z. B. Nebenjob"
+            autoComplete="off"
+          />
+        </label>
 
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Farbe</span>
@@ -165,13 +170,25 @@ export function EigeneArtBlatt({
         <div>
           <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Uhrzeit (wenn du willst)</span>
           <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="sr-only">Beginn</span>
-              <input id="eigen-beginn" type="time" value={a.beginn} onChange={(e) => setze("beginn", e.target.value)} className={feld} />
+            <label className="block min-w-0">
+              <span className="mb-1 block text-[12px] text-ink-faint">von</span>
+              <input
+                id="eigen-beginn"
+                type="time"
+                value={a.beginn}
+                onChange={(e) => setze("beginn", e.target.value)}
+                className={cn(feld, "block h-12 min-w-0 appearance-none")}
+              />
             </label>
-            <label className="block">
-              <span className="sr-only">Ende</span>
-              <input id="eigen-ende" type="time" value={a.ende} onChange={(e) => setze("ende", e.target.value)} className={feld} />
+            <label className="block min-w-0">
+              <span className="mb-1 block text-[12px] text-ink-faint">bis</span>
+              <input
+                id="eigen-ende"
+                type="time"
+                value={a.ende}
+                onChange={(e) => setze("ende", e.target.value)}
+                className={cn(feld, "block h-12 min-w-0 appearance-none")}
+              />
             </label>
           </div>
           {a.beginn || a.ende ? (
