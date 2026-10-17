@@ -129,53 +129,228 @@ export function EintragPille({
 
 // ---- Am Tag: Termine und To-dos ---------------------------------------------------
 
+const WISCH_OFFEN = 96;
+
+/**
+ * Eine Termin-Zeile: antippen = öffnen, nach links wischen = „Löschen“ zeigen,
+ * lange drücken = Nachfrage zum Löschen.
+ */
+function TerminZeile({
+  t,
+  von,
+  darfLoeschen,
+  onTermin,
+  onLoeschen,
+  onFrage,
+}: {
+  t: Termin;
+  von: { name: string; farbe: string } | null;
+  darfLoeschen: boolean;
+  onTermin: (t: Termin) => void;
+  onLoeschen: (t: Termin) => void;
+  onFrage: (t: Termin) => void;
+}) {
+  const erinnerung = erinnerungText(t.erinnerung);
+  const [dx, setDx] = useState(0);
+  const [zieht, setZieht] = useState(false);
+  const offen = dx <= -WISCH_OFFEN / 2 && !zieht;
+  const g = useRef<{ x: number; y: number; dx0: number; modus: "?" | "wischen" | "scroll"; uhr: number | null; lang: boolean } | null>(null);
+  const geschluckt = useRef(false);
+
+  function uhrStopp() {
+    if (g.current?.uhr) window.clearTimeout(g.current.uhr);
+    if (g.current) g.current.uhr = null;
+  }
+
+  function runter(e: React.PointerEvent<HTMLElement>) {
+    if (!darfLoeschen || (e.pointerType === "mouse" && e.button !== 0)) return;
+    geschluckt.current = false;
+    const uhr = window.setTimeout(() => {
+      if (!g.current) return;
+      g.current.uhr = null;
+      g.current.lang = true;
+      geschluckt.current = true;
+      try {
+        navigator.vibrate?.(12);
+      } catch {
+        // ohne Vibration
+      }
+      onFrage(t);
+    }, 500);
+    g.current = { x: e.clientX, y: e.clientY, dx0: dx, modus: "?", uhr, lang: false };
+  }
+  function bewegt(e: React.PointerEvent<HTMLElement>) {
+    const s = g.current;
+    if (!s || s.modus === "scroll" || s.lang) return;
+    const mx = e.clientX - s.x;
+    const my = e.clientY - s.y;
+    if (s.modus === "?") {
+      if (Math.hypot(mx, my) < 8) return;
+      uhrStopp();
+      if (Math.abs(mx) > Math.abs(my) * 1.4) {
+        s.modus = "wischen";
+        setZieht(true);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          // ohne Capture
+        }
+      } else {
+        s.modus = "scroll";
+        return;
+      }
+    }
+    setDx(Math.max(-WISCH_OFFEN - 24, Math.min(0, s.dx0 + mx)));
+  }
+  function hoch() {
+    const s = g.current;
+    g.current = null;
+    if (s?.uhr) window.clearTimeout(s.uhr);
+    if (s?.modus === "wischen") {
+      geschluckt.current = true;
+      setZieht(false);
+      setDx((d) => (d <= -WISCH_OFFEN / 2 ? -WISCH_OFFEN : 0));
+    }
+  }
+  function abbruch() {
+    uhrStopp();
+    g.current = null;
+    setZieht(false);
+    setDx((d) => (d <= -WISCH_OFFEN / 2 ? -WISCH_OFFEN : 0));
+  }
+
+  return (
+    <li className="relative overflow-hidden rounded-[16px]">
+      {darfLoeschen ? (
+        <button
+          type="button"
+          onClick={() => onLoeschen(t)}
+          tabIndex={offen ? 0 : -1}
+          aria-hidden={!offen}
+          aria-label={`${t.titel || "Termin"} löschen`}
+          className="absolute inset-y-0 right-0 flex items-center justify-center gap-1.5 bg-[#e5484d] pl-3 text-[14px] font-bold text-white"
+          style={{ width: WISCH_OFFEN }}
+        >
+          <Trash2 className="h-[18px] w-[18px]" /> Löschen
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => {
+          if (geschluckt.current) {
+            geschluckt.current = false;
+            return;
+          }
+          if (dx !== 0) {
+            setDx(0);
+            return;
+          }
+          onTermin(t);
+        }}
+        onPointerDown={runter}
+        onPointerMove={bewegt}
+        onPointerUp={hoch}
+        onPointerCancel={abbruch}
+        onContextMenu={(e) => e.preventDefault()}
+        className={cn(
+          "relative flex w-full touch-pan-y select-none items-center gap-3 rounded-[16px] bg-[#f1f2f5] px-3.5 py-2.5 text-left [-webkit-touch-callout:none] active:brightness-95",
+          !zieht && "transition-transform duration-200",
+        )}
+        style={{ transform: `translateX(${dx}px)` }}
+      >
+        <span
+          aria-hidden
+          className={cn("h-2.5 w-2.5 shrink-0 rounded-full", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
+          style={von ? { backgroundColor: von.farbe } : undefined}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold">
+            {t.titel || "Termin"}
+            {t.vonPartner ? <span className="ml-1 text-[12px] font-medium text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
+          </span>
+          <span className="tnum block text-[12.5px] text-ink-muted">
+            {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
+            {erinnerung ? ` · 🔔 ${erinnerung}` : ""}
+          </span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** Nachfrage vor dem Löschen eines Termins. */
+export function TerminLoeschenFrage({ termin, onJa, onClose }: { termin: Termin; onJa: () => void; onClose: () => void }) {
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", taste);
+    return () => window.removeEventListener("keydown", taste);
+  }, [onClose]);
+  const serie = termin.wiederholung !== "nie";
+  return createPortal(
+    <div
+      className="privat privat-schrift fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      onClick={onClose}
+    >
+      <div
+        role="alertdialog"
+        aria-label="Termin löschen"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-[24px] bg-white p-4 shadow-[0_20px_50px_rgba(31,41,77,0.3)]"
+      >
+        <p className="text-[17px] font-bold">🗑️ Termin löschen?</p>
+        <p className="mt-1 text-[14px] text-ink-muted">
+          „{termin.titel || "Termin"}“{serie ? " und alle Wiederholungen" : ""} wird gelöscht.
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onClose} className="h-12 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold">
+            Abbrechen
+          </button>
+          <button type="button" onClick={onJa} className="h-12 rounded-[16px] bg-[#e5484d] text-[15px] font-bold text-white">
+            Löschen
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function AmTag({
   termine,
   todos,
   terminVon,
   onTermin,
   onTodo,
+  onLoeschen,
+  darfLoeschen,
 }: {
   termine: Termin[];
   todos: Todo[];
   terminVon: (t: Termin) => { name: string; farbe: string } | null;
   onTermin: (t: Termin) => void;
   onTodo: (id: string, an: boolean) => void;
+  /** Termin löschen (Wischen nach links oder langes Drücken). */
+  onLoeschen?: (t: Termin) => void;
+  /** Welche Termine man löschen darf; ohne Angabe: alle, wenn onLoeschen da ist. */
+  darfLoeschen?: (t: Termin) => boolean;
 }) {
+  const [frage, setFrage] = useState<Termin | null>(null);
   if (!termine.length && !todos.length) return null;
   return (
     <div className="mt-3">
       <p className="mb-1.5 text-[12.5px] font-semibold text-ink-muted">Am Tag</p>
       <ul className="space-y-1.5">
-        {termine.map((t) => {
-          const von = terminVon(t);
-          const erinnerung = erinnerungText(t.erinnerung);
-          return (
-            <li key={`t-${t.id}`}>
-              <button
-                type="button"
-                onClick={() => onTermin(t)}
-                className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.045] px-3.5 py-2.5 text-left active:bg-ink/[0.08]"
-              >
-                <span
-                  aria-hidden
-                  className={cn("h-2.5 w-2.5 shrink-0 rounded-full", !von && (t.vonPartner ? "bg-brand-500" : "bg-ink-faint"))}
-                  style={von ? { backgroundColor: von.farbe } : undefined}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[15px] font-semibold">
-                    {t.titel || "Termin"}
-                    {t.vonPartner ? <span className="ml-1 text-[12px] font-medium text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
-                  </span>
-                  <span className="tnum block text-[12.5px] text-ink-muted">
-                    {t.ganztaegig ? "ganztägig" : `${t.von}${t.bis ? `–${t.bis}` : ""}`}
-                    {erinnerung ? ` · 🔔 ${erinnerung}` : ""}
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
+        {termine.map((t) => (
+          <TerminZeile
+            key={`t-${t.id}`}
+            t={t}
+            von={terminVon(t)}
+            darfLoeschen={!!onLoeschen && (darfLoeschen ? darfLoeschen(t) : true)}
+            onTermin={onTermin}
+            onLoeschen={(x) => onLoeschen?.(x)}
+            onFrage={setFrage}
+          />
+        ))}
         {todos.map((t) => (
           <li key={`d-${t.id}`}>
             <label className="flex items-center gap-3 rounded-[16px] bg-ink/[0.045] px-3.5 py-2.5">
@@ -193,6 +368,17 @@ export function AmTag({
           </li>
         ))}
       </ul>
+      {frage ? (
+        <TerminLoeschenFrage
+          termin={frage}
+          onJa={() => {
+            const t = frage;
+            setFrage(null);
+            onLoeschen?.(t);
+          }}
+          onClose={() => setFrage(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -469,6 +655,8 @@ export function Tagesansicht({
   terminVon,
   onTermin,
   onVerschieben,
+  onLoeschen,
+  darfLoeschen,
   onTodo,
   onTodos,
   onClose,
@@ -486,10 +674,20 @@ export function Tagesansicht({
   /** Termin öffnen; ohne Termin: neuer Termin ab startZeit. */
   onTermin: (t: Termin | null, startZeit?: string) => void;
   onVerschieben: (t: Termin, von: string, bis: string) => void;
+  /** Termin löschen: nach links wischen oder gedrückt halten und loslassen. */
+  onLoeschen?: (t: Termin) => void;
+  darfLoeschen?: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
   onClose: () => void;
 }) {
+  const darf = (t: Termin) => !!onLoeschen && (darfLoeschen ? darfLoeschen(t) : true);
+  const [frage, setFrage] = useState<Termin | null>(null);
+  const [wisch, setWisch] = useState<{ id: string; dx: number } | null>(null);
+  const wischRef = useRef(wisch);
+  useEffect(() => {
+    wischRef.current = wisch;
+  });
   const termine = termineAm(iso);
   const ganzeTermine = termine.filter((t) => t.ganztaegig);
   const lagen = anordnen(termine);
@@ -499,8 +697,8 @@ export function Tagesansicht({
   const offen = tagTodos.filter((t) => !t.erledigt).length;
 
   const flaeche = useRef<HTMLDivElement>(null);
-  const [zug, setZug] = useState<{ id: string; start: number; dauer: number; neu: number; y0: number; scroll0: number } | null>(null);
-  const halten = useRef<{ uhr: number; x: number; y: number; t: Termin; lage: Lage } | null>(null);
+  const [zug, setZug] = useState<{ id: string; start: number; dauer: number; neu: number; y0: number; scroll0: number; bewegt: boolean } | null>(null);
+  const halten = useRef<{ uhr: number; x: number; y: number; t: Termin; lage: Lage; wisch: boolean } | null>(null);
   const zugRef = useRef(zug);
   useEffect(() => {
     zugRef.current = zug;
@@ -528,8 +726,17 @@ export function Tagesansicht({
     function bewegen(e: PointerEvent) {
       const h = halten.current;
       if (h && Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) {
-        window.clearTimeout(h.uhr);
-        halten.current = null;
+        const mx = e.clientX - h.x;
+        const my = e.clientY - h.y;
+        if (!h.wisch && darf(h.t) && mx < 0 && Math.abs(mx) > Math.abs(my) * 1.4) h.wisch = true;
+        if (h.wisch) {
+          // Nach links wischen: Termin folgt dem Finger.
+          window.clearTimeout(h.uhr);
+          setWisch({ id: h.t.id, dx: Math.max(-140, Math.min(0, mx)) });
+        } else {
+          window.clearTimeout(h.uhr);
+          halten.current = null;
+        }
       }
       const z = zugRef.current;
       const el = flaeche.current;
@@ -541,14 +748,20 @@ export function Tagesansicht({
       else if (e.clientY > r.bottom - 28) el.scrollTop += 5;
       const delta = ((e.clientY - z.y0 + (el.scrollTop - z.scroll0)) / STUNDE) * 60;
       const neu = Math.max(0, Math.min(1440 - z.dauer, Math.round((z.start + delta) / 15) * 15));
-      if (neu !== z.neu) setZug({ ...z, neu });
+      if (neu !== z.neu) setZug({ ...z, neu, bewegt: z.bewegt || neu !== z.start });
     }
     function los() {
       const h = halten.current;
       if (h) {
-        // Kurz getippt: öffnen.
         window.clearTimeout(h.uhr);
         halten.current = null;
+        if (h.wisch) {
+          const w = wischRef.current;
+          setWisch(null);
+          if (w && w.dx <= -70) setFrage(h.t);
+          return;
+        }
+        // Kurz getippt: öffnen.
         onTermin(h.t);
         return;
       }
@@ -557,6 +770,8 @@ export function Tagesansicht({
       setZug(null);
       const t = termine.find((x) => x.id === z.id);
       if (t && z.neu !== z.start) onVerschieben(t, hhmm(z.neu), hhmm(Math.min(1439, z.neu + z.dauer)));
+      // Gehalten, aber nicht bewegt: Löschen anbieten.
+      else if (t && !z.bewegt && darf(t)) setFrage(t);
     }
     window.addEventListener("pointermove", bewegen, { passive: false });
     window.addEventListener("pointerup", los);
@@ -566,7 +781,9 @@ export function Tagesansicht({
       window.removeEventListener("pointerup", los);
       window.removeEventListener("pointercancel", los);
     };
-  }, [termine, onTermin, onVerschieben]);
+    // darf hängt nur von den Props ab
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termine, onTermin, onVerschieben, onLoeschen, darfLoeschen]);
 
   function druck(e: React.PointerEvent, l: Lage) {
     e.stopPropagation();
@@ -583,9 +800,9 @@ export function Tagesansicht({
       } catch {
         // ohne Vibration
       }
-      setZug({ id: l.t.id, start: l.start, dauer: l.ende - l.start, neu: l.start, y0, scroll0: flaeche.current?.scrollTop ?? 0 });
+      setZug({ id: l.t.id, start: l.start, dauer: l.ende - l.start, neu: l.start, y0, scroll0: flaeche.current?.scrollTop ?? 0, bewegt: false });
     }, 280);
-    halten.current = { uhr, x, y: y0, t: l.t, lage: l };
+    halten.current = { uhr, x, y: y0, t: l.t, lage: l, wisch: false };
   }
 
   function leerGetippt(e: React.MouseEvent<HTMLDivElement>) {
@@ -707,7 +924,9 @@ export function Tagesansicht({
       ) : null}
 
       {!lagen.length ? (
-        <p className="px-4 pb-1.5 text-[12px] text-ink-muted">Uhrzeit antippen = neuer Termin · Termin halten &amp; ziehen = verschieben</p>
+        <p className="px-4 pb-1.5 text-[12px] text-ink-muted">
+          Uhrzeit antippen = neuer Termin · Termin halten &amp; ziehen = verschieben · nach links wischen = löschen
+        </p>
       ) : null}
       <div
         ref={flaeche}
@@ -773,13 +992,14 @@ export function Tagesansicht({
                       if (e.detail === 0) onTermin(l.t);
                     }}
                     onContextMenu={(e) => e.preventDefault()}
-                    aria-label={`${l.t.titel || "Termin"}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben."}`}
+                    aria-label={`${l.t.titel || "Termin"}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben oder Löschen."}`}
                     className={cn(
                       "absolute z-[2] flex touch-none select-none flex-col overflow-hidden rounded-[12px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
                       zieht ? "z-[4] bg-[#FFF4E0] shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "bg-surface shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
                     )}
                     style={{
                       ...box(zieht && zug ? zug.neu : l.start),
+                      ...(wisch?.id === l.t.id ? { transform: `translateX(${wisch.dx}px)`, opacity: wisch.dx <= -70 ? 0.55 : 1 } : null),
                       ...(von && !zieht ? { boxShadow: `inset 3px 0 0 ${von.farbe}, 0 2px 8px rgba(31,41,77,0.1)` } : null),
                     }}
                   >
@@ -800,6 +1020,17 @@ export function Tagesansicht({
           </div>
         </div>
       </div>
+      {frage ? (
+        <TerminLoeschenFrage
+          termin={frage}
+          onJa={() => {
+            const t = frage;
+            setFrage(null);
+            onLoeschen?.(t);
+          }}
+          onClose={() => setFrage(null)}
+        />
+      ) : null}
     </div>,
     document.body,
   );

@@ -384,6 +384,9 @@ export function MeinKalenderGlas() {
   /** Verbundene Konten, bei denen ich eintragen darf. */
   const ziele = andere.verbindungen.filter((v) => v.erDarf).map((v) => ({ id: v.partner, name: v.name || "Verbunden" }));
 
+  /** Eigene Termine und Einträge bei Verbundenen darf man löschen, fremde nicht. */
+  const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === profile.id : true);
+
   async function terminVerschieben(t: Termin, von: string, bis: string) {
     setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
     await terminSpeichern({ ...t, von, bis }, t.inhaber ? t : null);
@@ -929,6 +932,8 @@ export function MeinKalenderGlas() {
             setTerminBlatt({ datum: tagBlatt.iso, termin: t });
             setTagBlatt(null);
           }}
+          onTerminLoeschen={(t) => void terminLoeschen(t)}
+          darfLoeschen={darfTerminLoeschen}
           onPartner={(key) => {
             setPartnerBlatt({ iso: tagBlatt.iso, person: key ?? andere.knoten[0]?.key ?? null });
             setTagBlatt(null);
@@ -980,6 +985,8 @@ export function MeinKalenderGlas() {
           terminVon={andere.terminVon}
           onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
           onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
+          onLoeschen={(t) => void terminLoeschen(t)}
+          darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
           onClose={() => setTagAnsicht(null)}
@@ -1204,6 +1211,8 @@ function TagBlatt({
   onEigen,
   onNeueArt,
   onTermin,
+  onTerminLoeschen,
+  darfLoeschen,
   onTodo,
   onTodos,
   onTag,
@@ -1224,6 +1233,8 @@ function TagBlatt({
   onEigen: (id: string | null) => void;
   onNeueArt: () => void;
   onTermin: (t: Termin | null) => void;
+  onTerminLoeschen: (t: Termin) => void;
+  darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
   onTag: () => void;
@@ -1312,7 +1323,15 @@ function TagBlatt({
         }
       />
 
-      <AmTag termine={termine} todos={todos} terminVon={terminVon} onTermin={onTermin} onTodo={onTodo} />
+      <AmTag
+        termine={termine}
+        todos={todos}
+        terminVon={terminVon}
+        onTermin={onTermin}
+        onTodo={onTodo}
+        onLoeschen={onTerminLoeschen}
+        darfLoeschen={darfLoeschen}
+      />
       <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
       <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
       <button
