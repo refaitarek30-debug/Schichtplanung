@@ -35,7 +35,7 @@ export interface AboTermin {
   ganztaegig: boolean;
   beginn: string | null; // HH:MM
   ende: string | null; // HH:MM
-  wiederholung: "nie" | "taeglich" | "woechentlich" | "monatlich";
+  wiederholung: "nie" | "taeglich" | "woechentlich" | "monatlich" | "jaehrlich";
   notiz: string;
   ort: string;
   /** Tage, an denen ein wiederholender Termin ausfällt (Migration 0161). */
@@ -58,6 +58,7 @@ const RRULE: Record<AboTermin["wiederholung"], string | null> = {
   taeglich: "FREQ=DAILY",
   woechentlich: "FREQ=WEEKLY",
   monatlich: "FREQ=MONTHLY",
+  jaehrlich: "FREQ=YEARLY",
 };
 
 export function teilAusDatei(datei: string): AboTeil | null {

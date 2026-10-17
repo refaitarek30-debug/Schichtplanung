@@ -42,7 +42,7 @@ export const STANDARD_TERMINE: Vorlage[] = [
   { icon: "🩺", titel: "Arzttermin", min: 60 },
   { icon: "🦷", titel: "Zahnarzt", min: 60 },
   { icon: "✈️", titel: "Reise", min: 0 },
-  { icon: "🎂", titel: "Geburtstag", min: 0 },
+  { icon: "🎂", titel: "Geburtstag", min: 0, jaehrlich: true },
   { icon: "🏋️", titel: "Sport", min: 60 },
   { icon: "🎉", titel: "Treffen", min: 120 },
   { icon: "💇", titel: "Friseur", min: 60 },
