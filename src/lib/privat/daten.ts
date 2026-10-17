@@ -218,6 +218,7 @@ export const FARBEN = [
   "#8D6E4E",
   "#5B6472",
   "#12A594",
+  "#1A1A1A",
 ];
 
 export const ART_TEXT: Record<SchichtArt, string> = {
