@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type React from "react";
 import { createPortal } from "react-dom";
 import { formatDE } from "@/lib/dates";
-import type { PartnerCode } from "@/lib/data/partner";
+import type { FarbenCodes, PartnerCode } from "@/lib/data/partner";
+import { textFarbe } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,6 +31,39 @@ export const PARTNER_SCHICHTEN: { code: PartnerSchicht; text: string; lang: stri
 export function partnerText(code: PartnerSchicht, lang = false): string {
   const s = PARTNER_SCHICHTEN.find((x) => x.code === code);
   return (lang ? s?.lang : s?.text) ?? code;
+}
+
+/** Standardfarben der Schichtarten, wenn die Person keine eigenen gewählt hat. */
+export const STANDARD_CODE_FARBE: Record<PartnerSchicht, string> = {
+  F: "#F5A524",
+  S: "#22A06B",
+  N: "#2F6FDE",
+  T: "#7C8CF8",
+  U: "#9B59D0",
+  X: "#D5D9E2",
+};
+
+/** Farbe einer Schicht: die der Person, sonst die Standardfarbe. */
+export function codeFarbe(code: PartnerSchicht, farben?: FarbenCodes | null): string {
+  return farben?.[code] ?? STANDARD_CODE_FARBE[code];
+}
+
+/** Gefüllte Fläche mit gut lesbarer Schrift in dieser Farbe. */
+export function codeStil(code: PartnerSchicht, farben?: FarbenCodes | null): React.CSSProperties {
+  const f = codeFarbe(code, farben);
+  return { backgroundColor: f, color: textFarbe(f) };
+}
+
+/** Farben der Termine in der Partner-Ansicht: die der Person, die sie eingetragen hat. */
+export const TERMIN_FARBE_INHABER = "#6C8CFF";
+export const TERMIN_FARBE_GAST = "#22A06B";
+
+/** Helle, deckende Karte mit farbigem Streifen links. */
+export function terminKarteStil(farbe: string): React.CSSProperties {
+  return {
+    backgroundColor: `color-mix(in srgb, ${farbe} 20%, #ffffff)`,
+    boxShadow: `inset 4px 0 0 ${farbe}`,
+  };
 }
 
 /** Umriss in der Farbe der Schicht – gefüllt sind nur die eigenen. */

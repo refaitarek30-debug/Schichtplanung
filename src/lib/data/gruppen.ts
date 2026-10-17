@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import { LINK_UNGUELTIG, PartnerFehler, type PartnerCode } from "./partner";
+import { LINK_UNGUELTIG, PartnerFehler, farbenAus, type FarbenCodes, type PartnerCode } from "./partner";
 
 /**
  * Gruppen (Familie, Freunde) mit eigenem Konto – Migration 0152. Mitglieder
@@ -93,6 +93,7 @@ export interface GruppenAnderer {
   name: string;
   gruppen: string[];
   tage: Record<string, PartnerCode>;
+  farben?: FarbenCodes;
 }
 
 /** Die anderen aus allen eigenen Gruppen – für den eigenen Kalender. */
@@ -100,7 +101,7 @@ export async function fetchGruppenAndere(von: string, tage: number): Promise<Gru
   if (!isSupabaseConfigured) return [];
   const { data, error } = await createClient().rpc("meine_gruppen_tage", { p_von: von, p_tage: tage });
   if (error) fehler(error, "Die Gruppen konnten nicht geladen werden.");
-  return (data ?? []) as GruppenAnderer[];
+  return ((data ?? []) as (GruppenAnderer & { farben?: unknown })[]).map((g) => ({ ...g, farben: farbenAus(g.farben) }));
 }
 
 /** Hat an dem Tag frei: frei, abwesend oder nichts eingetragen. */

@@ -13,6 +13,22 @@ import { dataErrorMessage } from "@/lib/errors";
 
 export type PartnerCode = "F" | "S" | "N" | "T" | "U" | "X";
 
+/** Eigene Farben einer Person für die Schichtarten (fehlt eine: Standardfarbe). */
+export type FarbenCodes = Partial<Record<PartnerCode, string>>;
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Nur gültige Farben übernehmen, was die Datenbank liefert. */
+export function farbenAus(roh: unknown): FarbenCodes {
+  const aus: FarbenCodes = {};
+  if (roh && typeof roh === "object") {
+    for (const [k, v] of Object.entries(roh as Record<string, unknown>)) {
+      if ("FSNTUX".includes(k) && k.length === 1 && typeof v === "string" && HEX.test(v)) aus[k as PartnerCode] = v;
+    }
+  }
+  return aus;
+}
+
 export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich";
 
 /**
@@ -332,6 +348,8 @@ export interface PartnerKalender {
   /** Darf eigene Tage und Termine eintragen (sonst nur ansehen). */
   darfEintragen: boolean;
   termineGeteilt: boolean;
+  /** Farben des Inhabers für seine Schichten. */
+  farben: FarbenCodes;
   /** Tag -> [Schicht des Inhabers, Schicht des Partners]. */
   tage: Map<string, [PartnerCode | null, PartnerCode | null]>;
   termine: Termin[];
@@ -358,6 +376,7 @@ export async function fetchPartnerKalender(token: string, von: string, tage: num
     gast?: string;
     darfEintragen?: boolean;
     termineGeteilt?: boolean;
+    farben?: unknown;
     termine?: Termin[];
     tage: [string, PartnerCode | null, PartnerCode | null][];
   };
@@ -369,6 +388,7 @@ export async function fetchPartnerKalender(token: string, von: string, tage: num
     // Ältere Antworten ohne das Feld: wie bisher eintragen lassen.
     darfEintragen: roh?.darfEintragen !== false,
     termineGeteilt: roh?.termineGeteilt === true,
+    farben: farbenAus(roh?.farben),
     tage: karte,
     termine: roh?.termine ?? [],
   };

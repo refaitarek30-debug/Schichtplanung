@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import { loescheTermin, speichereTermin, terminAusnahme, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
+import { farbenAus, loescheTermin, speichereTermin, terminAusnahme, type FarbenCodes, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
 
 /**
  * Verbundene Konten (Migration 0157): zwei Personen mit eigenem Kalender
@@ -89,13 +89,18 @@ export async function verbindungBeenden(id: string) {
   if (error) fehler(error, "Die Verbindung konnte nicht beendet werden.");
 }
 
-/** Schichten der verbundenen Konten je Tag (höchstens 62 Tage). */
-export async function fetchVerbundeneTage(von: string, tage: number): Promise<Record<string, Record<string, PartnerCode>>> {
+/** Schichten der verbundenen Konten je Tag (höchstens 62 Tage), mit ihren Farben. */
+export async function fetchVerbundeneTage(
+  von: string,
+  tage: number,
+): Promise<Record<string, { tage: Record<string, PartnerCode>; farben: FarbenCodes }>> {
   if (!isSupabaseConfigured || tage < 1 || tage > 62) return {};
   const { data, error } = await createClient().rpc("verbundene_tage", { p_von: von, p_tage: tage });
   if (error) fehler(error, "Die Schichten der Verbundenen konnten nicht geladen werden.");
-  const aus: Record<string, Record<string, PartnerCode>> = {};
-  for (const z of (data ?? []) as { id: string; tage: Record<string, PartnerCode> }[]) aus[z.id] = z.tage ?? {};
+  const aus: Record<string, { tage: Record<string, PartnerCode>; farben: FarbenCodes }> = {};
+  for (const z of (data ?? []) as { id: string; tage: Record<string, PartnerCode>; farben?: unknown }[]) {
+    aus[z.id] = { tage: z.tage ?? {}, farben: farbenAus(z.farben) };
+  }
   return aus;
 }
 
