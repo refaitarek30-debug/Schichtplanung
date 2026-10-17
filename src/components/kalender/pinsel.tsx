@@ -117,74 +117,97 @@ export function PinselLeiste({
  */
 export function useMonatWischen(springe: (schritt: number) => void) {
   const flaeche = useRef<HTMLDivElement>(null);
-  const wisch = useRef<{ x: number; y: number; senkrecht: boolean } | null>(null);
+  const wisch = useRef<{ x: number; y: number; senkrecht: boolean; h: number; letztY: number; letztT: number; v: number } | null>(null);
   const gewischt = useRef(false);
   const blaettert = useRef(false);
+  const bild = useRef<number | null>(null);
 
-  function versatz(y: number, dauer = 0) {
+  function setze(y: number, h: number, dauer = 0, kurve = "cubic-bezier(.22,1,.36,1)") {
     const el = flaeche.current;
     if (!el) return;
-    el.style.transition = dauer ? `transform ${dauer}ms cubic-bezier(.2,.8,.2,1), opacity ${dauer}ms ease-out` : "none";
-    el.style.transform = y ? `translateY(${y}px)` : "";
-    el.style.opacity = y ? String(Math.max(0, 1 - Math.abs(y) / (el.offsetHeight * 0.26))) : "";
+    el.style.transition = dauer ? `transform ${dauer}ms ${kurve}, opacity ${dauer}ms ${kurve}` : "none";
+    el.style.transform = y ? `translate3d(0, ${y}px, 0)` : "";
+    el.style.opacity = y ? String(Math.max(0, 1 - Math.abs(y) / (h * 0.5))) : "";
   }
 
-  function blaettern(schritt: number) {
+  function blaettern(schritt: number, ab = 0) {
     const el = flaeche.current;
     const ruhig = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (!el || ruhig || blaettert.current) {
-      versatz(0);
+      if (el) setze(0, 1);
       springe(schritt);
       return;
     }
     blaettert.current = true;
-    const weg = el.offsetHeight * 0.22;
-    versatz(schritt > 0 ? -weg : weg, 160);
+    const h = el.offsetHeight || 1;
+    const weg = h * 0.32;
+    // Vom aktuellen Stand aus weiter hinaus – je näher am Ziel, desto kürzer.
+    const rest = Math.max(0.25, 1 - Math.abs(ab) / weg);
+    const raus = Math.round(110 + 110 * rest);
+    setze(schritt > 0 ? -weg : weg, h, raus, "cubic-bezier(.4,0,1,1)");
     window.setTimeout(() => {
       springe(schritt);
-      versatz(schritt > 0 ? weg : -weg);
+      setze(schritt > 0 ? h * 0.14 : -h * 0.14, h);
+      // Erst zeichnen lassen, dann sanft hineingleiten.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          versatz(0, 240);
-          window.setTimeout(() => (blaettert.current = false), 240);
+          setze(0, h, 320);
+          window.setTimeout(() => (blaettert.current = false), 320);
         }),
       );
-    }, 160);
+    }, raus);
   }
 
   const griffe = {
     onPointerDown: (e: React.PointerEvent) => {
       gewischt.current = false;
       if (blaettert.current) return;
-      wisch.current = { x: e.clientX, y: e.clientY, senkrecht: false };
+      const h = flaeche.current?.offsetHeight || 1;
+      wisch.current = { x: e.clientX, y: e.clientY, senkrecht: false, h, letztY: e.clientY, letztT: e.timeStamp, v: 0 };
     },
     onPointerMove: (e: React.PointerEvent) => {
       const s = wisch.current;
       if (!s) return;
       const dx = e.clientX - s.x;
       const dy = e.clientY - s.y;
-      if (!s.senkrecht && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.2) s.senkrecht = true;
-      // Die Fläche folgt dem Finger – etwas gebremst.
-      if (s.senkrecht) versatz(dy * 0.55);
+      const dt = e.timeStamp - s.letztT;
+      if (dt > 0) s.v = (e.clientY - s.letztY) / dt;
+      s.letztY = e.clientY;
+      s.letztT = e.timeStamp;
+      if (!s.senkrecht && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.2) s.senkrecht = true;
+      if (!s.senkrecht) return;
+      // Die Fläche folgt dem Finger – einmal je Bild, nicht je Ereignis.
+      if (bild.current) cancelAnimationFrame(bild.current);
+      bild.current = requestAnimationFrame(() => {
+        bild.current = null;
+        setze(dy * 0.85, s.h);
+      });
     },
     onPointerUp: (e: React.PointerEvent) => {
       const s = wisch.current;
       wisch.current = null;
+      if (bild.current) cancelAnimationFrame(bild.current);
+      bild.current = null;
       if (!s) return;
       const dx = e.clientX - s.x;
       const dy = e.clientY - s.y;
-      if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+      // Weit genug gezogen – oder kurz und schnell geschnippt.
+      const schnell = Math.abs(s.v) > 0.45 && Math.abs(dy) > 24;
+      if ((Math.abs(dy) > 50 || schnell) && Math.abs(dy) > Math.abs(dx) * 1.3) {
         gewischt.current = true;
         // Nur den Klick direkt danach schlucken.
         window.setTimeout(() => (gewischt.current = false), 120);
-        blaettern(dy < 0 ? 1 : -1);
+        blaettern(dy < 0 ? 1 : -1, dy * 0.85);
       } else if (s.senkrecht) {
-        versatz(0, 200);
+        setze(0, s.h, 260);
       }
     },
     onPointerCancel: () => {
+      const s = wisch.current;
       wisch.current = null;
-      versatz(0, 200);
+      if (bild.current) cancelAnimationFrame(bild.current);
+      bild.current = null;
+      if (s?.senkrecht) setze(0, s.h, 260);
     },
   };
 
