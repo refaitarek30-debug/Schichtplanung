@@ -6,29 +6,18 @@ import { Blatt } from "@/components/privat/blatt";
 import { loescheEigeneArt, speichereEigeneArt, type EigeneArtEingabe } from "@/lib/data/kalender-eigene";
 import { FARBEN, farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
-
-/**
- * Kürzel aus dem Namen: zwei Wörter → Anfangsbuchstaben („Halber Tag“ → HT),
- * ein Wort → die ersten zwei Buchstaben („Nebenjob“ → NE). Ohne Buchstaben
- * (nur ein Emoji) das erste Zeichen.
- */
-export function kuerzelAus(name: string): string {
-  const woerter = name
-    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
-    .split(/[\s-]+/)
-    .filter(Boolean);
-  if (woerter.length >= 2) return (Array.from(woerter[0]!)[0]! + Array.from(woerter[1]!)[0]!).toUpperCase();
-  if (woerter.length === 1) return Array.from(woerter[0]!).slice(0, 2).join("").toUpperCase();
-  return Array.from(name.trim()).slice(0, 1).join("");
-}
+import { kuerzelAus } from "@/lib/kuerzel";
 
 /** Eigenen Eintrag anlegen oder bearbeiten: Name, Farbe, Uhrzeit. Das Kürzel kommt aus dem Namen. */
 export function EigeneArtBlatt({
   wert,
+  vergeben = [],
   onClose,
   onFertig,
 }: {
   wert: EigeneArtEingabe;
+  /** Kürzel der anderen Einträge – das neue soll sich davon unterscheiden. */
+  vergeben?: string[];
   onClose: () => void;
   onFertig: () => void;
 }) {
@@ -142,7 +131,7 @@ export function EigeneArtBlatt({
             maxLength={30}
             onChange={(e) => {
               const name = e.target.value;
-              setA((alt) => ({ ...alt, name, kuerzel: kuerzelAus(name) }));
+              setA((alt) => ({ ...alt, name, kuerzel: kuerzelAus(name, vergeben) }));
             }}
             className={feld}
             placeholder="z. B. Nebenjob"

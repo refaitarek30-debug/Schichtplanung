@@ -15,6 +15,7 @@ import {
   type SchichtartEingabe,
 } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
+import { kuerzelAus } from "@/lib/kuerzel";
 import { usePrivat } from "./kontext";
 import { PrivatKopf, RundKnopf } from "./rahmen";
 import { Blatt } from "./blatt";
@@ -84,6 +85,7 @@ export function PrivatSchichten() {
       {offen ? (
         <SchichtBlatt
           wert={offen}
+          vergeben={(schichtarten ?? []).filter((x) => x.id !== offen.id).map((x) => x.kuerzel)}
           onClose={() => setOffen(null)}
           onFertig={async () => {
             setOffen(null);
@@ -97,10 +99,13 @@ export function PrivatSchichten() {
 
 function SchichtBlatt({
   wert,
+  vergeben,
   onClose,
   onFertig,
 }: {
   wert: SchichtartEingabe;
+  /** Kürzel der anderen Schichten – das neue soll sich davon unterscheiden. */
+  vergeben: string[];
   onClose: () => void;
   onFertig: () => Promise<void>;
 }) {
@@ -130,7 +135,6 @@ function SchichtBlatt({
 
   async function speichern() {
     if (!s.name.trim()) return setFehler("Bitte einen Namen eingeben.");
-    if (!s.kuerzel.trim()) return setFehler("Bitte ein Kürzel (1–3 Zeichen) eingeben.");
     if ((s.beginn && !s.ende) || (!s.beginn && s.ende)) return setFehler("Bitte Beginn und Ende angeben – oder beides leer lassen.");
     if (!(s.stunden >= 0 && s.stunden <= 24)) return setFehler("Stunden zwischen 0 und 24.");
     setLaeuft(true);
@@ -204,18 +208,24 @@ function SchichtBlatt({
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-[15px] font-bold" style={farbStil(s.farbe)}>
             {s.kuerzel || "?"}
           </span>
-          <span className="text-[13px] text-ink-muted">So sieht die Schicht im Kalender aus.</span>
+          <span className="text-[13px] text-ink-muted">
+            {s.kuerzel ? `Kürzel „${s.kuerzel}“ – kommt automatisch aus dem Namen.` : "Das Kürzel kommt automatisch aus dem Namen."}
+          </span>
         </div>
-        <div className="grid grid-cols-[1fr_6rem] gap-3">
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Name</span>
-            <input id="schicht-name" value={s.name} maxLength={30} onChange={(e) => setze("name", e.target.value)} className={feld} placeholder="z. B. Bereitschaft" />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Kürzel</span>
-            <input id="schicht-kuerzel" value={s.kuerzel} maxLength={3} onChange={(e) => setze("kuerzel", e.target.value.toUpperCase())} className={feld} placeholder="B" />
-          </label>
-        </div>
+        <label className="block">
+          <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Name</span>
+          <input
+            id="schicht-name"
+            value={s.name}
+            maxLength={30}
+            onChange={(e) => {
+              const name = e.target.value;
+              setS((alt) => ({ ...alt, name, kuerzel: kuerzelAus(name, vergeben) }));
+            }}
+            className={feld}
+            placeholder="z. B. Bereitschaft"
+          />
+        </label>
 
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Farbe</span>
@@ -253,13 +263,13 @@ function SchichtBlatt({
 
         {s.art === "arbeit" ? (
           <div className="grid grid-cols-2 gap-3">
-            <label className="block">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Beginn</span>
-              <input id="schicht-beginn" type="time" value={s.beginn} onChange={(e) => setze("beginn", e.target.value)} className={feld} />
+              <input id="schicht-beginn" type="time" value={s.beginn} onChange={(e) => setze("beginn", e.target.value)} className={cn(feld, "block h-12 min-w-0 appearance-none")} />
             </label>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Ende</span>
-              <input id="schicht-ende" type="time" value={s.ende} onChange={(e) => setze("ende", e.target.value)} className={feld} />
+              <input id="schicht-ende" type="time" value={s.ende} onChange={(e) => setze("ende", e.target.value)} className={cn(feld, "block h-12 min-w-0 appearance-none")} />
             </label>
           </div>
         ) : null}

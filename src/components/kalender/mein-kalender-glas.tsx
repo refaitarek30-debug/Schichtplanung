@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Eraser, Paintbrush, Plus, SlidersHorizontal, Users, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -40,6 +40,7 @@ import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } f
 import { setzeLokal, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
+import { PinselKnopf, PinselLeiste, useMonatWischen } from "./pinsel";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
 import { Avatar } from "@/components/ui/avatar";
 
@@ -595,44 +596,6 @@ export function MeinKalenderGlas() {
   }, []);
 
   // ---- Blättern und Wischen ----------------------------------------------
-  const gewischt = useRef(false);
-  const wisch = useRef<{ x: number; y: number; senkrecht: boolean } | null>(null);
-  const flaeche = useRef<HTMLDivElement>(null);
-  const blaettert = useRef(false);
-
-  /** Monatsfläche verschieben (folgt dem Finger, gleitet beim Blättern raus und rein). */
-  function versatz(y: number, dauer = 0) {
-    const el = flaeche.current;
-    if (!el) return;
-    el.style.transition = dauer ? `transform ${dauer}ms cubic-bezier(.2,.8,.2,1), opacity ${dauer}ms ease-out` : "none";
-    el.style.transform = y ? `translateY(${y}px)` : "";
-    el.style.opacity = y ? String(Math.max(0, 1 - Math.abs(y) / (el.offsetHeight * 0.26))) : "";
-  }
-
-  /** Blättern mit Bewegung: nach oben raus und von unten rein (bzw. umgekehrt). */
-  function blaettern(schritt: number) {
-    const el = flaeche.current;
-    const ruhig = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!el || ruhig || blaettert.current) {
-      versatz(0);
-      springe(schritt);
-      return;
-    }
-    blaettert.current = true;
-    const weg = el.offsetHeight * 0.22;
-    versatz(schritt > 0 ? -weg : weg, 160);
-    window.setTimeout(() => {
-      springe(schritt);
-      versatz(schritt > 0 ? weg : -weg);
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          versatz(0, 240);
-          window.setTimeout(() => (blaettert.current = false), 240);
-        }),
-      );
-    }, 160);
-  }
-
   function springe(schritt: number) {
     setMonat((m) => {
       const d = new Date(m.jahr, m.monat + schritt, 1);
@@ -643,34 +606,7 @@ export function MeinKalenderGlas() {
     const d = fromISO(heute);
     setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
   }
-  function wischStart(e: React.PointerEvent) {
-    gewischt.current = false;
-    if (blaettert.current) return;
-    wisch.current = { x: e.clientX, y: e.clientY, senkrecht: false };
-  }
-  function wischBewegung(e: React.PointerEvent) {
-    const s = wisch.current;
-    if (!s) return;
-    const dx = e.clientX - s.x;
-    const dy = e.clientY - s.y;
-    if (!s.senkrecht && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.2) s.senkrecht = true;
-    // Die Fläche folgt dem Finger – etwas gebremst.
-    if (s.senkrecht) versatz(dy * 0.55);
-  }
-  function wischEnde(e: React.PointerEvent) {
-    const s = wisch.current;
-    wisch.current = null;
-    if (!s) return;
-    const dx = e.clientX - s.x;
-    const dy = e.clientY - s.y;
-    // Nach oben wischen = nächster Monat, nach unten = vorheriger.
-    if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(dx) * 1.5) {
-      gewischt.current = true;
-      blaettern(dy < 0 ? 1 : -1);
-    } else if (s.senkrecht) {
-      versatz(0, 200);
-    }
-  }
+  const { flaeche, griffe, blaettern, gewischt } = useMonatWischen(springe);
 
   const langDruck = useLangDruck((iso, rect) => {
     if (pinselAn || !arten?.length) return;
@@ -678,10 +614,7 @@ export function MeinKalenderGlas() {
   });
   function tippen(iso: string) {
     if (langDruck.geschluckt()) return;
-    if (gewischt.current) {
-      gewischt.current = false;
-      return;
-    }
+    if (gewischt.current) return;
     if (pinselAn && pinsel && (pinsel === "leer" || artNach.has(pinsel))) {
       if (pinsel === "leer" && !eigene[iso]) return;
       merke([iso], pinsel === "leer" ? "{n} geleert" : `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
@@ -782,13 +715,7 @@ export function MeinKalenderGlas() {
         ref={flaeche}
         className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-[22px] will-change-transform"
         style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
-        onPointerDown={wischStart}
-        onPointerMove={wischBewegung}
-        onPointerUp={wischEnde}
-        onPointerCancel={() => {
-          wisch.current = null;
-          versatz(0, 200);
-        }}
+        {...griffe}
         aria-busy={!sichtbar}
       >
         {WT.map((w, i) => (
@@ -883,94 +810,23 @@ export function MeinKalenderGlas() {
       </div>
 
         {!pinselAn ? (
-          <button
-            type="button"
-            aria-label="Mit dem Pinsel eintragen"
+          <PinselKnopf
             onClick={() => {
               setPinselAn(true);
               if ((!pinsel || (pinsel !== "leer" && !artNach.has(pinsel))) && arten?.length) setPinsel(arten[0]!.id);
             }}
-            className="glas-dicht absolute bottom-4 right-4 z-[5] flex h-12 w-12 items-center justify-center rounded-full text-ink shadow-[0_10px_26px_rgba(31,41,77,0.22)] transition-transform active:scale-95"
-          >
-            <Paintbrush className="h-[22px] w-[22px]" />
-          </button>
+          />
         ) : null}
       </div>
 
       {pinselAn ? (
-        <div className="relative mt-3 shrink-0 [animation:pinsel-hoch_.24s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]">
-          <button
-            type="button"
-            onClick={() => setPinselAn(false)}
-            aria-label="Pinsel beenden"
-            className="absolute -top-6 right-2 z-[2] flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_6px_18px_rgba(31,41,77,0.25)]"
-          >
-            <X className="h-5 w-5" strokeWidth={2.6} />
-          </button>
-          <div
-            role="toolbar"
-            aria-label="Pinsel: Eintrag wählen, dann Tage antippen"
-            className="glas-dicht flex h-[5.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4.4rem]"
-          >
-            {(arten ?? []).map((a, i) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => setPinsel(a.id)}
-                aria-pressed={pinsel === a.id}
-                className={cn(
-                  "relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[22px] px-2.5",
-                  pinsel === a.id && "bg-ink/[0.07]",
-                )}
-              >
-                {i > 0 ? <span aria-hidden className="absolute left-0 top-1/2 h-8 w-px -translate-y-1/2 bg-ink/10" /> : null}
-                <span
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-full text-[12.5px] font-bold [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7",
-                    pinsel === a.id && "ring-2 ring-ink ring-offset-2 ring-offset-white",
-                  )}
-                  style={farbStil(a.farbe)}
-                >
-                  {a.kuerzel}
-                </span>
-                <span className="max-w-[6.5rem] truncate text-[13px] font-semibold">{a.name}</span>
-              </button>
-            ))}
-            {arten?.length ? (
-              <button
-                type="button"
-                onClick={() => setPinsel("leer")}
-                aria-pressed={pinsel === "leer"}
-                className={cn(
-                  "relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[22px] px-2.5",
-                  pinsel === "leer" && "bg-ink/[0.07]",
-                )}
-              >
-                <span aria-hidden className="absolute left-0 top-1/2 h-8 w-px -translate-y-1/2 bg-ink/10" />
-                <span
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-full bg-ink/[0.08] text-ink-muted [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7",
-                    pinsel === "leer" && "ring-2 ring-ink ring-offset-2 ring-offset-white",
-                  )}
-                >
-                  <Eraser className="h-4 w-4" />
-                </span>
-                <span className="text-[13px] font-semibold">Leeren</span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => neueArt(null)}
-              className="relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[22px] px-2.5"
-            >
-              {arten?.length ? <span aria-hidden className="absolute left-0 top-1/2 h-8 w-px -translate-y-1/2 bg-ink/10" /> : null}
-              <span className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/30 text-ink-muted [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7">
-                <Plus className="h-4 w-4" />
-              </span>
-              <span className="whitespace-nowrap text-[13px] font-semibold text-ink-muted">{arten?.length ? "Neu" : "Eigenen Eintrag anlegen"}</span>
-            </button>
-          </div>
-        </div>
+        <PinselLeiste
+          eintraege={arten ?? []}
+          aktiv={pinsel}
+          onWahl={setPinsel}
+          onNeu={() => neueArt(null)}
+          onClose={() => setPinselAn(false)}
+        />
       ) : null}
 
       {tagBlatt ? (
@@ -1135,7 +991,14 @@ export function MeinKalenderGlas() {
         <ProfilBlatt items={meldungen} setItems={setMeldungen} onClose={() => setProfilOffen(false)} />
       ) : null}
 
-      {editor ? <EigeneArtBlatt wert={editor.wert} onClose={() => editorZu(false)} onFertig={() => editorZu(true)} /> : null}
+      {editor ? (
+        <EigeneArtBlatt
+          wert={editor.wert}
+          vergeben={(arten ?? []).filter((x) => x.id !== editor.wert.id).map((x) => x.kuerzel)}
+          onClose={() => editorZu(false)}
+          onFertig={() => editorZu(true)}
+        />
+      ) : null}
 
       {terminBlatt ? (
         <TerminBlatt

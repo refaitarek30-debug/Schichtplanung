@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Eraser, Paintbrush, Repeat, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Repeat } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import {
@@ -20,6 +21,7 @@ import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
+import { PinselKnopf, PinselLeiste, useMonatWischen } from "@/components/kalender/pinsel";
 import {
   fetchMeineTermine,
   speichereTermin,
@@ -88,6 +90,7 @@ function arten(e: TagEintrag | undefined, artNach: Map<string, Schichtart>): Sch
 }
 
 export function PrivatKalender() {
+  const router = useRouter();
   const { konto, schichtarten, artNach, artenFehler } = usePrivat();
   const heute = heuteInBerlin();
   const [ansicht, setAnsicht] = useState<Ansicht>("monat");
@@ -386,6 +389,8 @@ export function PrivatKalender() {
   }
   function waehleAnsicht(a: Ansicht) {
     setAnsicht(a);
+    // Der Pinsel gehört zum Monat.
+    if (a !== "monat") setPinselAn(false);
     try {
       window.localStorage.setItem(ANSICHT_SCHLUESSEL, a);
     } catch {
@@ -428,12 +433,14 @@ export function PrivatKalender() {
       else springe(dx < 0 ? 1 : -1);
     }
   }
+  // Im Monat: nach oben/unten wischen, mit Bewegung (wie „Mein Kalender“).
+  const { flaeche: monatFlaeche, griffe: monatGriffe, gewischt: monatGewischt } = useMonatWischen(springe);
   const langDruck = useLangDruck((iso, rect) => {
     if (pinselAn || !schichtarten?.length) return;
     setSchnell({ iso, rect });
   });
   function tippen(iso: string) {
-    if (langDruck.geschluckt() || gewischt.current) return;
+    if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
     tagAntippen(iso);
   }
 
@@ -466,9 +473,7 @@ export function PrivatKalender() {
       className={cn(
         // Genau ein Bildschirm: zwischen Statusleiste und schwebender Leiste.
         "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6",
-        pinselAn
-          ? "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+10.2rem)]"
-          : "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
+        "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
       )}
     >
       <header className="flex items-center justify-between gap-2 pb-2.5">
@@ -498,16 +503,6 @@ export function PrivatKalender() {
           </span>
           <GlasKnopf label="Schichtfolge eintragen" onClick={() => setRotation(true)}>
             <Repeat className="h-[18px] w-[18px]" />
-          </GlasKnopf>
-          <GlasKnopf
-            label="Mit dem Pinsel eintragen"
-            aktiv={pinselAn}
-            onClick={() => {
-              setPinselAn(!pinselAn);
-              if (!pinsel && schichtarten?.length) setPinsel(schichtarten[0]!.id);
-            }}
-          >
-            <Paintbrush className="h-[18px] w-[18px]" />
           </GlasKnopf>
         </div>
       </header>
@@ -549,13 +544,17 @@ export function PrivatKalender() {
       ) : null}
 
       <div
-        className="relative min-h-0 flex-1 touch-pan-y select-none"
-        onPointerDown={wischStart}
-        onPointerUp={wischEnde}
-        onPointerCancel={() => (wisch.current = null)}
+        className={cn(
+          "relative min-h-0 flex-1 select-none",
+          ansicht === "monat" ? "-m-2 touch-none overflow-hidden p-2" : "touch-pan-y",
+        )}
+        {...(ansicht === "monat"
+          ? monatGriffe
+          : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
         aria-busy={laedt || !schichtarten}
       >
         {ansicht === "monat" ? (
+          <div ref={monatFlaeche} className="h-full will-change-transform">
           <MonatsAnsicht
             jahr={ankerD.getFullYear()}
             monat={ankerD.getMonth()}
@@ -568,6 +567,7 @@ export function PrivatKalender() {
             onTag={tippen}
             zelle={langDruck.zelle}
           />
+          </div>
         ) : ansicht === "woche" ? (
           <Tagesansicht
             eingebettet
@@ -593,54 +593,24 @@ export function PrivatKalender() {
             }}
           />
         )}
+        {ansicht === "monat" && !pinselAn && schichtarten?.length ? (
+          <PinselKnopf
+            onClick={() => {
+              setPinselAn(true);
+              if (!pinsel && schichtarten?.length) setPinsel(schichtarten[0]!.id);
+            }}
+          />
+        ) : null}
       </div>
 
       {pinselAn && schichtarten ? (
-        <div className="glas fixed inset-x-3 bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)] z-20 mx-auto flex h-[5.2rem] max-w-3xl touch-pan-x select-none flex-col justify-center overflow-hidden rounded-[24px] px-2.5">
-          <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 touch-pan-x snap-x gap-1.5 overflow-x-auto overflow-y-hidden overscroll-contain px-1 py-1 [-webkit-mask-image:linear-gradient(to_right,transparent,#000_10px,#000_calc(100%-14px),transparent)] [mask-image:linear-gradient(to_right,transparent,#000_10px,#000_calc(100%-14px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {schichtarten.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setPinsel(a.id)}
-                  aria-pressed={pinsel === a.id}
-                  className={cn(
-                    "h-10 shrink-0 snap-start rounded-[13px] px-3.5 text-[13.5px] font-semibold",
-                    pinsel === a.id ? "ring-2 ring-inset ring-ink/80 shadow-md" : "opacity-80",
-                  )}
-                  style={farbStil(a.farbe)}
-                >
-                  {a.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setPinsel("leer")}
-                aria-pressed={pinsel === "leer"}
-                className={cn(
-                  "flex h-10 shrink-0 snap-start items-center gap-1 rounded-[13px] bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold text-ink-muted",
-                  pinsel === "leer" && "ring-2 ring-inset ring-ink/80",
-                )}
-              >
-                <Eraser className="h-4 w-4" /> Leeren
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setPinselAn(false)}
-              aria-label="Pinsel beenden"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <p className="truncate px-1 pt-0.5 text-[11.5px] text-ink-muted">
-            {pinsel === "leer"
-              ? "Tage antippen, um sie zu leeren"
-              : `Tage antippen – sie werden ${artNach.get(pinsel ?? "")?.name ?? "eingetragen"}`}
-          </p>
-        </div>
+        <PinselLeiste
+          eintraege={schichtarten}
+          aktiv={pinsel}
+          onWahl={setPinsel}
+          onNeu={() => router.push("/privat/schichten")}
+          onClose={() => setPinselAn(false)}
+        />
       ) : null}
 
       {rueck ? (
