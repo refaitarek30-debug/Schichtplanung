@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import type { Erinnerung, Termin, TerminEingabe, Wiederholung } from "@/lib/data/partner";
 import type { Rolle, Vorlage } from "@/lib/data/todos";
+import type { LoeschModus } from "@/lib/data/verbindungen";
 import { ErinnerungHinweis } from "./erinnerungen";
 import { mitSymbol, rollenReihe, ROLLE_KURZ, TERMIN_VORSCHLAEGE, useVorlieben, WasPasstZuDir } from "./vorschlaege";
 
@@ -69,6 +70,8 @@ function tageZwischen(a: string, b: string) {
 /** Beginnt der Termin (bzw. eine seiner Wiederholungen) an diesem Tag? */
 function beginntAm(t: Termin, iso: string): boolean {
   if (iso < t.datum) return false;
+  if (t.ausfaelle?.includes(iso)) return false;
+  if (t.serieAb && iso >= t.serieAb) return false;
   switch (t.wiederholung) {
     case "taeglich":
       return true;
@@ -85,6 +88,16 @@ function beginntAm(t: Termin, iso: string): boolean {
 export function weitereTage(t: Termin): number {
   if (!t.ganztaegig || !t.bisDatum || t.bisDatum <= t.datum) return 0;
   return Math.min(62, tageZwischen(t.datum, t.bisDatum));
+}
+
+/** Erster Tag des Vorkommens, das am Tag `iso` zu sehen ist (bei mehrtägigen früher). */
+export function vorkommenAm(t: Termin, iso: string): string {
+  const extra = weitereTage(t);
+  for (let k = 0; k <= extra; k++) {
+    const tag = k ? addDays(iso, -k) : iso;
+    if (beginntAm(t, tag)) return tag;
+  }
+  return iso;
 }
 
 /** Alle Termine an einem Tag, auch wiederkehrende und mehrtägige. Ganztägige zuerst. */
@@ -167,6 +180,7 @@ export function TerminBlatt({
   termin,
   onSpeichern,
   onLoeschen,
+  serieLoeschen = false,
   hinweis,
   nurLesen = false,
   glas = false,
@@ -178,7 +192,10 @@ export function TerminBlatt({
   datum: string;
   termin: Termin | null;
   onSpeichern: (t: TerminEingabe) => void;
-  onLoeschen: (id: string) => void;
+  /** Löschen; bei einer Wiederholung mit Wahl (modus) und dem betroffenen Tag. */
+  onLoeschen: (id: string, modus?: LoeschModus, datum?: string) => void;
+  /** Bei wiederholenden Terminen fragen: nur dieser, ab hier oder alle. */
+  serieLoeschen?: boolean;
   /** Zeile unter den Feldern – wer den Termin sieht. */
   hinweis: string;
   /** Nur ansehen (Termin der anderen Person). */
@@ -194,6 +211,7 @@ export function TerminBlatt({
   onClose: () => void;
 }) {
   const id = useId();
+  const [loeschFrage, setLoeschFrage] = useState(false);
   const [titel, setTitel] = useState(termin?.titel ?? "");
   const zeile = glas ? feld.replace("border-line", "glas-linie") : feld;
   const [ganz, setGanz] = useState(termin?.ganztaegig ?? false);
@@ -618,7 +636,7 @@ export function TerminBlatt({
           {termin && !nurLesen ? (
             <button
               type="button"
-              onClick={() => onLoeschen(termin.id)}
+              onClick={() => (serieLoeschen && termin.wiederholung !== "nie" ? setLoeschFrage(true) : onLoeschen(termin.id))}
               aria-label="Termin löschen"
               className="flex h-14 w-14 items-center justify-center text-crit-fg"
             >
@@ -639,6 +657,99 @@ export function TerminBlatt({
           ) : null}
         </div>
       </form>
+      {loeschFrage && termin ? (
+        <TerminLoeschenFrage
+          termin={termin}
+          datum={vorkommenAm(termin, datum)}
+          onJa={(modus) => onLoeschen(termin.id, modus, vorkommenAm(termin, datum))}
+          onClose={() => setLoeschFrage(false)}
+        />
+      ) : null}
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Nachfrage vor dem Löschen eines Termins. Bei einer Wiederholung mit Wahl:
+ * nur der Termin an diesem Tag, dieser und alle folgenden oder die ganze Serie.
+ */
+export function TerminLoeschenFrage({
+  termin,
+  datum,
+  onJa,
+  onClose,
+}: {
+  termin: Termin;
+  /** Erster Tag des betroffenen Vorkommens. */
+  datum: string;
+  onJa: (modus: LoeschModus) => void;
+  onClose: () => void;
+}) {
+  const serie = termin.wiederholung !== "nie";
+  const erster = datum <= termin.datum;
+  const [modus, setModus] = useState<LoeschModus>(serie ? "dieser" : "alle");
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", taste);
+    return () => window.removeEventListener("keydown", taste);
+  }, [onClose]);
+  const name = `„${termin.titel || "Termin"}“`;
+  const optionen: { id: LoeschModus; name: string; text: string }[] = [
+    { id: "dieser", name: "Nur diesen Termin", text: `${formatDE(datum)} fällt aus, die anderen bleiben.` },
+    ...(erster ? [] : [{ id: "ab" as const, name: "Diesen und alle folgenden", text: "Die Serie endet davor, frühere Termine bleiben." }]),
+    { id: "alle", name: "Alle Termine der Serie", text: "Auch die vergangenen." },
+  ];
+  return createPortal(
+    <div
+      className="privat privat-schrift fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      onClick={onClose}
+    >
+      <div
+        role="alertdialog"
+        aria-label="Termin löschen"
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-[24px] bg-white p-4 shadow-[0_20px_50px_rgba(31,41,77,0.3)]"
+      >
+        <p className="text-[17px] font-bold">🗑️ Termin löschen?</p>
+        {serie ? (
+          <div className="mt-2 space-y-2" role="radiogroup" aria-label="Was soll gelöscht werden?">
+            <p className="text-[14px] text-ink-muted">{name} wiederholt sich.</p>
+            {optionen.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={modus === o.id}
+                onClick={() => setModus(o.id)}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-[14px] border-[1.5px] px-3 py-2.5 text-left",
+                  modus === o.id ? "border-ink bg-ink/[0.05]" : "border-ink/15",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn("mt-0.5 h-[18px] w-[18px] shrink-0 rounded-full border-2", modus === o.id ? "border-ink bg-[radial-gradient(#1F294D_45%,transparent_50%)]" : "border-ink-faint")}
+                />
+                <span>
+                  <span className="block text-[15px] font-semibold">{o.name}</span>
+                  <span className="block text-[12.5px] text-ink-muted">{o.text}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-1 text-[14px] text-ink-muted">{name} wird gelöscht.</p>
+        )}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button type="button" onClick={onClose} className="h-12 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold">
+            Abbrechen
+          </button>
+          <button type="button" onClick={() => onJa(modus)} className="h-12 rounded-[16px] bg-[#e5484d] text-[15px] font-bold text-white">
+            Löschen
+          </button>
+        </div>
+      </div>
     </div>,
     document.body,
   );

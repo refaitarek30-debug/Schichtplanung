@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
-import { loescheTermin, speichereTermin, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
+import { loescheTermin, speichereTermin, terminAusnahme, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
 
 /**
  * Verbundene Konten (Migration 0157): zwei Personen mit eigenem Kalender
@@ -112,6 +112,8 @@ interface FremdZeile {
   wiederholung: Termin["wiederholung"];
   notiz: string;
   ort: string;
+  ausfaelle?: string[] | null;
+  serie_ab?: string | null;
 }
 
 /** Termine der Verbundenen, die sie mit mir teilen, und meine Einträge bei ihnen. */
@@ -134,6 +136,8 @@ export async function fetchVerbundeneTermine(): Promise<Termin[]> {
     wiederholung: z.wiederholung,
     notiz: z.notiz,
     ort: z.ort,
+    ausfaelle: z.ausfaelle ?? [],
+    serieAb: z.serie_ab ?? null,
   }));
 }
 
@@ -173,4 +177,13 @@ export async function terminSichernUeberall(t: TerminEingabe, alt: Termin | null
 export async function terminLoeschenUeberall(t: Termin) {
   if (t.inhaber) return verbindungTerminLoeschen(t.id);
   await loescheTermin(t.id);
+}
+
+/** Was beim Löschen eines wiederholenden Termins wegfällt. */
+export type LoeschModus = "alle" | "dieser" | "ab";
+
+/** Löschen mit Wahl: alle, nur der Tag `datum` oder ab diesem Tag. */
+export async function terminLoeschenModus(t: Termin, modus: LoeschModus, datum: string) {
+  if (modus === "alle" || t.wiederholung === "nie") return terminLoeschenUeberall(t);
+  await terminAusnahme(t.id, datum, modus === "ab");
 }

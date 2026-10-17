@@ -10,7 +10,8 @@ import type { Todo } from "@/lib/data/todos";
 import type { Rolle } from "@/lib/data/todos";
 import { cn } from "@/lib/utils";
 import { Blatt } from "@/components/privat/blatt";
-import { erinnerungText, minutenZwischen, type Termin } from "./termine";
+import { erinnerungText, minutenZwischen, TerminLoeschenFrage, vorkommenAm, type Termin } from "./termine";
+import type { LoeschModus } from "@/lib/data/verbindungen";
 import { TODO_VORSCHLAEGE } from "./vorschlaege";
 import { ErinnerungHinweis } from "./erinnerungen";
 
@@ -224,7 +225,7 @@ function TerminZeile({
       {darfLoeschen ? (
         <button
           type="button"
-          onClick={() => onLoeschen(t)}
+          onClick={() => (t.wiederholung !== "nie" ? onFrage(t) : onLoeschen(t))}
           tabIndex={offen ? 0 : -1}
           aria-hidden={!offen}
           aria-label={`${t.titel || "Termin"} löschen`}
@@ -278,49 +279,13 @@ function TerminZeile({
   );
 }
 
-/** Nachfrage vor dem Löschen eines Termins. */
-export function TerminLoeschenFrage({ termin, onJa, onClose }: { termin: Termin; onJa: () => void; onClose: () => void }) {
-  useEffect(() => {
-    const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", taste);
-    return () => window.removeEventListener("keydown", taste);
-  }, [onClose]);
-  const serie = termin.wiederholung !== "nie";
-  return createPortal(
-    <div
-      className="privat privat-schrift fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-      onClick={onClose}
-    >
-      <div
-        role="alertdialog"
-        aria-label="Termin löschen"
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-[24px] bg-white p-4 shadow-[0_20px_50px_rgba(31,41,77,0.3)]"
-      >
-        <p className="text-[17px] font-bold">🗑️ Termin löschen?</p>
-        <p className="mt-1 text-[14px] text-ink-muted">
-          „{termin.titel || "Termin"}“{serie ? " und alle Wiederholungen" : ""} wird gelöscht.
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={onClose} className="h-12 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold">
-            Abbrechen
-          </button>
-          <button type="button" onClick={onJa} className="h-12 rounded-[16px] bg-[#e5484d] text-[15px] font-bold text-white">
-            Löschen
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
 export function AmTag({
   termine,
   todos,
   terminVon,
   onTermin,
   onTodo,
+  datum,
   onLoeschen,
   darfLoeschen,
 }: {
@@ -329,8 +294,10 @@ export function AmTag({
   terminVon: (t: Termin) => { name: string; farbe: string } | null;
   onTermin: (t: Termin) => void;
   onTodo: (id: string, an: boolean) => void;
+  /** Der Tag, den das Blatt zeigt. */
+  datum: string;
   /** Termin löschen (Wischen nach links oder langes Drücken). */
-  onLoeschen?: (t: Termin) => void;
+  onLoeschen?: (t: Termin, modus: LoeschModus, datum: string) => void;
   /** Welche Termine man löschen darf; ohne Angabe: alle, wenn onLoeschen da ist. */
   darfLoeschen?: (t: Termin) => boolean;
 }) {
@@ -347,7 +314,7 @@ export function AmTag({
             von={terminVon(t)}
             darfLoeschen={!!onLoeschen && (darfLoeschen ? darfLoeschen(t) : true)}
             onTermin={onTermin}
-            onLoeschen={(x) => onLoeschen?.(x)}
+            onLoeschen={(x) => onLoeschen?.(x, "alle", datum)}
             onFrage={setFrage}
           />
         ))}
@@ -371,10 +338,11 @@ export function AmTag({
       {frage ? (
         <TerminLoeschenFrage
           termin={frage}
-          onJa={() => {
+          datum={vorkommenAm(frage, datum)}
+          onJa={(modus) => {
             const t = frage;
             setFrage(null);
-            onLoeschen?.(t);
+            onLoeschen?.(t, modus, vorkommenAm(t, datum));
           }}
           onClose={() => setFrage(null)}
         />
@@ -660,6 +628,8 @@ export function Tagesansicht({
   onTodo,
   onTodos,
   onClose,
+  eingebettet = false,
+  onSchicht,
 }: {
   iso: string;
   heute: string;
@@ -675,11 +645,15 @@ export function Tagesansicht({
   onTermin: (t: Termin | null, startZeit?: string) => void;
   onVerschieben: (t: Termin, von: string, bis: string) => void;
   /** Termin löschen: nach links wischen oder gedrückt halten und loslassen. */
-  onLoeschen?: (t: Termin) => void;
+  onLoeschen?: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen?: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
   onClose: () => void;
+  /** Als „Woche“ im Kalender: ohne Kopfzeile und Vollbild, der Tag sitzt im Seitenrahmen. */
+  eingebettet?: boolean;
+  /** Schicht des Tages ändern (öffnet das Tagesblatt). */
+  onSchicht?: () => void;
 }) {
   const darf = (t: Termin) => !!onLoeschen && (darfLoeschen ? darfLoeschen(t) : true);
   const [frage, setFrage] = useState<Termin | null>(null);
@@ -716,10 +690,11 @@ export function Tagesansicht({
   }, [iso]);
 
   useEffect(() => {
+    if (eingebettet) return;
     const taste = (e: KeyboardEvent) => e.key === "Escape" && !zugRef.current && onClose();
     window.addEventListener("keydown", taste);
     return () => window.removeEventListener("keydown", taste);
-  }, [onClose]);
+  }, [onClose, eingebettet]);
 
   // Ziehen: Termin gedrückt halten, dann hoch oder runter.
   useEffect(() => {
@@ -820,8 +795,18 @@ export function Tagesansicht({
     return n.getHours() * 60 + n.getMinutes();
   })();
 
-  return createPortal(
-    <div className="privat privat-schrift fixed inset-0 z-50 flex flex-col pt-[max(0.75rem,env(safe-area-inset-top))]" role="dialog" aria-label="Tagesansicht">
+  const kopfName = (t: string) => baender(t)[0]?.name ?? ganztaegig(t)[0]?.name ?? "";
+  const inhalt = (
+    <div
+      className={cn(
+        eingebettet
+          ? "flex h-full min-h-0 flex-col"
+          : "privat privat-schrift fixed inset-0 z-50 flex flex-col pt-[max(0.75rem,env(safe-area-inset-top))]",
+      )}
+      role={eingebettet ? "region" : "dialog"}
+      aria-label={eingebettet ? "Tag" : "Tagesansicht"}
+    >
+      {eingebettet ? null : (
       <header className="flex items-center justify-between gap-2 px-3 pb-2">
         <button
           type="button"
@@ -846,8 +831,9 @@ export function Tagesansicht({
           <Plus className="h-5 w-5" strokeWidth={2.6} />
         </button>
       </header>
+      )}
 
-      <div className="flex items-center gap-1 px-2 pb-2">
+      <div className={cn("flex items-center gap-1 pb-2", eingebettet ? "px-0" : "px-2")}>
         <button type="button" aria-label="Woche vorher" onClick={() => onIso(addDays(iso, -7))} className="flex h-9 w-7 shrink-0 items-center justify-center text-ink-muted">
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -863,13 +849,19 @@ export function Tagesansicht({
                 aria-pressed={an}
                 aria-label={formatDE(t)}
                 className={cn(
-                  "flex h-[58px] flex-col items-center justify-center gap-0.5 rounded-[16px]",
+                  "flex flex-col items-center justify-center gap-0.5 rounded-[16px]",
+                  eingebettet ? "h-[66px]" : "h-[58px]",
                   an ? "bg-ink text-surface" : t === heute ? "text-[#e5484d]" : "text-ink",
                 )}
               >
                 <span className="text-[11px] font-semibold opacity-75">{WT_KURZ[fromISO(t).getDay()]}</span>
                 <span className="tnum text-[16px] font-bold">{fromISO(t).getDate()}</span>
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: punkt ?? "transparent" }} />
+                {eingebettet ? (
+                  <span aria-hidden className="block max-w-full truncate px-0.5 text-[9.5px] font-bold leading-none opacity-80">
+                    {kopfName(t) || "–"}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -879,13 +871,40 @@ export function Tagesansicht({
         </button>
       </div>
 
-      {ganzeSchichten.length || ganzeTermine.length || tagTodos.length ? (
-        <div className="flex flex-wrap gap-1.5 px-3 pb-2">
-          {ganzeSchichten.map((g, i) => (
-            <span key={`g-${i}`} className="flex h-9 items-center rounded-[12px] px-3 text-[13.5px] font-bold" style={farbFlaeche(g.farbe)}>
-              {g.name}
-            </span>
-          ))}
+      {eingebettet || ganzeSchichten.length || ganzeTermine.length || tagTodos.length ? (
+        <div className={cn("flex flex-wrap gap-1.5 pb-2", eingebettet ? "px-0" : "px-3")}>
+          {eingebettet
+            ? baender(iso).map((b, i) => (
+                <button
+                  key={`b-${i}`}
+                  type="button"
+                  onClick={onSchicht}
+                  aria-label={`${b.name} ${b.beginn}–${b.ende}, Schicht ändern`}
+                  className="flex h-9 items-center rounded-[12px] px-3 text-[13.5px] font-bold"
+                  style={farbFlaeche(b.farbe)}
+                >
+                  {b.name} <span className="tnum ml-1.5 font-medium opacity-80">{b.beginn}–{b.ende}</span>
+                </button>
+              ))
+            : null}
+          {ganzeSchichten.map((g, i) =>
+            eingebettet ? (
+              <button
+                key={`g-${i}`}
+                type="button"
+                onClick={onSchicht}
+                aria-label={`${g.name}, Schicht ändern`}
+                className="flex h-9 items-center rounded-[12px] px-3 text-[13.5px] font-bold"
+                style={farbFlaeche(g.farbe)}
+              >
+                {g.name}
+              </button>
+            ) : (
+              <span key={`g-${i}`} className="flex h-9 items-center rounded-[12px] px-3 text-[13.5px] font-bold" style={farbFlaeche(g.farbe)}>
+                {g.name}
+              </span>
+            ),
+          )}
           {ganzeTermine.map((t) => (
             <button
               key={t.id}
@@ -896,6 +915,15 @@ export function Tagesansicht({
               {t.titel || "Termin"} <span className="font-normal text-ink-muted">· ganztägig</span>
             </button>
           ))}
+          {eingebettet ? (
+            <button
+              type="button"
+              onClick={() => onTermin(null)}
+              className="flex h-9 items-center gap-1.5 rounded-[12px] bg-ink px-3 text-[13.5px] font-semibold text-surface"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.6} /> Termin
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onTodos}
@@ -924,13 +952,15 @@ export function Tagesansicht({
       ) : null}
 
       {!lagen.length ? (
-        <p className="px-4 pb-1.5 text-[12px] text-ink-muted">
-          Uhrzeit antippen = neuer Termin · Termin halten &amp; ziehen = verschieben · nach links wischen = löschen
+        <p className={cn("pb-1.5 text-[12px] text-ink-muted", eingebettet ? "px-1 truncate" : "px-4")}>
+          {eingebettet
+            ? "Uhrzeit antippen = neuer Termin · Tag wechseln: wischen"
+            : "Uhrzeit antippen = neuer Termin · Termin halten & ziehen = verschieben · nach links wischen = löschen"}
         </p>
       ) : null}
       <div
         ref={flaeche}
-        className={cn("glas relative mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] min-h-0 flex-1 rounded-[22px]", zug ? "overflow-hidden" : "overflow-y-auto overscroll-contain")}
+        className={cn("glas relative min-h-0 flex-1 rounded-[22px]", !eingebettet && "mx-3 mb-[max(0.75rem,env(safe-area-inset-bottom))]", zug ? "overflow-hidden" : "overflow-y-auto overscroll-contain")}
       >
         <div className="relative" style={{ height: 24 * STUNDE + 16 }}>
           {Array.from({ length: 24 }, (_, h) => (
@@ -1023,17 +1053,18 @@ export function Tagesansicht({
       {frage ? (
         <TerminLoeschenFrage
           termin={frage}
-          onJa={() => {
+          datum={vorkommenAm(frage, iso)}
+          onJa={(modus) => {
             const t = frage;
             setFrage(null);
-            onLoeschen?.(t);
+            onLoeschen?.(t, modus, vorkommenAm(t, iso));
           }}
           onClose={() => setFrage(null)}
         />
       ) : null}
-    </div>,
-    document.body,
+    </div>
   );
+  return eingebettet ? inhalt : createPortal(inhalt, document.body);
 }
 
 // ---- To-dos -------------------------------------------------------------------------
