@@ -16,7 +16,7 @@ import {
   useLangDruck,
 } from "@/components/kalender/tag";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
-import { terminLoeschenUeberall, terminSichernUeberall } from "@/lib/data/verbindungen";
+import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
@@ -24,7 +24,7 @@ import {
   fetchMeineTermine,
   speichereTermin,
 } from "@/lib/data/partner";
-import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
+import { addDays, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
   farbStil,
   istAbwesenheit,
@@ -235,9 +235,9 @@ export function PrivatKalender() {
   );
   /** Eigene Termine und Einträge bei Verbundenen darf man löschen – Termine anderer nur ansehen. */
   const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === konto.userId : !(t.vonPartner && !t.vonUser));
-  async function terminWeg(t: Termin) {
+  async function terminWeg(t: Termin, modus: LoeschModus, datum: string) {
     try {
-      await terminLoeschenUeberall(t);
+      await terminLoeschenModus(t, modus, datum);
       setFehler(null);
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gelöscht werden.");
@@ -405,7 +405,7 @@ export function PrivatKalender() {
     ansicht === "jahr"
       ? null
       : ansicht === "woche"
-        ? `${formatDE(bereich.von)} – ${formatDE(bereich.bis)}`
+        ? `${formatDEShort(bereich.von)} – ${formatDE(bereich.bis)}`
         : String(ankerD.getFullYear());
   const heuteSichtbar = heute >= bereich.von && heute <= bereich.bis;
 
@@ -424,7 +424,8 @@ export function PrivatKalender() {
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - w.t < 800) {
       gewischt.current = true;
       window.setTimeout(() => (gewischt.current = false), 80);
-      springe(dx < 0 ? 1 : -1);
+      if (ansicht === "woche") setAnker(addDays(anker, dx < 0 ? 1 : -1));
+      else springe(dx < 0 ? 1 : -1);
     }
   }
   const langDruck = useLangDruck((iso, rect) => {
@@ -437,6 +438,28 @@ export function PrivatKalender() {
   }
 
   const leer = schichtarten && !laedt && Object.keys(tage).length === 0;
+
+  /** Was die Tagesansicht braucht – als Vollbild und als „Woche“. */
+  const tagesProps = {
+    heute,
+    baender: (iso: string) =>
+      arten(tage[iso], artNach)
+        .filter((a) => a.beginn && a.ende)
+        .map((a) => ({ name: a.name, beginn: a.beginn, ende: a.ende, farbe: a.farbe })),
+    ganztaegig: (iso: string) => [
+      ...arten(tage[iso], artNach)
+        .filter((a) => !a.beginn || !a.ende)
+        .map((a) => ({ name: a.name, farbe: a.farbe })),
+      ...(feiertagVon(iso) ? [{ name: `🎉 ${feiertagVon(iso)}`, farbe: "#FCE7D6" }] : []),
+    ],
+    termineAm: (iso: string) => termineAm(sichtbareTermine, iso),
+    todos,
+    terminVon: andere.terminVon,
+    onVerschieben: (t: Termin, von: string, bis: string) => void terminVerschieben(t, von, bis),
+    onLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void terminWeg(t, modus, datum),
+    darfLoeschen: darfTerminLoeschen,
+    onTodo: (id: string, an: boolean) => void todoSetzen(id, an),
+  };
 
   return (
     <div
@@ -546,16 +569,15 @@ export function PrivatKalender() {
             zelle={langDruck.zelle}
           />
         ) : ansicht === "woche" ? (
-          <WochenAnsicht
-            von={bereich.von}
-            heute={heute}
-            tage={tage}
-            artNach={artNach}
-            feiertagVon={feiertagVon}
-            termine={sichtbareTermine}
-            andere={andere}
-            onTag={tippen}
-            zelle={langDruck.zelle}
+          <Tagesansicht
+            eingebettet
+            iso={anker}
+            {...tagesProps}
+            onIso={setAnker}
+            onTermin={(t, startZeit) => setTerminBlatt({ datum: anker, termin: t, startZeit })}
+            onTodos={() => setTodoBlatt({ datum: anker })}
+            onSchicht={() => setTagBlatt(anker)}
+            onClose={() => undefined}
           />
         ) : (
           <JahresAnsicht
@@ -653,7 +675,7 @@ export function PrivatKalender() {
             setTerminBlatt({ datum: tagBlatt, termin: t });
             setTagBlatt(null);
           }}
-          onTerminLoeschen={(t) => void terminWeg(t)}
+          onTerminLoeschen={(t, modus, datum) => void terminWeg(t, modus, datum)}
           darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => {
@@ -671,31 +693,13 @@ export function PrivatKalender() {
       {tagAnsicht ? (
         <Tagesansicht
           iso={tagAnsicht}
-          heute={heute}
+          {...tagesProps}
           onIso={(iso) => {
             setTagAnsicht(iso);
             const j = fromISO(iso).getFullYear();
             if (!geladen.current.has(j)) void ladeJahre([j]);
           }}
-          baender={(iso) =>
-            arten(tage[iso], artNach)
-              .filter((a) => a.beginn && a.ende)
-              .map((a) => ({ name: a.name, beginn: a.beginn, ende: a.ende, farbe: a.farbe }))
-          }
-          ganztaegig={(iso) => [
-            ...arten(tage[iso], artNach)
-              .filter((a) => !a.beginn || !a.ende)
-              .map((a) => ({ name: a.name, farbe: a.farbe })),
-            ...(feiertagVon(iso) ? [{ name: `🎉 ${feiertagVon(iso)}`, farbe: "#FCE7D6" }] : []),
-          ]}
-          termineAm={(iso) => termineAm(sichtbareTermine, iso)}
-          todos={todos}
-          terminVon={andere.terminVon}
           onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
-          onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
-          onLoeschen={(t) => void terminWeg(t)}
-          darfLoeschen={darfTerminLoeschen}
-          onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
           onClose={() => setTagAnsicht(null)}
         />
@@ -774,13 +778,12 @@ export function PrivatKalender() {
               .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
               .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));
           }}
-          onLoeschen={() => {
+          serieLoeschen
+          onLoeschen={(_id, modus, datum) => {
             const alt = terminBlatt.termin;
+            const tag = datum ?? terminBlatt.datum;
             setTerminBlatt(null);
-            if (!alt) return;
-            void terminLoeschenUeberall(alt)
-              .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
-              .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gelöscht werden."));
+            if (alt) void terminWeg(alt, modus ?? "alle", tag);
           }}
           onClose={() => setTerminBlatt(null)}
         />
@@ -971,84 +974,6 @@ function MonatsAnsicht({
   );
 }
 
-function WochenAnsicht({
-  von,
-  heute,
-  tage,
-  artNach,
-  feiertagVon,
-  termine,
-  andere,
-  onTag,
-  zelle,
-}: AnsichtProps & {
-  von: string;
-  termine: Termin[];
-  andere: Andere;
-  onTag: (iso: string) => void;
-  zelle?: ZellGriffe;
-}) {
-  return (
-    <ul className="glas grid h-full grid-rows-7 overflow-hidden rounded-[22px]">
-      {Array.from({ length: 7 }, (_, i) => addDays(von, i)).map((iso, i) => {
-        const eintraege = arten(tage[iso], artNach);
-        const fei = feiertagVon(iso);
-        const ts = termineAm(termine, iso);
-        const andereAm = andere.amTag(iso);
-        return (
-          <li key={iso} className={cn("min-h-0", i > 0 && "glas-linie border-t")}>
-            <button
-              type="button"
-              {...zelle?.(iso)}
-              onClick={() => onTag(iso)}
-              className={cn("flex h-full w-full items-center gap-3 [-webkit-touch-callout:none] overflow-hidden px-3 text-left active:bg-ink/[0.06]", iso === heute && "bg-[#ff3b30]/[0.06]")}
-            >
-              <span className="flex w-10 shrink-0 flex-col items-center">
-                <span className={cn("text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>{WT[i]}</span>
-                <span
-                  className={cn(
-                    "tnum flex h-8 min-w-8 items-center justify-center rounded-full text-[18px] font-semibold",
-                    iso === heute ? "bg-[#ff3b30] text-white" : fei ? "text-[#e5484d]" : "",
-                  )}
-                >
-                  {fromISO(iso).getDate()}
-                </span>
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                {eintraege.length ? (
-                  <span className="flex min-w-0 gap-1.5">
-                    {eintraege.map((a) => (
-                      <span key={a.id} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-[12px] px-2.5 py-1.5" style={farbStil(a.farbe)}>
-                        <span className="truncate text-[14px] font-semibold">{a.name}</span>
-                        {zeitText(a) && eintraege.length === 1 ? (
-                          <span className="tnum shrink-0 text-[12px] font-medium opacity-90">{zeitText(a)}</span>
-                        ) : null}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  <span className="text-[13px] text-ink-faint">Nichts eingetragen</span>
-                )}
-                {fei || andereAm.length || ts.length ? (
-                  <span className="flex min-w-0 items-center gap-1.5 truncate text-[12px] text-ink-muted">
-                    {fei ? <span className="shrink-0 font-medium text-[#e5484d]">{fei}</span> : null}
-                    {andereAm.length ? <AndereTags eintraege={andereAm} max={3} className="w-auto shrink-0 [&>span]:w-9 [&>span]:flex-none" /> : null}
-                    {ts.length ? (
-                      <span className="truncate">
-                        {ts.map((t) => `${!t.ganztaegig && t.von ? `${t.von} ` : ""}${t.titel || "Termin"}`).join(" · ")}
-                      </span>
-                    ) : null}
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 function JahresAnsicht({
   jahr,
   heute,
@@ -1147,7 +1072,7 @@ function TagBlatt({
   /** Beide Einträge setzen; text für „Rückgängig“ */
   onSetzen: (schicht: string | null, zusatz: string | null, text: string) => void;
   onTermin: (t: Termin | null) => void;
-  onTerminLoeschen: (t: Termin) => void;
+  onTerminLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
@@ -1218,6 +1143,7 @@ function TagBlatt({
         terminVon={terminVon}
         onTermin={onTermin}
         onTodo={onTodo}
+        datum={iso}
         onLoeschen={onTerminLoeschen}
         darfLoeschen={darfLoeschen}
       />

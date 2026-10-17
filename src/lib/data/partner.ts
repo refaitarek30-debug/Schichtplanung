@@ -44,10 +44,14 @@ export interface Termin {
   notiz: string;
   ort: string;
   erinnerung?: Erinnerung | null;
+  /** Tage, an denen ein wiederholender Termin ausfällt, "YYYY-MM-DD". */
+  ausfaelle?: string[];
+  /** Ab diesem Tag (einschließlich) gibt es keine Wiederholungen mehr. */
+  serieAb?: string | null;
 }
 
 /** Neuer Termin hat noch keine Id. */
-export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inhaber" | "vonUser"> & {
+export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inhaber" | "vonUser" | "ausfaelle" | "serieAb"> & {
   id: string | null;
   /** In den Kalender eines verbundenen Kontos eintragen (dessen Konto). */
   ziel?: string | null;
@@ -103,6 +107,8 @@ interface TerminZeile {
   datum: string;
   bis_datum?: string | null;
   erinnerung?: Erinnerung | null;
+  ausfaelle?: string[] | null;
+  serie_ab?: string | null;
   titel: string;
   ganztaegig: boolean;
   beginn: string | null;
@@ -131,6 +137,8 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
     notiz: z.notiz,
     ort: z.ort,
     erinnerung: z.erinnerung ?? null,
+    ausfaelle: z.ausfaelle ?? [],
+    serieAb: z.serie_ab ?? null,
   }));
 }
 
@@ -147,6 +155,17 @@ export async function speichereTermin(t: TerminEingabe): Promise<string> {
 export async function loescheTermin(id: string) {
   const { error } = await createClient().rpc("termin_loeschen", { p_id: id });
   if (error) fehler(error, "Der Termin konnte nicht gelöscht werden.");
+}
+
+/**
+ * Einen Tag (oder ab diesem Tag) aus einer Wiederholung nehmen – eigene
+ * Termine und Einträge bei verbundenen Konten. Gibt true zurück, wenn damit
+ * der ganze Termin weg ist.
+ */
+export async function terminAusnahme(id: string, datum: string, ab: boolean): Promise<boolean> {
+  const { data, error } = await createClient().rpc("termin_ausnahme", { p_id: id, p_datum: datum, p_ab: ab });
+  if (error) fehler(error, "Der Termin konnte nicht gelöscht werden.");
+  return data === true;
 }
 
 export interface EinladungStatus {

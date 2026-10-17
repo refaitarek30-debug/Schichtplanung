@@ -32,7 +32,7 @@ import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
 import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
-import { terminLoeschenUeberall, terminSichernUeberall } from "@/lib/data/verbindungen";
+import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
 import { PartnerBlatt, type PartnerSchicht } from "./partner";
@@ -366,9 +366,9 @@ export function MeinKalenderGlas() {
     }
     void ladeTermine();
   }
-  async function terminLoeschen(t: Termin) {
+  async function terminLoeschen(t: Termin, modus: LoeschModus, datum: string) {
     try {
-      await terminLoeschenUeberall(t);
+      await terminLoeschenModus(t, modus, datum);
       setFehler(null);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gelöscht werden.");
@@ -932,7 +932,7 @@ export function MeinKalenderGlas() {
             setTerminBlatt({ datum: tagBlatt.iso, termin: t });
             setTagBlatt(null);
           }}
-          onTerminLoeschen={(t) => void terminLoeschen(t)}
+          onTerminLoeschen={(t, modus, datum) => void terminLoeschen(t, modus, datum)}
           darfLoeschen={darfTerminLoeschen}
           onPartner={(key) => {
             setPartnerBlatt({ iso: tagBlatt.iso, person: key ?? andere.knoten[0]?.key ?? null });
@@ -985,7 +985,7 @@ export function MeinKalenderGlas() {
           terminVon={andere.terminVon}
           onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
           onVerschieben={(t, von, bis) => void terminVerschieben(t, von, bis)}
-          onLoeschen={(t) => void terminLoeschen(t)}
+          onLoeschen={(t, modus, datum) => void terminLoeschen(t, modus, datum)}
           darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
@@ -1077,8 +1077,9 @@ export function MeinKalenderGlas() {
             void terminSpeichern(t, terminBlatt.termin);
             setTerminBlatt(null);
           }}
-          onLoeschen={() => {
-            if (terminBlatt.termin) void terminLoeschen(terminBlatt.termin);
+          serieLoeschen
+          onLoeschen={(_id, modus, datum) => {
+            if (terminBlatt.termin) void terminLoeschen(terminBlatt.termin, modus ?? "alle", datum ?? terminBlatt.datum);
             setTerminBlatt(null);
           }}
           onClose={() => setTerminBlatt(null)}
@@ -1233,7 +1234,7 @@ function TagBlatt({
   onEigen: (id: string | null) => void;
   onNeueArt: () => void;
   onTermin: (t: Termin | null) => void;
-  onTerminLoeschen: (t: Termin) => void;
+  onTerminLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
   onTodos: () => void;
@@ -1329,6 +1330,7 @@ function TagBlatt({
         terminVon={terminVon}
         onTermin={onTermin}
         onTodo={onTodo}
+        datum={iso}
         onLoeschen={onTerminLoeschen}
         darfLoeschen={darfLoeschen}
       />

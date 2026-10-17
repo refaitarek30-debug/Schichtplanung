@@ -38,6 +38,10 @@ export interface AboTermin {
   wiederholung: "nie" | "taeglich" | "woechentlich" | "monatlich";
   notiz: string;
   ort: string;
+  /** Tage, an denen ein wiederholender Termin ausfällt (Migration 0161). */
+  ausfaelle?: string[] | null;
+  /** Ab diesem Tag gibt es keine Wiederholungen mehr (Migration 0161). */
+  serie_ab?: string | null;
 }
 
 export const ABO_TEILE: Record<AboTeil, { datei: string; name: string; farbe: string; css: string }> = {
@@ -144,7 +148,21 @@ function terminZeilen(t: AboTermin, stempel: string): string[] {
     ev.push(`DTSTART;VALUE=DATE:${ohneStriche(t.datum)}`, `DTEND;VALUE=DATE:${ohneStriche(plusTage(letzter, 1))}`);
   }
   const regel = RRULE[t.wiederholung];
-  if (regel) ev.push(`RRULE:${regel}`);
+  if (regel) {
+    const tag = /^\d{4}-\d{2}-\d{2}$/;
+    const mitZeit = !t.ganztaegig && !!t.beginn && zeit.test(t.beginn);
+    const bis = t.serie_ab && tag.test(t.serie_ab) ? plusTage(t.serie_ab, -1) : null;
+    const ende = bis ? `;UNTIL=${ohneStriche(bis)}${mitZeit ? "T235959" : ""}` : "";
+    ev.push(`RRULE:${regel}${ende}`);
+    const ausfaelle = (t.ausfaelle ?? []).filter((d) => tag.test(d));
+    if (ausfaelle.length) {
+      ev.push(
+        mitZeit
+          ? `EXDATE:${ausfaelle.map((d) => `${ohneStriche(d)}T${t.beginn!.replace(":", "")}00`).join(",")}`
+          : `EXDATE;VALUE=DATE:${ausfaelle.map(ohneStriche).join(",")}`,
+      );
+    }
+  }
   ev.push(`SUMMARY:${icsText(t.titel || "Termin")}`);
   if (t.ort) ev.push(`LOCATION:${icsText(t.ort)}`);
   if (t.notiz) ev.push(`DESCRIPTION:${icsText(t.notiz)}`);
