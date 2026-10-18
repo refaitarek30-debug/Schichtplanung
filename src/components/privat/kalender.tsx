@@ -12,6 +12,7 @@ import {
   SchichtLeiste,
   SchnellWahl,
   TagKnoepfe,
+  TagWahl,
   Tagesansicht,
   TodoBlatt,
   useLangDruck,
@@ -603,7 +604,7 @@ export function PrivatKalender() {
           eintraege={schichtarten}
           aktiv={pinsel}
           onWahl={setPinsel}
-          onNeu={() => router.push("/privat/schichten")}
+          onNeu={() => router.push("/privat/schichten?reiter=liste")}
           onClose={() => setPinselAn(false)}
         />
       ) : null}
@@ -1048,6 +1049,7 @@ function TagBlatt({
   const z = eintrag.zusatz ? artNach.get(eintrag.zusatz) : undefined;
   const erster = s ?? z;
   const zweiter = s && z ? z : undefined;
+  const [reiter, setReiter] = useState<"schicht" | "termin">("schicht");
   const [nachricht, setNachricht] = useState(
     erster ? "Tippen = 2. Eintrag · nochmal tippen = nur diese Schicht" : "Was steht an diesem Tag an?",
   );
@@ -1091,29 +1093,46 @@ function TagBlatt({
       }
       onClose={onClose}
     >
-      <SchichtLeiste
-        eintraege={alleArten.map((a) => ({
-          id: a.id,
-          name: a.name,
-          farbe: a.farbe,
-          rang: erster?.id === a.id ? 1 : zweiter?.id === a.id ? 2 : 0,
-        }))}
-        onTipp={tipp}
-        nachricht={nachricht}
+      <TagWahl
+        wahl={reiter}
+        onWahl={setReiter}
+        schicht={erster ? (zweiter ? `${erster.name} + ${zweiter.name}` : erster.name) : "keine Schicht"}
+        termin={termine.length ? `${termine.length} ${termine.length === 1 ? "Termin" : "Termine"}` : "kein Termin"}
       />
 
-      <AmTag
-        termine={termine}
-        todos={todos}
-        terminVon={terminVon}
-        onTermin={onTermin}
-        onTodo={onTodo}
-        datum={iso}
-        onLoeschen={onTerminLoeschen}
-        darfLoeschen={darfLoeschen}
-      />
+      {reiter === "schicht" ? (
+        <div className="mt-2">
+          <SchichtLeiste
+            eintraege={alleArten.map((a) => ({
+              id: a.id,
+              name: a.name,
+              farbe: a.farbe,
+              rang: erster?.id === a.id ? 1 : zweiter?.id === a.id ? 2 : 0,
+            }))}
+            onTipp={tipp}
+            nachricht={nachricht}
+          />
+        </div>
+      ) : (
+        <div className="mt-3">
+          {termine.length || todos.length ? (
+            <AmTag
+              termine={termine}
+              todos={todos}
+              terminVon={terminVon}
+              onTermin={onTermin}
+              onTodo={onTodo}
+              datum={iso}
+              onLoeschen={onTerminLoeschen}
+              darfLoeschen={darfLoeschen}
+            />
+          ) : (
+            <p className="px-1 text-[13.5px] text-ink-muted">Noch kein Termin an diesem Tag.</p>
+          )}
+        </div>
+      )}
       <AnDiesemTag eintraege={andere} className="mt-3" />
-      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
+      <TagKnoepfe onTermin={reiter === "termin" ? () => onTermin(null) : undefined} onTag={onTag} />
     </Blatt>
   );
 }

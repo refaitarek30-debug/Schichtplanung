@@ -356,15 +356,54 @@ export function AmTag({
   );
 }
 
-export function TagKnoepfe({ onTermin, onTag }: { onTermin: () => void; onTag: () => void }) {
+/** Zwei Karten oben im Tagesblatt: Schicht oder Termin. Die gewählte ist dunkel. */
+export function TagWahl({
+  wahl,
+  onWahl,
+  schicht,
+  termin,
+}: {
+  wahl: "schicht" | "termin";
+  onWahl: (w: "schicht" | "termin") => void;
+  /** Kurzer Stand: z. B. „Früh + Spät“ oder „keine Schicht“. */
+  schicht: string;
+  termin: string;
+}) {
+  const karte = (an: boolean) =>
+    cn(
+      "flex min-h-[76px] min-w-0 flex-col items-start justify-center gap-1 rounded-[18px] px-3.5 py-3 text-left transition-colors",
+      an ? "bg-ink text-surface" : "bg-ink/[0.06] text-ink",
+    );
+  return (
+    <div role="tablist" aria-label="Was möchtest du eintragen?" className="grid grid-cols-2 gap-2">
+      <button type="button" role="tab" aria-selected={wahl === "schicht"} onClick={() => onWahl("schicht")} className={karte(wahl === "schicht")}>
+        <span className="flex items-center gap-1.5 text-[15px] font-bold">
+          <Clock className="h-[18px] w-[18px] shrink-0" /> Schicht
+        </span>
+        <span className="w-full truncate text-[12.5px] font-medium opacity-75">{schicht}</span>
+      </button>
+      <button type="button" role="tab" aria-selected={wahl === "termin"} onClick={() => onWahl("termin")} className={karte(wahl === "termin")}>
+        <span className="flex items-center gap-1.5 text-[15px] font-bold">
+          <CalendarPlus className="h-[18px] w-[18px] shrink-0" /> Termin
+        </span>
+        <span className="w-full truncate text-[12.5px] font-medium opacity-75">{termin}</span>
+      </button>
+    </div>
+  );
+}
+
+/** Unten im Tagesblatt: „Neuer Termin“ (nur im Terminteil) und der ganze Tag. */
+export function TagKnoepfe({ onTermin, onTag }: { onTermin?: () => void; onTag: () => void }) {
   const knopf = "flex h-[50px] items-center justify-center gap-1.5 rounded-[16px] text-[14.5px] font-semibold";
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2">
-      <button type="button" onClick={onTermin} className={cn(knopf, "bg-ink text-surface")}>
-        <CalendarPlus className="h-[18px] w-[18px]" /> Termin
-      </button>
+    <div className={cn("mt-3 grid gap-2", onTermin ? "grid-cols-2" : "grid-cols-1")}>
+      {onTermin ? (
+        <button type="button" onClick={onTermin} className={cn(knopf, "bg-ink text-surface")}>
+          <CalendarPlus className="h-[18px] w-[18px]" /> Neuer Termin
+        </button>
+      ) : null}
       <button type="button" onClick={onTag} className={cn(knopf, "bg-ink/[0.07] text-ink")}>
-        <Clock className="h-[18px] w-[18px]" /> Tag
+        <Clock className="h-[18px] w-[18px]" /> Tag ansehen
       </button>
     </div>
   );

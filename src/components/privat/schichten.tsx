@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -21,7 +21,7 @@ import { PrivatKopf, RundKnopf } from "./rahmen";
 import { Blatt } from "./blatt";
 
 /** Eigene Schichten: Name, Kürzel, Farbe, Uhrzeit, Stunden. */
-export function PrivatSchichten() {
+export function PrivatSchichten({ unterKopf }: { unterKopf?: ReactNode } = {}) {
   const { schichtarten, ladeArtenNeu, artenFehler } = usePrivat();
   const [offen, setOffen] = useState<SchichtartEingabe | null>(null);
 
@@ -50,6 +50,7 @@ export function PrivatSchichten() {
           </RundKnopf>
         }
       />
+      {unterKopf}
       {artenFehler ? <Alert tone="error">{artenFehler}</Alert> : null}
       <ul aria-busy={!schichtarten} className="glas overflow-hidden rounded-[22px]">
         {(schichtarten ?? []).map((a) => (

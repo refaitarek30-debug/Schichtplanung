@@ -2,21 +2,45 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-import { BarChart3, CalendarDays, Ellipsis, Layers, Users } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react";
+import { offeneBisHeute } from "@/components/kalender/todo-zaehler";
+import { fetchTodos } from "@/lib/data/todos";
+import { heuteInBerlin } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/privat", text: "Kalender", icon: CalendarDays },
-  { href: "/privat/auswertung", text: "Auswertung", icon: BarChart3 },
-  { href: "/privat/teilen", text: "Teilen", icon: Users },
   { href: "/privat/schichten", text: "Schichten", icon: Layers },
+  { href: "/privat/teilen", text: "Teilen", icon: Users },
+  { href: "/privat/todos", text: "To-dos", icon: ListChecks },
   { href: "/privat/mehr", text: "Mehr", icon: Ellipsis },
 ];
+
+/** Offene To-dos bis heute – für die Zahl am Reiter; lädt neu bei Seitenwechsel und wenn sich To-dos ändern. */
+function useTodoZahl(pfad: string): number {
+  const [zahl, setZahl] = useState(0);
+  useEffect(() => {
+    let aktiv = true;
+    const laden = () => {
+      fetchTodos()
+        .then((t) => aktiv && setZahl(offeneBisHeute(t, heuteInBerlin())))
+        .catch(() => {});
+    };
+    laden();
+    window.addEventListener("todos-geaendert", laden);
+    return () => {
+      aktiv = false;
+      window.removeEventListener("todos-geaendert", laden);
+    };
+  }, [pfad]);
+  return zahl;
+}
 
 /** Rahmen des Privatbereichs: Inhalt und Leiste unten – auf jeder Bildschirmgröße. */
 export function PrivatRahmen({ children }: { children: ReactNode }) {
   const pfad = usePathname();
+  const todoZahl = useTodoZahl(pfad);
   return (
     <div className="privat min-h-dvh">
       <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
@@ -40,7 +64,17 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
                     aktiv ? "bg-surface/70 text-brand-600 shadow-[0_1px_6px_rgba(0,0,0,0.08)]" : "text-ink-muted hover:text-ink",
                   )}
                 >
-                  <n.icon className="h-[22px] w-[22px]" strokeWidth={aktiv ? 2.2 : 1.8} />
+                  <span className="relative">
+                    <n.icon className="h-[22px] w-[22px]" strokeWidth={aktiv ? 2.2 : 1.8} />
+                    {n.href === "/privat/todos" && todoZahl ? (
+                      <span
+                        aria-label={`${todoZahl} offen`}
+                        className="tnum absolute -right-2.5 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-crit-dot px-1 text-[10.5px] font-bold leading-none text-white"
+                      >
+                        {todoZahl > 99 ? "99+" : todoZahl}
+                      </span>
+                    ) : null}
+                  </span>
                   {n.text}
                 </Link>
               </li>

@@ -30,7 +30,7 @@ import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
-import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
+import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, TagWahl, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
@@ -1174,6 +1174,7 @@ function TagBlatt({
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
   const beantragt = abw !== null && abw !== gross;
+  const [reiter, setReiter] = useState<"schicht" | "termin">("schicht");
   const [nachricht, setNachricht] = useState(
     arten.length ? "Antippen = dein eigener Eintrag dazu · der Schichtplan bleibt" : "Leg eigene Einträge an, z. B. Nebenjob oder Sport.",
   );
@@ -1236,33 +1237,50 @@ function TagBlatt({
       }
       onClose={onClose}
     >
-      <SchichtLeiste
-        eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe, rang: eigen?.id === a.id ? 2 : 0 }))}
-        onTipp={tipp}
-        nachricht={nachricht}
-        ende={
-          <button
-            type="button"
-            onClick={onNeueArt}
-            className="flex h-11 shrink-0 items-center gap-1 rounded-full border-[1.5px] border-dashed border-ink/25 px-4 text-[14px] font-semibold text-ink-muted"
-          >
-            <Plus className="h-4 w-4" /> {arten.length ? "Neu" : "Eigenen Eintrag anlegen"}
-          </button>
-        }
+      <TagWahl
+        wahl={reiter}
+        onWahl={setReiter}
+        schicht={plan ? (eigen ? `${plan.name} + ${eigen.name}` : plan.name) : "…"}
+        termin={termine.length ? `${termine.length} ${termine.length === 1 ? "Termin" : "Termine"}` : "kein Termin"}
       />
 
-      <AmTag
-        termine={termine}
-        todos={todos}
-        terminVon={terminVon}
-        onTermin={onTermin}
-        onTodo={onTodo}
-        datum={iso}
-        onLoeschen={onTerminLoeschen}
-        darfLoeschen={darfLoeschen}
-      />
+      {reiter === "schicht" ? (
+        <div className="mt-2">
+          <SchichtLeiste
+            eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe, rang: eigen?.id === a.id ? 2 : 0 }))}
+            onTipp={tipp}
+            nachricht={nachricht}
+            ende={
+              <button
+                type="button"
+                onClick={onNeueArt}
+                className="flex h-11 shrink-0 items-center gap-1 rounded-full border-[1.5px] border-dashed border-ink/25 px-4 text-[14px] font-semibold text-ink-muted"
+              >
+                <Plus className="h-4 w-4" /> {arten.length ? "Neu" : "Eigenen Eintrag anlegen"}
+              </button>
+            }
+          />
+        </div>
+      ) : (
+        <div className="mt-3">
+          {termine.length || todos.length ? (
+            <AmTag
+              termine={termine}
+              todos={todos}
+              terminVon={terminVon}
+              onTermin={onTermin}
+              onTodo={onTodo}
+              datum={iso}
+              onLoeschen={onTerminLoeschen}
+              darfLoeschen={darfLoeschen}
+            />
+          ) : (
+            <p className="px-1 text-[13.5px] text-ink-muted">Noch kein Termin an diesem Tag.</p>
+          )}
+        </div>
+      )}
       <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
-      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
+      <TagKnoepfe onTermin={reiter === "termin" ? () => onTermin(null) : undefined} onTag={onTag} />
       <button
         type="button"
         onClick={() => onPartner()}
