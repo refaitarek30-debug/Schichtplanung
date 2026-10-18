@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, Cog, LayoutGrid, LogOut, UserRound } from "lucide-react";
 import { KachelListe } from "@/components/dashboard/tile-settings";
 import { useKachelAuswahl } from "@/lib/kachel-auswahl";
+import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { Blatt } from "@/components/privat/blatt";
 import { Avatar } from "@/components/ui/avatar";
 import { useSession } from "@/context/session";
@@ -116,6 +117,7 @@ export function ProfilBlatt({
         <Link href="/einstellungen" onClick={onClose} className={zeile}>
           <Cog className="h-5 w-5 text-ink-muted" strokeWidth={1.8} /> Einstellungen
         </Link>
+        <BetreiberLink onClick={onClose} className={zeile} />
       </div>
 
       {kacheln ? (
