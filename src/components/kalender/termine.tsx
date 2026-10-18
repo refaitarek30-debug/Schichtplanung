@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, X } from "lucide-react";
-import { addDays, formatDE, fromISO } from "@/lib/dates";
+import { addDays, formatDE, fromISO, heuteInBerlin, monthName } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 import type { Erinnerung, Termin, TerminEingabe, Wiederholung } from "@/lib/data/partner";
@@ -87,6 +87,45 @@ function beginntAm(t: Termin, iso: string): boolean {
     default:
       return iso === t.datum;
   }
+}
+
+// ---- Geburtstage ---------------------------------------------------------------
+//
+// Ein Geburtstag ist ein jährlicher Termin, dessen Titel mit 🎂 beginnt. Das
+// Geburtsjahr steckt im Startdatum der Serie: Ist es nicht bekannt, beginnt
+// die Serie 1904 (ein Schaltjahr, damit auch der 29.2. geht – so macht es
+// auch Apple), dann erscheint der Geburtstag in jedem Jahr, ohne Alter.
+// Alles ab 2026 zählt als „Jahr nicht bekannt“: so wurden Geburtstage vor
+// dieser Funktion angelegt, mit dem Tag, an dem man sie eingetragen hat.
+
+export const GEBURTSJAHR_UNBEKANNT = 1904;
+const FRUEHESTES_GEBURTSJAHR = 1905;
+const SPAETESTES_GEBURTSJAHR = 2025;
+
+export const istGeburtstagTitel = (titel: string) => titel.trimStart().startsWith("🎂");
+
+/** Das Geburtsjahr, wenn es bekannt ist. */
+export function geburtsjahr(t: Pick<Termin, "titel" | "wiederholung" | "datum">): number | null {
+  if (t.wiederholung !== "jaehrlich" || !istGeburtstagTitel(t.titel)) return null;
+  const j = Number(t.datum.slice(0, 4));
+  return j >= FRUEHESTES_GEBURTSJAHR && j <= SPAETESTES_GEBURTSJAHR ? j : null;
+}
+
+const istSchaltjahr = (j: number) => (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0;
+
+/** Alter, das jemand an diesem Tag wird (bzw. wurde) – ohne bekanntes Geburtsjahr null. */
+export function geburtstagAlter(t: Pick<Termin, "titel" | "wiederholung" | "datum">, iso: string): number | null {
+  const j = geburtsjahr(t);
+  if (j === null) return null;
+  const alter = Number(iso.slice(0, 4)) - j;
+  return alter >= 1 && alter <= 130 ? alter : null;
+}
+
+/** Titel für die Anzeige: bei Geburtstagen mit Alter („🎂 Anna wird 31“). */
+export function terminTitel(t: Pick<Termin, "titel" | "wiederholung" | "datum">, iso: string): string {
+  const basis = t.titel || "Termin";
+  const alter = geburtstagAlter(t, iso);
+  return alter === null ? basis : `${basis} ${iso >= heuteInBerlin() ? "wird" : "wurde"} ${alter}`;
 }
 
 /** Wie viele Tage ein ganztägiger Termin über den ersten hinaus dauert. */
@@ -228,6 +267,12 @@ export function TerminBlatt({
   const tag = termin?.datum ?? datum;
   const [bisDatum, setBisDatum] = useState<string>(termin?.bisDatum && termin.bisDatum > tag ? termin.bisDatum : tag);
   const [erinnerung, setErinnerung] = useState<Erinnerung | null>(termin?.erinnerung ?? null);
+  const titelFeld = useRef<HTMLInputElement>(null);
+  // Geburtstag: jährlich, 🎂 vorn – dann fragt das Formular nach dem Geburtsjahr.
+  const geburt = wdh === "jaehrlich" && istGeburtstagTitel(titel);
+  const [gjahr, setGjahr] = useState(() => (termin ? String(geburtsjahr(termin) ?? "") : ""));
+  const tagMonat = (termin?.datum ?? datum).slice(5);
+  const gjahrZahl = /^\d{4}$/.test(gjahr) && Number(gjahr) >= FRUEHESTES_GEBURTSJAHR && Number(gjahr) <= SPAETESTES_GEBURTSJAHR ? Number(gjahr) : null;
   /** null = mein Kalender, sonst das Konto einer verbundenen Person */
   const [ziel, setZiel] = useState<string | null>(null);
 
@@ -238,9 +283,18 @@ export function TerminBlatt({
   const [vorlagenFehler, setVorlagenFehler] = useState<string | null>(null);
 
   function waehle(v: Vorlage) {
+    if (v.jaehrlich) {
+      // Geburtstag: nur die Torte, den Namen schreibt man dahinter. Ganztägig,
+      // jedes Jahr, und morgens eine Erinnerung.
+      setTitel(`${v.icon} `);
+      setWdh("jaehrlich");
+      setGanz(true);
+      setBisDatum(tag);
+      setErinnerung((alt) => alt ?? "tag8");
+      window.setTimeout(() => titelFeld.current?.focus(), 0);
+      return;
+    }
     setTitel(mitSymbol(v));
-    // Geburtstage gleich jedes Jahr.
-    if (v.jaehrlich) setWdh("jaehrlich");
     if (v.min > 0) {
       setGanz(false);
       setBis(zeitPlus(von, v.min));
@@ -263,12 +317,20 @@ export function TerminBlatt({
   // Passt die gewählte Erinnerung nicht mehr (ganztägig umgeschaltet), keine.
   const erinnerungGueltig = erinnerungen.some((e) => e.id === erinnerung) ? erinnerung : null;
 
+  // Beim Geburtstag beginnt die Serie im Geburtsjahr (oder 1904, wenn es unbekannt ist).
+  const startJahr = gjahrZahl && !(tagMonat === "02-29" && !istSchaltjahr(gjahrZahl)) ? gjahrZahl : GEBURTSJAHR_UNBEKANNT;
+  const startDatum = geburt ? `${startJahr}-${tagMonat}` : tag;
+  // Alter beim nächsten Geburtstag (ab heute gerechnet).
+  const heuteIso = heuteInBerlin();
+  const naechstesJahr = Number(heuteIso.slice(0, 4)) + (tagMonat < heuteIso.slice(5) ? 1 : 0);
+  const alterVorschau = geburt && gjahrZahl ? naechstesJahr - gjahrZahl : null;
+
   function speichern(e: React.FormEvent) {
     e.preventDefault();
     onSpeichern({
       id: termin?.id ?? null,
-      datum: tag,
-      bisDatum: ganz && bisDatum > tag ? bisDatum : null,
+      datum: startDatum,
+      bisDatum: !geburt && ganz && bisDatum > tag ? bisDatum : null,
       titel: titel.trim(),
       ganztaegig: ganz,
       von,
@@ -308,12 +370,18 @@ export function TerminBlatt({
       >
         <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">
-            {termin?.wiederholung && termin.wiederholung !== "nie" ? "ab " : ""}
-            {formatDE(tag)}
-            {ganz && tageAnzahl > 1 ? ` – ${formatDE(bisDatum)}` : ""}
+            {geburt ? (
+              `${Number(tagMonat.slice(3))}. ${monthName(Number(tagMonat.slice(0, 2)) - 1)}`
+            ) : (
+              <>
+                {termin?.wiederholung && termin.wiederholung !== "nie" ? "ab " : ""}
+                {formatDE(tag)}
+                {ganz && tageAnzahl > 1 ? ` – ${formatDE(bisDatum)}` : ""}
+              </>
+            )}
           </span>
           <span className="tnum text-[15px] text-ink-muted">
-            {ganz ? (tageAnzahl > 1 ? `${tageAnzahl} Tage` : "Ganztägig") : dauer(von, bis)}
+            {geburt ? "jedes Jahr" : ganz ? (tageAnzahl > 1 ? `${tageAnzahl} Tage` : "Ganztägig") : dauer(von, bis)}
           </span>
         </div>
 
@@ -325,7 +393,7 @@ export function TerminBlatt({
                 className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {STANDARD_TERMINE.map((v) => (
-                  <button key={v.titel} type="button" onClick={() => waehle(v)} className={pille(titel === mitSymbol(v))}>
+                  <button key={v.titel} type="button" onClick={() => waehle(v)} className={pille(v.jaehrlich ? geburt : titel === mitSymbol(v))}>
                     {mitSymbol(v)}
                   </button>
                 ))}
@@ -457,15 +525,41 @@ export function TerminBlatt({
           <label className={zeile}>
             <span className="shrink-0">Titel</span>
             <input
+              ref={titelFeld}
               id={`${id}-titel`}
               value={titel}
               onChange={(e) => setTitel(e.target.value)}
-              placeholder="Ohne Titel"
+              placeholder={geburt ? "Name" : "Ohne Titel"}
               maxLength={80}
               autoComplete="off"
               className={eingabe}
             />
           </label>
+          {geburt ? (
+            <>
+              <label className={zeile}>
+                <span className="shrink-0">
+                  Geburtsjahr <span className="text-[13px] text-ink-muted">(freiwillig)</span>
+                </span>
+                <input
+                  id={`${id}-gjahr`}
+                  value={gjahr}
+                  onChange={(e) => setGjahr(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  placeholder="z. B. 1995"
+                  autoComplete="off"
+                  className={eingabe}
+                />
+              </label>
+              <p className="pb-2 pt-1.5 text-[12.5px] text-ink-muted">
+                {titel.replace("🎂", "").trim() === ""
+                  ? "Wessen Geburtstag? Schreib den Namen hinter die Torte."
+                  : alterVorschau && alterVorschau >= 1
+                    ? `Im Kalender steht dann „${titel.trim()} wird ${alterVorschau}“ – und jedes Jahr ein Jahr mehr.`
+                    : "Mit dem Geburtsjahr zeigt der Kalender auch das Alter."}
+              </p>
+            </>
+          ) : null}
           <div className={zeile}>
             <span id={`${id}-ganz`}>Ganztägig</span>
             <button
@@ -517,7 +611,7 @@ export function TerminBlatt({
                 />
               </label>
             </>
-          ) : vorschlaege ? (
+          ) : vorschlaege && !geburt ? (
             <div className={cn(zeile, "flex-col items-stretch gap-2 py-3")}>
               <span>Wie lange?</span>
               <div className="flex flex-wrap gap-1.5">

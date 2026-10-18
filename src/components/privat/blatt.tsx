@@ -1,8 +1,94 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+
+/**
+ * Nach unten wischen schließt das Blatt: Es folgt dem Finger und gleitet
+ * hinaus – oder federt zurück, wenn man nicht weit genug gezogen hat. Liegt
+ * der Inhalt gescrollt, scrollt er erst; ganz oben zieht der nächste Wisch
+ * das Blatt zu.
+ */
+function useWischZu(blatt: React.RefObject<HTMLDivElement | null>, aktiv: boolean, onClose: () => void) {
+  const zu = useRef(onClose);
+  useEffect(() => {
+    zu.current = onClose;
+  });
+
+  useEffect(() => {
+    const el = blatt.current;
+    if (!el || !aktiv) return;
+    let s: { x: number; y: number; scroller: HTMLElement | null; ziehen: boolean; dy: number; v: number; letztY: number; letztT: number } | null = null;
+
+    const scrollerVon = (ziel: EventTarget | null): HTMLElement | null => {
+      for (let n = ziel as HTMLElement | null; n && n !== el; n = n.parentElement) {
+        const o = getComputedStyle(n).overflowY;
+        if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight + 1) return n;
+      }
+      return null;
+    };
+    const setze = (y: number, dauer = 0) => {
+      el.style.transition = dauer ? `transform ${dauer}ms cubic-bezier(.22,1,.36,1)` : "none";
+      el.style.transform = y ? `translate3d(0, ${y}px, 0)` : "";
+    };
+
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0]!;
+      s = { x: t.clientX, y: t.clientY, scroller: scrollerVon(e.target), ziehen: false, dy: 0, v: 0, letztY: t.clientY, letztT: e.timeStamp };
+    };
+    const bewegt = (e: TouchEvent) => {
+      if (!s) return;
+      const t = e.touches[0]!;
+      const dy = t.clientY - s.y;
+      const dx = t.clientX - s.x;
+      if (!s.ziehen) {
+        // Nach oben, zur Seite oder gescrollter Inhalt: nicht unsere Geste.
+        if (dy < -6 || Math.abs(dx) > 12 || (s.scroller && s.scroller.scrollTop > 0)) {
+          s = null;
+          return;
+        }
+        if (dy > 6 && dy > Math.abs(dx) * 1.2) s.ziehen = true;
+        else return;
+      }
+      if (e.cancelable) e.preventDefault();
+      const dt = e.timeStamp - s.letztT;
+      if (dt > 0) s.v = (t.clientY - s.letztY) / dt;
+      s.letztY = t.clientY;
+      s.letztT = e.timeStamp;
+      s.dy = Math.max(0, dy);
+      setze(s.dy);
+    };
+    const ende = () => {
+      const g = s;
+      s = null;
+      if (!g?.ziehen) return;
+      if (g.dy > 90 || (g.v > 0.5 && g.dy > 24)) {
+        setze(el.offsetHeight + 40, 170);
+        window.setTimeout(() => zu.current(), 150);
+      } else {
+        setze(0, 220);
+      }
+    };
+    const abbruch = () => {
+      const g = s;
+      s = null;
+      if (g?.ziehen) setze(0, 220);
+    };
+
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", bewegt, { passive: false });
+    el.addEventListener("touchend", ende);
+    el.addEventListener("touchcancel", abbruch);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", bewegt);
+      el.removeEventListener("touchend", ende);
+      el.removeEventListener("touchcancel", abbruch);
+    };
+  }, [blatt, aktiv]);
+}
 
 /**
  * Blatt von unten (Handy) bzw. Fenster in der Mitte (Desktop). An den Body
@@ -14,13 +100,18 @@ export function Blatt({
   onClose,
   children,
   fuss,
+  wischZu = false,
 }: {
   titel: ReactNode;
   unter?: ReactNode;
   onClose: () => void;
   children: ReactNode;
   fuss?: ReactNode;
+  /** Nach unten wischen schließt – nur für Blätter zum Ansehen, nicht für Formulare. */
+  wischZu?: boolean;
 }) {
+  const blatt = useRef<HTMLDivElement>(null);
+  useWischZu(blatt, wischZu, onClose);
   useEffect(() => {
     const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", taste);
@@ -36,6 +127,7 @@ export function Blatt({
         onClick={onClose}
       />
       <div
+        ref={blatt}
         role="dialog"
         aria-modal="true"
         className="glas-dicht relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-[30px]"
@@ -55,7 +147,7 @@ export function Blatt({
             <X className="h-[18px] w-[18px]" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-2">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2">{children}</div>
         {fuss ? (
           <div className="glas-linie border-t px-5 pb-4 pt-3">{fuss}</div>
         ) : null}
