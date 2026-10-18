@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="17. Oktober 2026"
+      updated="18. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -427,7 +427,8 @@ export default function DatenschutzPage() {
           Farben und Einträge sieht nur die Person selbst – keine Kolleginnen und Kollegen, keine
           Schichtleitung und keine Administration des Unternehmens; die Datenbank lässt Abfragen
           und Änderungen darauf nur für die Person selbst zu. Sie erscheinen weder in geteilten
-          Links noch in Gruppen noch im Kalender-Abo. Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
+          Links noch in Gruppen. Nur im eigenen Kalender-Abo der Person erscheinen sie
+          (siehe unten). Eigene Einträge sollten keine Gesundheitsangaben und keine Namen
           oder Angaben zu anderen Personen enthalten.
         </Absatz>
         <Absatz>
@@ -495,8 +496,9 @@ export default function DatenschutzPage() {
           (iCalendar) in die Kalender-App ihres Handys übernehmen. Der Link enthält Schichten
           mit Uhrzeit sowie Urlaub, Schulung und sonstige Abwesenheit – letztere nur als
           „Abwesend“, <strong>ohne Grund</strong>, sowie die eigenen Termine aus{" "}
-          <em>Mein Kalender</em> (nicht die eingeladener Personen). Keine Kolleginnen und
-          Kollegen. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
+          <em>Mein Kalender</em> (nicht die eingeladener Personen) und die eigenen Einträge
+          aus <em>Mein Kalender</em> (Name und Uhrzeit, z. B. „Nebenjob“). Keine Kolleginnen
+          und Kollegen. Die Kalender-App ruft den Link regelmäßig ab; gespeichert wird nur, wann
           der Link erstellt, zuletzt abgerufen und beendet wurde. Was die Kalender-App des
           Handys bzw. deren Anbieter (z. B. Apple, Google) mit den abgerufenen Daten macht,
           richtet sich nach deren Bedingungen; die Daten verlassen dabei die Anwendung.
