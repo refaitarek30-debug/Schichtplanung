@@ -181,7 +181,7 @@ export function PrivatTodos() {
           type="submit"
           disabled={!text.trim()}
           aria-label="Hinzufügen"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] bg-ink text-surface disabled:opacity-40"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[15px] bg-ink text-surface disabled:bg-ink/10 disabled:text-ink-muted"
         >
           <Plus className="h-5 w-5" strokeWidth={2.6} />
         </button>

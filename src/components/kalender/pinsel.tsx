@@ -173,19 +173,20 @@ export function useMonatWischen(springe: (schritt: number) => void) {
     }
     blaettert.current = true;
     const h = el.offsetHeight || 1;
-    const weg = h * 0.32;
+    const weg = h * 0.24;
     // Vom aktuellen Stand aus weiter hinaus – je näher am Ziel, desto kürzer.
     const rest = Math.max(0.25, 1 - Math.abs(ab) / weg);
-    const raus = Math.round(110 + 110 * rest);
+    const raus = Math.round(55 + 60 * rest);
     setze(schritt > 0 ? -weg : weg, h, raus, "cubic-bezier(.4,0,1,1)");
     window.setTimeout(() => {
       springe(schritt);
-      setze(schritt > 0 ? h * 0.14 : -h * 0.14, h);
-      // Erst zeichnen lassen, dann sanft hineingleiten.
+      setze(schritt > 0 ? h * 0.1 : -h * 0.1, h);
+      // Erst zeichnen lassen, dann hineingleiten. Schon vor dem Ende wieder
+      // wischbar, damit mehrere Monate hintereinander flott gehen.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          setze(0, h, 320);
-          window.setTimeout(() => (blaettert.current = false), 320);
+          setze(0, h, 190);
+          window.setTimeout(() => (blaettert.current = false), 100);
         }),
       );
     }, raus);
@@ -225,8 +226,8 @@ export function useMonatWischen(springe: (schritt: number) => void) {
       const dx = e.clientX - s.x;
       const dy = e.clientY - s.y;
       // Weit genug gezogen – oder kurz und schnell geschnippt.
-      const schnell = Math.abs(s.v) > 0.45 && Math.abs(dy) > 24;
-      if ((Math.abs(dy) > 50 || schnell) && Math.abs(dy) > Math.abs(dx) * 1.3) {
+      const schnell = Math.abs(s.v) > 0.3 && Math.abs(dy) > 16;
+      if ((Math.abs(dy) > 36 || schnell) && Math.abs(dy) > Math.abs(dx) * 1.3) {
         gewischt.current = true;
         // Nur den Klick direkt danach schlucken.
         window.setTimeout(() => (gewischt.current = false), 120);

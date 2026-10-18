@@ -10,19 +10,18 @@ import type { Todo } from "@/lib/data/todos";
 import type { Rolle } from "@/lib/data/todos";
 import { cn } from "@/lib/utils";
 import { Blatt } from "@/components/privat/blatt";
-import { erinnerungText, minutenZwischen, TerminLoeschenFrage, vorkommenAm, type Termin } from "./termine";
+import { erinnerungText, minutenZwischen, terminTitel, TerminLoeschenFrage, vorkommenAm, type Termin } from "./termine";
 import type { LoeschModus } from "@/lib/data/verbindungen";
 import { TODO_VORSCHLAEGE } from "./vorschlaege";
 import { ErinnerungHinweis } from "./erinnerungen";
 
 /**
- * Bausteine rund um einen Tag: die Schicht-Leiste im Tagesblatt, die
- * Schnellauswahl beim langen Drücken, die Tagesansicht mit Zeitleiste und
- * die To-do-Liste. Für den Privat- und den Firmenkalender.
+ * Bausteine rund um einen Tag: die Schicht-Leiste im Tagesblatt, langes
+ * Drücken für einen neuen Termin, die Tagesansicht mit Zeitleiste und die
+ * To-do-Liste. Für den Privat- und den Firmenkalender.
  */
 
 const WT_KURZ = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
-const WT_LANG = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
 /** Farbe als Fläche: Schrift passend dazu. */
 export const farbFlaeche = (farbe: string): React.CSSProperties => ({ backgroundColor: farbe, color: textFarbe(farbe) });
@@ -134,8 +133,8 @@ const WISCH_OFFEN = 96;
 
 /** Farbe eigener Termine, wenn keine Person dahintersteht. */
 const EIGEN_TERMIN_FARBE = "#6C8CFF";
-/** Helle Kartenfarbe zu einer Personenfarbe (deckend, damit nichts durchscheint). */
-const karteFarbe = (farbe: string) => `color-mix(in srgb, ${farbe} 20%, #ffffff)`;
+/** Kartenfarbe zu einer Personenfarbe: deckend, im Hellen hell und im Dunkeln dunkel getönt. */
+const karteFarbe = (farbe: string) => `color-mix(in srgb, ${farbe} 20%, rgb(var(--c-surface)))`;
 
 /**
  * Eine Termin-Zeile: antippen = öffnen, nach links wischen = „Löschen“ zeigen,
@@ -143,6 +142,7 @@ const karteFarbe = (farbe: string) => `color-mix(in srgb, ${farbe} 20%, #ffffff)
  */
 function TerminZeile({
   t,
+  tag,
   von,
   darfLoeschen,
   onTermin,
@@ -150,6 +150,8 @@ function TerminZeile({
   onFrage,
 }: {
   t: Termin;
+  /** Der Tag, an dem die Zeile steht (für das Alter bei Geburtstagen). */
+  tag: string;
   von: { name: string; farbe: string } | null;
   darfLoeschen: boolean;
   onTermin: (t: Termin) => void;
@@ -271,7 +273,7 @@ function TerminZeile({
         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: von?.farbe ?? EIGEN_TERMIN_FARBE }} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold">
-            {t.titel || "Termin"}
+            {terminTitel(t, tag)}
             {t.vonPartner ? <span className="ml-1 text-[12px] font-medium text-brand-600">· {von?.name ?? "Eingeladen"}</span> : null}
           </span>
           <span className="tnum block text-[12.5px] text-ink-muted">
@@ -316,6 +318,7 @@ export function AmTag({
           <TerminZeile
             key={`t-${t.id}`}
             t={t}
+            tag={datum}
             von={terminVon(t)}
             darfLoeschen={!!onLoeschen && (darfLoeschen ? darfLoeschen(t) : true)}
             onTermin={onTermin}
@@ -356,52 +359,14 @@ export function AmTag({
   );
 }
 
-/** Zwei Karten oben im Tagesblatt: Schicht oder Termin. Die gewählte ist dunkel. */
-export function TagWahl({
-  wahl,
-  onWahl,
-  schicht,
-  termin,
-}: {
-  wahl: "schicht" | "termin";
-  onWahl: (w: "schicht" | "termin") => void;
-  /** Kurzer Stand: z. B. „Früh + Spät“ oder „keine Schicht“. */
-  schicht: string;
-  termin: string;
-}) {
-  const karte = (an: boolean) =>
-    cn(
-      "flex min-h-[76px] min-w-0 flex-col items-start justify-center gap-1 rounded-[18px] px-3.5 py-3 text-left transition-colors",
-      an ? "bg-ink text-surface" : "bg-ink/[0.06] text-ink",
-    );
-  return (
-    <div role="tablist" aria-label="Was möchtest du eintragen?" className="grid grid-cols-2 gap-2">
-      <button type="button" role="tab" aria-selected={wahl === "schicht"} onClick={() => onWahl("schicht")} className={karte(wahl === "schicht")}>
-        <span className="flex items-center gap-1.5 text-[15px] font-bold">
-          <Clock className="h-[18px] w-[18px] shrink-0" /> Schicht
-        </span>
-        <span className="w-full truncate text-[12.5px] font-medium opacity-75">{schicht}</span>
-      </button>
-      <button type="button" role="tab" aria-selected={wahl === "termin"} onClick={() => onWahl("termin")} className={karte(wahl === "termin")}>
-        <span className="flex items-center gap-1.5 text-[15px] font-bold">
-          <CalendarPlus className="h-[18px] w-[18px] shrink-0" /> Termin
-        </span>
-        <span className="w-full truncate text-[12.5px] font-medium opacity-75">{termin}</span>
-      </button>
-    </div>
-  );
-}
-
-/** Unten im Tagesblatt: „Neuer Termin“ (nur im Terminteil) und der ganze Tag. */
-export function TagKnoepfe({ onTermin, onTag }: { onTermin?: () => void; onTag: () => void }) {
+/** Unten im Tagesblatt: neuer Termin und der ganze Tag. */
+export function TagKnoepfe({ onTermin, onTag }: { onTermin: () => void; onTag: () => void }) {
   const knopf = "flex h-[50px] items-center justify-center gap-1.5 rounded-[16px] text-[14.5px] font-semibold";
   return (
-    <div className={cn("mt-3 grid gap-2", onTermin ? "grid-cols-2" : "grid-cols-1")}>
-      {onTermin ? (
-        <button type="button" onClick={onTermin} className={cn(knopf, "bg-ink text-surface")}>
-          <CalendarPlus className="h-[18px] w-[18px]" /> Neuer Termin
-        </button>
-      ) : null}
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <button type="button" onClick={onTermin} className={cn(knopf, "bg-ink text-surface")}>
+        <CalendarPlus className="h-[18px] w-[18px]" /> Neuer Termin
+      </button>
       <button type="button" onClick={onTag} className={cn(knopf, "bg-ink/[0.07] text-ink")}>
         <Clock className="h-[18px] w-[18px]" /> Tag ansehen
       </button>
@@ -409,11 +374,12 @@ export function TagKnoepfe({ onTermin, onTag }: { onTermin?: () => void; onTag: 
   );
 }
 
-// ---- Lange drücken: Schnellauswahl -------------------------------------------------
+// ---- Lange drücken ----------------------------------------------------------------
 
 /**
- * Langes Drücken auf einen Tag. Gibt die Ereignisse für die Zelle und eine
- * Prüfung, ob der Klick danach geschluckt werden soll.
+ * Langes Drücken auf einen Tag (öffnet einen neuen Termin). Gibt die
+ * Ereignisse für die Zelle und eine Prüfung, ob der Klick danach geschluckt
+ * werden soll.
  */
 export function useLangDruck(onLang: (iso: string, rect: DOMRect) => void) {
   const uhr = useRef<number | null>(null);
@@ -463,120 +429,6 @@ export function useLangDruck(onLang: (iso: string, rect: DOMRect) => void) {
       return true;
     },
   };
-}
-
-export interface SchnellEintrag {
-  id: string;
-  name: string;
-  farbe: string;
-}
-
-/** Die Farben über dem gedrückten Tag: Finger draufziehen und loslassen – oder antippen. */
-export function SchnellWahl({
-  rect,
-  titel,
-  eintraege,
-  aktiv,
-  mitLeeren,
-  hinweis = "auf Farbe ziehen & loslassen",
-  onWahl,
-  onClose,
-}: {
-  rect: DOMRect;
-  titel: string;
-  eintraege: SchnellEintrag[];
-  /** Schon gesetzte Einträge des Tages (einer oder mehrere). */
-  aktiv: string | null | (string | null)[];
-  mitLeeren: boolean;
-  hinweis?: string;
-  /** null = Tag leeren */
-  onWahl: (id: string | null) => void;
-  onClose: () => void;
-}) {
-  const [ueber, setUeber] = useState<string | null>(null);
-  const ziehen = useRef(true);
-  const wahl = useRef(onWahl);
-  useEffect(() => {
-    wahl.current = onWahl;
-  });
-
-  useEffect(() => {
-    function finden(x: number, y: number): string | null {
-      const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-schnell]");
-      return el?.dataset.schnell ?? null;
-    }
-    function bewegen(e: PointerEvent) {
-      if (ziehen.current) setUeber(finden(e.clientX, e.clientY));
-    }
-    function los(e: PointerEvent) {
-      if (!ziehen.current) return;
-      ziehen.current = false;
-      const id = finden(e.clientX, e.clientY);
-      setUeber(null);
-      if (id) wahl.current(id === "leer" ? null : id);
-    }
-    const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("pointermove", bewegen);
-    window.addEventListener("pointerup", los);
-    window.addEventListener("pointercancel", () => (ziehen.current = false));
-    window.addEventListener("keydown", taste);
-    return () => {
-      window.removeEventListener("pointermove", bewegen);
-      window.removeEventListener("pointerup", los);
-      window.removeEventListener("keydown", taste);
-    };
-  }, [onClose]);
-
-  const breite = Math.min(window.innerWidth - 24, 380);
-  const links = Math.max(12, Math.min(rect.left + rect.width / 2 - breite / 2, window.innerWidth - breite - 12));
-  const hoehe = 112;
-  const oben = rect.top - hoehe - 10 > 12 ? rect.top - hoehe - 10 : rect.bottom + 10;
-  const liste: SchnellEintrag[] = mitLeeren ? [...eintraege, { id: "leer", name: "Leeren", farbe: "" }] : eintraege;
-
-  return createPortal(
-    <div className="privat-schrift fixed inset-0 z-[55] select-none [-webkit-touch-callout:none]">
-      <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-black/10" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-label={`Schnell wechseln: ${titel}`}
-        className="absolute rounded-[26px] bg-surface p-3 shadow-[0_14px_40px_rgba(31,41,77,0.28)] ring-1 ring-ink/5"
-        style={{ left: links, top: oben, width: breite }}
-      >
-        <p className="mb-2 text-center text-[12px] font-semibold text-ink-muted">{titel} · {hinweis}</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {liste.map((e) => {
-            const hervor = ueber === e.id;
-            const gesetzt = Array.isArray(aktiv) ? aktiv.includes(e.id) : aktiv === e.id;
-            return (
-              <button
-                key={e.id}
-                type="button"
-                data-schnell={e.id}
-                onClick={() => onWahl(e.id === "leer" ? null : e.id)}
-                className="flex w-[52px] shrink-0 flex-col items-center gap-1"
-              >
-                <span
-                  className={cn(
-                    "flex items-center justify-center rounded-full text-[14px] font-extrabold transition-all",
-                    hervor ? "h-[50px] w-[50px]" : "h-[42px] w-[42px]",
-                    (hervor || gesetzt) && "ring-[2.5px] ring-ink ring-offset-2 ring-offset-surface",
-                    e.id === "leer" && "bg-ink/[0.07] text-ink-muted",
-                  )}
-                  style={e.id === "leer" ? undefined : farbFlaeche(e.farbe)}
-                >
-                  {e.id === "leer" ? <X className="h-5 w-5" /> : e.name.slice(0, 2)}
-                </span>
-                <span className={cn("max-w-full truncate text-[11px]", hervor ? "font-extrabold text-ink" : "font-semibold text-ink-muted")}>
-                  {e.name}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
 }
 
 // ---- Tagesansicht ---------------------------------------------------------------
@@ -961,7 +813,7 @@ export function Tagesansicht({
               onClick={() => onTermin(t)}
               className="flex h-9 max-w-full items-center gap-1.5 truncate rounded-[12px] bg-warn-bg px-3 text-[13.5px] font-semibold text-ink"
             >
-              {t.titel || "Termin"} <span className="font-normal text-ink-muted">· ganztägig</span>
+              {terminTitel(t, iso)} <span className="font-normal text-ink-muted">· ganztägig</span>
             </button>
           ))}
           {eingebettet ? (
@@ -1073,7 +925,7 @@ export function Tagesansicht({
                       if (e.detail === 0) onTermin(l.t);
                     }}
                     onContextMenu={(e) => e.preventDefault()}
-                    aria-label={`${l.t.titel || "Termin"}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben oder Löschen."}`}
+                    aria-label={`${terminTitel(l.t, iso)}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben oder Löschen."}`}
                     className={cn(
                       "absolute z-[2] flex touch-none select-none flex-col overflow-hidden rounded-[12px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
                       zieht ? "z-[4] bg-warn-bg shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
@@ -1089,7 +941,7 @@ export function Tagesansicht({
                           }),
                     }}
                   >
-                    <span className="truncate text-[13.5px] font-bold leading-tight">{l.t.titel || "Termin"}</span>
+                    <span className="truncate text-[13.5px] font-bold leading-tight">{terminTitel(l.t, iso)}</span>
                     <span className="tnum truncate text-[11.5px] text-ink-muted">
                       {zieht && zug ? `${hhmm(zug.neu)}–${hhmm(Math.min(1439, zug.neu + zug.dauer))}` : `${l.t.von}${l.t.bis ? `–${l.t.bis}` : ""}`}
                       {von ? ` · ${von.name}` : ""}

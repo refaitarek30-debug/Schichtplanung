@@ -3,16 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Repeat } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import {
   AmTag,
   EintragPille,
   SchichtLeiste,
-  SchnellWahl,
   TagKnoepfe,
-  TagWahl,
   Tagesansicht,
   TodoBlatt,
   useLangDruck,
@@ -125,8 +123,6 @@ export function PrivatKalender() {
   const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
   /** To-do-Liste; datum = vorgeschlagener Tag für neue */
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
-  /** Schnellauswahl nach langem Drücken */
-  const [schnell, setSchnell] = useState<{ iso: string; rect: DOMRect } | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const { vorlieben } = useVorlieben();
   const [rotation, setRotation] = useState(false);
@@ -450,9 +446,10 @@ export function PrivatKalender() {
   }
   // Im Monat: nach oben/unten wischen, mit Bewegung (wie „Mein Kalender“).
   const { flaeche: monatFlaeche, griffe: monatGriffe, gewischt: monatGewischt } = useMonatWischen(springe);
-  const langDruck = useLangDruck((iso, rect) => {
-    if (pinselAn || !schichtarten?.length) return;
-    setSchnell({ iso, rect });
+  // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
+  const langDruck = useLangDruck((iso) => {
+    if (pinselAn) return;
+    setTerminBlatt({ datum: iso, termin: null });
   });
   function tippen(iso: string) {
     if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
@@ -686,36 +683,6 @@ export function PrivatKalender() {
             });
           }}
           onClose={() => setTodoBlatt(null)}
-        />
-      ) : null}
-
-      {schnell && schichtarten ? (
-        <SchnellWahl
-          rect={schnell.rect}
-          titel={formatDE(schnell.iso)}
-          eintraege={schichtarten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe }))}
-          aktiv={[tage[schnell.iso]?.schicht ?? null, tage[schnell.iso]?.zusatz ?? null]}
-          mitLeeren={!!tage[schnell.iso]}
-          hinweis={tage[schnell.iso]?.schicht ? "zweiten Eintrag dazu · ziehen & loslassen" : "auf Farbe ziehen & loslassen"}
-          onWahl={(id) => {
-            const iso = schnell.iso;
-            setSchnell(null);
-            const e = tage[iso] ?? LEER;
-            if (!id) {
-              merke([iso], "{n} geleert");
-              void leeren([iso]);
-              return;
-            }
-            if (e.schicht === id || e.zusatz === id) return;
-            if (e.schicht) {
-              merke([iso], `{n} mit ${artNach.get(id)?.name ?? "neu"} ergänzt`);
-              void tagSetzen(iso, e.schicht, id);
-              return;
-            }
-            merke([iso], `{n} auf ${artNach.get(id)?.name ?? "neu"} gesetzt`);
-            void tagSetzen(iso, id, e.zusatz);
-          }}
-          onClose={() => setSchnell(null)}
         />
       ) : null}
 
@@ -1005,9 +972,10 @@ function JahresAnsicht({
 }
 
 /**
- * Tagesblatt: oben klein, was eingetragen ist; darunter die Schichten als
- * Leiste. Antippen = 2. Eintrag, dieselbe Schicht nochmal = nur noch diese.
- * Dann was am Tag ansteht und die Knöpfe Termin, To-do und Tag.
+ * Tagesblatt zum Ansehen: was an dem Tag geplant ist – Schichten, Termine,
+ * To-dos und was die anderen haben. Nach unten wischen schließt es. Eine
+ * Schicht ändert man hier über „Schicht ändern“ (Antippen = 2. Eintrag,
+ * dieselbe Schicht nochmal = nur noch diese); schneller geht es mit dem Pinsel.
  */
 function TagBlatt({
   iso,
@@ -1049,7 +1017,7 @@ function TagBlatt({
   const z = eintrag.zusatz ? artNach.get(eintrag.zusatz) : undefined;
   const erster = s ?? z;
   const zweiter = s && z ? z : undefined;
-  const [reiter, setReiter] = useState<"schicht" | "termin">("schicht");
+  const [aendern, setAendern] = useState(false);
   const [nachricht, setNachricht] = useState(
     erster ? "Tippen = 2. Eintrag · nochmal tippen = nur diese Schicht" : "Was steht an diesem Tag an?",
   );
@@ -1080,28 +1048,46 @@ function TagBlatt({
 
   const d = fromISO(iso);
   const zeit = (a: Schichtart) => zeitText(a) || (a.art === "arbeit" ? null : a.art === "frei" ? "frei" : "ganztägig");
+  const nichts = !erster && !feiertag && !termine.length && !todos.length && !andere.length;
   return (
     <Blatt
+      wischZu
       titel={`${WT_LANG[wochentag(iso)]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
       unter={
+        feiertag || erster ? (
         <span className="mt-1 flex flex-wrap gap-1.5">
           {feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : null}
           {[erster, zweiter].map((a) =>
-            a ? <EintragPille key={a.id} name={a.name} zeit={zeit(a)} farbe={a.farbe} onEntfernen={() => entfernen(a.id)} /> : null,
+            a ? (
+              <EintragPille
+                key={a.id}
+                name={a.name}
+                zeit={zeit(a)}
+                farbe={a.farbe}
+                onEntfernen={aendern ? () => entfernen(a.id) : undefined}
+              />
+            ) : null,
           )}
         </span>
+        ) : undefined
       }
       onClose={onClose}
     >
-      <TagWahl
-        wahl={reiter}
-        onWahl={setReiter}
-        schicht={erster ? (zweiter ? `${erster.name} + ${zweiter.name}` : erster.name) : "keine Schicht"}
-        termin={termine.length ? `${termine.length} ${termine.length === 1 ? "Termin" : "Termine"}` : "kein Termin"}
+      {nichts ? <p className="px-1 py-2 text-[14.5px] text-ink-muted">An diesem Tag ist nichts geplant.</p> : null}
+      <AmTag
+        termine={termine}
+        todos={todos}
+        terminVon={terminVon}
+        onTermin={onTermin}
+        onTodo={onTodo}
+        datum={iso}
+        onLoeschen={onTerminLoeschen}
+        darfLoeschen={darfLoeschen}
       />
+      <AnDiesemTag eintraege={andere} className="mt-3" />
 
-      {reiter === "schicht" ? (
-        <div className="mt-2">
+      {aendern ? (
+        <div className="mt-3">
           <SchichtLeiste
             eintraege={alleArten.map((a) => ({
               id: a.id,
@@ -1113,26 +1099,16 @@ function TagBlatt({
             nachricht={nachricht}
           />
         </div>
-      ) : (
-        <div className="mt-3">
-          {termine.length || todos.length ? (
-            <AmTag
-              termine={termine}
-              todos={todos}
-              terminVon={terminVon}
-              onTermin={onTermin}
-              onTodo={onTodo}
-              datum={iso}
-              onLoeschen={onTerminLoeschen}
-              darfLoeschen={darfLoeschen}
-            />
-          ) : (
-            <p className="px-1 text-[13.5px] text-ink-muted">Noch kein Termin an diesem Tag.</p>
-          )}
-        </div>
-      )}
-      <AnDiesemTag eintraege={andere} className="mt-3" />
-      <TagKnoepfe onTermin={reiter === "termin" ? () => onTermin(null) : undefined} onTag={onTag} />
+      ) : null}
+      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
+      <button
+        type="button"
+        aria-expanded={aendern}
+        onClick={() => setAendern((a) => !a)}
+        className="mx-auto mt-2 flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-ink-muted"
+      >
+        <Pencil className="h-4 w-4" /> {aendern ? "Fertig" : "Schicht ändern"}
+      </button>
     </Blatt>
   );
 }

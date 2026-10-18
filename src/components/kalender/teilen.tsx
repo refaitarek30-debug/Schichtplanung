@@ -26,6 +26,7 @@ import {
   type PersonArt,
   type PersonEingabe,
 } from "@/lib/data/partner";
+import { textFarbe } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { fetchVerbindungen, verbindungCodeErstellen, type Verbindung } from "@/lib/data/verbindungen";
 import { CodeEingeben, CodeZeigen, VerbindungEinstellen, VerbindungenListe } from "./verbinden";
@@ -105,10 +106,10 @@ export function PersonAvatar({ name, farbe, klein }: { name: string; farbe: stri
     <span
       aria-hidden
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-bold text-white",
+        "flex shrink-0 items-center justify-center rounded-full font-bold",
         klein ? "h-7 w-7 text-[11px]" : "h-10 w-10 text-[13px]",
       )}
-      style={{ backgroundColor: farbe }}
+      style={{ backgroundColor: farbe, color: textFarbe(farbe) }}
     >
       {kuerzel(name)}
     </span>

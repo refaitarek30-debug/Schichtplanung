@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, SlidersHorizontal, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -30,7 +30,7 @@ import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
-import { AmTag, EintragPille, SchichtLeiste, SchnellWahl, TagKnoepfe, TagWahl, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
+import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
@@ -555,7 +555,6 @@ export function MeinKalenderGlas() {
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
   const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
-  const [schnell, setSchnell] = useState<{ iso: string; rect: DOMRect } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<{ iso: string; person: string | null } | null>(null);
   const [anpassen, setAnpassen] = useState(false);
   const [profilOffen, setProfilOffen] = useState(false);
@@ -609,9 +608,10 @@ export function MeinKalenderGlas() {
   }
   const { flaeche, griffe, blaettern, gewischt } = useMonatWischen(springe);
 
-  const langDruck = useLangDruck((iso, rect) => {
-    if (pinselAn || !arten?.length) return;
-    setSchnell({ iso, rect });
+  // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
+  const langDruck = useLangDruck((iso) => {
+    if (pinselAn) return;
+    setTerminBlatt({ datum: iso, termin: null });
   });
   function tippen(iso: string) {
     if (langDruck.geschluckt()) return;
@@ -874,6 +874,7 @@ export function MeinKalenderGlas() {
             setTagBlatt(null);
           }}
           onClose={() => setTagBlatt(null)}
+          offen={tagBlatt.auswahl}
         />
       ) : null}
 
@@ -947,24 +948,6 @@ export function MeinKalenderGlas() {
             });
           }}
           onClose={() => setTodoBlatt(null)}
-        />
-      ) : null}
-
-      {schnell && arten?.length ? (
-        <SchnellWahl
-          rect={schnell.rect}
-          titel={`${formatDE(schnell.iso)} · nur für dich`}
-          eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe }))}
-          aktiv={eigene[schnell.iso] ?? null}
-          mitLeeren={!!eigene[schnell.iso]}
-          onWahl={(id) => {
-            const iso = schnell.iso;
-            setSchnell(null);
-            if ((eigene[iso] ?? null) === id) return;
-            merke([iso], id ? `{n} auf ${artNach.get(id)?.name ?? "neu"} gesetzt` : "{n} geleert");
-            void eigenSetzen([iso], id);
-          }}
-          onClose={() => setSchnell(null)}
         />
       ) : null}
 
@@ -1147,6 +1130,7 @@ function TagBlatt({
   onTag,
   onPartner,
   onClose,
+  offen = false,
 }: {
   iso: string;
   info: TagInfo;
@@ -1169,12 +1153,14 @@ function TagBlatt({
   /** Tag einer Person selbst eintragen (ohne Angabe: die erste). */
   onPartner: (key?: string) => void;
   onClose: () => void;
+  /** Die Auswahl für den eigenen Eintrag gleich offen (nach „Neu“). */
+  offen?: boolean;
 }) {
   const d = fromISO(iso);
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
   const beantragt = abw !== null && abw !== gross;
-  const [reiter, setReiter] = useState<"schicht" | "termin">("schicht");
+  const [aendern, setAendern] = useState(offen);
   const [nachricht, setNachricht] = useState(
     arten.length ? "Antippen = dein eigener Eintrag dazu · der Schichtplan bleibt" : "Leg eigene Einträge an, z. B. Nebenjob oder Sport.",
   );
@@ -1210,8 +1196,10 @@ function TagBlatt({
     setNachricht(eigen ? `${a.name} statt ${eigen.name} · nur für dich` : `${a.name} als 2. Eintrag · nur für dich`);
   }
 
+  const nichts = !plan && !eigen && !beantragt && !termine.length && !todos.length && !andere.length;
   return (
     <Blatt
+      wischZu
       titel={`${WOCHENTAG_LANG[d.getDay()]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
       unter={
         <span className="mt-1 flex flex-wrap gap-1.5">
@@ -1227,25 +1215,35 @@ function TagBlatt({
               name={eigen.name}
               zeit={eigen.beginn && eigen.ende ? `${eigen.beginn}–${eigen.ende}` : null}
               farbe={eigen.farbe}
-              onEntfernen={() => {
-                onEigen(null);
-                setNachricht("Eintrag entfernt.");
-              }}
+              onEntfernen={
+                aendern
+                  ? () => {
+                      onEigen(null);
+                      setNachricht("Eintrag entfernt.");
+                    }
+                  : undefined
+              }
             />
           ) : null}
         </span>
       }
       onClose={onClose}
     >
-      <TagWahl
-        wahl={reiter}
-        onWahl={setReiter}
-        schicht={plan ? (eigen ? `${plan.name} + ${eigen.name}` : plan.name) : "…"}
-        termin={termine.length ? `${termine.length} ${termine.length === 1 ? "Termin" : "Termine"}` : "kein Termin"}
+      {nichts ? <p className="px-1 py-2 text-[14.5px] text-ink-muted">An diesem Tag ist nichts geplant.</p> : null}
+      <AmTag
+        termine={termine}
+        todos={todos}
+        terminVon={terminVon}
+        onTermin={onTermin}
+        onTodo={onTodo}
+        datum={iso}
+        onLoeschen={onTerminLoeschen}
+        darfLoeschen={darfLoeschen}
       />
+      <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
 
-      {reiter === "schicht" ? (
-        <div className="mt-2">
+      {aendern ? (
+        <div className="mt-3">
           <SchichtLeiste
             eintraege={arten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe, rang: eigen?.id === a.id ? 2 : 0 }))}
             onTipp={tipp}
@@ -1261,33 +1259,25 @@ function TagBlatt({
             }
           />
         </div>
-      ) : (
-        <div className="mt-3">
-          {termine.length || todos.length ? (
-            <AmTag
-              termine={termine}
-              todos={todos}
-              terminVon={terminVon}
-              onTermin={onTermin}
-              onTodo={onTodo}
-              datum={iso}
-              onLoeschen={onTerminLoeschen}
-              darfLoeschen={darfLoeschen}
-            />
-          ) : (
-            <p className="px-1 text-[13.5px] text-ink-muted">Noch kein Termin an diesem Tag.</p>
-          )}
-        </div>
-      )}
-      <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
-      <TagKnoepfe onTermin={reiter === "termin" ? () => onTermin(null) : undefined} onTag={onTag} />
-      <button
-        type="button"
-        onClick={() => onPartner()}
-        className="mx-auto mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-ink-muted"
-      >
-        <Users className="h-4 w-4" /> Für Partner oder Familie eintragen
-      </button>
+      ) : null}
+      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-1 gap-y-1">
+        <button
+          type="button"
+          aria-expanded={aendern}
+          onClick={() => setAendern((a) => !a)}
+          className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-ink-muted"
+        >
+          <Pencil className="h-4 w-4" /> {aendern ? "Fertig" : "Eigenen Eintrag ändern"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onPartner()}
+          className="flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-ink-muted"
+        >
+          <Users className="h-4 w-4" /> Für Partner oder Familie eintragen
+        </button>
+      </div>
     </Blatt>
   );
 }

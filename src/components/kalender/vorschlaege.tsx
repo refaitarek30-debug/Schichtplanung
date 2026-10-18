@@ -39,10 +39,10 @@ export const ROLLE_KURZ: Record<Rolle, string> = {
 
 /** Standard-Termine für alle: Symbol, Name, Dauer in Minuten (0 = ganztägig). */
 export const STANDARD_TERMINE: Vorlage[] = [
+  { icon: "🎂", titel: "Geburtstag", min: 0, jaehrlich: true },
   { icon: "🩺", titel: "Arzttermin", min: 60 },
   { icon: "🦷", titel: "Zahnarzt", min: 60 },
   { icon: "✈️", titel: "Reise", min: 0 },
-  { icon: "🎂", titel: "Geburtstag", min: 0, jaehrlich: true },
   { icon: "🏋️", titel: "Sport", min: 60 },
   { icon: "🎉", titel: "Treffen", min: 120 },
   { icon: "💇", titel: "Friseur", min: 60 },
@@ -90,7 +90,7 @@ export const TERMIN_VORSCHLAEGE: Record<Rolle, Vorlage[]> = {
     { icon: "🎉", titel: "Treffen", min: 120 },
     { icon: "🩺", titel: "Arzttermin", min: 60 },
     { icon: "🏋️", titel: "Sport", min: 60 },
-    { icon: "🎂", titel: "Geburtstag", min: 0 },
+    { icon: "🎂", titel: "Geburtstag", min: 0, jaehrlich: true },
     { icon: "✈️", titel: "Reise", min: 0 },
   ],
 };
