@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { IdleLogout } from "@/components/layout/idle-logout";
 import { StartWeiterleitung } from "@/components/layout/start-weiterleitung";
-import { FRIST_NACH_ROLLE } from "@/lib/auth/idle";
+import { fristFuer } from "@/lib/auth/idle";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
@@ -58,7 +58,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <GlasTitelAnpassung />
         </>
       ) : null}
-      <IdleLogout fristMs={FRIST_NACH_ROLLE[session.profile.role]} />
+      <IdleLogout fristMs={fristFuer(session.profile.role, session.profile.id)} />
       <StartWeiterleitung startSeite={session.profile.startSeite ?? null} />
       {privacyOnboardingRequired ? (
         <PrivacyOnboarding />

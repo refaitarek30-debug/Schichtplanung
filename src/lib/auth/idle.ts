@@ -29,6 +29,19 @@ export const FRIST_NACH_ROLLE: Record<Role, number> = {
   employee: 12 * STUNDE,
 };
 
+/**
+ * Einzelne Personen mit eigener Frist – Ausnahme von Hand, nicht für andere.
+ * Gebunden an die Profil-ID (Betreiber), nicht an Rolle oder E-Mail-Adresse.
+ */
+const FRIST_AUSNAHMEN: Record<string, number> = {
+  "2a78e4d4-b093-4f55-a485-fd12fe9c1f56": 8 * STUNDE,
+};
+
+/** Frist einer Person: ihre Ausnahme, sonst die ihrer Rolle. */
+export function fristFuer(rolle: Role, profilId?: string | null): number {
+  return (profilId && FRIST_AUSNAHMEN[profilId]) || FRIST_NACH_ROLLE[rolle];
+}
+
 /** Gilt, solange die Rolle (noch) nicht bekannt ist: die strengste Frist. */
 export const IDLE_TIMEOUT_MS = FRIST_NACH_ROLLE.admin;
 
