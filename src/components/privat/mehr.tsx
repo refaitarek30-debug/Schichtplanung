@@ -3,28 +3,31 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
-import { LogOut, Trash2 } from "lucide-react";
+import { LogOut, Repeat, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/layout/theme";
 import { signOut } from "@/lib/auth/actions";
 import { loeschePrivatkonto, speicherePrivatEinstellungen, speicherePrivatEmail } from "@/lib/privat/actions";
 import { BUNDESLAENDER } from "@/lib/privat/daten";
+import { heuteInBerlin } from "@/lib/dates";
 import type { FormState } from "@/lib/auth/form-state";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf } from "./rahmen";
+import { RotationBlatt } from "./rotation";
 import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstellungen";
 
 /** Einstellungen, Abmelden, Konto löschen. */
 export function PrivatMehr() {
-  const { konto } = usePrivat();
+  const { konto, schichtarten } = usePrivat();
   const router = useRouter();
   const [name, setName] = useState(konto.name);
   const [stunden, setStunden] = useState(konto.wochenstunden === null ? "" : String(konto.wochenstunden));
   const [meldung, setMeldung] = useState<{ ok: boolean; text: string } | null>(null);
   const [laeuft, starte] = useTransition();
   const [loeschen, setLoeschen] = useState(false);
+  const [schichtfolge, setSchichtfolge] = useState(false);
   const [loeschStand, loeschAktion] = useActionState(loeschePrivatkonto, {} as FormState);
   const [emailStand, emailAktion, emailLaeuft] = useActionState(speicherePrivatEmail, {} as FormState);
 
@@ -54,6 +57,20 @@ export function PrivatMehr() {
 
       <PrivatKarte titel="Kalender">
         <div className="space-y-4 px-4 py-4">
+          <button
+            type="button"
+            onClick={() => setSchichtfolge(true)}
+            disabled={!schichtarten}
+            className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left disabled:opacity-50"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Repeat className="h-[18px] w-[18px]" />
+            </span>
+            <span>
+              <span className="block text-[15px] font-medium">Schichtfolge eintragen</span>
+              <span className="block text-[13px] text-ink-muted">Muster einmal wählen, der Kalender füllt sich von selbst</span>
+            </span>
+          </button>
           <label className="flex items-center justify-between gap-3">
             <span>
               <span className="block text-[15px] font-medium">Feiertage anzeigen</span>
@@ -216,6 +233,18 @@ export function PrivatMehr() {
           Impressum
         </Link>
       </p>
+
+      {schichtfolge && schichtarten ? (
+        <RotationBlatt
+          arten={schichtarten}
+          heute={heuteInBerlin()}
+          onFertig={() => {
+            setSchichtfolge(false);
+            router.push("/privat");
+          }}
+          onClose={() => setSchichtfolge(false)}
+        />
+      ) : null}
     </div>
   );
 }

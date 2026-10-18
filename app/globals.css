@@ -353,6 +353,10 @@ body {
   border: 1px solid var(--glas-rand);
   box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
 }
+/* Wie .glas-dicht, aber ohne Durchblick – für Leisten, die etwas darunter zudecken. */
+.glas-voll {
+  background-color: rgb(var(--c-surface));
+}
 .glas-linie {
   border-color: var(--glas-linie);
 }
@@ -493,6 +497,18 @@ body {
   input[type="datetime-local"] {
     min-width: 0;
     max-width: 100%;
+  }
+}
+
+/* Ansicht-Menü im Kalenderkopf: klappt leicht von oben auf. */
+@keyframes menue-auf {
+  from {
+    transform: translateY(-6px) scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
   }
 }
 

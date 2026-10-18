@@ -41,6 +41,7 @@ import { setzeLokal, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
 import { PinselKnopf, PinselLeiste, useMonatWischen } from "./pinsel";
+import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
 import { Avatar } from "@/components/ui/avatar";
 
@@ -676,6 +677,7 @@ export function MeinKalenderGlas() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
+          <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <GlasKnopf label="Kalender anpassen" onClick={() => setAnpassen(true)}>
             <SlidersHorizontal className="h-[18px] w-[18px]" />
           </GlasKnopf>
@@ -826,6 +828,7 @@ export function MeinKalenderGlas() {
           onWahl={setPinsel}
           onNeu={() => neueArt(null)}
           onClose={() => setPinselAn(false)}
+          nurHandy
         />
       ) : null}
 
