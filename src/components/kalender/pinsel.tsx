@@ -20,7 +20,7 @@ export function PinselKnopf({ onClick }: { onClick: () => void }) {
       type="button"
       aria-label="Mit dem Pinsel eintragen"
       onClick={onClick}
-      className="glas-dicht absolute bottom-4 right-4 z-[5] flex h-12 w-12 items-center justify-center rounded-full text-ink shadow-[0_10px_26px_rgba(31,41,77,0.22)] transition-transform active:scale-95"
+      className="glas-dicht absolute bottom-4 right-4 z-[5] max-sm:right-7 flex h-12 w-12 items-center justify-center rounded-full text-ink shadow-[0_10px_26px_rgba(31,41,77,0.22)] transition-transform active:scale-95"
     >
       <Paintbrush className="h-[22px] w-[22px]" />
     </button>

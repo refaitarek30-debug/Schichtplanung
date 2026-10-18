@@ -649,16 +649,16 @@ export function MeinKalenderGlas() {
         // Die Fläche reicht bis ganz nach unten (so läuft der Farbverlauf
         // hinter der schwebenden Leiste weiter); der Platz für die Leiste
         // kommt über den Innenabstand.
-        "privat fixed inset-0 z-10 flex flex-col px-3 pb-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.5rem)] pt-[max(0.25rem,env(safe-area-inset-top))] sm:px-6",
+        "privat fixed inset-0 z-10 flex flex-col px-0 pb-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.5rem)] pt-[max(0.25rem,env(safe-area-inset-top))] sm:px-6",
         "lg:static lg:z-auto lg:h-[calc(100dvh-7rem)] lg:min-h-[520px] lg:rounded-[28px] lg:px-4 lg:pb-4 lg:pt-0",
       )}
     >
-      <header className="flex items-center justify-between gap-2 pb-2.5 pt-3 [@media(max-height:700px)]:pb-1.5 [@media(max-height:700px)]:pt-1.5">
+      <header className="flex items-center justify-between gap-2 px-3.5 pb-2 pt-1.5 sm:px-0 sm:pb-2.5 sm:pt-3">
         <div className="min-w-0">
-          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em] [@media(max-height:700px)]:text-[25px] [@media(max-width:360px)]:text-[23px]">
+          <h1 className="truncate text-[26px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[22px]">
             {monthName(monat.monat)}
           </h1>
-          <p className="tnum truncate text-[14px] font-medium text-ink-muted">
+          <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-none text-ink-muted">
             {monat.jahr}
             {!istAktuellerMonat ? (
               <>
@@ -697,7 +697,7 @@ export function MeinKalenderGlas() {
       </header>
 
       {fehler ? (
-        <div className="pb-2">
+        <div className="px-3.5 pb-2 sm:px-0">
           <Alert tone="error">{fehler}</Alert>
           <button type="button" className="mt-1 text-[13px] font-semibold text-brand-600 underline" onClick={() => void laden()}>
             Erneut versuchen
@@ -705,7 +705,7 @@ export function MeinKalenderGlas() {
         </div>
       ) : null}
       {sichtbar && !sichtbar.imPlan ? (
-        <p className="pb-2 text-[13px] text-ink-muted">
+        <p className="px-3.5 pb-2 text-[13px] text-ink-muted sm:px-0">
           Für dein Konto ist im Schichtplan keine Person hinterlegt – deshalb bleibt der Kalender leer.
         </p>
       ) : null}
@@ -714,7 +714,7 @@ export function MeinKalenderGlas() {
       <div className="relative -m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2">
       <div
         ref={flaeche}
-        className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-[22px] will-change-transform"
+        className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-none will-change-transform sm:rounded-[22px]"
         style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
         {...griffe}
         aria-busy={!sichtbar}
@@ -803,7 +803,7 @@ export function MeinKalenderGlas() {
               ))}
               {rest > 0 && zeilen > 0 ? (
                 <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
-                  +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
+                  +{rest} {zeigen.length ? "mehr" : rest === 1 ? "Termin" : "Termine"}
                 </span>
               ) : null}
             </button>
