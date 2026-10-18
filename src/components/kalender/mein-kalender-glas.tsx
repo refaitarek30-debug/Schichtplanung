@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Plus, SlidersHorizontal, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -30,6 +30,7 @@ import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
+import { useZellenHoehe, terminZeilen } from "./zellen";
 import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
@@ -607,6 +608,7 @@ export function MeinKalenderGlas() {
     setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
   }
   const { flaeche, griffe, blaettern, gewischt } = useMonatWischen(springe);
+  const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
 
   // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
   const langDruck = useLangDruck((iso) => {
@@ -678,9 +680,6 @@ export function MeinKalenderGlas() {
             </GlasKnopf>
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
-          <GlasKnopf label="Kalender anpassen" onClick={() => setAnpassen(true)}>
-            <SlidersHorizontal className="h-[18px] w-[18px]" />
-          </GlasKnopf>
           <WenSeheIch andere={andere} glas onVerwalten={() => setEinladen(true)} />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
@@ -743,13 +742,14 @@ export function MeinKalenderGlas() {
           const eigenAlsPunkt = !!eigen && plan.length + 1 + (partner ? 1 : 0) >= 3;
           const kaestchen = plan.length + (eigen && !eigenAlsPunkt ? 1 : 0);
           const klein = kaestchen >= 2;
-          // Höchstens so viele Terminzeilen, wie sicher in die Zelle passen.
-          const zeilen = Math.max(0, 2 - (partner ? 1 : 0) - (kaestchen - 1));
+          // Termine stehen untereinander – so viele, wie in die Zelle passen.
+          const zeilen = terminZeilen(zellenHoehe, { kaestchen, klein, eingeladene: partner });
           const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
           const rest = ts.length - zeigen.length;
           return (
             <button
               key={iso}
+              ref={i === 7 ? zellenRef : undefined}
               type="button"
               {...langDruck.zelle(iso)}
               onClick={() => tippen(iso)}
@@ -802,7 +802,7 @@ export function MeinKalenderGlas() {
                 </span>
               ))}
               {rest > 0 && zeilen > 0 ? (
-                <span className="shrink-0 text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
+                <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
                   +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
                 </span>
               ) : null}
@@ -827,6 +827,7 @@ export function MeinKalenderGlas() {
           aktiv={pinsel}
           onWahl={setPinsel}
           onNeu={() => neueArt(null)}
+          onMehr={() => setAnpassen(true)}
           onClose={() => setPinselAn(false)}
           nurHandy
         />

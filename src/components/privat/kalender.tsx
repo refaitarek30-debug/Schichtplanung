@@ -20,6 +20,7 @@ import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
+import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
 import { PinselKnopf, PinselLeiste, useMonatWischen } from "@/components/kalender/pinsel";
 import { TodoZaehler, offeneBisHeute } from "@/components/kalender/todo-zaehler";
 import {
@@ -828,6 +829,7 @@ function MonatsAnsicht({
 }) {
   const { start, wochen } = monatRaster(jahr, monat);
   const liste = Array.from({ length: wochen * 7 }, (_, i) => addDays(start, i));
+  const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
   return (
     <div
       className="glas grid h-full grid-cols-7 overflow-hidden rounded-[22px]"
@@ -846,13 +848,19 @@ function MonatsAnsicht({
         const fei = feiertagVon(iso);
         const ts = termineAm(termine, iso);
         const andereAm = andere.amTag(iso);
-        // Höchstens so viele Terminzeilen, wie sicher ganz in die Zelle passen.
-        const zeilen = Math.max(0, 2 - (andereAm.length ? 1 : 0) - (zwei ? 1 : 0));
+        // Termine stehen untereinander – so viele, wie in die Zelle passen.
+        const zeilen = terminZeilen(zellenHoehe, {
+          kaestchen: eintraege.length,
+          klein: zwei,
+          eingeladene: andereAm.length > 0,
+          extraZeilen: fei ? 1 : 0,
+        });
         const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
         const rest = ts.length - zeigen.length;
         return (
           <button
             key={iso}
+            ref={i === 7 ? zellenRef : undefined}
             type="button"
             {...zelle?.(iso)}
             onClick={() => onTag(iso)}
@@ -898,7 +906,7 @@ function MonatsAnsicht({
               </span>
             ))}
             {rest > 0 && zeilen > 0 ? (
-              <span className="shrink-0 text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
+              <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
                 +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
               </span>
             ) : null}

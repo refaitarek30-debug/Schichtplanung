@@ -3,7 +3,7 @@
 import { useRef, useSyncExternalStore } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import { Eraser, Paintbrush, Plus, X } from "lucide-react";
+import { Eraser, Ellipsis, Paintbrush, Plus, X } from "lucide-react";
 import { farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +59,7 @@ export function PinselLeiste({
   aktiv,
   onWahl,
   onNeu,
+  onMehr,
   onClose,
   nurHandy,
 }: {
@@ -68,6 +69,8 @@ export function PinselLeiste({
   onWahl: (id: string) => void;
   /** Neuen Eintrag anlegen (ohne: kein „Neu“). */
   onNeu?: () => void;
+  /** Weitere Einstellungen (drei Punkte neben dem X), z. B. „Kalender anpassen“. */
+  onMehr?: () => void;
   onClose: () => void;
   /** Am Computer gibt es keine untere Leiste: dort bleibt die Pinsel-Leiste im Seitenrahmen. */
   nurHandy?: boolean;
@@ -103,6 +106,16 @@ export function PinselLeiste({
       >
         <X className="h-5 w-5" strokeWidth={2.6} />
       </button>
+      {onMehr ? (
+        <button
+          type="button"
+          onClick={onMehr}
+          aria-label="Kalender anpassen"
+          className="absolute -top-6 right-[3.5rem] z-[2] flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink shadow-[0_6px_18px_rgba(31,41,77,0.25)]"
+        >
+          <Ellipsis className="h-5 w-5" strokeWidth={2.6} />
+        </button>
+      ) : null}
       <div
         role="toolbar"
         aria-label="Pinsel: Eintrag wählen, dann Tage antippen"
