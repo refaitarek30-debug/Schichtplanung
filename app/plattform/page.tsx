@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { PlattformTabelle, type FirmaKennzahlen } from "./tabelle";
+import { PlattformTabelle, type Dashboard, type FirmaKennzahlen } from "./tabelle";
 
 export const metadata = { title: "Plattform" };
 
@@ -26,11 +26,13 @@ export const dynamic = "force-dynamic";
  * 2. **404 statt 403.** Wer nicht Betreiber ist, soll nicht einmal
  *    erfahren, dass es diese Seite gibt. Ein 403 wäre eine Bestätigung.
  *
- * 3. **Nur Kennzahlen.** `platform_overview()` gibt Zählwerte und
- *    Zeitstempel zurück, keine Namen von Beschäftigten, keine
- *    Urlaubsinhalte, keine Abwesenheitsgründe. Die Grenze steht in der
- *    Datenbank, nicht erst hier – was die Funktion nicht herausgibt, kann
- *    diese Seite auch nicht anzeigen.
+ * 3. **Nur Kennzahlen – und die E-Mail-Adressen neuer Konten.**
+ *    `platform_overview()` und `platform_dashboard()` geben Zählwerte und
+ *    Zeitstempel zurück, keine Urlaubsinhalte, keine Abwesenheitsgründe,
+ *    keine Termine oder To-dos. Dazu kommen die E-Mail-Adressen der
+ *    neuesten Registrierungen. Die Grenze steht in der Datenbank, nicht
+ *    erst hier – was die Funktionen nicht herausgeben, kann diese Seite
+ *    auch nicht anzeigen.
  */
 export default async function PlattformPage() {
   if (!isSupabaseConfigured) notFound();
@@ -78,5 +80,8 @@ export default async function PlattformPage() {
     }),
   );
 
-  return <PlattformTabelle firmen={firmen} />;
+  // Das Dashboard ist eine Zugabe: schlägt es fehl, bleibt die Firmenliste da.
+  const { data: dash } = await admin.rpc("platform_dashboard", { p_limit: 30 });
+
+  return <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} />;
 }

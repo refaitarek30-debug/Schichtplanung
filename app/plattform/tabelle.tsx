@@ -16,6 +16,52 @@ export interface FirmaKennzahlen {
   offeneAntraege: number;
 }
 
+export interface Dashboard {
+  konten: number;
+  neu_heute: number;
+  neu_7: number;
+  neu_30: number;
+  privat: number;
+  firma: number;
+  angemeldet_24h: number;
+  angemeldet_7: number;
+  neu: {
+    email: string | null;
+    created_at: string;
+    last_sign_in_at: string | null;
+    bestaetigt: boolean;
+    art: "privat" | "firma" | "ohne";
+    firma: string | null;
+  }[];
+  summen: Record<string, number>;
+}
+
+const SUMMEN: { schluessel: string; label: string }[] = [
+  { schluessel: "firmen", label: "Firmen" },
+  { schluessel: "mitarbeiter", label: "Mitarbeiter (aktiv)" },
+  { schluessel: "plan_eintraege", label: "Schichtplan-Einträge" },
+  { schluessel: "urlaubsantraege", label: "Urlaubsanträge" },
+  { schluessel: "offene_antraege", label: "davon offen" },
+  { schluessel: "privat_tage", label: "Privatkalender: Tage" },
+  { schluessel: "eigene_tage", label: "Eigene Einträge (Firma)" },
+  { schluessel: "termine", label: "Termine" },
+  { schluessel: "todos", label: "To-dos" },
+  { schluessel: "personen", label: "Eingeladene Personen" },
+  { schluessel: "verbindungen", label: "Verbindungen" },
+  { schluessel: "gruppen", label: "Gruppen" },
+];
+
+function datumZeit(wert: string): string {
+  return new Date(wert).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Berlin",
+  });
+}
+
 function datum(wert: string | null): string {
   if (!wert) return "–";
   return new Date(wert).toLocaleDateString("de-DE", {
@@ -41,7 +87,7 @@ function seitdem(wert: string | null): string {
  * nach. Die Seite ist absichtlich schlicht gehalten: sie ist ein
  * Betriebsmittel, kein Produkt.
  */
-export function PlattformTabelle({ firmen }: { firmen: FirmaKennzahlen[] }) {
+export function PlattformTabelle({ firmen, dashboard }: { firmen: FirmaKennzahlen[]; dashboard: Dashboard | null }) {
   const gesamt = {
     firmen: firmen.length,
     aktiv: firmen.filter((f) => f.aktiv).length,
@@ -56,18 +102,83 @@ export function PlattformTabelle({ firmen }: { firmen: FirmaKennzahlen[] }) {
     <div className="min-h-screen bg-surface-sunken">
       <div className="mx-auto w-full max-w-5xl space-y-5 px-4 py-8 sm:px-6">
         <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">
             Betrieb der Plattform
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">
             Firmen auf dieser Instanz
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-            Nur Kennzahlen zum Betrieb – keine Namen von Beschäftigten, keine
-            Urlaubsinhalte, keine Abwesenheitsgründe. Diese Seite taucht in keiner
-            Navigation auf.
+            Zahlen zum Betrieb und die E-Mail-Adressen neuer Konten – keine
+            Urlaubsinhalte, keine Abwesenheitsgründe, keine Termine oder To-dos.
+            Diese Seite taucht in keiner Navigation auf.
           </p>
         </header>
+
+        {dashboard ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Kennzahl label="Konten gesamt" wert={dashboard.konten} zusatz={`${dashboard.firma} Firma · ${dashboard.privat} privat`} />
+              <Kennzahl label="Neu heute" wert={dashboard.neu_heute} zusatz="Registrierungen" />
+              <Kennzahl label="Neu in 7 Tagen" wert={dashboard.neu_7} zusatz={`${dashboard.neu_30} in 30 Tagen`} />
+              <Kennzahl label="Angemeldet 24 Std." wert={dashboard.angemeldet_24h} zusatz={`${dashboard.angemeldet_7} in 7 Tagen`} />
+            </div>
+
+            <Card>
+              <CardHeader title="Neue Registrierungen" hint="neueste oben" />
+              <CardBody className="overflow-x-auto px-0 py-0">
+                <table className="w-full border-separate border-spacing-0 text-sm">
+                  <thead>
+                    <tr className="text-left text-[11px] uppercase tracking-[0.12em] text-ink-faint">
+                      <Th className="pl-5">E-Mail · registriert</Th>
+                      <Th className="pr-5">Art</Th>
+                      <Th className="hidden pr-5 sm:table-cell">Zuletzt angemeldet</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.neu.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-5 py-8 text-center text-ink-muted">
+                          Noch keine Registrierung.
+                        </td>
+                      </tr>
+                    ) : (
+                      dashboard.neu.map((n, i) => (
+                        <tr key={`${n.email}-${i}`}>
+                          <td className="border-t border-line px-3 py-2.5 pl-5">
+                            <span className="block break-all font-medium">{n.email ?? "–"}</span>
+                            <span className="tnum block text-[12.5px] text-ink-muted">{datumZeit(n.created_at)}</span>
+                            {!n.bestaetigt ? <span className="text-[12px] text-warn-fg">E-Mail noch nicht bestätigt</span> : null}
+                          </td>
+                          <td className="border-t border-line px-3 py-2.5 pr-5">
+                            <Badge tone={n.art === "privat" ? "ok" : "neutral"}>
+                              {n.art === "privat" ? "privat" : n.art === "firma" ? (n.firma ?? "Firma") : "ohne Konto"}
+                            </Badge>
+                          </td>
+                          <td className="hidden border-t border-line px-3 py-2.5 pr-5 text-ink-muted sm:table-cell">{seitdem(n.last_sign_in_at)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader title="Gesamtzahlen" hint="Kalender und Schichtplan, nur Summen" />
+              <CardBody>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-3 [&_dt]:min-w-0">
+                  {SUMMEN.map((s) => (
+                    <div key={s.schluessel} className="flex items-baseline justify-between gap-3 border-b border-line pb-1.5">
+                      <dt className="text-ink-muted">{s.label}</dt>
+                      <dd className="tnum font-semibold">{(dashboard.summen[s.schluessel] ?? 0).toLocaleString("de-DE")}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardBody>
+            </Card>
+          </>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Kennzahl label="Firmen" wert={gesamt.firmen} zusatz={`${gesamt.aktiv} aktiv`} />
