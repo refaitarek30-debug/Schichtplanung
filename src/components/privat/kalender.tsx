@@ -485,14 +485,14 @@ export function PrivatKalender() {
     <div
       className={cn(
         // Genau ein Bildschirm: zwischen Statusleiste und schwebender Leiste.
-        "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6",
+        "fixed inset-x-0 top-0 z-10 mx-auto flex max-w-3xl flex-col px-0 pt-[max(0.25rem,env(safe-area-inset-top))] sm:px-6 sm:pt-[max(0.75rem,env(safe-area-inset-top))]",
         "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
       )}
     >
-      <header className="flex items-center justify-between gap-2 pb-2.5">
+      <header className="flex items-center justify-between gap-2 px-3.5 pb-2 pt-1.5 sm:px-0 sm:pb-2.5 sm:pt-0">
         <div className="min-w-0">
-          <h1 className="truncate text-[30px] font-bold leading-tight tracking-[-0.02em] [@media(max-width:360px)]:text-[23px]">{titel}</h1>
-          <p className="tnum truncate text-[14px] font-medium text-ink-muted">
+          <h1 className="truncate text-[24px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[21px]">{titel}</h1>
+          <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-none text-ink-muted">
             {unter}
             {!heuteSichtbar ? (
               <>
@@ -504,7 +504,7 @@ export function PrivatKalender() {
             ) : null}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
           <span className="hidden gap-2 sm:flex">
@@ -520,13 +520,13 @@ export function PrivatKalender() {
       </header>
 
       {fehler || artenFehler ? (
-        <div className="mb-2">
+        <div className="mb-2 px-3.5 sm:px-0">
           <Alert tone="error">{fehler ?? artenFehler}</Alert>
         </div>
       ) : null}
 
       {leer ? (
-        <button type="button" onClick={() => setRotation(true)} className="glas mb-2.5 flex w-full items-center gap-3 rounded-[18px] px-3.5 py-3 text-left">
+        <button type="button" onClick={() => setRotation(true)} className="glas mx-3.5 mb-2.5 flex w-[calc(100%-1.75rem)] items-center gap-3 rounded-[18px] px-3.5 py-3 text-left sm:mx-0 sm:w-full">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
             <Repeat className="h-[18px] w-[18px]" />
           </span>
@@ -540,7 +540,7 @@ export function PrivatKalender() {
       <div
         className={cn(
           "relative min-h-0 flex-1 select-none",
-          ansicht === "monat" ? "-m-2 touch-none overflow-hidden p-2" : "touch-pan-y",
+          ansicht === "monat" ? "-m-2 touch-none overflow-hidden p-2" : "touch-pan-y px-3.5 sm:px-0",
         )}
         {...(ansicht === "monat"
           ? monatGriffe
@@ -832,7 +832,7 @@ function MonatsAnsicht({
   const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
   return (
     <div
-      className="glas grid h-full grid-cols-7 overflow-hidden rounded-[22px]"
+      className="glas grid h-full grid-cols-7 overflow-hidden rounded-none sm:rounded-[22px]"
       style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
     >
       {WT.map((w, i) => (
@@ -907,7 +907,7 @@ function MonatsAnsicht({
             ))}
             {rest > 0 && zeilen > 0 ? (
               <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
-                +{rest} {zeigen.length ? "weitere" : rest === 1 ? "Termin" : "Termine"}
+                +{rest} {zeigen.length ? "mehr" : rest === 1 ? "Termin" : "Termine"}
               </span>
             ) : null}
           </button>
