@@ -77,7 +77,7 @@ export function CodeZeigen({ person }: { person?: { id: string; name: string } }
           : "Die andere Person scannt den QR-Code mit der Kamera oder gibt den Code in ihrem Kalender unter Teilen → „Code eingeben“ ein. Danach seht ihr gegenseitig eure Schichten."}
       </p>
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[14px] text-crit-fg">{fehler}</p> : null}
-      <div className="rounded-3xl bg-white p-6 ring-1 ring-line">
+      <div className="rounded-3xl bg-surface p-6 ring-1 ring-line">
         <div className="relative mx-auto aspect-square w-full max-w-[220px]">
           {qr ? (
             <div
@@ -279,7 +279,7 @@ export function VerbindungenListe({
                     {PERSON_ARTEN.find((a) => a.art === v.art)?.text ?? v.art} · eigenes Konto
                   </span>
                 </span>
-                <span className="shrink-0 rounded-lg bg-[#E6F1E9] px-2 py-0.5 text-[11.5px] font-semibold text-[#1C6E49]">verbunden</span>
+                <span className="shrink-0 rounded-lg bg-ok-bg px-2 py-0.5 text-[11.5px] font-semibold text-ok-fg">verbunden</span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
               </button>
             </li>

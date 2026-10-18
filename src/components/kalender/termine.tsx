@@ -688,7 +688,7 @@ export function TerminLoeschenFrage({
         role="alertdialog"
         aria-label="Termin löschen"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-[24px] bg-white p-4 shadow-[0_20px_50px_rgba(31,41,77,0.3)]"
+        className="w-full max-w-md rounded-[24px] bg-surface p-4 shadow-[0_20px_50px_rgba(31,41,77,0.3)]"
       >
         <p className="text-[17px] font-bold">🗑️ Termin löschen?</p>
         {serie ? (

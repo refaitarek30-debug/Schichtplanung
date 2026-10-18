@@ -30,7 +30,6 @@ import {
 import { addDays, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
   farbStil,
-  istAbwesenheit,
   ladeFeiertage,
   ladeTage,
   leereTage,
@@ -368,16 +367,14 @@ export function PrivatKalender() {
 
   /**
    * Wohin ein neuer Eintrag gehört: Ist der Tag leer, wird es die Schicht.
-   * Steht schon eine Schicht da, kommt der neue Eintrag als Zusatz dazu –
-   * außer beide sind Arbeitsschichten im Pinsel: dann wird ersetzt.
+   * Steht schon eine Schicht da, kommt der neue Eintrag als zweiter dazu und
+   * ersetzt nichts. Sind beide Plätze belegt, tauscht er den zweiten. Zum
+   * Ersetzen gibt es „Leeren“ oder das Tagesblatt.
    */
-  function hinzufuegen(iso: string, artId: string, ersetzenWennArbeit: boolean) {
+  function hinzufuegen(iso: string, artId: string) {
     const e = tage[iso] ?? LEER;
-    const neu = artNach.get(artId);
     if (!e.schicht) return void setzen([iso], artId, 1);
-    if (e.schicht === artId) return;
-    const alt = artNach.get(e.schicht);
-    if (ersetzenWennArbeit && !istAbwesenheit(neu) && !istAbwesenheit(alt)) return void setzen([iso], artId, 1);
+    if (e.schicht === artId || e.zusatz === artId) return;
     void setzen([iso], artId, 2);
   }
 
@@ -390,8 +387,9 @@ export function PrivatKalender() {
         }
         return;
       }
-      merke([iso], `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
-      hinzufuegen(iso, pinsel, true);
+      const dabei = !!tage[iso]?.schicht && tage[iso]?.schicht !== pinsel;
+      merke([iso], `{n} ${dabei ? "mit" : "auf"} ${artNach.get(pinsel)?.name ?? "neu"} ${dabei ? "ergänzt" : "gesetzt"}`);
+      hinzufuegen(iso, pinsel);
       return;
     }
     setTagBlatt(iso);
@@ -613,7 +611,7 @@ export function PrivatKalender() {
       {rueck ? (
         <div
           role="status"
-          className="fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+0.25rem)] z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[16px] bg-ink px-4 py-3 text-[14px] text-surface shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+          className="fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+0.25rem)] z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[16px] bg-[#1F294D] px-4 py-3 text-[14px] text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
         >
           <span className="min-w-0 truncate">{rueck.text}</span>
           <button type="button" onClick={() => void rueckgaengig()} className="shrink-0 font-bold text-[#8fb0ff]">
@@ -645,10 +643,6 @@ export function PrivatKalender() {
           onTerminLoeschen={(t, modus, datum) => void terminWeg(t, modus, datum)}
           darfLoeschen={darfTerminLoeschen}
           onTodo={(id, an) => void todoSetzen(id, an)}
-          onTodos={() => {
-            setTodoBlatt({ datum: tagBlatt });
-            setTagBlatt(null);
-          }}
           onTag={() => {
             setTagAnsicht(tagBlatt);
             setTagBlatt(null);
@@ -699,8 +693,9 @@ export function PrivatKalender() {
           rect={schnell.rect}
           titel={formatDE(schnell.iso)}
           eintraege={schichtarten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe }))}
-          aktiv={tage[schnell.iso]?.schicht ?? null}
+          aktiv={[tage[schnell.iso]?.schicht ?? null, tage[schnell.iso]?.zusatz ?? null]}
           mitLeeren={!!tage[schnell.iso]}
+          hinweis={tage[schnell.iso]?.schicht ? "zweiten Eintrag dazu · ziehen & loslassen" : "auf Farbe ziehen & loslassen"}
           onWahl={(id) => {
             const iso = schnell.iso;
             setSchnell(null);
@@ -710,9 +705,14 @@ export function PrivatKalender() {
               void leeren([iso]);
               return;
             }
-            if (e.schicht === id) return;
+            if (e.schicht === id || e.zusatz === id) return;
+            if (e.schicht) {
+              merke([iso], `{n} mit ${artNach.get(id)?.name ?? "neu"} ergänzt`);
+              void tagSetzen(iso, e.schicht, id);
+              return;
+            }
             merke([iso], `{n} auf ${artNach.get(id)?.name ?? "neu"} gesetzt`);
-            void tagSetzen(iso, id, e.zusatz === id ? null : e.zusatz);
+            void tagSetzen(iso, id, e.zusatz);
           }}
           onClose={() => setSchnell(null)}
         />
@@ -1023,7 +1023,6 @@ function TagBlatt({
   onTerminLoeschen,
   darfLoeschen,
   onTodo,
-  onTodos,
   onTag,
   onClose,
 }: {
@@ -1042,7 +1041,6 @@ function TagBlatt({
   onTerminLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
-  onTodos: () => void;
   onTag: () => void;
   onClose: () => void;
 }) {
@@ -1115,7 +1113,7 @@ function TagBlatt({
         darfLoeschen={darfLoeschen}
       />
       <AnDiesemTag eintraege={andere} className="mt-3" />
-      <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
+      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
     </Blatt>
   );
 }
