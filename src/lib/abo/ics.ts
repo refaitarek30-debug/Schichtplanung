@@ -9,7 +9,7 @@
  * sie z. B. in Thailand als 19–3 Uhr angezeigt.
  */
 
-export type AboArt = "schicht" | "urlaub" | "schulung" | "abwesend";
+export type AboArt = "schicht" | "urlaub" | "schulung" | "abwesend" | "eigen";
 
 export interface AboTag {
   tag: string; // YYYY-MM-DD
@@ -66,7 +66,7 @@ export function teilAusDatei(datei: string): AboTeil | null {
   return null;
 }
 
-const ART_TITEL: Record<Exclude<AboArt, "schicht">, string> = {
+const ART_TITEL: Record<Exclude<AboArt, "schicht" | "eigen">, string> = {
   urlaub: "Urlaub",
   schulung: "Schulung",
   abwesend: "Abwesend",
@@ -88,6 +88,9 @@ export function schichtTeil(t: Pick<AboTag, "name" | "von">): "frueh" | "spaet" 
 function teilVon(t: AboTag): Exclude<AboTeil, "alles" | "termine"> {
   return t.art === "schicht" ? schichtTeil(t) : "frei";
 }
+
+/** Eigene Einträge („Nebenjob“, „Sport“) gibt es nur im Gesamtkalender. */
+const nurGesamt = (t: AboTag) => t.art === "eigen";
 
 export function icsText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
@@ -192,19 +195,26 @@ export function baueIcs(
     "X-PUBLISHED-TTL:PT1H",
   ];
   const stempel = zeitStempel(jetzt);
-  const gesehen = new Set<string>();
+  const gleich = new Set<string>();
+  const zaehler = new Map<string, number>();
   const zeit = /^\d{2}:\d{2}$/;
 
   for (const t of tage) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t.tag)) continue;
     const eigenerTeil = teilVon(t);
-    if (teil !== "alles" && teil !== eigenerTeil) continue;
-    const uid = `${t.tag}-${t.art}${teil === "alles" ? "" : `-${teil}`}@schichtplan`;
-    if (gesehen.has(uid)) continue;
-    gesehen.add(uid);
+    if (nurGesamt(t) ? teil !== "alles" : teil !== "alles" && teil !== eigenerTeil) continue;
+    // Genau dieselbe Zeile zweimal (überlappende Abfragen): nur einmal.
+    const inhalt = [t.tag, t.art, t.name, t.von, t.bis].join("|");
+    if (gleich.has(inhalt)) continue;
+    gleich.add(inhalt);
+    // Mehrere Einträge am selben Tag (z. B. zwei Schichten) brauchen je eine eigene Kennung.
+    const basis = `${t.tag}-${t.art}${teil === "alles" ? "" : `-${teil}`}`;
+    const n = (zaehler.get(basis) ?? 0) + 1;
+    zaehler.set(basis, n);
+    const uid = `${n === 1 ? basis : `${basis}-${n}`}@schichtplan`;
 
     const ev: string[] = ["BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${stempel}`];
-    if (t.art === "schicht" && t.von && t.bis && zeit.test(t.von) && zeit.test(t.bis)) {
+    if ((t.art === "schicht" || t.art === "eigen") && t.von && t.bis && zeit.test(t.von) && zeit.test(t.bis)) {
       const endTag = t.bis <= t.von ? plusTage(t.tag, 1) : t.tag;
       ev.push(
         `DTSTART:${ohneStriche(t.tag)}T${t.von.replace(":", "")}00`,
@@ -213,7 +223,7 @@ export function baueIcs(
         "TRANSP:OPAQUE",
       );
     } else {
-      const titel = t.art === "schicht" ? t.name || "Schicht" : ART_TITEL[t.art];
+      const titel = t.art === "schicht" || t.art === "eigen" ? t.name || (t.art === "eigen" ? "Eintrag" : "Schicht") : ART_TITEL[t.art];
       ev.push(
         `DTSTART;VALUE=DATE:${ohneStriche(t.tag)}`,
         `DTEND;VALUE=DATE:${ohneStriche(plusTage(t.tag, 1))}`,
@@ -221,7 +231,7 @@ export function baueIcs(
         "TRANSP:TRANSPARENT",
       );
     }
-    ev.push(`COLOR:${ABO_TEILE[eigenerTeil].css}`, "END:VEVENT");
+    ev.push(`COLOR:${t.art === "eigen" ? ABO_TEILE.termine.css : ABO_TEILE[eigenerTeil].css}`, "END:VEVENT");
     zeilen.push(...ev);
   }
 
