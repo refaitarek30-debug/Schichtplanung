@@ -5,6 +5,7 @@ import { ChevronDown, Cog, Eye, LogOut, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
+import { BetreiberLink } from "./betreiber-link";
 import { NotificationBell } from "./notification-bell";
 import { roleLabels } from "@/lib/nav";
 import { signOut } from "@/lib/auth/actions";
@@ -117,6 +118,10 @@ export function Topbar() {
                 <Cog className="h-4 w-4" strokeWidth={1.8} />
                 Einstellungen
               </Link>
+              <BetreiberLink
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted [&_svg]:h-4 [&_svg]:w-4"
+              />
 
               {mode === "demo" ? (
                 <>
