@@ -22,6 +22,7 @@ import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type To
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import { PinselKnopf, PinselLeiste, useMonatWischen } from "@/components/kalender/pinsel";
+import { TodoZaehler, offeneBisHeute } from "@/components/kalender/todo-zaehler";
 import {
   fetchMeineTermine,
   speichereTermin,
@@ -42,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
+import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 
 /**
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
@@ -52,7 +54,6 @@ import { RotationBlatt } from "./rotation";
  * Urlaub (Ebene 2). Die Schicht bleibt stehen, bis sie jemand entfernt.
  */
 
-type Ansicht = "woche" | "monat" | "jahr";
 
 const ANSICHT_SCHLUESSEL = "schichtplan.privat-ansicht";
 const WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -507,6 +508,7 @@ export function PrivatKalender() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
+          <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
@@ -516,29 +518,9 @@ export function PrivatKalender() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
-          <GlasKnopf label="Schichtfolge eintragen" onClick={() => setRotation(true)}>
-            <Repeat className="h-[18px] w-[18px]" />
-          </GlasKnopf>
+          <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} />
         </div>
       </header>
-
-      <div role="tablist" aria-label="Ansicht" className="glas mb-2.5 grid grid-cols-3 rounded-[14px] p-[3px]">
-        {(["woche", "monat", "jahr"] as const).map((a) => (
-          <button
-            key={a}
-            role="tab"
-            type="button"
-            aria-selected={ansicht === a}
-            onClick={() => waehleAnsicht(a)}
-            className={cn(
-              "rounded-[11px] py-1.5 text-[13px] font-semibold transition-all",
-              ansicht === a ? "bg-surface text-ink shadow-[0_2px_8px_rgba(0,0,0,0.1)]" : "text-ink-muted",
-            )}
-          >
-            {a === "woche" ? "Woche" : a === "monat" ? "Monat" : "Jahr"}
-          </button>
-        ))}
-      </div>
 
       {fehler || artenFehler ? (
         <div className="mb-2">

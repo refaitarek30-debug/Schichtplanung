@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import type React from "react";
+import { createPortal } from "react-dom";
 import { Eraser, Paintbrush, Plus, X } from "lucide-react";
 import { farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
@@ -33,13 +34,33 @@ export interface PinselEintrag {
   farbe: string;
 }
 
-/** Leiste unten: Kreis mit Kürzel und Name je Eintrag, Leeren, Neu; X schließt. */
+/** Breiter Bildschirm (Computer): dort gibt es keine schwebende untere Leiste. */
+function useBreit() {
+  return useSyncExternalStore(
+    (melde) => {
+      const m = window.matchMedia("(min-width: 1024px)");
+      m.addEventListener("change", melde);
+      return () => m.removeEventListener("change", melde);
+    },
+    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => false,
+  );
+}
+
+/**
+ * Leiste unten: Kreis mit Kürzel und Name je Eintrag, Leeren, Neu; X schließt.
+ * Sie schwebt an der Stelle der unteren Leiste und deckt diese zu, solange der
+ * Pinsel offen ist – der Kalender darüber behält seine Größe. Sie sitzt direkt
+ * im Dokument (Portal), sonst läge die Navigation wegen des eigenen
+ * Stapels der Kalenderfläche darüber und finge die Tipps ab.
+ */
 export function PinselLeiste({
   eintraege,
   aktiv,
   onWahl,
   onNeu,
   onClose,
+  nurHandy,
 }: {
   eintraege: PinselEintrag[];
   /** Id des gewählten Eintrags oder "leer" */
@@ -48,21 +69,32 @@ export function PinselLeiste({
   /** Neuen Eintrag anlegen (ohne: kein „Neu“). */
   onNeu?: () => void;
   onClose: () => void;
+  /** Am Computer gibt es keine untere Leiste: dort bleibt die Pinsel-Leiste im Seitenrahmen. */
+  nurHandy?: boolean;
 }) {
   const fach = (an: boolean) =>
     cn(
-      "relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[22px] px-2.5",
+      "relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[22px] px-2.5",
       an && "bg-ink/[0.07]",
     );
   const kreis = (an: boolean) =>
     cn(
-      "flex h-9 w-9 items-center justify-center rounded-full text-[12.5px] font-bold [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7",
+      "flex h-[34px] w-[34px] items-center justify-center rounded-full text-[12.5px] font-bold [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7",
       an && "ring-2 ring-ink ring-offset-2 ring-offset-white",
     );
   const strich = <span aria-hidden className="absolute left-0 top-1/2 h-8 w-px -translate-y-1/2 bg-ink/10" />;
+  const breit = useBreit();
+  const imFluss = !!nurHandy && breit;
 
-  return (
-    <div className="relative mt-3 shrink-0 [animation:pinsel-hoch_.24s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]">
+  const leiste = (
+    <div
+      className={cn(
+        "privat-schrift [animation:pinsel-hoch_.24s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]",
+        imFluss
+          ? "relative mt-3 shrink-0"
+          : "fixed inset-x-3 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-[45] mx-auto max-w-md",
+      )}
+    >
       <button
         type="button"
         onClick={onClose}
@@ -74,7 +106,7 @@ export function PinselLeiste({
       <div
         role="toolbar"
         aria-label="Pinsel: Eintrag wählen, dann Tage antippen"
-        className="glas-dicht flex h-[5.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4.4rem]"
+        className="glas-dicht glas-voll flex h-[4.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4rem]"
       >
         {eintraege.map((a, i) => (
           <button key={a.id} type="button" onClick={() => onWahl(a.id)} aria-pressed={aktiv === a.id} className={fach(aktiv === a.id)}>
@@ -82,7 +114,7 @@ export function PinselLeiste({
             <span className={kreis(aktiv === a.id)} style={farbStil(a.farbe)}>
               {a.kuerzel}
             </span>
-            <span className="max-w-[6.5rem] truncate text-[13px] font-semibold">{a.name}</span>
+            <span className="max-w-[6.5rem] truncate text-[12.5px] font-semibold leading-tight">{a.name}</span>
           </button>
         ))}
         {eintraege.length ? (
@@ -91,16 +123,16 @@ export function PinselLeiste({
             <span className={cn(kreis(aktiv === "leer"), "bg-ink/[0.08] text-ink-muted")}>
               <Eraser className="h-4 w-4" />
             </span>
-            <span className="text-[13px] font-semibold">Leeren</span>
+            <span className="text-[12.5px] font-semibold leading-tight">Leeren</span>
           </button>
         ) : null}
         {onNeu ? (
           <button type="button" onClick={onNeu} className={fach(false)}>
             {eintraege.length ? strich : null}
-            <span className="flex h-9 w-9 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/30 text-ink-muted [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7">
+            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/30 text-ink-muted [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7">
               <Plus className="h-4 w-4" />
             </span>
-            <span className="whitespace-nowrap text-[13px] font-semibold text-ink-muted">
+            <span className="whitespace-nowrap text-[12.5px] font-semibold leading-tight text-ink-muted">
               {eintraege.length ? "Neu" : "Eigenen Eintrag anlegen"}
             </span>
           </button>
@@ -108,6 +140,7 @@ export function PinselLeiste({
       </div>
     </div>
   );
+  return imFluss ? leiste : createPortal(leiste, document.body);
 }
 
 /**
