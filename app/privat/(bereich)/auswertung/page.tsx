@@ -1,5 +1,6 @@
-import { PrivatAuswertung } from "@/components/privat/auswertung";
+import { redirect } from "next/navigation";
 
+/** Die Auswertung ist jetzt der Reiter „Übersicht“ unter Schichten. */
 export default function Seite() {
-  return <PrivatAuswertung />;
+  redirect("/privat/schichten");
 }

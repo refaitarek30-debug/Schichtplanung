@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
@@ -19,7 +19,7 @@ type Zeitraum = "monat" | "jahr";
 
 const zahl = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 
-export function PrivatAuswertung() {
+export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: string; unterKopf?: ReactNode }) {
   const { konto, schichtarten } = usePrivat();
   const heute = heuteInBerlin();
   const [zeitraum, setZeitraum] = useState<Zeitraum>("jahr");
@@ -88,7 +88,7 @@ export function PrivatAuswertung() {
   return (
     <div className="space-y-4">
       <PrivatKopf
-        titel="Auswertung"
+        titel={titel}
         unter={
           <span className="tnum">
             {formatDE(von)} – {formatDE(bis < von ? von : bis)}
@@ -105,6 +105,8 @@ export function PrivatAuswertung() {
           </>
         }
       />
+
+      {unterKopf}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="tablist" aria-label="Zeitraum" className="glas inline-flex rounded-[14px] p-1">

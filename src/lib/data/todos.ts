@@ -19,6 +19,11 @@ export interface Todo {
 
 class KalenderFehler extends Error {}
 
+/** Sagt der Leiste unten, dass sich die To-dos geändert haben (Zahl am Reiter). */
+function geaendert() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("todos-geaendert"));
+}
+
 function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string): never {
   throw new KalenderFehler(datenFehlerText(error, standard));
 }
@@ -40,17 +45,20 @@ export async function todoSpeichern(t: { id: string | null; titel: string; datum
     p_uhrzeit: t.datum ? t.uhrzeit : null,
   });
   if (error) fehler(error, "Das To-do konnte nicht gespeichert werden.");
+  geaendert();
   return data as string;
 }
 
 export async function todoErledigt(id: string, an: boolean) {
   const { error } = await createClient().rpc("todo_erledigt", { p_id: id, p_an: an });
   if (error) fehler(error, "Das hat nicht geklappt.");
+  geaendert();
 }
 
 export async function todoLoeschen(id: string) {
   const { error } = await createClient().rpc("todo_loeschen", { p_id: id });
   if (error) fehler(error, "Das To-do konnte nicht gelöscht werden.");
+  geaendert();
 }
 
 /** Offene To-dos an einem Tag, nach Uhrzeit. */
