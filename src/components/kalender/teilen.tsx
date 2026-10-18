@@ -399,7 +399,7 @@ function Senden({
         <p className="text-[20px] font-bold">Oder per QR-Code</p>
         <p className="text-[14px] text-ink-muted">{gruppe ? "Den Code mit der Kamera scannen." : `${name} scannt den Code mit der Kamera.`}</p>
       </div>
-      <div className="mx-4 mt-3 rounded-3xl bg-white p-6 ring-1 ring-line">
+      <div className="mx-4 mt-3 rounded-3xl bg-surface p-6 ring-1 ring-line">
         <div className="relative mx-auto aspect-square w-full max-w-[240px]">
           {qr ? (
             <div
@@ -454,7 +454,7 @@ export function GruppenListe({
           {gruppen.map((g, i) => (
             <li key={g.id} className={cn(i > 0 && "border-t border-line")}>
               <button type="button" onClick={() => onGruppe(g.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#22A06B]/15 text-[#1f7a52]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#22A06B]/15 text-ok-fg">
                   <Users className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -574,7 +574,7 @@ function GruppenWoche({ id }: { id: string }) {
           {tage.map((t, i) => (
             <span
               key={t}
-              className={cn("rounded-lg py-0.5 text-center text-[10.5px] font-semibold text-ink-muted", alleFrei[i] && "bg-[#22A06B]/15 text-[#1f7a52]", t === heute && "ring-1 ring-[#ff3b30]")}
+              className={cn("rounded-lg py-0.5 text-center text-[10.5px] font-semibold text-ink-muted", alleFrei[i] && "bg-[#22A06B]/15 text-ok-fg", t === heute && "ring-1 ring-[#ff3b30]")}
             >
               {WT_KURZ[i]}
               <span className="block text-[13px] text-ink">{fromISO(t).getDate()}</span>
@@ -585,7 +585,7 @@ function GruppenWoche({ id }: { id: string }) {
           ))}
           {mitglieder && mitglieder.length > 1 ? (
             <>
-              <span className="text-[11px] font-semibold text-[#1f7a52]">alle frei</span>
+              <span className="text-[11px] font-semibold text-ok-fg">alle frei</span>
               {alleFrei.map((f, i) => (
                 <span key={i} className={cn("mx-auto h-1.5 w-full rounded-full", f ? "bg-[#22A06B]" : "bg-transparent")} />
               ))}
@@ -864,9 +864,9 @@ export function KalenderTeilen({
           <button
             type="button"
             onClick={() => setAnsicht({ art: "code" })}
-            className="mx-4 mb-5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-[#E6F1E9] px-4 py-3.5 text-left"
+            className="mx-4 mb-5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-ok-bg px-4 py-3.5 text-left"
           >
-            <Link2 className="h-5 w-5 shrink-0 text-[#1C6E49]" />
+            <Link2 className="h-5 w-5 shrink-0 text-ok-fg" />
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] font-semibold">Hat die Person schon einen Kalender?</span>
               <span className="block text-[12.5px] text-ink-muted">Dann per Code oder QR-Code verbinden – ihr seht euch gegenseitig.</span>
@@ -922,9 +922,9 @@ export function KalenderTeilen({
                   setAnsicht({ art: "senden", name: p.name, link: einladungsLink(code), einladung: true });
                 })
               }
-              className="mx-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-[#E6F1E9] px-4 py-3.5 text-left"
+              className="mx-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[18px] bg-ok-bg px-4 py-3.5 text-left"
             >
-              <Link2 className="h-5 w-5 shrink-0 text-[#1C6E49]" />
+              <Link2 className="h-5 w-5 shrink-0 text-ok-fg" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">
                   {einladungen[p.id] ? "Einladung noch einmal senden" : "Einladung senden"}

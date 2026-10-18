@@ -46,9 +46,9 @@ export function ErinnerungHinweis({ className }: { className?: string }) {
   const { status, laeuft, fehler, umschalten } = usePush();
   if (!status || status === "an") return null;
   return (
-    <div className={cn("rounded-[16px] bg-[#FFF4E0] px-3.5 py-3 text-[13px] leading-snug text-ink", className)}>
+    <div className={cn("rounded-[16px] bg-warn-bg px-3.5 py-3 text-[13px] leading-snug text-ink", className)}>
       <p className="flex gap-2">
-        <BellRing aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-[#B4501A]" />
+        <BellRing aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warn-fg" />
         <span>{TEXT[status]}</span>
       </p>
       {status === "aus" ? (
@@ -182,7 +182,7 @@ export function PushAnstoss({ className }: { className?: string }) {
   }, []);
   if (weg || !status || status === "an" || status === "nicht-moeglich" || status === "gesperrt") return null;
   return (
-    <div className={cn("relative rounded-[16px] bg-[#FFF4E0] px-3.5 py-3 pr-10 text-[13px] leading-snug text-ink", className)}>
+    <div className={cn("relative rounded-[16px] bg-warn-bg px-3.5 py-3 pr-10 text-[13px] leading-snug text-ink", className)}>
       <button
         type="button"
         aria-label="Hinweis ausblenden"

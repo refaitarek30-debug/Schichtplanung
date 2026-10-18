@@ -80,7 +80,7 @@ export function PinselLeiste({
   const kreis = (an: boolean) =>
     cn(
       "flex h-[34px] w-[34px] items-center justify-center rounded-full text-[12.5px] font-bold [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7",
-      an && "ring-2 ring-ink ring-offset-2 ring-offset-white",
+      an && "ring-2 ring-ink ring-offset-2 ring-offset-surface",
     );
   const strich = <span aria-hidden className="absolute left-0 top-1/2 h-8 w-px -translate-y-1/2 bg-ink/10" />;
   const breit = useBreit();
@@ -99,7 +99,7 @@ export function PinselLeiste({
         type="button"
         onClick={onClose}
         aria-label="Pinsel beenden"
-        className="absolute -top-6 right-2 z-[2] flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-[0_6px_18px_rgba(31,41,77,0.25)]"
+        className="absolute -top-6 right-2 z-[2] flex h-11 w-11 items-center justify-center rounded-full bg-surface text-ink shadow-[0_6px_18px_rgba(31,41,77,0.25)]"
       >
         <X className="h-5 w-5" strokeWidth={2.6} />
       </button>

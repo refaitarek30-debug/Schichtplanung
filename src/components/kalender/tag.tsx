@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import { CalendarPlus, ChevronLeft, ChevronRight, Clock, ListTodo, Plus, Trash2, X } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Clock, Plus, Trash2, X } from "lucide-react";
 import { addDays, formatDE, fromISO, monthName } from "@/lib/dates";
 import { textFarbe } from "@/lib/privat/daten";
 import type { Todo } from "@/lib/data/todos";
@@ -356,15 +356,12 @@ export function AmTag({
   );
 }
 
-export function TagKnoepfe({ onTermin, onTodo, onTag }: { onTermin: () => void; onTodo: () => void; onTag: () => void }) {
+export function TagKnoepfe({ onTermin, onTag }: { onTermin: () => void; onTag: () => void }) {
   const knopf = "flex h-[50px] items-center justify-center gap-1.5 rounded-[16px] text-[14.5px] font-semibold";
   return (
-    <div className="mt-3 grid grid-cols-3 gap-2">
+    <div className="mt-3 grid grid-cols-2 gap-2">
       <button type="button" onClick={onTermin} className={cn(knopf, "bg-ink text-surface")}>
         <CalendarPlus className="h-[18px] w-[18px]" /> Termin
-      </button>
-      <button type="button" onClick={onTodo} className={cn(knopf, "bg-ink/[0.07] text-ink")}>
-        <ListTodo className="h-[18px] w-[18px]" /> To-do
       </button>
       <button type="button" onClick={onTag} className={cn(knopf, "bg-ink/[0.07] text-ink")}>
         <Clock className="h-[18px] w-[18px]" /> Tag
@@ -442,14 +439,17 @@ export function SchnellWahl({
   eintraege,
   aktiv,
   mitLeeren,
+  hinweis = "auf Farbe ziehen & loslassen",
   onWahl,
   onClose,
 }: {
   rect: DOMRect;
   titel: string;
   eintraege: SchnellEintrag[];
-  aktiv: string | null;
+  /** Schon gesetzte Einträge des Tages (einer oder mehrere). */
+  aktiv: string | null | (string | null)[];
   mitLeeren: boolean;
+  hinweis?: string;
   /** null = Tag leeren */
   onWahl: (id: string | null) => void;
   onClose: () => void;
@@ -503,11 +503,11 @@ export function SchnellWahl({
         className="absolute rounded-[26px] bg-surface p-3 shadow-[0_14px_40px_rgba(31,41,77,0.28)] ring-1 ring-ink/5"
         style={{ left: links, top: oben, width: breite }}
       >
-        <p className="mb-2 text-center text-[12px] font-semibold text-ink-muted">{titel} · auf Farbe ziehen &amp; loslassen</p>
+        <p className="mb-2 text-center text-[12px] font-semibold text-ink-muted">{titel} · {hinweis}</p>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {liste.map((e) => {
             const hervor = ueber === e.id;
-            const gesetzt = aktiv === e.id;
+            const gesetzt = Array.isArray(aktiv) ? aktiv.includes(e.id) : aktiv === e.id;
             return (
               <button
                 key={e.id}
@@ -920,7 +920,7 @@ export function Tagesansicht({
               key={t.id}
               type="button"
               onClick={() => onTermin(t)}
-              className="flex h-9 max-w-full items-center gap-1.5 truncate rounded-[12px] bg-[#FCE7D6] px-3 text-[13.5px] font-semibold text-ink"
+              className="flex h-9 max-w-full items-center gap-1.5 truncate rounded-[12px] bg-warn-bg px-3 text-[13.5px] font-semibold text-ink"
             >
               {t.titel || "Termin"} <span className="font-normal text-ink-muted">· ganztägig</span>
             </button>
@@ -937,7 +937,7 @@ export function Tagesansicht({
           <button
             type="button"
             onClick={onTodos}
-            className="flex h-9 items-center gap-1.5 rounded-[12px] bg-[#E6F1E9] px-3 text-[13.5px] font-semibold text-ink"
+            className="flex h-9 items-center gap-1.5 rounded-[12px] bg-ok-bg px-3 text-[13.5px] font-semibold text-ink"
           >
             ✅ {offen ? `${offen} To-do${offen === 1 ? "" : "s"}` : tagTodos.length ? "Alles erledigt" : "To-dos"}
           </button>
@@ -1037,7 +1037,7 @@ export function Tagesansicht({
                     aria-label={`${l.t.titel || "Termin"}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${l.t.vonPartner ? "" : ". Gedrückt halten zum Verschieben oder Löschen."}`}
                     className={cn(
                       "absolute z-[2] flex touch-none select-none flex-col overflow-hidden rounded-[12px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
-                      zieht ? "z-[4] bg-[#FFF4E0] shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
+                      zieht ? "z-[4] bg-warn-bg shadow-[0_14px_30px_rgba(31,41,77,0.28)] ring-2 ring-ink" : "shadow-[0_2px_8px_rgba(31,41,77,0.1)] ring-1 ring-ink/[0.06]",
                     )}
                     style={{
                       ...box(zieht && zug ? zug.neu : l.start),
@@ -1056,7 +1056,7 @@ export function Tagesansicht({
                       {von ? ` · ${von.name}` : ""}
                     </span>
                     {zieht && zug ? (
-                      <span className={cn("text-[11.5px] font-bold", kollision(zug.neu, zug.neu + zug.dauer) ? "text-[#B4501A]" : "text-[#1C6E49]")}>
+                      <span className={cn("text-[11.5px] font-bold", kollision(zug.neu, zug.neu + zug.dauer) ? "text-warn-fg" : "text-ok-fg")}>
                         {kollision(zug.neu, zug.neu + zug.dauer) ? "⚠︎ in der Schicht" : "✓ passt"}
                       </span>
                     ) : null}
@@ -1194,8 +1194,8 @@ export function TodoBlatt({
             </button>
           ))}
           {tag ? (
-            <label className="flex h-8 items-center gap-1 rounded-full bg-ink/[0.06] px-3 text-[13px] font-semibold">
-              🔔
+            <label className="flex h-8 items-center gap-1.5 rounded-full bg-ink/[0.06] px-3 text-[13px] font-semibold">
+              🔔 <span className="text-ink-muted">Erinnern um</span>
               <input
                 type="time"
                 value={uhrzeit}
@@ -1213,7 +1213,7 @@ export function TodoBlatt({
               type="button"
               disabled={laeuft}
               onClick={() => void hinzufuegen(v)}
-              className="h-8 shrink-0 rounded-full bg-[#F1EBE2] px-3 text-[13px] font-semibold text-ink"
+              className="h-8 shrink-0 rounded-full bg-warn-bg px-3 text-[13px] font-semibold text-ink"
             >
               {v}
             </button>
@@ -1226,7 +1226,7 @@ export function TodoBlatt({
       <div className="mt-4 space-y-4">
         {gruppen.map((g) => (
           <div key={g.titel}>
-            <p className={cn("mb-1.5 text-[12.5px] font-bold", g.titel === "Überfällig" ? "text-[#B4501A]" : "text-ink-muted")}>{g.titel}</p>
+            <p className={cn("mb-1.5 text-[12.5px] font-bold", g.titel === "Überfällig" ? "text-warn-fg" : "text-ink-muted")}>{g.titel}</p>
             <ul className="space-y-1.5">
               {g.liste.map((t) => (
                 <li key={t.id} className="flex items-center gap-3 rounded-[16px] bg-ink/[0.045] py-2 pl-3.5 pr-1.5">

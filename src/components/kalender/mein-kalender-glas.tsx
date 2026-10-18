@@ -850,10 +850,6 @@ export function MeinKalenderGlas() {
           andere={andere.amTag(tagBlatt.iso)}
           terminVon={andere.terminVon}
           onTodo={(id, an) => void todoSetzen(id, an)}
-          onTodos={() => {
-            setTodoBlatt({ datum: tagBlatt.iso });
-            setTagBlatt(null);
-          }}
           onTag={() => {
             setTagAnsicht(tagBlatt.iso);
             setTagBlatt(null);
@@ -1060,7 +1056,7 @@ export function MeinKalenderGlas() {
       {rueck ? (
         <div
           role="status"
-          className="fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+0.25rem)] z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[16px] bg-ink px-4 py-3 text-[14px] text-surface shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+          className="fixed inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+0.25rem)] z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-[16px] bg-[#1F294D] px-4 py-3 text-[14px] text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
         >
           <span className="min-w-0 truncate">{rueck.text}</span>
           <button type="button" onClick={rueckgaengig} className="shrink-0 font-bold text-[#8fb0ff]">
@@ -1148,7 +1144,6 @@ function TagBlatt({
   onTerminLoeschen,
   darfLoeschen,
   onTodo,
-  onTodos,
   onTag,
   onPartner,
   onClose,
@@ -1170,7 +1165,6 @@ function TagBlatt({
   onTerminLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen: (t: Termin) => boolean;
   onTodo: (id: string, an: boolean) => void;
-  onTodos: () => void;
   onTag: () => void;
   /** Tag einer Person selbst eintragen (ohne Angabe: die erste). */
   onPartner: (key?: string) => void;
@@ -1268,7 +1262,7 @@ function TagBlatt({
         darfLoeschen={darfLoeschen}
       />
       <AnDiesemTag eintraege={andere} onPerson={(key) => onPartner(key)} className="mt-3" />
-      <TagKnoepfe onTermin={() => onTermin(null)} onTodo={onTodos} onTag={onTag} />
+      <TagKnoepfe onTermin={() => onTermin(null)} onTag={onTag} />
       <button
         type="button"
         onClick={() => onPartner()}

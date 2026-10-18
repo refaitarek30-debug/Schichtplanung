@@ -500,6 +500,20 @@ body {
   }
 }
 
+/*
+ * Im Dunkelmodus ist die Markenfarbe hell (Blau 500 bis 700). Weiße Schrift
+ * darauf war kaum lesbar – dort steht dunkle Schrift. Gilt für jeden Knopf
+ * und jedes Feld mit text-white auf der Markenfarbe.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.bg-brand-500, .bg-brand-600, .bg-brand-700).text-white {
+    color: rgb(14 18 33);
+  }
+}
+:root[data-theme="dark"] :is(.bg-brand-500, .bg-brand-600, .bg-brand-700).text-white {
+  color: rgb(14 18 33);
+}
+
 /* Ansicht-Menü im Kalenderkopf: klappt leicht von oben auf. */
 @keyframes menue-auf {
   from {
