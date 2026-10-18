@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useState, useTransition } from "react";
-import { LogOut, Repeat, Trash2 } from "lucide-react";
+import { FileUp, LogOut, Repeat, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/layout/theme";
 import { signOut } from "@/lib/auth/actions";
@@ -71,6 +71,15 @@ export function PrivatMehr() {
               <span className="block text-[13px] text-ink-muted">Muster einmal wählen, der Kalender füllt sich von selbst</span>
             </span>
           </button>
+          <Link href="/privat/import" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <FileUp className="h-[18px] w-[18px]" />
+            </span>
+            <span>
+              <span className="block text-[15px] font-medium">Aus anderer App übernehmen</span>
+              <span className="block text-[13px] text-ink-muted">Schichten z. B. aus Supershift per Kalender-Datei holen</span>
+            </span>
+          </Link>
           <label className="flex items-center justify-between gap-3">
             <span>
               <span className="block text-[15px] font-medium">Feiertage anzeigen</span>

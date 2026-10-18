@@ -53,7 +53,10 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
       >
         <ul className="flex items-stretch">
           {NAV.map((n) => {
-            const aktiv = n.href === "/privat" ? pfad === "/privat" : pfad.startsWith(n.href);
+            const aktiv =
+              n.href === "/privat"
+                ? pfad === "/privat"
+                : pfad.startsWith(n.href) || (n.href === "/privat/mehr" && pfad.startsWith("/privat/import"));
             return (
               <li key={n.href} className="flex-1">
                 <Link
