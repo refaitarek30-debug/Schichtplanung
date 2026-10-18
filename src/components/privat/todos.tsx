@@ -321,6 +321,7 @@ function TodoBearbeiten({
 
   return (
     <Blatt
+      wischZu="kopf"
       titel="To-do bearbeiten"
       unter={datum ? formatDE(datum) : "Ohne Tag"}
       onClose={onClose}

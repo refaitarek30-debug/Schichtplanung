@@ -211,6 +211,7 @@ export function WasPasstZuDir({ onFertig }: { onFertig: () => void }) {
 
   return (
     <Blatt
+      wischZu="kopf"
       titel="👋 Was passt zu dir?"
       unter="Dann zeigen wir dir passende Vorschläge. Mehrere gehen, ändern jederzeit."
       onClose={() => void weiter(wahl)}

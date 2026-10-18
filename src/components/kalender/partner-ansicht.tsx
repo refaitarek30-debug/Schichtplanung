@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useWischZu } from "@/components/privat/blatt";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
   LINK_UNGUELTIG,
@@ -425,10 +426,12 @@ function TagBlatt({
   onTermin: (t: Termin | null) => void;
 }) {
   const d = fromISO(iso);
+  const wisch = useRef<HTMLDivElement>(null);
+  useWischZu(wisch, true, onClose);
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-black/40" onClick={onClose} />
-      <div role="dialog" aria-label={formatDE(iso)} className="relative w-full max-w-lg overflow-hidden rounded-t-3xl bg-surface shadow-pop sm:rounded-3xl">
+      <div ref={wisch} role="dialog" aria-label={formatDE(iso)} className="relative w-full max-w-lg overflow-hidden rounded-t-3xl bg-surface shadow-pop sm:rounded-3xl">
         <div className="bg-surface-sunken px-5 py-4">
           <p className="text-[17px] font-semibold">
             {WOCHENTAG_LANG[d.getDay()]}, {formatDE(iso)}

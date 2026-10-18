@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
 import { formatDE } from "@/lib/dates";
 import type { FarbenCodes, PartnerCode } from "@/lib/data/partner";
 import { textFarbe } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
+import { useWischZu } from "@/components/privat/blatt";
 
 /**
  * Arbeitstage des Partners im Kalender.
@@ -159,6 +160,8 @@ export function PartnerBlatt({
   onPerson?: (key: string) => void;
 }) {
   const [anzahl, setAnzahl] = useState(1);
+  const wisch = useRef<HTMLDivElement>(null);
+  useWischZu(wisch, "kopf", onClose);
 
   return createPortal(
     <Blatt glas={glas}>
@@ -169,6 +172,7 @@ export function PartnerBlatt({
         onClick={onClose}
       />
       <div
+        ref={wisch}
         role="dialog"
         aria-label="Arbeitstag des Partners"
         className={cn(
@@ -176,7 +180,7 @@ export function PartnerBlatt({
           glas ? "glas-dicht rounded-[30px]" : "rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl",
         )}
       >
-        <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
+        <div data-wisch-kopf className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">{formatDE(datum)}</span>
           <span className="text-[15px] text-ink-muted">
             {personen?.find((p) => p.key === person)?.name ?? "Partner"}

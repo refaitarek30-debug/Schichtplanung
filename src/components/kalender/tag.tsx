@@ -9,7 +9,7 @@ import { textFarbe } from "@/lib/privat/daten";
 import type { Todo } from "@/lib/data/todos";
 import type { Rolle } from "@/lib/data/todos";
 import { cn } from "@/lib/utils";
-import { Blatt } from "@/components/privat/blatt";
+import { Blatt, useWischZu } from "@/components/privat/blatt";
 import { erinnerungText, minutenZwischen, terminTitel, TerminLoeschenFrage, vorkommenAm, type Termin } from "./termine";
 import type { LoeschModus } from "@/lib/data/verbindungen";
 import { TODO_VORSCHLAEGE } from "./vorschlaege";
@@ -696,9 +696,13 @@ export function Tagesansicht({
     return n.getHours() * 60 + n.getMinutes();
   })();
 
+  const blattRef = useRef<HTMLDivElement>(null);
+  useWischZu(blattRef, eingebettet ? false : "kopf", onClose);
+
   const kopfName = (t: string) => baender(t)[0]?.name ?? ganztaegig(t)[0]?.name ?? "";
   const inhalt = (
     <div
+      ref={blattRef}
       className={cn(
         eingebettet
           ? "flex h-full min-h-0 flex-col"
@@ -708,7 +712,7 @@ export function Tagesansicht({
       aria-label={eingebettet ? "Tag" : "Tagesansicht"}
     >
       {eingebettet ? null : (
-      <header className="flex items-center justify-between gap-2 px-3 pb-2">
+      <header data-wisch-kopf className="flex items-center justify-between gap-2 px-3 pb-2">
         <button
           type="button"
           onClick={onClose}
@@ -1044,7 +1048,7 @@ export function TodoBlatt({
   ];
 
   return (
-    <Blatt titel="✅ To-dos" unter={offen.length ? `${offen.length} offen` : "Alles erledigt 🎉"} onClose={onClose}>
+    <Blatt wischZu="kopf" titel="✅ To-dos" unter={offen.length ? `${offen.length} offen` : "Alles erledigt 🎉"} onClose={onClose}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
