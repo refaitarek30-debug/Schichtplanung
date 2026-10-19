@@ -165,6 +165,7 @@ function SchichtBlatt({
 
   return (
     <Blatt
+      wischZu="kopf"
       titel={s.id ? "Schicht bearbeiten" : "Neue Schicht"}
       onClose={onClose}
       fuss={

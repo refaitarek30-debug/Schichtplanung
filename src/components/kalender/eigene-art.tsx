@@ -62,6 +62,7 @@ export function EigeneArtBlatt({
 
   return (
     <Blatt
+      wischZu="kopf"
       titel={a.id ? "Eigenen Eintrag bearbeiten" : "Eigener Eintrag"}
       unter="Nur für dich sichtbar – der Schichtplan bleibt unverändert."
       onClose={onClose}

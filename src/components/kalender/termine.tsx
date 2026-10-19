@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, X } from "lucide-react";
+import { useWischZu } from "@/components/privat/blatt";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
@@ -343,6 +344,9 @@ export function TerminBlatt({
     });
   }
 
+  const wisch = useRef<HTMLFormElement>(null);
+  useWischZu(wisch, "kopf", onClose);
+
   // An den Body gehängt: der Kalender steht auf dem Handy fest (eigene
   // Ebene unter der Navigation) – im Kalender selbst läge das Blatt sonst
   // unter der Navigationsleiste, und „Speichern“ wäre nicht zu erreichen.
@@ -360,6 +364,7 @@ export function TerminBlatt({
         onClick={onClose}
       />
       <form
+        ref={wisch}
         onSubmit={speichern}
         role="dialog"
         aria-label={termin ? "Termin bearbeiten" : "Neuer Termin"}
@@ -368,7 +373,7 @@ export function TerminBlatt({
           glas ? "glas-dicht max-h-[90dvh] rounded-[30px]" : "rounded-t-3xl bg-surface shadow-pop lg:rounded-3xl",
         )}
       >
-        <div className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
+        <div data-wisch-kopf className={cn("flex items-baseline justify-between px-5 py-4", glas ? "bg-ink/[0.05]" : "bg-surface-sunken")}>
           <span className="text-[17px] font-semibold">
             {geburt ? (
               `${Number(tagMonat.slice(3))}. ${monthName(Number(tagMonat.slice(0, 2)) - 1)}`
@@ -773,12 +778,15 @@ export function TerminLoeschenFrage({
     ...(erster ? [] : [{ id: "ab" as const, name: "Diesen und alle folgenden", text: "Die Serie endet davor, frühere Termine bleiben." }]),
     { id: "alle", name: "Alle Termine der Serie", text: "Auch die vergangenen." },
   ];
+  const wisch = useRef<HTMLDivElement>(null);
+  useWischZu(wisch, true, onClose);
   return createPortal(
     <div
       className="privat privat-schrift fixed inset-0 z-[70] flex items-end justify-center bg-black/35 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       onClick={onClose}
     >
       <div
+        ref={wisch}
         role="alertdialog"
         aria-label="Termin löschen"
         onClick={(e) => e.stopPropagation()}

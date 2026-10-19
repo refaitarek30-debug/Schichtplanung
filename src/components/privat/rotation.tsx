@@ -92,6 +92,7 @@ export function RotationBlatt({
 
   return (
     <Blatt
+      wischZu="kopf"
       titel="Schichtfolge eintragen"
       unter="Die Folge wiederholt sich ab dem Startdatum."
       onClose={onClose}

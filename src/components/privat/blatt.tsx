@@ -4,13 +4,17 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
+export type WischModus = boolean | "kopf";
+
 /**
- * Nach unten wischen schließt das Blatt: Es folgt dem Finger und gleitet
- * hinaus – oder federt zurück, wenn man nicht weit genug gezogen hat. Liegt
- * der Inhalt gescrollt, scrollt er erst; ganz oben zieht der nächste Wisch
- * das Blatt zu.
+ * Nach unten wischen schließt das Blatt (`"kopf"`: nur am Griff und Titel):
+ * Es folgt dem Finger und gleitet hinaus – oder federt zurück, wenn man nicht
+ * weit genug gezogen hat. Liegt der Inhalt gescrollt, scrollt er erst; ganz
+ * oben zieht der nächste Wisch das Blatt zu.
  */
-function useWischZu(blatt: React.RefObject<HTMLDivElement | null>, aktiv: boolean, onClose: () => void) {
+export function useWischZu(blatt: React.RefObject<HTMLElement | null>, modus: WischModus, onClose: () => void) {
+  const aktiv = modus !== false;
+  const nurKopf = modus === "kopf";
   const zu = useRef(onClose);
   useEffect(() => {
     zu.current = onClose;
@@ -35,6 +39,8 @@ function useWischZu(blatt: React.RefObject<HTMLDivElement | null>, aktiv: boolea
 
     const start = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
+      // Formulare: nur am Griff und an der Titelzeile ziehen – nie mitten in Eingaben.
+      if (nurKopf && !(e.target as Element | null)?.closest?.("[data-wisch-kopf]")) return;
       const t = e.touches[0]!;
       s = { x: t.clientX, y: t.clientY, scroller: scrollerVon(e.target), ziehen: false, dy: 0, v: 0, letztY: t.clientY, letztT: e.timeStamp };
     };
@@ -87,7 +93,7 @@ function useWischZu(blatt: React.RefObject<HTMLDivElement | null>, aktiv: boolea
       el.removeEventListener("touchend", ende);
       el.removeEventListener("touchcancel", abbruch);
     };
-  }, [blatt, aktiv]);
+  }, [blatt, aktiv, nurKopf]);
 }
 
 /**
@@ -100,15 +106,15 @@ export function Blatt({
   onClose,
   children,
   fuss,
-  wischZu = false,
+  wischZu = true,
 }: {
   titel: ReactNode;
   unter?: ReactNode;
   onClose: () => void;
   children: ReactNode;
   fuss?: ReactNode;
-  /** Nach unten wischen schließt – nur für Blätter zum Ansehen, nicht für Formulare. */
-  wischZu?: boolean;
+  /** Nach unten wischen schließt. Formulare setzen "kopf": gezogen wird nur am Griff und Titel. */
+  wischZu?: WischModus;
 }) {
   const blatt = useRef<HTMLDivElement>(null);
   useWischZu(blatt, wischZu, onClose);
@@ -132,8 +138,8 @@ export function Blatt({
         aria-modal="true"
         className="glas-dicht relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-[30px]"
       >
-        <span aria-hidden className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-ink/15" />
-        <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-2">
+        <span aria-hidden data-wisch-kopf className="mx-auto mt-2 block h-1.5 w-10 shrink-0 rounded-full bg-ink/15" />
+        <div data-wisch-kopf className="flex items-start justify-between gap-3 px-5 pb-2 pt-2">
           <div className="min-w-0">
             <h2 className="text-[18px] font-semibold leading-tight">{titel}</h2>
             {unter ? <div className="mt-0.5 text-[13px] text-ink-muted">{unter}</div> : null}
