@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { IdleLogout } from "@/components/layout/idle-logout";
 import { PrivatProvider } from "@/components/privat/kontext";
 import { PrivatRahmen } from "@/components/privat/rahmen";
-import { FRIST_NACH_ROLLE } from "@/lib/auth/idle";
+import { FRIST_PRIVAT } from "@/lib/auth/idle";
 import { getAppSession } from "@/lib/auth/session";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -36,7 +36,7 @@ export default async function PrivatLayout({ children }: { children: ReactNode }
   }
   return (
     <PrivatProvider konto={konto}>
-      <IdleLogout fristMs={FRIST_NACH_ROLLE.employee} />
+      <IdleLogout fristMs={FRIST_PRIVAT} />
       <PrivatRahmen>{children}</PrivatRahmen>
     </PrivatProvider>
   );

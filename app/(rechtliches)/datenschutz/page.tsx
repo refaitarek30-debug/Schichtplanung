@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="19. Oktober 2026"
+      updated="20. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -657,12 +657,13 @@ export default function DatenschutzPage() {
             (Authentifizierungsdienst)
           </li>
           <li>
-            <code className={kode}>sp_letzte_aktivitaet</code> (Cookie, bis zu 7 Tage) –
+            <code className={kode}>sp_letzte_aktivitaet</code> (Cookie, bis zu 31 Tage) –
             Zeitpunkt der letzten Aktivität; die Sitzung endet je nach Rolle automatisch nach
-            Inaktivität (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)
+            Inaktivität (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden,
+            Privatkonten ohne Firma 30 Tage)
           </li>
           <li>
-            <code className={kode}>sp_frist</code> (Cookie, bis zu 7 Tage) – die für die eigene
+            <code className={kode}>sp_frist</code> (Cookie, bis zu 31 Tage) – die für die eigene
             Rolle geltende Zeit bis zur automatischen Abmeldung
           </li>
           <li>
@@ -746,7 +747,7 @@ export default function DatenschutzPage() {
           <li>Mandantentrennung und Rollenrechte in der Datenbank (Row Level Security), serverseitige Prüfung aller Aktionen</li>
           <li>Partner- und Kalender-Links nur als Hashwert gespeichert, jederzeit erneuer- und beendbar</li>
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
-          <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden)</li>
+          <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden, Privatkonten ohne Firma 30 Tage)</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
           <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte, einsehbar nur für ausdrücklich freigeschaltete Personen</li>
           <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>

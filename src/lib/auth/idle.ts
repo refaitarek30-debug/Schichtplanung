@@ -7,6 +7,7 @@ import type { Role } from "@/lib/types";
  *   - Administration (Konten, Krankheit, Geburtstage, Protokoll): 15 Minuten
  *   - Schichtleitung (Anträge, Abwesenheiten, Konten ihrer Leute):  8 Stunden
  *   - Mitarbeiter (nur der eigene Plan und das eigene Konto):      12 Stunden
+ *   - Privatkonten (nur der eigene Kalender, keine Firma):         30 Tage
  *
  * Mitarbeiter öffnen die App kurz in der Pause oder im Bus und arbeiten
  * 8 bis 12 Stunden am Stück – kürzere Fristen würden sie mitten in der
@@ -22,6 +23,13 @@ import type { Role } from "@/lib/types";
  */
 const MINUTE = 60 * 1000;
 const STUNDE = 60 * MINUTE;
+
+/**
+ * Privatkonten: nur der eigene Kalender, nichts von einer Firma. Wie bei den
+ * meisten Apps bleibt man angemeldet, damit der Kalender sofort aufgeht. Gilt
+ * nur im Bereich /privat (siehe `fristAusCookie`).
+ */
+export const FRIST_PRIVAT = 30 * 24 * STUNDE;
 
 export const FRIST_NACH_ROLLE: Record<Role, number> = {
   admin: 15 * MINUTE,
@@ -53,11 +61,16 @@ export const ACTIVITY_COOKIE = "sp_letzte_aktivitaet";
 /** Die Frist der angemeldeten Person – vom Browser gesetzt, von der Middleware gelesen. */
 export const FRIST_COOKIE = "sp_frist";
 
-/** Frist aus dem Cookie; fehlt es oder ist es unsinnig, gilt die strengste. */
-export function fristAusCookie(roh: string | undefined): number {
+/**
+ * Frist aus dem Cookie; fehlt es oder ist es unsinnig, gilt die strengste.
+ * Mehr als 12 Stunden gelten nur dort, wo `privat` gesetzt ist (Privatbereich) –
+ * das Cookie lässt sich im Browser ändern, darum darf es sonst nie mehr
+ * freigeben als die Rollen im Betrieb.
+ */
+export function fristAusCookie(roh: string | undefined, privat = false): number {
   const n = Number(roh);
   if (!Number.isFinite(n) || n <= 0) return IDLE_TIMEOUT_MS;
-  return Math.min(Math.max(n, FRIST_MIN_MS), FRIST_MAX_MS);
+  return Math.min(Math.max(n, FRIST_MIN_MS), privat ? FRIST_PRIVAT : FRIST_MAX_MS);
 }
 
 /**
@@ -65,4 +78,4 @@ export function fristAusCookie(roh: string | undefined): number {
  * entscheidet der Zeitstempel darin – wäre das Cookie selbst nach 30 Minuten
  * weg, sähe eine lange Pause aus wie eine frische Anmeldung.
  */
-export const ACTIVITY_COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+export const ACTIVITY_COOKIE_MAX_AGE = 31 * 24 * 60 * 60;

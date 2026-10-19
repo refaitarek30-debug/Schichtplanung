@@ -124,7 +124,16 @@ export async function middleware(request: NextRequest) {
 
   if (user) {
     const zuletzt = Number(request.cookies.get(ACTIVITY_COOKIE)?.value);
-    if (Number.isFinite(zuletzt) && Date.now() - zuletzt > fristAusCookie(request.cookies.get(FRIST_COOKIE)?.value)) {
+    // Die lange Frist der Privatkonten gilt nur im Privatbereich und auf dem Weg
+    // dorthin (/start mit gemerkter Wahl „privat“) – nie für Seiten der Firma.
+    const privat =
+      pathname.startsWith("/privat") ||
+      ((pathname === "/start" || pathname === "/") &&
+        startZielAusCookie(request.cookies.get(START_COOKIE)?.value, user.id) === "/privat");
+    if (
+      Number.isFinite(zuletzt) &&
+      Date.now() - zuletzt > fristAusCookie(request.cookies.get(FRIST_COOKIE)?.value, privat)
+    ) {
       return abmelden(request);
     }
   }
