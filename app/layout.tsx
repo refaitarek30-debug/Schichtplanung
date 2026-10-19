@@ -69,7 +69,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de" className={`${sans.variable} ${mono.variable}`}>
+    // suppressHydrationWarning: Farbschema und Wochenende setzt ein Skript
+    // vor dem ersten Zeichnen als Attribut am <html> – das ist gewollt.
+    <html lang="de" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <ThemeScript />
       </head>

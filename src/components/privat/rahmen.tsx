@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react";
-import { offeneBisHeute } from "@/components/kalender/todo-zaehler";
-import { fetchTodos } from "@/lib/data/todos";
-import { heuteInBerlin } from "@/lib/dates";
+import { useTodoZahl } from "@/components/kalender/todo-zaehler";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -16,26 +14,6 @@ const NAV = [
   { href: "/privat/todos", text: "To-dos", icon: ListChecks },
   { href: "/privat/mehr", text: "Mehr", icon: Ellipsis },
 ];
-
-/** Offene To-dos bis heute – für die Zahl am Reiter; lädt neu bei Seitenwechsel und wenn sich To-dos ändern. */
-function useTodoZahl(pfad: string): number {
-  const [zahl, setZahl] = useState(0);
-  useEffect(() => {
-    let aktiv = true;
-    const laden = () => {
-      fetchTodos()
-        .then((t) => aktiv && setZahl(offeneBisHeute(t, heuteInBerlin())))
-        .catch(() => {});
-    };
-    laden();
-    window.addEventListener("todos-geaendert", laden);
-    return () => {
-      aktiv = false;
-      window.removeEventListener("todos-geaendert", laden);
-    };
-  }, [pfad]);
-  return zahl;
-}
 
 /** Rahmen des Privatbereichs: Inhalt und Leiste unten – auf jeder Bildschirmgröße. */
 export function PrivatRahmen({ children }: { children: ReactNode }) {

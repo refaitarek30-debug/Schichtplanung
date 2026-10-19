@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useState, useTransition } from "react";
-import { FileUp, LogOut, Repeat, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { FileUp, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
+import { CodeAnzeige } from "@/components/ui/code-anzeige";
+import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
+import { createClient } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/layout/theme";
 import { signOut } from "@/lib/auth/actions";
@@ -166,11 +170,12 @@ export function PrivatMehr() {
       </PrivatKarte>
 
       <PrivatKarte titel="Passwort vergessen?">
-        <form action={emailAktion} className="space-y-2 px-4 py-4">
+        <WiederherstellungsCode />
+        <form action={emailAktion} className="glas-linie space-y-2 border-t px-4 py-4">
           <p className="text-[13px] text-ink-muted">
             {konto.email
-              ? `Hinterlegt: ${konto.email}. Darüber kannst du dein Passwort zurücksetzen.`
-              : "Du hast dich mit Spitzname angemeldet. Trag freiwillig eine E-Mail-Adresse ein, dann kannst du dein Passwort bei Bedarf zurücksetzen. Ohne Adresse ist ein vergessenes Passwort nicht zu retten."}
+              ? `Hinterlegt: ${konto.email}. Darüber erkennt dich der Support, falls du deinen Code verlierst.`
+              : "Freiwillig: Mit einer E-Mail-Adresse erkennt dich der Support leichter, falls du deinen Code verlierst."}
           </p>
           <div className="flex gap-2">
             <input
@@ -254,6 +259,94 @@ export function PrivatMehr() {
           onClose={() => setSchichtfolge(false)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Eigener Wiederherstellungs-Code (Migration 0172): einmal erzeugen und
+ * aufheben. Gespeichert ist nur ein Prüfwert – der Code selbst steht nur
+ * direkt nach dem Erzeugen hier. Ein neuer Code ersetzt den alten.
+ */
+function WiederherstellungsCode() {
+  const [stand, setStand] = useState<string | null | undefined>(undefined);
+  const [code, setCode] = useState<string | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [frage, setFrage] = useState(false);
+  const [laeuft, starte] = useTransition();
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let aktiv = true;
+    void Promise.resolve(createClient().rpc("mein_wiederherstellungscode_stand")).then(({ data }) => {
+      if (aktiv) setStand(typeof data === "string" ? data : null);
+    });
+    return () => {
+      aktiv = false;
+    };
+  }, []);
+
+  function erzeugen() {
+    setFehler(null);
+    setFrage(false);
+    starte(async () => {
+      const r = await meinWiederherstellungscode();
+      if (r.error || !r.code) setFehler(r.error ?? "Der Code ließ sich nicht erzeugen.");
+      else {
+        setCode(r.code);
+        setStand(new Date().toISOString());
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-3 px-4 py-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-600">
+          <KeyRound className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold">Wiederherstellungs-Code</p>
+          <p className="text-[13px] leading-snug text-ink-muted">
+            {stand === undefined
+              ? "Wird geprüft …"
+              : stand
+                ? `Erzeugt am ${new Date(stand).toLocaleDateString("de-DE")}. Damit setzt du unter „Passwort vergessen?“ ein neues Passwort.`
+                : "Noch keiner. Erzeuge dir einen und heb ihn gut auf – damit kommst du wieder rein, wenn du dein Passwort vergisst."}
+          </p>
+        </div>
+      </div>
+      {code ? (
+        <div className="space-y-2">
+          <CodeAnzeige code={code} />
+          <p className="text-[12.5px] leading-snug text-ink-muted">
+            Jetzt speichern, zum Beispiel als Notiz oder Screenshot. Der Code wird nur dieses eine Mal angezeigt und gilt, bis du
+            einen neuen erzeugst oder ihn benutzt.
+          </p>
+        </div>
+      ) : frage ? (
+        <div className="space-y-2 rounded-[14px] bg-ink/[0.04] p-3">
+          <p className="text-[13.5px]">Neuen Code erzeugen? Der bisherige gilt dann nicht mehr.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={erzeugen} disabled={laeuft} className="rounded-xl bg-brand-500 px-4 py-2.5 text-[14px] font-semibold text-white">
+              Ja, neuer Code
+            </button>
+            <button type="button" onClick={() => setFrage(false)} className="rounded-xl px-4 py-2.5 text-[14px] font-semibold">
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={laeuft || stand === undefined}
+          onClick={() => (stand ? setFrage(true) : erzeugen())}
+          className="h-11 w-full rounded-[14px] bg-ink text-[15px] font-bold text-surface disabled:opacity-40"
+        >
+          {laeuft ? "…" : stand ? "Neuen Code erzeugen" : "Code erzeugen"}
+        </button>
+      )}
+      {fehler ? <Alert tone="error">{fehler}</Alert> : null}
     </div>
   );
 }

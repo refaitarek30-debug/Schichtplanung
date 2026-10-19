@@ -20,7 +20,10 @@ import {
   ChevronRight,
   ListOrdered,
   Lock,
+  Maximize2,
   MessageSquare,
+  Minimize2,
+  MoreHorizontal,
   Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -44,6 +47,10 @@ import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher"
 import { fetchPlanKommentare, type PlanKommentar } from "@/lib/data/plan-comments";
 import { addPlanKommentar, deletePlanKommentar } from "@/lib/auth/comment-actions";
 import { nachSchichtfolge, schichtFarbe } from "@/lib/shift-style";
+import { setzeAnzeige, useAnzeige } from "@/lib/anzeige";
+import { ladeFarben } from "@/lib/data/kalender-eigene";
+import { planZellStil } from "@/lib/kalender-farben";
+import { PlanAnsichtWahl, PlanFarbenSchalter, WochenendeWahl } from "@/components/kalender/anzeige-wahl";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -178,6 +185,11 @@ const leaveKnoepfe: { aktion: (typeof LEAVE_AKTIONEN)[number]; label: string; co
   { aktion: "gewerkschaftstag", label: "Gewerkschaftstag", code: "G" },
 ];
 
+/** Kleine runde Schalter unter der Bedienleiste („Legende“, „Groß“ …). */
+const chip =
+  "inline-flex h-[34px] items-center gap-1.5 whitespace-nowrap rounded-full border border-line px-3 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-muted";
+const chipAn = "border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100";
+
 /** Einheitliche Knöpfe in der Bearbeitungsleiste – alle gleich hoch und breit. */
 const bearbeitKnopf =
   "inline-flex min-h-[2.5rem] items-center justify-center gap-1 rounded-lg px-2 text-[13px] font-medium transition hover:brightness-95 disabled:opacity-50";
@@ -259,6 +271,8 @@ export function ShiftPlanGrid({
   antragSchalter = true,
   nurLesen = false,
   merkName = "schichtplan-start",
+  hilfe,
+  randlos = false,
 }: {
   companyId: string;
   from: string;
@@ -282,6 +296,10 @@ export function ShiftPlanGrid({
    * Startseite verschiebt nicht den Plan.
    */
   merkName?: string;
+  /** Kurze Anleitung im Menü „Mehr“ (statt eines langen Texts über dem Plan). */
+  hilfe?: string;
+  /** Auf dem Handy von Rand zu Rand – jeder Pixel ist ein sichtbarer Tag mehr. */
+  randlos?: boolean;
 }) {
   /**
    * Erster angezeigter Tag.
@@ -369,6 +387,38 @@ export function ShiftPlanGrid({
   }
   /** Legende zu, bis jemand sie braucht. Spart auf dem Handy zwei Zeilen. */
   const [legendeOffen, setLegendeOffen] = useState(false);
+  const [mehrOffen, setMehrOffen] = useState(false);
+  useEffect(() => {
+    if (!mehrOffen) return;
+    const taste = (e: KeyboardEvent) => e.key === "Escape" && setMehrOffen(false);
+    window.addEventListener("keydown", taste);
+    return () => window.removeEventListener("keydown", taste);
+  }, [mehrOffen]);
+
+  // Persönliche Anzeige: groß oder kompakt, eigene Farben (anzeige.ts).
+  const anzeige = useAnzeige();
+  const gross = anzeige.planAnsicht === "gross";
+  const [eigeneFarben, setEigeneFarben] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    if (!anzeige.planEigeneFarben) return;
+    let aus = false;
+    ladeFarben()
+      .then((f) => !aus && setEigeneFarben(f))
+      .catch(() => !aus && setEigeneFarben({}));
+    return () => {
+      aus = true;
+    };
+  }, [anzeige.planEigeneFarben]);
+  /** Eigene Farbe einer Zelle – null heißt: Farbe des Plans. */
+  const zellFarbe = useMemo(() => {
+    const farben = anzeige.planEigeneFarben ? eigeneFarben : null;
+    if (!farben) return null;
+    const merk = new Map<string, React.CSSProperties | null>();
+    return (code: string) => {
+      if (!merk.has(code)) merk.set(code, planZellStil(code, farben));
+      return merk.get(code) ?? null;
+    };
+  }, [anzeige.planEigeneFarben, eigeneFarben]);
   const [cells, setCells] = useState<LiveShiftPlanCell[] | null>(null);
   const [shiftDetails, setShiftDetails] = useState<ShiftDetail[]>([]);
   const [blocked, setBlocked] = useState<Map<string, string>>(new Map());
@@ -1228,7 +1278,8 @@ export function ShiftPlanGrid({
           // Der Zeitraum über der Tabelle scrollt weg; die
           // Linie bleibt stehen, wo der Monat umspringt.
           iso.slice(8, 10) === "01" && "border-l-2 border-line",
-          isWeekend(iso) && "bg-surface-sunken/60",
+          // Wochenende: wie stark, wählt jede Person selbst (globals.css).
+          isWeekend(iso) && "we-kopf",
           // Feiertag: nur der Tageskopf bekommt einen Rahmen.
           // Durch die ganze Spalte war es zu viel – die Zellen
           // tragen schon Schicht- und Ferienfarben.
@@ -1237,7 +1288,12 @@ export function ShiftPlanGrid({
           blockReason && "bg-crit-bg",
         )}
       >
-        <span className="block text-[9px] font-medium leading-tight text-ink-faint sm:text-[10px] lg:text-[11px]">
+        <span
+          className={cn(
+            "block font-medium leading-tight text-ink-faint",
+            gross ? "text-[11px] sm:text-[12px]" : "text-[9px] sm:text-[10px] lg:text-[11px]",
+          )}
+        >
           {/* Auf dem Handy nur der Anfangsbuchstabe – sonst
               passen keine zwei Wochen nebeneinander. */}
           <span className="sm:hidden">
@@ -1247,7 +1303,12 @@ export function ShiftPlanGrid({
             {WEEKDAY_SHORT[(fromISO(iso).getDay() + 6) % 7]}
           </span>
         </span>
-        <span className="tnum block whitespace-nowrap text-[9px] leading-tight tracking-tight text-ink-muted sm:text-[10px]">
+        <span
+          className={cn(
+            "tnum block whitespace-nowrap leading-tight tracking-tight text-ink-muted",
+            gross ? "text-[11px] sm:text-[12px]" : "text-[9px] sm:text-[10px]",
+          )}
+        >
           {dayHeader(iso)}
         </span>
         {/* Die Urlaubssperre behält ihr Schloss – sie ist eine
@@ -1263,27 +1324,78 @@ export function ShiftPlanGrid({
   };
 
   return (
-    <Card className="scroll-mt-16 overflow-hidden" ref={planRef}>
-      {/* Auf dem Handy zwei Reihen: oben Titel und Blättern (mit „Heute“),
-          darunter Antrag, Monat und Reihenfolge. Am Desktop alles in einer
-          Reihe. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b border-line px-3 py-2">
-        <div className="mr-auto min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight">Schichtplan</h2>
-          <p className="tnum text-[12px] text-ink-muted">
-            {`${formatDE(start)} – ${formatDE(addDays(start, span - 1))}`}
-          </p>
-        </div>
-
-        <div className="order-2 flex items-center gap-1 sm:order-3">
+    <Card
+      className={cn(
+        "scroll-mt-16 overflow-visible",
+        randlos && "max-sm:-mx-4 max-sm:rounded-none max-sm:border-x-0",
+      )}
+      ref={planRef}
+    >
+      {/* Bedienleiste in drei Ebenen: oben der Monat groß (zugleich die
+          Monatsauswahl) und „Mehr“, darunter Blättern und „Heute“, darunter
+          die seltener gebrauchten Schalter als kleine Knöpfe. */}
+      <div className="relative space-y-2.5 border-b border-line px-3 pb-3 pt-3 sm:px-4">
+        <div className="flex items-center gap-2">
+          <label className="relative mr-auto flex min-w-0 cursor-pointer items-baseline gap-1.5">
+            <span className="truncate text-[24px] font-bold leading-tight tracking-tight sm:text-[26px]">
+              {new Date(viewYear, viewMonth, 1).toLocaleDateString("de-DE", { month: "long" })}
+            </span>
+            <span className="text-[17px] font-medium text-ink-muted">{viewYear}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-faint" strokeWidth={2.4} />
+            {/* Monat gezielt ansteuern statt sich in Schritten dorthin zu
+                klicken – bei Jahresplanung der schnellste Weg. Unsichtbar
+                über dem Monatsnamen, damit das System-Auswahlfeld aufgeht. */}
+            <select
+              value={`${viewYear}-${viewMonth}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split("-").map(Number);
+                // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
+                // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
+                geheZu(`${y}-${String(m + 1).padStart(2, "0")}-01`);
+              }}
+              aria-label="Monat auswählen"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              {monthOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
-            onClick={() => geheZu(zurueck(start))}
-            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-            aria-label="Vorheriger Zeitraum"
+            onClick={() => setMehrOffen((v) => !v)}
+            aria-expanded={mehrOffen}
+            aria-label="Anzeige und mehr"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-surface-muted"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <MoreHorizontal className="h-5 w-5" strokeWidth={2.2} />
           </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-line bg-surface-muted/60 sm:max-w-xs">
+            <button
+              type="button"
+              onClick={() => geheZu(zurueck(start))}
+              className="flex h-full w-11 shrink-0 items-center justify-center rounded-l-full text-ink hover:bg-surface-sunken"
+              aria-label="Vorheriger Zeitraum"
+            >
+              <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={2.4} />
+            </button>
+            <span className="tnum min-w-0 flex-1 truncate text-center text-[13.5px] font-semibold">
+              {`${dayHeader(start)} – ${dayHeader(addDays(start, span - 1))}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => geheZu(weiter(start))}
+              className="flex h-full w-11 shrink-0 items-center justify-center rounded-r-full text-ink hover:bg-surface-sunken"
+              aria-label="Nächster Zeitraum"
+            >
+              <ChevronRight className="h-[18px] w-[18px]" strokeWidth={2.4} />
+            </button>
+          </div>
           {/* Hervorgehoben: der Weg zurück zum heutigen Tag. */}
           <button
             type="button"
@@ -1292,25 +1404,17 @@ export function ShiftPlanGrid({
               if (scrollBox.current) scrollBox.current.scrollLeft = 0;
             }}
             className={cn(
-              "rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-colors",
+              "h-10 shrink-0 rounded-full px-4 text-[14px] font-bold transition-colors",
               start === from
-                ? "border-brand-600 bg-brand-600 text-white shadow-card"
-                : "border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
+                ? "bg-brand-600 text-white shadow-card"
+                : "border border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
             )}
           >
             Heute
           </button>
-          <button
-            type="button"
-            onClick={() => geheZu(weiter(start))}
-            className="rounded-lg p-2 text-ink-muted hover:bg-surface-muted"
-            aria-label="Nächster Zeitraum"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
 
-        <div className="order-3 flex w-full items-center gap-2 sm:order-2 sm:w-auto">
+        <div className="flex flex-wrap gap-1.5">
           {!nurLesen && employeeId && antragSchalter ? (
             <button
               type="button"
@@ -1320,63 +1424,148 @@ export function ShiftPlanGrid({
                 setSelected(null);
               }}
               aria-pressed={antragsModus}
-              // Gefüllt in der Farbe des großen Knopfs auf der Startseite –
-              // es ist dieselbe Handlung. Eingeschaltet wird er hell, damit
-              // „Fertig" als Rückweg erkennbar ist.
+              // Eingeschaltet wird er kräftig, damit „Fertig“ als Rückweg
+              // erkennbar ist.
               className={cn(
-                "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-[13px] font-semibold transition-colors",
-                antragsModus
-                  ? "border-brand-600 bg-brand-50 text-brand-700"
-                  : "border-brand-600 bg-brand-600 text-white shadow-card hover:bg-brand-700",
+                chip,
+                "border-transparent font-bold",
+                antragsModus ? "bg-brand-600 text-white" : "bg-brand-500/15 text-brand-700 hover:bg-brand-500/25",
               )}
             >
-              <CalendarPlus className="h-4 w-4" strokeWidth={2} />
-              {antragsModus ? "Fertig" : "Urlaub beantragen"}
+              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
+              {antragsModus ? (
+                "Fertig"
+              ) : (
+                <>
+                  Urlaub<span className="hidden sm:inline">&nbsp;beantragen</span>
+                </>
+              )}
             </button>
           ) : null}
-
-          {/* Monat gezielt ansteuern statt sich in Wochenschritten dorthin
-              zu klicken – bei Jahresplanung der schnellste Weg. */}
-          <select
-            value={`${viewYear}-${viewMonth}`}
-            onChange={(e) => {
-              const [y, m] = e.target.value.split("-").map(Number);
-              // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
-              // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
-              geheZu(`${y}-${String(m + 1).padStart(2, "0")}-01`);
-            }}
-            aria-label="Monat auswählen"
-            className="shrink-0 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[13px]"
+          <button
+            type="button"
+            onClick={() => setLegendeOffen((v) => !v)}
+            aria-pressed={legendeOffen}
+            className={cn(chip, legendeOffen && chipAn)}
           >
-            {monthOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Reihenfolge: selten gebraucht, deshalb nur ein kleines Symbol
-              ganz rechts. Die Pfeile erscheinen erst in diesem Modus, sonst
-              verstellen sie jede Namensspalte. */}
+            Legende
+          </button>
+          <button
+            type="button"
+            onClick={() => void setzeAnzeige({ planAnsicht: gross ? "kompakt" : "gross" }).catch(() => undefined)}
+            aria-pressed={gross}
+            className={cn(chip, gross && chipAn)}
+          >
+            {gross ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={2.2} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={2.2} />}
+            {gross ? "Kompakt" : "Groß"}
+          </button>
+          {/* Reihenfolge: selten gebraucht. Die Pfeile erscheinen erst in
+              diesem Modus, sonst verstellen sie jede Namensspalte. */}
           {canEdit && !nurLesen ? (
             <button
               type="button"
               onClick={() => setSortieren((v) => !v)}
               aria-pressed={sortieren}
-              aria-label={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
-              title={sortieren ? "Reihenfolge fertig" : "Reihenfolge ändern"}
-              className={cn(
-                "ml-auto rounded-md p-1 transition-colors sm:ml-0",
-                sortieren
-                  ? "bg-brand-500 text-white"
-                  : "text-ink-faint hover:bg-surface-muted hover:text-ink",
-              )}
+              // Auf dem Handy nur sichtbar, solange sie läuft (zum Beenden);
+              // sonst steht sie im Menü „Mehr“.
+              className={cn(chip, sortieren ? chipAn : "hidden sm:inline-flex")}
             >
-              <ListOrdered className="h-3.5 w-3.5" strokeWidth={2} />
+              <ListOrdered className="h-3.5 w-3.5" strokeWidth={2.2} />
+              {sortieren ? "Reihenfolge fertig" : "Reihenfolge"}
             </button>
           ) : null}
         </div>
+
+        {mehrOffen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Schließen"
+              onClick={() => setMehrOffen(false)}
+              className="fixed inset-0 z-30 cursor-default"
+            />
+            <div
+              role="dialog"
+              aria-label="Anzeige"
+              className="absolute right-3 top-[3.6rem] z-40 w-[min(20rem,calc(100vw-1.5rem))] space-y-4 rounded-2xl border border-line bg-surface p-4 shadow-pop sm:right-4"
+            >
+              <div>
+                <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Ansicht</p>
+                <PlanAnsichtWahl />
+              </div>
+              <div>
+                <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+                  Wochenende hervorheben
+                </p>
+                <WochenendeWahl vorschau={false} />
+              </div>
+              <div className="border-t border-line pt-3">
+                <PlanFarbenSchalter />
+                <a href="/meine-schichten?anpassen=1" className="mt-2 block text-[13px] font-semibold text-brand-600">
+                  Farben ändern (im Kalender unter „Kalender anpassen“)
+                </a>
+              </div>
+              {canEdit && !nurLesen ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortieren(true);
+                    setMehrOffen(false);
+                  }}
+                  className="flex w-full items-center gap-2 border-t border-line pt-3 text-left text-[14px] font-semibold text-ink sm:hidden"
+                >
+                  <ListOrdered className="h-4 w-4" strokeWidth={2.2} /> Reihenfolge ändern
+                </button>
+              ) : null}
+              {hilfe ? <p className="border-t border-line pt-3 text-[12.5px] text-ink-muted">{hilfe}</p> : null}
+            </div>
+          </>
+        ) : null}
       </div>
+
+      {/* Die Legende ist Nachschlagewerk, nicht Dauerinhalt: eingeklappt
+          gewinnt der Plan auf dem Handy zwei Zeilen. Aufgeklappt steht sie
+          direkt unter dem Knopf „Legende“. */}
+      {legendeOffen ? (
+      <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-b border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="h-3.5 w-4 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot sm:h-4 sm:w-5" />
+          <span className="truncate">Feiertag (Rahmen am Tag)</span>
+        </span>
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="h-3.5 w-4 shrink-0 rounded-sm bg-ferien-bg sm:h-4 sm:w-5" />
+          <span className="truncate">Schulferien NRW</span>
+        </span>
+        {legend.map((item) => (
+          <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
+            <span
+              className={cn(
+                "flex h-3.5 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-4 sm:w-5 sm:text-[10px]",
+                cellStyles[item.code],
+                legendExtra[item.code],
+              )}
+              style={item.code && zellFarbe ? (zellFarbe(item.code) ?? undefined) : undefined}
+            >
+              {cellLabel(item.code)}
+            </span>
+            <span className="truncate">{item.label}</span>
+          </span>
+        ))}
+        {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
+        <span className="col-span-3 pt-0.5 sm:col-span-6">
+          Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
+          stehen dann zusätzlich klein da (u, v, g).
+        </span>
+        <span className="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-span-6">
+          Besetzung:
+          <span className="rounded bg-ok-bg px-1.5 text-ok-fg">genug</span>
+          <span className="rounded bg-warn-bg px-1.5 text-warn-fg">
+            genau Minimum – fällt noch jemand aus, wird es rot
+          </span>
+          <span className="rounded bg-crit-bg px-1.5 text-crit-fg">unterschritten</span>
+        </span>
+      </div>
+      ) : null}
 
       {(error ?? ladeFehler) ? (
         <div className="px-4 pt-3">
@@ -1661,7 +1850,7 @@ export function ShiftPlanGrid({
       ) : null}
 
       <div
-        className="overflow-x-auto overscroll-x-contain"
+        className={cn("overflow-x-auto overscroll-x-contain rounded-b-card", randlos && "max-sm:rounded-none")}
         ref={scrollBox}
         onTouchStart={wischBeginn}
         onTouchEnd={wischEnde}
@@ -1758,6 +1947,8 @@ export function ShiftPlanGrid({
                       sortierbar={sortieren && canEdit}
                       sortierPending={sortieren && canEdit && pending}
                       aktionen={aktionen}
+                      gross={gross}
+                      zellFarbe={zellFarbe}
                     />
                   ))}
                   {offen && (
@@ -1781,7 +1972,10 @@ export function ShiftPlanGrid({
                       return (
                         <td
                           key={iso}
-                          className="bg-surface-sunken/60 p-px text-center sm:p-0.5"
+                          className={cn(
+                            "bg-surface-sunken/60 p-px text-center sm:p-0.5",
+                            isWeekend(iso) && "we-spalte",
+                          )}
                         >
                           {day == null || day.minimum === null ? (
                             <span className="text-[11px] text-ink-faint">–</span>
@@ -1795,7 +1989,10 @@ export function ShiftPlanGrid({
                                     : `${day.present} anwesend`
                               }
                               className={cn(
-                                "tnum mx-auto flex h-6 w-6 items-center justify-center rounded text-[10px] font-semibold sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
+                                "tnum mx-auto flex items-center justify-center rounded font-semibold",
+                                gross
+                                  ? "h-8 w-9 text-[12px] sm:h-9 sm:w-full sm:min-w-[38px] sm:text-[13px]"
+                                  : "h-6 w-6 text-[10px] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
                                 below
                                   ? "bg-crit-bg text-crit-fg"
                                   : knapp
@@ -1843,61 +2040,6 @@ export function ShiftPlanGrid({
         </>
       ) : null}
 
-      {/* Die Legende ist Nachschlagewerk, nicht Dauerinhalt: eingeklappt
-          gewinnt der Plan auf dem Handy zwei Zeilen. Die Besetzungszeile
-          bleibt davon unberührt – sie gehört zur Tabelle. */}
-      <button
-        type="button"
-        onClick={() => setLegendeOffen((v) => !v)}
-        aria-expanded={legendeOffen}
-        className="flex w-full items-center justify-between gap-2 border-t border-line px-3 py-2 text-[12px] text-ink-muted hover:bg-surface-muted sm:px-4"
-      >
-        <span>{legendeOffen ? "Legende ausblenden" : "Legende anzeigen"}</span>
-        <ChevronDown
-          className={cn("h-4 w-4 shrink-0 transition-transform", legendeOffen && "rotate-180")}
-          strokeWidth={2}
-        />
-      </button>
-
-      {legendeOffen ? (
-      <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-t border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="h-3.5 w-4 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot sm:h-4 sm:w-5" />
-          <span className="truncate">Feiertag (Rahmen am Tag)</span>
-        </span>
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="h-3.5 w-4 shrink-0 rounded-sm bg-ferien-bg sm:h-4 sm:w-5" />
-          <span className="truncate">Schulferien NRW</span>
-        </span>
-        {legend.map((item) => (
-          <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
-            <span
-              className={cn(
-                "flex h-3.5 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-4 sm:w-5 sm:text-[10px]",
-                cellStyles[item.code],
-                legendExtra[item.code],
-              )}
-            >
-              {cellLabel(item.code)}
-            </span>
-            <span className="truncate">{item.label}</span>
-          </span>
-        ))}
-        {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
-        <span className="col-span-3 pt-0.5 sm:col-span-6">
-          Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
-          stehen dann zusätzlich klein da (u, v, g).
-        </span>
-        <span className="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-span-6">
-          Besetzung:
-          <span className="rounded bg-ok-bg px-1.5 text-ok-fg">genug</span>
-          <span className="rounded bg-warn-bg px-1.5 text-warn-fg">
-            genau Minimum – fällt noch jemand aus, wird es rot
-          </span>
-          <span className="rounded bg-crit-bg px-1.5 text-crit-fg">unterschritten</span>
-        </span>
-      </div>
-      ) : null}
     </Card>
   );
 }
@@ -1938,6 +2080,8 @@ const PlanZeile = memo(function PlanZeile({
   sortierbar,
   sortierPending,
   aktionen,
+  gross,
+  zellFarbe,
 }: {
   member: GridRow;
   memberIndex: number;
@@ -1954,12 +2098,19 @@ const PlanZeile = memo(function PlanZeile({
   sortierbar: boolean;
   sortierPending: boolean;
   aktionen: ZeilenAktionen;
+  /** Ansicht „Groß“: größere Zellen, leichter zu treffen. */
+  gross: boolean;
+  /** Eigene Farben der Person (oder null = Farben des Plans). */
+  zellFarbe: ((code: string) => React.CSSProperties | null) | null;
 }) {
   return (
     <tr id={member.isMe ? "eigene-zeile" : undefined} className="hover:bg-surface-muted/50">
       <th
         scope="row"
-        className="sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left text-[11px] font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2 sm:text-[12px] lg:text-[13px]"
+        className={cn(
+          "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2",
+          gross ? "text-[12.5px] sm:text-[14px]" : "text-[11px] sm:text-[12px] lg:text-[13px]",
+        )}
       >
         <span className="flex items-center gap-1.5">
           {sortierbar ? (
@@ -2023,6 +2174,7 @@ const PlanZeile = memo(function PlanZeile({
               // Ferien als durchgehender Hintergrund der Spalte; die
               // Urlaubssperre sticht sie, sie ist wichtiger.
               blocked.has(iso) ? "bg-crit-bg/50" : ferien.has(iso) && "bg-ferien-bg/70",
+              isWeekend(iso) && "we-spalte",
             )}
           >
             <button
@@ -2061,8 +2213,12 @@ const PlanZeile = memo(function PlanZeile({
                   ? `${member.name} · ${formatDE(iso)}${cell.shiftName ? ` · ${cell.shiftName}` : " · frei"}${code && BEANTRAGT.has(code) ? " · beantragt, noch nicht genehmigt" : ""}`
                   : undefined
               }
+              style={code && zellFarbe ? (zellFarbe(code) ?? undefined) : undefined}
               className={cn(
-                "relative mx-auto flex h-6 w-6 select-none items-center justify-center rounded text-[11px] font-semibold [-webkit-touch-callout:none] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
+                "relative mx-auto flex select-none items-center justify-center rounded font-semibold [-webkit-touch-callout:none]",
+                gross
+                  ? "h-8 w-9 text-[13px] sm:h-9 sm:w-full sm:min-w-[38px] sm:text-[14px]"
+                  : "h-6 w-6 text-[11px] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
                 code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
                 (bearbeitbar || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                 !waehlbar && !bearbeitbar && !zellKommentare && "cursor-default",

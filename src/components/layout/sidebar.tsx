@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "@/context/session";
+import { TodoZahlMarke } from "@/components/kalender/todo-zaehler";
 import { navForRole } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { NeuMarke } from "./neu-marke";
@@ -86,7 +87,7 @@ export function Sidebar() {
                       title={eingeklappt ? item.label : undefined}
                       aria-label={eingeklappt ? item.label : undefined}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm transition-colors",
+                        "relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm transition-colors",
                         eingeklappt && "justify-center",
                         active
                           ? "bg-brand-50 font-medium text-brand-700"
@@ -96,6 +97,7 @@ export function Sidebar() {
                       <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
                       {eingeklappt ? null : item.label}
                       {item.neu && !eingeklappt ? <NeuMarke name={item.neu} /> : null}
+                      {item.todoZahl ? <TodoZahlMarke pfad={pathname} className={eingeklappt ? "absolute -right-0.5 -top-0.5 scale-75" : "ml-auto"} /> : null}
                     </Link>
                   </li>
                 );

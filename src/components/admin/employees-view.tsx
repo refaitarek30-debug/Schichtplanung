@@ -16,6 +16,8 @@ import { AdminViewHeader } from "./view-header";
 import { DataError, fetchEmployees, setEmployeeActive } from "@/lib/data/employees";
 import { inviteEmployee } from "@/lib/auth/actions";
 import { deleteEmployee } from "@/lib/auth/employee-actions";
+import { passwortCodeFuerMitarbeiter } from "@/lib/auth/passwort-code";
+import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord } from "@/lib/types";
 import { InviteLinkCard } from "@/components/employees/invite-link-card";
@@ -26,7 +28,7 @@ import { EditEmployeePanel } from "./edit-employee-panel";
 type StatusFilter = "all" | "active" | "inactive";
 
 export function EmployeesView() {
-  const { role, mode } = useSession();
+  const { role, mode, profile } = useSession();
   const [rows, setRows] = useState<EmployeeRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -40,6 +42,9 @@ export function EmployeesView() {
   // weggeklickt wird. Ein Link, der beim nächsten Klick verschwindet, ist
   // wertlos: bis man ihn kopiert hat, ist er weg.
   const [access, setAccess] = useState<FormState | null>(null);
+  // Passwort-Code: erst fragen, dann den Code zeigen, bis er weggeklickt wird.
+  const [codeFrage, setCodeFrage] = useState<EmployeeRecord | null>(null);
+  const [codeErgebnis, setCodeErgebnis] = useState<{ name: string; code?: string; error?: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(async () => {
@@ -123,6 +128,24 @@ export function EmployeesView() {
     });
   }
 
+  function passwortCode(row: EmployeeRecord) {
+    setBusyId(row.id);
+    setCodeErgebnis(null);
+    startTransition(async () => {
+      const result = await passwortCodeFuerMitarbeiter(row.id);
+      setCodeErgebnis({ name: `${row.firstName} ${row.lastName}`, ...result });
+      setCodeFrage(null);
+      setBusyId(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  /** Administration für alle außer sich selbst, Schichtleitung nur für Mitarbeiter. */
+  function darfCode(row: EmployeeRecord) {
+    if (mode !== "live" || !row.hasAccount || !row.active || row.id === profile.employeeId) return false;
+    return role === "admin" || (role === "shift_leader" && row.role === "employee");
+  }
+
   function remove(row: EmployeeRecord) {
     setBusyId(row.id);
     setError(null);
@@ -164,6 +187,53 @@ export function EmployeesView() {
           tone={access.error ? "error" : "ok"}
           onClose={() => setAccess(null)}
         />
+      ) : null}
+
+      {codeFrage ? (
+        <Card className="border-brand-500/40">
+          <CardBody className="space-y-3">
+            <p className="text-sm">
+              Passwort-Code für <span className="font-semibold">{codeFrage.firstName} {codeFrage.lastName}</span> erzeugen?
+            </p>
+            <p className="text-[13px] leading-relaxed text-ink-muted">
+              Mit dem Code setzt die Person unter „Passwort vergessen“ ein neues Passwort. Er gilt 24 Stunden und nur einmal. Das
+              alte Passwort gilt weiter, bis der Code eingelöst wird.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={pending} onClick={() => passwortCode(codeFrage)}>
+                {pending ? "…" : "Ja, Code erzeugen"}
+              </Button>
+              <Button variant="secondary" onClick={() => setCodeFrage(null)}>
+                Abbrechen
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
+
+      {codeErgebnis ? (
+        <Card className={codeErgebnis.error ? "border-crit-dot/40" : "border-ok-dot/40"}>
+          <CardBody className="space-y-3">
+            {codeErgebnis.error ? (
+              <p className="text-sm text-crit-fg">{codeErgebnis.error}</p>
+            ) : (
+              <>
+                <p className="text-sm">
+                  Code für <span className="font-semibold">{codeErgebnis.name}</span> – persönlich weitergeben, zum Beispiel
+                  mündlich oder per Nachricht:
+                </p>
+                <CodeAnzeige code={codeErgebnis.code ?? ""} />
+                <p className="text-[13px] leading-relaxed text-ink-muted">
+                  So geht es weiter: Anmeldeseite → „Passwort vergessen?“ → E-Mail und Code eingeben → neues Passwort zweimal
+                  eingeben. Der Code gilt 24 Stunden und wird nur jetzt angezeigt.
+                </p>
+              </>
+            )}
+            <Button variant="secondary" onClick={() => setCodeErgebnis(null)}>
+              Schließen
+            </Button>
+          </CardBody>
+        </Card>
       ) : null}
 
       {showCreate && role === "admin" ? (
@@ -316,6 +386,20 @@ export function EmployeesView() {
                         : row.hasAccount
                           ? "Neuer Zugangslink"
                           : "Einladen"}
+                    </Button>
+                  ) : null}
+                  {darfCode(row) ? (
+                    <Button
+                      variant="secondary"
+                      disabled={pending && busyId === row.id}
+                      onClick={() => {
+                        setCodeErgebnis(null);
+                        setCodeFrage(row);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                      title="Code erzeugen, mit dem die Person ein neues Passwort setzt"
+                    >
+                      {pending && busyId === row.id ? "…" : "Passwort-Code"}
                     </Button>
                   ) : null}
                   {role === "admin" ? (

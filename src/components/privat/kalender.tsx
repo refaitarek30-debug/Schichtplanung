@@ -17,6 +17,7 @@ import {
   useLangDruck,
 } from "@/components/kalender/tag";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
+import { useAnzeige } from "@/lib/anzeige";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
@@ -127,6 +128,8 @@ export function PrivatKalender() {
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const { vorlieben } = useVorlieben();
+  // Lädt die eigene Wochenend-Einstellung aus dem Konto (wirkt über globals.css).
+  useAnzeige();
   const [rotation, setRotation] = useState(false);
   /** Pinsel: Schichtart-Id oder "leer" zum Löschen */
   const [pinsel, setPinsel] = useState<string | null>(null);
@@ -858,7 +861,7 @@ function MonatsAnsicht({
       style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
     >
       {WT.map((w, i) => (
-        <span key={w} className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}>
+        <span key={w} className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "we-kopf rounded-t-lg text-ink-faint" : "text-ink-muted")}>
           {w}
         </span>
       ))}
@@ -891,7 +894,7 @@ function MonatsAnsicht({
               // Feste Zellgröße: Inhalt wird abgeschnitten, nie gestreckt.
               "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
               i % 7 !== 0 && "border-l",
-              i % 7 >= 5 && "bg-ink/[0.025]",
+              i % 7 >= 5 && "we-zelle",
               !imMonat && "opacity-35",
             )}
           >
@@ -919,7 +922,7 @@ function MonatsAnsicht({
             {eintraege.map((a) => (
               <Chip key={a.id} art={a} klein={zwei} />
             ))}
-            <AndereTags eintraege={andereAm} />
+            <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
             {fei ? <span className="shrink-0 truncate text-[9.5px] leading-tight text-[#e5484d]">{fei}</span> : null}
             {zeigen.map((t) => (
               <span key={t.id} className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden">

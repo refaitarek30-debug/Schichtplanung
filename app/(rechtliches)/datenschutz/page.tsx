@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="20. Oktober 2026"
+      updated="21. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -196,6 +196,16 @@ export default function DatenschutzPage() {
           <li>
             Einsehen kann das Protokoll nur eine vom Unternehmen ausdrücklich dafür
             freigeschaltete Person der Administration, nicht jede Administration
+          </li>
+          <li>
+            Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Im
+            Unternehmen erzeugt ihn die Administration oder Schichtleitung für die betroffene
+            Person (24 Stunden gültig, einmal verwendbar); bei Privatkonten erzeugt die Person ihn
+            selbst, im Ausnahmefall der Betreiber auf ihre Anfrage. Gespeichert werden nur ein
+            Prüfwert (SHA-256) des Codes, Art, Zeitpunkt, Gültigkeit, wer ihn erzeugt hat und die
+            Zahl falscher Eingaben – nie der Code selbst. Nach fünf falschen Eingaben ist das
+            Zurücksetzen 15 Minuten gesperrt. Ein neuer Code ersetzt den alten; mit dem Konto wird
+            alles gelöscht
           </li>
           <li>
             Ratenbegrenzung: für Anmeldung, Passwort-Zurücksetzen und Registrierung werden
@@ -418,6 +428,14 @@ export default function DatenschutzPage() {
           oder in den Einstellungen des Geräts abschalten; dann wird die Adresse gelöscht.
         </Absatz>
         <Absatz>
+          <strong>Anzeige-Einstellungen:</strong> Jede Person kann für sich festlegen, ob Samstag
+          und Sonntag in Kalender und Schichtplan hervorgehoben werden, ob der Schichtplan kompakt
+          oder groß erscheint und ob er ihre eigenen Kalenderfarben zeigt. Diese drei Werte werden
+          mit dem Konto gespeichert, damit sie auf allen Geräten gleich sind, und zusätzlich auf
+          dem Gerät (<code className={kode}>schichtplan.anzeige</code>). Sie sieht nur die Person
+          selbst; sie ändern nichts am Schichtplan der anderen und werden mit dem Konto gelöscht.
+        </Absatz>
+        <Absatz>
           <strong>Eigene Farben und eigene Einträge:</strong> In der neueren Ansicht von{" "}
           <em>Mein Kalender</em> kann eine Person die Farben ihrer Schichten und Abwesenheiten für
           sich ändern und eigene Einträge anlegen, zum Beispiel „Nebenjob“ oder „Schicht getauscht“
@@ -533,8 +551,9 @@ export default function DatenschutzPage() {
           <li>
             frei gewählter Spitzname (ein Klarname ist nicht nötig), Passwort (nur als Hash) und
             Zeitpunkt der Registrierung. Eine E-Mail-Adresse ist <strong>nicht erforderlich</strong>;
-            wer möchte, hinterlegt sie freiwillig, damit „Passwort vergessen“ funktioniert. Ohne
-            Adresse kann ein vergessenes Passwort nicht zurückgesetzt werden
+            wer möchte, hinterlegt sie freiwillig, damit der Support das Konto leichter erkennt. Ein
+            vergessenes Passwort wird mit dem eigenen Wiederherstellungs-Code zurückgesetzt (siehe
+            „Passwort-Code“ in Abschnitt 3)
           </li>
           <li>
             die eigenen Schichtarten (Name, Kürzel, Farbe, Uhrzeit, Stunden) und die eingetragenen
@@ -682,9 +701,11 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <code className={kode}>schichtplan.theme</code>,{" "}
+            <code className={kode}>schichtplan.anzeige</code>,{" "}
             <code className={kode}>schichtplan.install-hint</code>,{" "}
             <code className={kode}>seitenleiste-eingeklappt</code> (lokaler Speicher, bis zum
-            Löschen) – Farbdarstellung, ein einmaliger Installationshinweis, Zustand der
+            Löschen) – Farbdarstellung (Hell, Dunkel, Graphit, Sand), Anzeige-Einstellungen
+            (Wochenende, Schichtplan), ein einmaliger Installationshinweis, Zustand der
             Seitenleiste
           </li>
           <li>

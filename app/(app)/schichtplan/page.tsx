@@ -36,18 +36,12 @@ export default function ShiftPlanPage() {
     employees.find((e) => e.id === profile.employeeId)?.rotationTeam ?? null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Im neuen Stil bleibt der Schichtplan einfach weiß (globals.css). */}
       <span hidden data-seite-weiss />
-      <PageHeader
-        eyebrow="Übersicht"
-        title="Schichtplan"
-        description={
-          canEdit
-            ? "Eine Zeile je Person, ab heute 30 Tage, die Pfeile springen je 30 Tage weiter. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern – lange drücken für einen Kommentar."
-            : "Der ganze Schichtplan, ab heute 30 Tage – deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag. Lange auf einen Tag drücken, um einen Kommentar zu schreiben."
-        }
-      />
+      {/* Kein langer Text über dem Plan: der Platz gehört der Tabelle. Die
+          Anleitung steht im Menü „Mehr“ (⋯) der Bedienleiste. */}
+      <PageHeader eyebrow="Übersicht" title="Schichtplan" />
 
       {mode === "demo" ? (
         <Alert tone="warning">
@@ -63,6 +57,12 @@ export default function ShiftPlanPage() {
             days={30}
             canEdit={canEdit}
             employeeId={profile.employeeId}
+            randlos
+            hilfe={
+              canEdit
+                ? "Eine Zeile je Person, 30 Tage, die Pfeile springen je 30 Tage weiter. Auf eine Zelle tippen, um Schicht, Frei oder Abwesenheit zu ändern – lange drücken für einen Kommentar."
+                : "Deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag. Lange auf einen Tag drücken für einen Kommentar."
+            }
           />
 
           {canEdit ? (

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, UserPlus, Users } from "lucide-react";
+import { Check, ChevronRight, UserPlus, Users } from "lucide-react";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -61,6 +61,43 @@ interface Zweig {
 const ICH = "ich";
 const AN: Schalter = [true, true];
 
+/**
+ * Wie die Schichten der anderen im Kalender aussehen – nur für die eigene
+ * Ansicht, gemerkt auf diesem Gerät: Größe, Beschriftung („L·F“ oder „Früh“)
+ * und je Person eine feste Farbe statt der eigenen Farben dieser Person.
+ */
+export type AnzeigeGroesse = "klein" | "mittel" | "gross";
+export type AnzeigeText = "kurz" | "voll";
+export interface Anzeige {
+  groesse: AnzeigeGroesse;
+  text: AnzeigeText;
+  /** Person → feste Schichtfarbe. Fehlt der Eintrag, gelten die Farben der Person selbst. */
+  farben: Record<string, string>;
+}
+export const ANZEIGE_STANDARD: Anzeige = { groesse: "mittel", text: "kurz", farben: {} };
+
+/** Farben zur Wahl für die Schicht einer Person. */
+export const SCHICHT_FARBEN = ["#F5A524", "#22A06B", "#2F6FDE", "#9B59D0", "#E5484D", "#F76B15", "#0E9F9F", "#D6409F", "#8D6E4E", "#7C8CF8"];
+
+function anzeigeKey(benutzer: string) {
+  return `schichtplan.anzeige.${benutzer}`;
+}
+
+function leseAnzeige(benutzer: string): Anzeige {
+  try {
+    const roh = window.localStorage.getItem(anzeigeKey(benutzer));
+    const a = roh ? (JSON.parse(roh) as Partial<Anzeige>) : {};
+    const farben = a.farben && typeof a.farben === "object" ? a.farben : {};
+    return {
+      groesse: a.groesse === "klein" || a.groesse === "gross" ? a.groesse : "mittel",
+      text: a.text === "voll" ? "voll" : "kurz",
+      farben: Object.fromEntries(Object.entries(farben).filter(([, f]) => typeof f === "string" && /^#[0-9a-f]{6}$/i.test(f))),
+    };
+  } catch {
+    return ANZEIGE_STANDARD;
+  }
+}
+
 function speicherKey(benutzer: string) {
   return `schichtplan.sicht.${benutzer}`;
 }
@@ -79,6 +116,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   const [personen, setPersonen] = useState<Person[] | null>(null);
   const [tage, setTage] = useState<Record<string, Record<string, PartnerCode>>>({});
   const [sicht, setSichtState] = useState<Sicht>({});
+  const [anzeige, setAnzeigeState] = useState<Anzeige>(ANZEIGE_STANDARD);
   const geladen = useRef(new Set<string>());
   const [gruppen, setGruppen] = useState<Gruppe[]>([]);
   const [gruppenAndere, setGruppenAndere] = useState<GruppenAnderer[]>([]);
@@ -91,7 +129,23 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSichtState(leseSicht(benutzer));
+    setAnzeigeState(leseAnzeige(benutzer));
   }, [benutzer]);
+
+  const setzeAnzeige = useCallback(
+    (aender: (alt: Anzeige) => Anzeige) => {
+      setAnzeigeState((alt) => {
+        const neu = aender(alt);
+        try {
+          window.localStorage.setItem(anzeigeKey(benutzer), JSON.stringify(neu));
+        } catch {
+          // ohne Speicher gilt die Auswahl nur bis zum Neuladen
+        }
+        return neu;
+      });
+    },
+    [benutzer],
+  );
 
   const ladePersonen = useCallback(async () => {
     try {
@@ -277,12 +331,12 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
               : tage[k.key]?.[iso];
           // Eigene Farben haben nur Personen mit eigenem Konto.
           const farben = k.key.startsWith("u:") ? gruppenFarben.get(k.key) : k.key.startsWith("v:") ? vTage[k.key.slice(2)]?.farben : undefined;
-          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code, schichtFarbe: codeFarbe(code, farben) });
+          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code, schichtFarbe: anzeige.farben[k.key] ?? codeFarbe(code, farben) });
         }
       }
       return liste;
     },
-    [zweige, schalter, tage, gruppenTage, gruppenFarben, vTage],
+    [zweige, schalter, tage, gruppenTage, gruppenFarben, vTage, anzeige.farben],
   );
 
   /** Eigener Termin oder Termin einer Person – je nach Auswahl. */
@@ -322,6 +376,17 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     rohTag: (key: string, iso: string): PartnerCode | null => tage[key]?.[iso] ?? null,
     schalter,
     setze,
+    anzeige,
+    setzeGroesse: (groesse: AnzeigeGroesse) => setzeAnzeige((a) => ({ ...a, groesse })),
+    setzeText: (text: AnzeigeText) => setzeAnzeige((a) => ({ ...a, text })),
+    /** Feste Schichtfarbe einer Person; null = wieder die eigenen Farben der Person. */
+    setzeFarbe: (key: string, farbe: string | null) =>
+      setzeAnzeige((a) => {
+        const farben = { ...a.farben };
+        if (farbe) farben[key] = farbe;
+        else delete farben[key];
+        return { ...a, farben };
+      }),
     alleAn: () => speichern({}),
     nurIch: () => speichern(Object.fromEntries(alleKeys.map((k) => [k, k === ICH ? AN : ([false, false] as Schalter)]))),
     amTag,
@@ -341,12 +406,48 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
 
 export type Andere = ReturnType<typeof useAndere>;
 
+const TAG_GROESSE: Record<AnzeigeGroesse, { zeile: string; kreis: string }> = {
+  klein: { zeile: "h-[11px] text-[8px] leading-[11px]", kreis: "h-[11px] w-[11px] text-[7px]" },
+  mittel: { zeile: "h-[14px] text-[9px] leading-[14px]", kreis: "h-[13px] w-[13px] text-[8px]" },
+  gross: { zeile: "h-[20px] text-[11.5px] leading-[20px]", kreis: "h-[18px] w-[18px] text-[10.5px]" },
+};
+
 /**
  * Unter dem eigenen Eintrag: bis zwei Personen als Umriss „L·S“, ab drei als
- * kleine Kreise mit dem Kürzel der Schicht. Frei ist blasser.
+ * kleine Kreise mit dem Kürzel der Schicht. Frei ist blasser. Ausgeschrieben
+ * steht je Person eine Zeile mit dem Namen der Schicht, etwa „L Früh“. Größe
+ * und Beschriftung stellt man im Kalender ein (Knopf „Wen sehe ich?“).
  */
-export function AndereTags({ eintraege, max = 2, className }: { eintraege: AndererEintrag[]; max?: number; className?: string }) {
+export function AndereTags({
+  eintraege,
+  max = 2,
+  anzeige = ANZEIGE_STANDARD,
+  className,
+}: {
+  eintraege: AndererEintrag[];
+  max?: number;
+  anzeige?: Anzeige;
+  className?: string;
+}) {
   if (!eintraege.length) return null;
+  // Bei drei und mehr Personen ist „Groß“ zu hoch für die Tageskachel.
+  const g = TAG_GROESSE[anzeige.groesse === "gross" && eintraege.length > 2 ? "mittel" : anzeige.groesse];
+  if (anzeige.text === "voll") {
+    return (
+      <span className={cn("flex w-full shrink-0 flex-col gap-[2px]", className)}>
+        {eintraege.map((e) => (
+          <span
+            key={e.key}
+            title={`${e.name}: ${partnerText(e.code, true)}`}
+            className={cn("w-full overflow-hidden text-ellipsis whitespace-nowrap rounded-[5px] px-[3px] text-left font-bold", g.zeile, e.code === "X" && "opacity-70")}
+            style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `inset 0 -2px 0 ${e.farbe}` }}
+          >
+            {e.kurz.slice(0, 1)} {partnerText(e.code)}
+          </span>
+        ))}
+      </span>
+    );
+  }
   if (eintraege.length > max) {
     return (
       <span className={cn("flex w-full shrink-0 flex-wrap justify-center gap-[2px]", className)}>
@@ -354,10 +455,7 @@ export function AndereTags({ eintraege, max = 2, className }: { eintraege: Ander
           <span
             key={e.key}
             title={`${e.name}: ${partnerText(e.code, true)}`}
-            className={cn(
-              "flex h-[13px] w-[13px] items-center justify-center rounded-full text-[8px] font-bold leading-none",
-              e.code === "X" && "opacity-60",
-            )}
+            className={cn("flex items-center justify-center rounded-full font-bold leading-none", g.kreis, e.code === "X" && "opacity-60")}
             style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `0 0 0 1.5px ${e.farbe}` }}
           >
             {e.code === "X" ? "" : e.code === "T" ? "A" : e.code}
@@ -372,10 +470,7 @@ export function AndereTags({ eintraege, max = 2, className }: { eintraege: Ander
         <span
           key={e.key}
           title={`${e.name}: ${partnerText(e.code, true)}`}
-          className={cn(
-            "min-w-0 flex-1 overflow-hidden whitespace-nowrap rounded-[5px] text-center text-[9px] font-bold leading-[14px]",
-            e.code === "X" && "opacity-70",
-          )}
+          className={cn("min-w-0 flex-1 overflow-hidden whitespace-nowrap rounded-[5px] text-center font-bold", g.zeile, e.code === "X" && "opacity-70")}
           style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `inset 0 -2px 0 ${e.farbe}` }}
         >
           {e.kurz.slice(0, 1)}·{e.code === "X" ? "–" : e.code === "T" ? "A" : e.code}
@@ -453,6 +548,75 @@ function Pille({
   );
 }
 
+/** Zwei oder drei Möglichkeiten nebeneinander, eine ist gewählt. */
+function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl: (w: T) => void; optionen: [T, string][] }) {
+  return (
+    <span className="flex rounded-full bg-ink/[0.06] p-[2px]">
+      {optionen.map(([id, text]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={wert === id}
+          onClick={() => onWahl(id)}
+          className={cn(
+            "h-7 rounded-full px-2.5 text-[12px] font-semibold transition-colors",
+            wert === id ? "bg-surface text-ink shadow-sm" : "text-ink-muted",
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** Kleiner Farbpunkt bei einer Person: ihre eigenen Farben (bunt) oder eine feste Farbe. */
+function FarbPunkt({ name, farbe, offen, onClick }: { name: string; farbe: string | null; offen: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={offen}
+      aria-label={`Farbe der Schicht von ${name}${farbe ? "" : " (eigene Farben)"}`}
+      className="flex h-8 w-8 shrink-0 items-center justify-center"
+    >
+      <span
+        className={cn("h-[22px] w-[22px] rounded-full ring-2", offen ? "ring-ink/60" : "ring-ink/15")}
+        style={{ background: farbe ?? "conic-gradient(#F5A524 0 33%, #22A06B 0 66%, #2F6FDE 0)" }}
+      />
+    </button>
+  );
+}
+
+/** Die Farben zur Wahl; „Eigene“ nimmt wieder die Farben, die die Person selbst gewählt hat. */
+function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string | null) => void }) {
+  return (
+    <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-[14px] bg-surface/60 px-2.5 py-2">
+      <button
+        type="button"
+        onClick={() => onWahl(null)}
+        aria-pressed={!farbe}
+        className={cn("h-8 rounded-full px-3 text-[12px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
+      >
+        Eigene
+      </button>
+      {SCHICHT_FARBEN.map((f) => (
+        <button
+          key={f}
+          type="button"
+          onClick={() => onWahl(f)}
+          aria-label={`Farbe ${f}`}
+          aria-pressed={farbe === f}
+          className="flex h-8 w-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: f, color: textFarbe(f) }}
+        >
+          {farbe === f ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
  * öffnet den Baum. Ohne Personen: Einladen.
@@ -460,6 +624,8 @@ function Pille({
 export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Andere; onVerwalten: () => void; glas?: boolean }) {
   const [offen, setOffen] = useState(false);
   const [zu, setZu] = useState<Record<string, boolean>>({});
+  /** Bei wem gerade die Farbwahl offen ist. */
+  const [farbWahl, setFarbWahl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!offen) return;
@@ -540,6 +706,34 @@ export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Ande
                   </span>
                 </div>
 
+                <div className="mb-1 rounded-[16px] bg-ink/[0.03] px-3 py-2.5">
+                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Schichten der anderen</p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[14px] font-medium">Größe</span>
+                    <Auswahl
+                      wert={andere.anzeige.groesse}
+                      onWahl={andere.setzeGroesse}
+                      optionen={[
+                        ["klein", "Klein"],
+                        ["mittel", "Mittel"],
+                        ["gross", "Groß"],
+                      ]}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[14px] font-medium">Schrift</span>
+                    <Auswahl
+                      wert={andere.anzeige.text}
+                      onWahl={andere.setzeText}
+                      optionen={[
+                        ["kurz", "Kurz · L·F"],
+                        ["voll", "Ausgeschrieben"],
+                      ]}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11.5px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
+                </div>
+
                 <div className="flex items-center gap-2.5 rounded-[16px] px-2 py-2">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-surface">Ich</span>
                   <span className="min-w-0 flex-1 text-[15px] font-semibold">Meine Termine</span>
@@ -580,6 +774,14 @@ export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Ande
                             {z.nurSchichten ? " · Gruppe" : ""}
                           </span>
                         </span>
+                        {einzeln ? (
+                          <FarbPunkt
+                            name={z.knoten[0].name}
+                            farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
+                            offen={farbWahl === z.knoten[0].key}
+                            onClick={() => setFarbWahl((k) => (k === z.knoten[0].key ? null : z.knoten[0].key))}
+                          />
+                        ) : null}
                         <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
                           Schichten
                         </Pille>
@@ -589,23 +791,49 @@ export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Ande
                           </Pille>
                         )}
                       </div>
+                      {einzeln && farbWahl === z.knoten[0].key ? (
+                        <FarbReihe
+                          farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
+                          onWahl={(f) => {
+                            andere.setzeFarbe(z.knoten[0].key, f);
+                            setFarbWahl(null);
+                          }}
+                        />
+                      ) : null}
                       {!einzeln && aufgeklappt ? (
                         <div className="mb-1.5 ml-[1.3rem] border-l-2 border-ink/10">
                           {z.knoten.map((k) => {
                             const ks = andere.schalter(k.key);
                             return (
-                              <div key={k.key} className="flex items-center gap-2 py-1.5 pl-0 pr-2">
-                                <span className="h-0.5 w-3 shrink-0 bg-ink/10" />
-                                <PersonAvatar name={k.name} farbe={k.farbe} klein />
-                                <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{k.name}</span>
-                                <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
-                                  Schichten
-                                </Pille>
-                                {z.nurSchichten ? null : (
-                                  <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
-                                    Termine
+                              <div key={k.key}>
+                                <div className="flex items-center gap-2 py-1.5 pl-0 pr-2">
+                                  <span className="h-0.5 w-3 shrink-0 bg-ink/10" />
+                                  <PersonAvatar name={k.name} farbe={k.farbe} klein />
+                                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{k.name}</span>
+                                  <FarbPunkt
+                                    name={k.name}
+                                    farbe={andere.anzeige.farben[k.key] ?? null}
+                                    offen={farbWahl === k.key}
+                                    onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
+                                  />
+                                  <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
+                                    Schichten
                                   </Pille>
-                                )}
+                                  {z.nurSchichten ? null : (
+                                    <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
+                                      Termine
+                                    </Pille>
+                                  )}
+                                </div>
+                                {farbWahl === k.key ? (
+                                  <FarbReihe
+                                    farbe={andere.anzeige.farben[k.key] ?? null}
+                                    onWahl={(f) => {
+                                      andere.setzeFarbe(k.key, f);
+                                      setFarbWahl(null);
+                                    }}
+                                  />
+                                ) : null}
                               </div>
                             );
                           })}

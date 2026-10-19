@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   Cog,
   Layers,
+  ListChecks,
   BarChart3,
   GraduationCap,
   LayoutDashboard,
@@ -28,6 +29,8 @@ export interface NavItem {
   nurProtokoll?: boolean;
   /** Kleines „Neu“, bis die Seite einmal geöffnet wurde (Name der Neuerung). */
   neu?: string;
+  /** Rote Zahl am Eintrag: offene To-dos bis heute. */
+  todoZahl?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -66,6 +69,16 @@ export const navItems: NavItem[] = [
     neu: "kalender-partner",
     roles: ["employee", "shift_leader", "admin"],
     primary: true,
+  },
+  {
+    // Wie im Privatbereich: eigene Liste mit Filtern, Suche und Erinnerung.
+    // Nicht in der Leiste unten – im Kalender steht der Zähler oben. Die
+    // To-dos sieht nur die Person selbst.
+    href: "/todos",
+    label: "To-dos",
+    icon: ListChecks,
+    todoZahl: true,
+    roles: ["employee", "shift_leader", "admin"],
   },
   {
     href: "/besetzung",
