@@ -377,6 +377,61 @@ body {
 .marketing-statisch .privat {
   background-attachment: scroll;
 }
+/*
+ * Startseite: echtes Flüssigglas – nur für die eine schwebende Kopfzeile.
+ * Eine einzelne Fläche mit Unschärfe kostet beim Scrollen kaum etwas.
+ */
+.fluessig {
+  background-color: rgb(var(--c-surface) / 0.7);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+/* Bühne der Startseite: Inhalte in fester Größe, verkleinert je Bildschirm. */
+.buehne-pc {
+  --s: 0.4;
+}
+.buehne-handy {
+  --s: 0.76;
+}
+@media (min-width: 640px) {
+  .buehne-pc {
+    --s: 0.62;
+  }
+  .buehne-handy {
+    --s: 0.74;
+  }
+}
+@media (min-width: 1024px) {
+  .buehne-pc {
+    --s: 0.98;
+  }
+  .buehne-handy {
+    --s: 0.8;
+  }
+}
+.buehne-pc,
+.buehne-handy {
+  width: calc(var(--b) * var(--s));
+  height: calc(var(--h) * var(--s));
+}
+.buehne-pc > *,
+.buehne-handy .folie > * {
+  width: var(--b);
+  height: var(--h);
+  transform: scale(var(--s));
+  transform-origin: top left;
+}
+.buehne-handy .folie {
+  width: calc(var(--b) * var(--s));
+  height: calc(var(--h) * var(--s));
+  overflow: hidden;
+}
+.wisch {
+  scrollbar-width: none;
+}
+.wisch::-webkit-scrollbar {
+  display: none;
+}
 
 /*
  * Neuer Kalender (Mein Kalender, Glas) auf dem Handy: ganzer Bildschirm.

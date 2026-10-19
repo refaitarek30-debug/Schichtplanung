@@ -9,7 +9,7 @@ import { SiteFooter } from "@/components/marketing/site-footer";
  */
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="marketing-statisch flex min-h-screen flex-col bg-surface">
+    <div className="marketing-statisch privat-schrift flex min-h-screen flex-col bg-surface">
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

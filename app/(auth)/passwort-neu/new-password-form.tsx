@@ -4,7 +4,8 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
+import { PasswortInput } from "@/components/ui/passwort-input";
 import { updatePassword } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 
@@ -14,11 +15,10 @@ export function NewPasswordForm() {
   return (
     <form action={formAction} className="mt-6 space-y-4">
       <Field label="Neues Passwort">
-        <Input type="password" name="password" autoComplete="new-password" required minLength={8} />
+        <PasswortInput name="password" autoComplete="new-password" required minLength={8} />
       </Field>
       <Field label="Passwort wiederholen">
-        <Input
-          type="password"
+        <PasswortInput
           name="password_repeat"
           autoComplete="new-password"
           required

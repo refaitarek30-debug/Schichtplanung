@@ -5,9 +5,9 @@ const SPALTEN = [
   {
     titel: "Produkt",
     links: [
-      { href: "/#kalender", label: "Schichtkalender" },
-      { href: "/#unternehmen", label: "Für Unternehmen" },
-      { href: "/#funktionen", label: "Funktionen" },
+      { href: "/#privat", label: "Schichtkalender" },
+      { href: "/#betrieb", label: "Für Betriebe" },
+      { href: "/#preise", label: "Preise" },
       { href: ZIELE.demo, label: "Demo" },
     ],
   },
@@ -15,7 +15,8 @@ const SPALTEN = [
     titel: "Zugang",
     links: [
       { href: ZIELE.anmelden, label: "Anmelden" },
-      { href: ZIELE.testen, label: "Kostenlos testen" },
+      { href: ZIELE.privat, label: "Kostenlos starten" },
+      { href: ZIELE.testen, label: "Betrieb registrieren" },
       { href: "/#faq", label: "Häufige Fragen" },
     ],
   },
@@ -37,12 +38,12 @@ const SPALTEN = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-surface">
+    <footer className="border-t border-line bg-surface-muted">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="max-w-xs">
           <Logo />
           <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-            Schichtplanung, Urlaub und Besetzung für Produktions- und Schichtbetriebe.
+            Der Schichtkalender für dich – und die Schichtplanung für deinen Betrieb.
           </p>
         </div>
         {SPALTEN.map((s) => (
@@ -51,9 +52,15 @@ export function SiteFooter() {
             <ul className="mt-3 space-y-2">
               {s.links.map((l) => (
                 <li key={l.label}>
-                  <Link href={l.href} className="text-sm text-ink-muted hover:text-ink hover:underline">
-                    {l.label}
-                  </Link>
+                  {l.href.startsWith("/#") ? (
+                    <a href={l.href} className="text-sm text-ink-muted hover:text-ink hover:underline">
+                      {l.label}
+                    </a>
+                  ) : (
+                    <Link href={l.href} className="text-sm text-ink-muted hover:text-ink hover:underline">
+                      {l.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

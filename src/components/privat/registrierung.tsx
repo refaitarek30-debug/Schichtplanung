@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { PasswortInput } from "@/components/ui/passwort-input";
 import { registrierePrivat } from "@/lib/privat/actions";
 import type { FormState } from "@/lib/auth/form-state";
 
@@ -49,8 +50,7 @@ export function PrivatRegistrierung({
         />
       </Field>
       <Field label="Passwort" hint="mindestens 8 Zeichen – bitte merken, es gibt keine Bestätigungsmail">
-        <Input
-          type="password"
+        <PasswortInput
           name="password"
           autoComplete="new-password"
           required

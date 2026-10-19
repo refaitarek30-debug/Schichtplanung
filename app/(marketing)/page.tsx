@@ -1,28 +1,55 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
 import {
-  ArrowRight,
+  BadgeCheck,
   BarChart3,
-  Check,
-  Download,
-  Heart,
-  Moon,
-  Repeat,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
+  Bell,
+  Cake,
   CalendarDays,
+  CalendarRange,
+  EyeOff,
+  FileDown,
+  Gauge,
+  GraduationCap,
+  History,
+  Lock,
+  ListChecks,
   LogOut,
+  MonitorSmartphone,
+  Moon,
+  Palette,
+  Plane,
+  Repeat,
+  Server,
+  Smartphone,
+  Thermometer,
+  Trash2,
+  Upload,
+  UserCog,
+  Users,
+  Wallet,
 } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
-import { PlanPreview } from "@/components/marketing/plan-preview";
-import { BetriebBento } from "@/components/marketing/betrieb-bento";
-import { RollenUmschalter } from "@/components/marketing/rollen-umschalter";
+import { BereichSeiten } from "@/components/marketing/bereich";
+import { WischShow, type Folie } from "@/components/marketing/wisch-show";
 import { Preise } from "@/components/marketing/preise";
-import { AboBild, AuswertungBild, KalenderHandy, PartnerBild, RotationBild } from "@/components/marketing/privat-vorschau";
-
-const BESCHREIBUNG =
-  "Schichtplanung für Produktions- und Schichtbetriebe – mit Urlaub, Besetzungskontrolle und Qualifikationen.";
+import {
+  BetriebAntrag,
+  BetriebBesetzung,
+  BetriebGenehmigen,
+  BetriebKalender,
+  BetriebKonten,
+  PcBetrieb,
+  PcPrivat,
+  PrivatAbo,
+  PrivatAuswertung,
+  PrivatFolge,
+  PrivatImport,
+  PrivatMonat,
+  PrivatPartner,
+  PrivatTag,
+} from "@/components/marketing/bildschirme";
 
 const META =
   "Kostenloser Schichtkalender mit Schichtfolge, Feiertagen, Partner-Ansicht und Kalender-Abo fürs Handy – und Schichtplanung mit Urlaub und Besetzung für Betriebe.";
@@ -30,7 +57,7 @@ const META =
 export const metadata: Metadata = {
   title: "ShiftNexo – kostenloser Schichtkalender und Schichtplanung für Betriebe",
   description: META,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ready-flame.vercel.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://shiftnexo.de"),
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
@@ -48,55 +75,111 @@ export const metadata: Metadata = {
   },
 };
 
-
 /* ------------------------------------------------------------------ */
 /* Inhalte – nur Funktionen, die es in der Anwendung gibt.             */
 /* ------------------------------------------------------------------ */
 
-const HIGHLIGHTS: { icon: ReactNode; titel: string; text: string; bild: ReactNode }[] = [
+type Punkt = { icon: ReactNode; titel: string; text: string };
+const i = "h-[22px] w-[22px]";
+
+const FOLIEN_PRIVAT: Folie[] = [
+  { titel: "Dein Monat", text: "Jede Schicht in ihrer Farbe. Heute ist rot markiert.", bild: <PrivatMonat /> },
+  { titel: "Schichtfolge", text: "Einmal eintippen – das ganze Jahr ist gefüllt.", bild: <PrivatFolge /> },
+  { titel: "Dein Tag", text: "Termine, Erinnerungen, Geburtstage und To-dos.", bild: <PrivatTag /> },
+  { titel: "Teilen", text: "Partner und Familie sehen deine Schichten.", bild: <PrivatPartner /> },
+  { titel: "Im Handy-Kalender", text: "Als Abo im iPhone- oder Google-Kalender, auch als Widget.", bild: <PrivatAbo /> },
+  { titel: "Auswertung", text: "Schichten zählen, Stunden und Überstunden.", bild: <PrivatAuswertung /> },
+  { titel: "Umziehen", text: "Schichten aus einer anderen App übernehmen – per Datei oder Screenshot.", bild: <PrivatImport /> },
+];
+
+const FOLIEN_BETRIEB: Folie[] = [
+  { titel: "Mein Kalender", text: "Jeder sieht seine Schichten – und bekommt Bescheid, wenn sich etwas ändert.", bild: <BetriebKalender /> },
+  { titel: "Urlaub beantragen", text: "Direkt vom Handy, mit Resttagen und Besetzungsprüfung.", bild: <BetriebAntrag /> },
+  { titel: "Genehmigen", text: "Die Schichtleitung sieht sofort, was ein Antrag für die Besetzung bedeutet.", bild: <BetriebGenehmigen /> },
+  { titel: "Besetzung", text: "Grün, gelb, rot – Lücken fallen auf, bevor die Schicht beginnt.", bild: <BetriebBesetzung /> },
+  { titel: "Konten", text: "Urlaub, V-Tage und Altersfreizeit laufen automatisch mit.", bild: <BetriebKonten /> },
+];
+
+const FUNKTIONEN_PRIVAT: Punkt[] = [
+  { icon: <Repeat className={i} />, titel: "Schichtfolge", text: "Einmal eintragen, das ganze Jahr ist gefüllt. Einzelne Tage änderst du mit einem Tipp." },
+  { icon: <CalendarDays className={i} />, titel: "Woche, Monat, Jahr", text: "Mit den Feiertagen deines Bundeslands." },
+  { icon: <Palette className={i} />, titel: "Deine Schichten", text: "Namen, Uhrzeiten und Farben, wie du sie brauchst." },
+  { icon: <Bell className={i} />, titel: "Termine und Erinnerungen", text: "Mit Wiederholung und Erinnerung aufs Handy." },
+  { icon: <ListChecks className={i} />, titel: "To-dos", text: "Kleine Aufgaben direkt am Tag." },
+  { icon: <Cake className={i} />, titel: "Geburtstage", text: "Mit Alter und Erinnerung." },
+  { icon: <Users className={i} />, titel: "Partner und Familie", text: "Gegenseitig Schichten sehen und gemeinsame freie Tage finden." },
+  { icon: <Smartphone className={i} />, titel: "Im Handy-Kalender", text: "Als Abo im iPhone- oder Google-Kalender und als Widget." },
+  { icon: <BarChart3 className={i} />, titel: "Auswertung", text: "Schichten zählen, Soll und Ist, Überstunden." },
+  { icon: <Upload className={i} />, titel: "Umziehen leicht gemacht", text: "Schichten aus einer anderen App übernehmen – per Datei oder Screenshot." },
+  { icon: <MonitorSmartphone className={i} />, titel: "Handy und PC", text: "Im Browser, auf dem Startbildschirm wie eine App." },
+  { icon: <Moon className={i} />, titel: "Dunkelmodus", text: "Hell oder dunkel, passend zu deinem Gerät." },
+];
+
+const FUNKTIONEN_BETRIEB: Punkt[] = [
+  { icon: <CalendarRange className={i} />, titel: "Schichtplan", text: "Woche und Monat für alle Gruppen auf einen Blick." },
+  { icon: <Repeat className={i} />, titel: "Rotation A bis D", text: "Muster einmal festlegen, der Plan füllt sich." },
+  { icon: <Gauge className={i} />, titel: "Besetzung", text: "Mindest- und Sollbesetzung je Schicht, mit Ampel für jeden Tag." },
+  { icon: <BadgeCheck className={i} />, titel: "Qualifikationen", text: "Mindestanzahl je Schicht, jeden Tag geprüft." },
+  { icon: <Plane className={i} />, titel: "Urlaub digital", text: "Beantragen und genehmigen – mit Blick auf die Besetzung." },
+  { icon: <Wallet className={i} />, titel: "Konten", text: "Urlaub, V-Tage und Altersfreizeit laufen automatisch mit." },
+  { icon: <Thermometer className={i} />, titel: "Krank und Abwesenheiten", text: "Eintragen und sofort sehen, wo es eng wird." },
+  { icon: <Bell className={i} />, titel: "Mitteilungen", text: "Benachrichtigung aufs Handy, wenn sich etwas ändert." },
+  { icon: <Smartphone className={i} />, titel: "Mein Kalender", text: "Für jeden im Team, auch im Kalender des Handys." },
+  { icon: <UserCog className={i} />, titel: "Rollen und Rechte", text: "Leitung, Schichtleitung und Mitarbeiter sehen, was sie brauchen." },
+  { icon: <GraduationCap className={i} />, titel: "Ausbildung", text: "Auszubildende im Plan mitführen." },
+  { icon: <BarChart3 className={i} />, titel: "Auswertung", text: "Ausfall und Anwesenheit für Monat und Jahr." },
+  { icon: <FileDown className={i} />, titel: "Export", text: "Den Plan als Datei weitergeben." },
+  { icon: <History className={i} />, titel: "Änderungsprotokoll", text: "Nachvollziehen, wer wann was geändert hat." },
+  { icon: <LogOut className={i} />, titel: "Automatische Abmeldung", text: "Je nach Rolle nach einer festen Zeit." },
+];
+
+const ROLLEN = [
   {
-    icon: <Repeat className="h-5 w-5" />,
-    titel: "Schichtfolge in 3 Sekunden",
-    text: "Rhythmus antippen – das ganze Jahr ist gefüllt. Einzelne Tage änderst du mit einem Tipp.",
-    bild: <RotationBild />,
+    name: "Betriebsleitung",
+    satz: "Regeln festlegen, Überblick behalten.",
+    punkte: ["Schichten, Gruppen und Mindestbesetzung", "Konten und Urlaubssperren", "Mitarbeiter einladen, Rollen vergeben"],
   },
   {
-    icon: <Heart className="h-5 w-5" />,
-    titel: "Partner-Ansicht",
-    text: "Per Link einladen – in einer Minute verbunden. Ihr seht sofort, wann ihr beide frei habt.",
-    bild: <PartnerBild />,
+    name: "Schichtleitung",
+    satz: "Entscheiden mit Blick auf die Besetzung.",
+    punkte: ["Anträge genehmigen oder ablehnen", "Krank und Abwesenheiten eintragen", "Engpässe vor Schichtbeginn sehen"],
   },
   {
-    icon: <Smartphone className="h-5 w-5" />,
-    titel: "Im Kalender deines Handys",
-    text: "Deine Schichten im iPhone- oder Google-Kalender und als Widget – ohne die App zu öffnen.",
-    bild: <AboBild />,
-  },
-  {
-    icon: <BarChart3 className="h-5 w-5" />,
-    titel: "Auswertung & Überstunden",
-    text: "Schichten zählen, Soll und Ist, Überstunden – für Monat und Jahr.",
-    bild: <AuswertungBild />,
+    name: "Mitarbeiter",
+    satz: "Eigene Schichten, alles auf dem Handy.",
+    punkte: ["Urlaub direkt beantragen", "Konten und Antragsstand jederzeit", "Kalender mit Partner teilen"],
   },
 ];
 
-const EXTRAS: { icon: ReactNode; text: string }[] = [
-  { icon: <Sparkles className="h-4 w-4" />, text: "Ohne KI" },
-  { icon: <ShieldCheck className="h-4 w-4" />, text: "Daten in der EU" },
-  { icon: <CalendarDays className="h-4 w-4" />, text: "Feiertage je Bundesland" },
-  { icon: <Download className="h-4 w-4" />, text: "Export als CSV" },
-  { icon: <Moon className="h-4 w-4" />, text: "Dunkelmodus" },
-  { icon: <Smartphone className="h-4 w-4" />, text: "Als App installierbar" },
-  { icon: <LogOut className="h-4 w-4" />, text: "Automatische Abmeldung" },
+const SICHER_PRIVAT: Punkt[] = [
+  { icon: <Server className={i} />, titel: "Server in der EU", text: "Deine Daten liegen in einer Datenbank in Irland." },
+  { icon: <Lock className={i} />, titel: "Verschlüsselt übertragen", text: "Jede Verbindung läuft über HTTPS." },
+  { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter, keine Werbe- oder Analysedienste." },
+  { icon: <Users className={i} />, titel: "Nur wen du einlädst", text: "Deine Schichten sieht nur, wem du sie freigibst." },
+  { icon: <Smartphone className={i} />, titel: "Ohne E-Mail möglich", text: "Spitzname und Passwort genügen." },
+  { icon: <Trash2 className={i} />, titel: "Löschen jederzeit", text: "Dein Konto mit allen Einträgen, selbst und sofort." },
 ];
 
-const BRANCHEN = ["Produktion", "Chemie", "Kunststoff", "Maschinenbau", "Logistik"];
+const SICHER_BETRIEB: Punkt[] = [
+  { icon: <Server className={i} />, titel: "Server in der EU", text: "Die Daten liegen in einer Datenbank in Irland." },
+  { icon: <Lock className={i} />, titel: "Verschlüsselt übertragen", text: "Jede Verbindung läuft über HTTPS." },
+  { icon: <Users className={i} />, titel: "Getrennte Bereiche", text: "Jeder Betrieb hat einen eigenen Bereich; die Trennung setzt die Datenbank selbst durch." },
+  { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter. Über Anträge entscheidet immer ein Mensch." },
+  { icon: <LogOut className={i} />, titel: "Automatische Abmeldung", text: "Nach Rolle gestaffelt – für die Administration am kürzesten." },
+  { icon: <FileDown className={i} />, titel: "AV-Vertrag", text: "Ein Vertrag zur Auftragsverarbeitung steht bereit." },
+];
 
-const FAQ: { frage: string; antwort: ReactNode }[] = [
+type Frage = { frage: string; antwort: ReactNode };
+
+const FRAGEN_PRIVAT: Frage[] = [
   {
     frage: "Was kostet der Schichtkalender?",
+    antwort: "Nichts – ohne Abo und ohne Werbung. Das bleibt so: Geld verdient ShiftNexo mit der Schichtplanung für Betriebe.",
+  },
+  {
+    frage: "Brauche ich eine E-Mail-Adresse?",
     antwort:
-      "Für dich als Privatperson nichts – ohne Abo und ohne Werbung. Zum Anlegen reichen ein Spitzname und ein Passwort; eine E-Mail-Adresse kannst du freiwillig hinterlegen, damit du ein vergessenes Passwort zurücksetzen kannst. Dein Konto löschst du jederzeit selbst mit allen Einträgen.",
+      "Nein. Zum Anlegen reichen ein Spitzname und ein Passwort. Eine E-Mail-Adresse kannst du freiwillig hinterlegen, damit du ein vergessenes Passwort zurücksetzen kannst.",
   },
   {
     frage: "Funktioniert der Kalender auf iPhone und Android?",
@@ -104,286 +187,359 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
       "Ja. Er läuft im Browser und lässt sich auf dem Handy wie eine App auf den Startbildschirm legen. Über das Kalender-Abo erscheinen deine Schichten zusätzlich im Kalender deines Handys – auch als Widget. Neue Einträge holt der Handy-Kalender selbst ab; das kann einige Stunden dauern.",
   },
   {
-    frage: "Für welche Unternehmen ist ShiftNexo geeignet?",
+    frage: "Kann ich meine Schichten aus einer anderen App übernehmen?",
     antwort:
-      "Für Unternehmen mit festen Schichtmodellen – etwa Produktion, Chemie- und Kunststoffindustrie, Maschinen- und Anlagenbau oder Logistik. Entscheidend ist nicht die Branche, sondern dass in Schichten gearbeitet wird und Urlaub, Abwesenheiten und Besetzung zusammen geplant werden müssen.",
+      "Ja. Unter „Übernehmen“ wählst du eine Kalenderdatei aus deiner bisherigen App oder Screenshots deiner Monate. Screenshots werden direkt auf deinem Gerät gelesen. Du siehst alles, bevor es übernommen wird, und kannst es mit einem Tipp rückgängig machen.",
+  },
+  {
+    frage: "Wer sieht meine Schichten?",
+    antwort:
+      "Nur du – und die Personen, die du selbst einlädst, etwa deinen Partner oder deine Familie. Eine Freigabe nimmst du jederzeit zurück.",
+  },
+  {
+    frage: "Wie lange bleibe ich angemeldet?",
+    antwort:
+      "Auf deinem Gerät bleibst du angemeldet, solange du den Kalender mindestens alle 30 Tage öffnest. Der Kalender öffnet sich sofort mit dem zuletzt gesehenen Stand.",
+  },
+  {
+    frage: "Kann ich mein Konto löschen?",
+    antwort: "Ja, jederzeit selbst unter „Mehr“ – mit allen Einträgen, ohne Nachfrage bei uns.",
+  },
+  {
+    frage: "Wird künstliche Intelligenz eingesetzt?",
+    antwort: "Nein. ShiftNexo nutzt keine KI-Dienste und gibt keine Daten an KI-Anbieter weiter.",
+  },
+];
+
+const FRAGEN_BETRIEB: Frage[] = [
+  {
+    frage: "Was kostet ShiftNexo für einen Betrieb?",
+    antwort: (
+      <>
+        Bis 15 Personen nichts. Darüber zahlt ihr pro Person und Monat – je nach Stufe. Die Übersicht steht oben unter{" "}
+        <a href="#preise" className="font-medium text-brand-600 hover:underline">
+          Preise
+        </a>
+        . In der Pilotphase ist der volle Umfang kostenlos.
+      </>
+    ),
+  },
+  {
+    frage: "Für welche Betriebe ist ShiftNexo geeignet?",
+    antwort:
+      "Für Betriebe mit festen Schichtmodellen – etwa Produktion, Chemie- und Kunststoffindustrie, Maschinen- und Anlagenbau oder Logistik. Entscheidend ist, dass in Schichten gearbeitet wird und Urlaub, Abwesenheiten und Besetzung zusammen geplant werden müssen.",
   },
   {
     frage: "Welche Schichtsysteme werden unterstützt?",
     antwort:
-      "Schichten legen Sie selbst an – mit Name, Kürzel, Uhrzeiten, Wochentagen sowie Mindest- und Sollbesetzung. Rotierende Schichtgruppen werden über Rotationsmuster abgebildet; derzeit sind bis zu vier Schichtgruppen (A bis D) möglich. Damit lassen sich 2-, 3- und 4-Schicht-Modelle planen. Modelle mit fünf rotierenden Gruppen werden aktuell noch nicht abgebildet.",
-  },
-  {
-    frage: "Können Mitarbeiter ihre eigenen Schichten sehen?",
-    antwort:
-      "Ja. Mitarbeiter erhalten einen eigenen Zugang über eine Einladung und sehen ihre eigenen Schichten sowie den Schichtplan. Im persönlichen Kalender tragen sie zusätzlich eigene Termine ein und können auf Wunsch ihren Partner oder ihre Partnerin per Link einladen. Die eingeladene Person braucht kein Konto und sieht die Schichten, Abwesenheiten nur als „Urlaub“ ohne Grund. ShiftNexo lässt sich auf dem Handy wie eine App installieren. Welche Gründe für Abwesenheiten Kollegen sehen, ist standardmäßig eingeschränkt und kann je Person freigegeben werden.",
-  },
-  {
-    frage: "Kann Urlaub digital beantragt werden?",
-    antwort:
-      "Ja. Mitarbeiter beantragen Urlaub, V-Tage und weitere Abwesenheitsarten in der Anwendung. Schichtleitung oder Administration genehmigen oder lehnen ab; dabei ist sichtbar, wie sich der Antrag auf die Besetzung auswirkt. Urlaubskonten werden automatisch mitgeführt.",
-  },
-  {
-    frage: "Können Mitarbeiter importiert werden?",
-    antwort:
-      "Ein Datei-Import ist derzeit nicht vorhanden. Mitarbeiter werden in der Anwendung angelegt; ein Einrichtungsassistent führt nach der Registrierung durch die ersten Schritte.",
-  },
-  {
-    frage: "Gibt es eine Demo?",
-    antwort:
-      "Ja. Unter „Live-Demo“ erhalten Sie ohne Registrierung einen eigenen Demo-Bereich mit Beispieldaten eines Schichtbetriebs – als Administration, mit offenen Anträgen zum Genehmigen. Der Bereich wird nach 24 Stunden automatisch gelöscht. Für einen dauerhaften Bereich mit eigenen Daten registrieren Sie sich kostenlos.",
+      "Schichten legt ihr selbst an – mit Name, Kürzel, Uhrzeiten, Wochentagen sowie Mindest- und Sollbesetzung. Rotierende Gruppen werden über Rotationsmuster abgebildet; derzeit sind bis zu vier Gruppen (A bis D) möglich. Damit lassen sich 2-, 3- und 4-Schicht-Modelle planen. Modelle mit fünf rotierenden Gruppen gehen noch nicht.",
   },
   {
     frage: "Wie funktioniert die Besetzungskontrolle?",
     antwort:
-      "Je Schicht werden eine Mindest- und eine Sollbesetzung festgelegt, zusätzlich auf Wunsch eine Mindestanzahl je Qualifikation. ShiftNexo zeigt pro Tag, ob die Besetzung erfüllt ist, unter Soll liegt oder die Mindestbesetzung reißt, und prüft Urlaubsanträge vor der Genehmigung dagegen. Die Entscheidung trifft immer ein Mensch.",
+      "Je Schicht legt ihr eine Mindest- und eine Sollbesetzung fest, auf Wunsch auch eine Mindestanzahl je Qualifikation. ShiftNexo zeigt pro Tag, ob die Besetzung erfüllt ist, unter Soll liegt oder die Mindestbesetzung reißt, und prüft Urlaubsanträge vor der Genehmigung dagegen. Die Entscheidung trifft immer ein Mensch.",
+  },
+  {
+    frage: "Was sehen die Mitarbeiter?",
+    antwort:
+      "Jeder bekommt einen eigenen Zugang per Einladung und sieht seine Schichten, den Schichtplan, seine Konten und Anträge. Gründe für Abwesenheiten von Kollegen sind standardmäßig verborgen und lassen sich je Person freigeben. Im eigenen Kalender können Mitarbeiter private Termine eintragen und ihn mit Partner oder Familie teilen.",
+  },
+  {
+    frage: "Wie kommen unsere Mitarbeiter hinein?",
+    antwort:
+      "Ihr legt die Mitarbeiter an und schickt ihnen eine Einladung. Ein Datei-Import ist derzeit nicht vorhanden; ein Einrichtungsassistent führt nach der Registrierung durch die ersten Schritte. Auf Wunsch übernehmen wir die Einrichtung.",
+  },
+  {
+    frage: "Gibt es eine Demo?",
+    antwort:
+      "Ja. Unter „Live-Demo“ bekommt ihr ohne Anmeldung einen eigenen Demo-Betrieb mit Beispieldaten und offenen Anträgen. Er wird nach 24 Stunden automatisch gelöscht.",
+  },
+  {
+    frage: "Wo liegen die Daten, und gibt es einen AV-Vertrag?",
+    antwort: (
+      <>
+        Die Daten liegen in einer Datenbank in der EU (Irland). Jeder Betrieb hat einen eigenen, in der Datenbank abgetrennten Bereich. Den{" "}
+        <Link href="/avv" className="font-medium text-brand-600 hover:underline">
+          Vertrag zur Auftragsverarbeitung
+        </Link>{" "}
+        und die{" "}
+        <Link href="/datenschutz" className="font-medium text-brand-600 hover:underline">
+          Datenschutzerklärung
+        </Link>{" "}
+        findet ihr hier.
+      </>
+    ),
   },
   {
     frage: "Wird künstliche Intelligenz eingesetzt?",
     antwort:
-      "Nein. ShiftNexo nutzt keine KI-Dienste und gibt keine Daten an KI-Anbieter weiter. Konten, Besetzung und Konflikte werden nach festen, nachvollziehbaren Regeln berechnet; über Anträge entscheidet immer ein Mensch.",
-  },
-  {
-    frage: "Wo werden die Daten gespeichert?",
-    antwort:
-      "Die Daten liegen in einer Datenbank in der EU (Irland). Jedes Unternehmen hat einen eigenen Bereich; die Trennung wird in der Datenbank durchgesetzt. Einzelheiten stehen in der Datenschutzerklärung.",
+      "Nein. Konten, Besetzung und Konflikte werden nach festen, nachvollziehbaren Regeln berechnet; über Anträge entscheidet immer ein Mensch.",
   },
 ];
 
 /* ------------------------------------------------------------------ */
+/* Bausteine                                                           */
+/* ------------------------------------------------------------------ */
 
-function Kopf({ eyebrow, titel, mitte }: { eyebrow: string; titel: string; mitte?: boolean }) {
+function Abschnitt({ id, grau, children, className }: { id?: string; grau?: boolean; children: ReactNode; className?: string }) {
   return (
-    <div className={mitte ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">{eyebrow}</p>
-      <h2 className="mt-2 text-[28px] font-semibold leading-tight tracking-tight sm:text-[38px]">{titel}</h2>
+    <section id={id} className={`scroll-mt-16 py-20 sm:py-28 ${grau ? "bg-surface-muted" : "bg-surface"} ${className ?? ""}`}>
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">{children}</div>
+    </section>
+  );
+}
+
+function Ueberschrift({ titel, text }: { titel: ReactNode; text?: string }) {
+  return (
+    <div className="mx-auto max-w-2xl text-center">
+      <h2 className="text-balance text-[32px] font-semibold leading-[1.08] tracking-[-0.02em] sm:text-[48px]">{titel}</h2>
+      {text ? <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[19px]">{text}</p> : null}
     </div>
   );
 }
 
-export default function LandingPage() {
+function Held({
+  id,
+  hinweis,
+  titel,
+  zweite,
+  text,
+  knoepfe,
+  show,
+}: {
+  id: string;
+  hinweis: string;
+  titel: string;
+  zweite: string;
+  text: string;
+  knoepfe: ReactNode;
+  show: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-16 overflow-x-clip bg-surface pb-16 pt-10 sm:pb-24 sm:pt-16">
+      <div className="mx-auto w-full max-w-6xl px-4 text-center sm:px-6">
+        <p className="text-[14px] font-medium text-ink-muted sm:text-[15px]">{hinweis}</p>
+        <h1 className="mx-auto mt-3 max-w-3xl text-balance text-[44px] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[68px] lg:text-[80px]">
+          {titel}
+          <span className="block text-ink-faint">{zweite}</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[20px]">{text}</p>
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">{knoepfe}</div>
+        <div className="mt-12 sm:mt-16">{show}</div>
+      </div>
+    </section>
+  );
+}
+
+function Liste({ punkte }: { punkte: Punkt[] }) {
+  return (
+    <ul className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+      {punkte.map((p) => (
+        <li key={p.titel} className="flex gap-4">
+          <span className="mt-0.5 shrink-0 text-brand-600" aria-hidden>
+            {p.icon}
+          </span>
+          <div>
+            <h3 className="text-[17px] font-semibold tracking-tight">{p.titel}</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-ink-muted">{p.text}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Fragen({ id, fragen, titel }: { id: string; fragen: Frage[]; titel: string }) {
+  return (
+    <Abschnitt id={id} grau>
+      <Ueberschrift titel={titel} />
+      <div className="mx-auto mt-12 max-w-3xl divide-y divide-line overflow-hidden rounded-[28px] bg-surface">
+        {fragen.map((f) => (
+          <details key={f.frage} className="group px-5 sm:px-7">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[16px] font-semibold tracking-tight sm:text-[17px] [&::-webkit-details-marker]:hidden">
+              <h3>{f.frage}</h3>
+              <span aria-hidden className="text-[22px] font-light leading-none text-ink-muted transition-transform duration-200 group-open:rotate-45">
+                +
+              </span>
+            </summary>
+            <p className="-mt-1 pb-5 text-[15px] leading-relaxed text-ink-muted">{f.antwort}</p>
+          </details>
+        ))}
+      </div>
+    </Abschnitt>
+  );
+}
+
+function Sicherheit({ id, punkte, titel }: { id: string; punkte: Punkt[]; titel: string }) {
+  return (
+    <Abschnitt id={id}>
+      <Ueberschrift titel={titel} text="Datenschutz ist bei uns keine Fußnote. Das gilt von Anfang an." />
+      <Liste punkte={punkte} />
+      <p className="mt-12 text-center">
+        <Link href="/datenschutz" className="text-[15px] font-medium text-brand-600 hover:underline">
+          Zur Datenschutzerklärung
+        </Link>
+      </p>
+    </Abschnitt>
+  );
+}
+
+function Schluss({ titel, knoepfe }: { titel: string; knoepfe: ReactNode }) {
+  return (
+    <section className="bg-surface py-24 sm:py-32">
+      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+        <h2 className="text-balance text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] sm:text-[56px]">{titel}</h2>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">{knoepfe}</div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Die zwei Hälften                                                    */
+/* ------------------------------------------------------------------ */
+
+function PrivatSeite() {
   return (
     <>
-      {/* 1. Schichtkalender */}
-      <section id="kalender" className="privat relative scroll-mt-16 overflow-hidden border-b border-line">
-        {/* Handy: Text, dann gleich der Kalender, dann die Punkte. Breit: Kalender rechts daneben. */}
-        <div className="relative mx-auto grid w-full max-w-6xl gap-x-12 gap-y-9 px-4 pb-16 pt-9 sm:px-6 sm:pt-14 lg:grid-cols-[1.1fr_1fr] lg:grid-rows-[auto_auto] lg:py-20">
-          <div className="lg:self-end">
-            <p className="glas inline-flex items-center gap-2 rounded-full px-3 py-1 text-[12.5px] font-medium text-ink-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-ok-dot" aria-hidden />
-              Kostenlos · ohne Werbung · ohne E-Mail
-            </p>
-            <h1 className="mt-4 text-[34px] font-semibold leading-[1.05] tracking-tight sm:mt-5 sm:text-[52px] lg:text-[58px]">
-              Dein Schichtkalender.{" "}
-              <span className="text-brand-600">Einfach schön.</span>
-            </h1>
-            <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-ink-muted sm:mt-5 sm:text-[17px]">
-              Schichtfolge einmal eintragen – der Kalender füllt sich von selbst.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
-              <CtaLink href={ZIELE.privat} size="lg" className="flex-1 sm:flex-none">
-                Kostenlos starten
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </CtaLink>
-              <CtaLink href={ZIELE.anmelden} size="lg" variant="secondary">
-                Anmelden
-              </CtaLink>
-            </div>
-          </div>
-          <KalenderHandy className="lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center lg:justify-self-end" />
-          <ul className="grid gap-2 text-[14px] text-ink-muted sm:grid-cols-2 lg:self-start">
-            {["Nur Spitzname und Passwort", "In 30 Sekunden startklar", "Für iPhone, Android und PC", "Löschen jederzeit"].map((t) => (
-              <li key={t} className="flex items-center gap-2">
-                <Check className="h-4 w-4 shrink-0 text-ok-fg" strokeWidth={2.5} aria-hidden />
-                {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* 2. Highlights des Kalenders */}
-      <section className="py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <Kopf eyebrow="Was ihn besonders macht" titel="Gemacht für Schichtarbeit." />
-          <div className="mt-12 space-y-16 sm:space-y-24">
-            {HIGHLIGHTS.map((h, i) => (
-              <article key={h.titel} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
-                <div className={i % 2 ? "lg:order-2" : undefined}>
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">{h.icon}</span>
-                  <h3 className="mt-4 text-[24px] font-semibold leading-tight tracking-tight sm:text-[30px]">{h.titel}</h3>
-                  <p className="mt-3 max-w-md text-[16px] leading-relaxed text-ink-muted">{h.text}</p>
-                </div>
-                <div className={i % 2 ? "lg:order-1" : undefined}>{h.bild}</div>
-              </article>
-            ))}
-          </div>
-          <div className="mt-16 flex justify-center sm:mt-20">
+      <Held
+        id="kalender"
+        hinweis="Kostenlos · ohne Werbung · ohne E-Mail"
+        titel="Dein Schichtkalender."
+        zweite="Einfach schön."
+        text="Schichtfolge einmal eintragen – der Kalender füllt sich von selbst. Auf dem Handy, am PC und im Kalender deines Handys."
+        knoepfe={
+          <>
             <CtaLink href={ZIELE.privat} size="lg">
               Kostenlos starten
-              <ArrowRight className="h-4 w-4" aria-hidden />
             </CtaLink>
-          </div>
-        </div>
-      </section>
+            <CtaLink href={ZIELE.anmelden} size="lg" variant="secondary">
+              Anmelden
+            </CtaLink>
+          </>
+        }
+        show={<WischShow name="Schichtkalender" pc={<PcPrivat />} folien={FOLIEN_PRIVAT} />}
+      />
 
-      {/* 3. Für Unternehmen */}
-      <section id="unternehmen" className="relative scroll-mt-16 overflow-hidden border-y border-line bg-surface-muted">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.5] [background-image:linear-gradient(to_right,rgb(var(--c-line))_1px,transparent_1px),linear-gradient(to_bottom,rgb(var(--c-line))_1px,transparent_1px)] [background-size:40px_40px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]"
-        />
-        <div className="relative mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1fr_1.05fr] lg:py-24">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-[12px] font-medium text-ink-muted">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden />
-              Für Unternehmen
-            </p>
-            <h2 className="mt-5 text-[34px] font-semibold leading-[1.08] tracking-tight sm:text-[46px]">
-              Der ganze Betrieb.{" "}
-              <span className="whitespace-nowrap text-brand-600">Ein Plan.</span>
-            </h2>
-            <p className="mt-4 max-w-md text-[17px] leading-relaxed text-ink-muted">{BESCHREIBUNG}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <CtaLink href={ZIELE.demo} size="lg">
-                Live-Demo starten
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </CtaLink>
-              <CtaLink href={ZIELE.testen} size="lg" variant="secondary">
-                Kostenlos testen
-              </CtaLink>
-            </div>
-            <ul className="mt-8 flex flex-wrap gap-2" aria-label="Branchen">
-              {BRANCHEN.map((b) => (
-                <li key={b} className="rounded-full border border-line bg-surface px-3 py-1 text-[12.5px] font-medium text-ink-muted">
-                  {b}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <PlanPreview kompakt />
-        </div>
-      </section>
+      <Abschnitt id="funktionen-privat" grau>
+        <Ueberschrift titel="Alles, was du brauchst." text="Gemacht für Schichtarbeit – nicht für Büro-Termine." />
+        <Liste punkte={FUNKTIONEN_PRIVAT} />
+      </Abschnitt>
 
-      {/* 4. Funktionen als Kacheln */}
-      <section id="funktionen" className="scroll-mt-20 py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">
-          <Kopf eyebrow="Funktionen" titel="Alles für den Schichtbetrieb." />
-          <div className="mt-10">
-            <BetriebBento
-              extras={
-                <ul className="flex flex-wrap gap-2">
-                  {EXTRAS.map((e) => (
-                    <li key={e.text} className="flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-2 text-[13px] font-medium">
-                      <span className="text-brand-600" aria-hidden>
-                        {e.icon}
-                      </span>
-                      {e.text}
-                    </li>
-                  ))}
-                </ul>
-              }
-            />
-          </div>
+      <Abschnitt>
+        <Ueberschrift titel="In 30 Sekunden startklar." />
+        <ol className="mx-auto mt-14 grid max-w-4xl gap-4 sm:grid-cols-3">
+          {[
+            ["Konto anlegen", "Spitzname und Passwort – mehr nicht."],
+            ["Schichtfolge eintippen", "Oder aus deiner bisherigen App übernehmen."],
+            ["Aufs Handy legen", "Zum Startbildschirm hinzufügen, fertig."],
+          ].map(([t, x], n) => (
+            <li key={t} className="rounded-[24px] bg-surface-muted p-6">
+              <span className="tnum text-[15px] font-semibold text-brand-600">{n + 1}</span>
+              <p className="mt-2 text-[19px] font-semibold tracking-tight">{t}</p>
+              <p className="mt-1 text-[15px] leading-relaxed text-ink-muted">{x}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-10 flex justify-center">
+          <CtaLink href={ZIELE.privat} size="lg">
+            Kostenlos starten
+          </CtaLink>
         </div>
-      </section>
+      </Abschnitt>
 
-      {/* 5. Rollen */}
-      <section className="border-y border-line bg-surface-muted py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
-          <Kopf eyebrow="Für jede Rolle" titel="Jeder sieht, was er braucht." mitte />
-          <div className="mt-10">
-            <RollenUmschalter />
-          </div>
-        </div>
-      </section>
-
-      {/* 5b. Preise */}
-      <section id="preise" className="scroll-mt-20 py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-          <Kopf eyebrow="Preise für Betriebe" titel="Fair und einfach." mitte />
-          <p className="mx-auto mt-3 max-w-xl text-center text-[16px] leading-relaxed text-ink-muted">
-            Bis 15 Personen kostenlos. Darüber zahlst du pro Person und Monat. Preise für Betriebe, der private Schichtkalender bleibt kostenlos.
-          </p>
-          <div className="mt-10">
-            <Preise />
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Demo */}
-      <section id="demo" className="scroll-mt-20 px-4 py-16 sm:px-6 sm:py-24">
-        <div className="mx-auto w-full max-w-6xl rounded-[28px] bg-[rgb(33_72_204)] px-6 py-12 text-white sm:px-12 sm:py-14">
-          <div className="grid items-center gap-8 lg:grid-cols-[1.5fr_1fr]">
-            <div>
-              <h2 className="text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]">In 10 Sekunden im eigenen Demo-Betrieb.</h2>
-              <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-white/85">
-                Ohne Anmeldung, mit Beispieldaten und offenen Anträgen. Test und Registrierung sind kostenlos.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-              <CtaLink href={ZIELE.demo} size="lg" variant="secondary" className="border-transparent">
-                Live-Demo starten
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </CtaLink>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. FAQ */}
-      <section id="faq" className="scroll-mt-20 border-t border-line bg-surface-muted py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
-          <Kopf eyebrow="FAQ" titel="Häufige Fragen" mitte />
-          <div className="mt-10 divide-y divide-line rounded-[24px] border border-line bg-surface">
-            {FAQ.map((f) => (
-              <details key={f.frage} className="group px-5 py-4 sm:px-6">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium [&::-webkit-details-marker]:hidden">
-                  <h3>{f.frage}</h3>
-                  <span
-                    aria-hidden
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-transform group-open:rotate-45"
-                  >
-                    +
-                  </span>
-                </summary>
-                <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">{f.antwort}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 8. Abschluss */}
-      <section className="py-16 sm:py-24">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-          <h2 className="text-center text-[28px] font-semibold leading-tight tracking-tight sm:text-[38px]">Leg los – kostenlos.</h2>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <div className="privat flex flex-col rounded-[24px] border border-line p-6 sm:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">Für dich</p>
-              <h3 className="mt-2 text-[22px] font-semibold tracking-tight">Dein Schichtkalender</h3>
-              <div className="mt-6">
-                <CtaLink href={ZIELE.privat} size="lg">
-                  Kostenlos starten
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </CtaLink>
-              </div>
-            </div>
-            <div className="flex flex-col rounded-[24px] border border-line bg-surface-muted p-6 sm:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">Für deinen Betrieb</p>
-              <h3 className="mt-2 text-[22px] font-semibold tracking-tight">Schichtplanung fürs Team</h3>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <CtaLink href={ZIELE.demo} size="lg">
-                  Live-Demo
-                </CtaLink>
-                <CtaLink href={ZIELE.testen} size="lg" variant="secondary">
-                  Kostenlos testen
-                </CtaLink>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Sicherheit id="sicherheit-privat" punkte={SICHER_PRIVAT} titel="Deine Schichten gehören dir." />
+      <Fragen id="faq-privat" fragen={FRAGEN_PRIVAT} titel="Fragen zum Schichtkalender" />
+      <Schluss
+        titel="Probier es aus. Es kostet nichts."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.privat} size="lg">
+              Kostenlos starten
+            </CtaLink>
+            <CtaLink href="/#betrieb" size="lg" variant="secondary">
+              Für Betriebe
+            </CtaLink>
+          </>
+        }
+      />
     </>
   );
+}
+
+function BetriebSeite() {
+  return (
+    <>
+      <Held
+        id="unternehmen"
+        hinweis="Für Schichtbetriebe · bis 15 Personen kostenlos"
+        titel="Der ganze Betrieb."
+        zweite="Ein Plan."
+        text="Schichtplan, Urlaub und Besetzung an einem Ort. Am PC planen – auf dem Handy für jeden im Team."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.demo} size="lg">
+              Live-Demo starten
+            </CtaLink>
+            <CtaLink href={ZIELE.testen} size="lg" variant="secondary">
+              Betrieb registrieren
+            </CtaLink>
+          </>
+        }
+        show={<WischShow name="Schichtplanung" pc={<PcBetrieb />} folien={FOLIEN_BETRIEB} />}
+      />
+
+      <Abschnitt id="funktionen-betrieb" grau>
+        <Ueberschrift titel="Alles für den Schichtbetrieb." text="Vom Rotationsmuster bis zum Urlaubskonto – ohne Tabellen und Zettel." />
+        <Liste punkte={FUNKTIONEN_BETRIEB} />
+      </Abschnitt>
+
+      <Abschnitt id="rollen">
+        <Ueberschrift titel="Jeder sieht, was er braucht." />
+        <div className="mt-14 grid gap-4 md:grid-cols-3">
+          {ROLLEN.map((r) => (
+            <div key={r.name} className="rounded-[28px] bg-surface-muted p-7">
+              <p className="text-[14px] font-semibold text-brand-600">{r.name}</p>
+              <p className="mt-2 text-[21px] font-semibold leading-snug tracking-tight">{r.satz}</p>
+              <ul className="mt-5 space-y-2.5">
+                {r.punkte.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[15px] leading-snug text-ink-muted">
+                    <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-ink-faint" aria-hidden />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Abschnitt>
+
+      <Abschnitt id="preise" grau>
+        <Ueberschrift titel="Preise, die man versteht." text="Bis 15 Personen kostenlos. Darüber zahlt ihr pro Person und Monat – ohne Grundgebühr." />
+        <div className="mx-auto mt-12 max-w-5xl">
+          <Preise />
+        </div>
+      </Abschnitt>
+
+      <Sicherheit id="sicherheit-betrieb" punkte={SICHER_BETRIEB} titel="Sicher. Und in der EU." />
+      <Fragen id="faq-betrieb" fragen={FRAGEN_BETRIEB} titel="Fragen von Betrieben" />
+      <Schluss
+        titel="In 10 Sekunden im eigenen Demo-Betrieb."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.demo} size="lg">
+              Live-Demo starten
+            </CtaLink>
+            <CtaLink href={ZIELE.testen} size="lg" variant="secondary">
+              Betrieb registrieren
+            </CtaLink>
+          </>
+        }
+      />
+    </>
+  );
+}
+
+export default function LandingPage() {
+  return <BereichSeiten privat={<PrivatSeite />} betrieb={<BetriebSeite />} />;
 }
