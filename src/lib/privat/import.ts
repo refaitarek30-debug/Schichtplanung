@@ -48,6 +48,9 @@ export function schlageVor(g: Gruppe, arten: Schichtart[]): Ziel {
   const n = normal(g.name);
   const gleich = arten.find((a) => normal(a.name) === n);
   if (gleich) return { art: "vorhanden", id: gleich.id };
+  // Kürzel wie „F“ oder „SP“ (aus Screenshots) passen zum eigenen Kürzel.
+  const kuerzel = arten.find((a) => normal(a.kuerzel) === n);
+  if (kuerzel) return { art: "vorhanden", id: kuerzel.id };
   for (const s of STICHWORTE) {
     if (!s.schluessel.some((k) => n.includes(k))) continue;
     const treffer = arten.find((a) => s.schluessel.some((k) => normal(a.name).includes(k)) || (s.art && a.art === s.art));

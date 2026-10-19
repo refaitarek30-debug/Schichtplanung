@@ -167,6 +167,6 @@ export const config = {
      * wegen Untätigkeit. `api/erinnerungen` ruft die Datenbank jede Minute
      * selbst auf (mit eigenem Geheimnis, ohne Sitzung).
      */
-    "/((?!_next/static|api/version|api/erinnerungen|_next/image|favicon.ico|favicon.png|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|api/version|api/erinnerungen|ocr/|_next/image|favicon.ico|favicon.png|manifest.webmanifest|sw.js|offline.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
