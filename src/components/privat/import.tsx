@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, FileUp, Lock, Undo2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Check, FileUp, Loader2, Lock, Undo2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { heuteInBerlin } from "@/lib/dates";
 import { farbStil, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import { IcsFehler, leseIcs, MAX_BYTES, type Gruppe, type LeseErgebnis } from "@/lib/privat/ics-lesen";
+import { beendeTexterkennung, erkenneScreenshot } from "@/lib/privat/screenshot-ocr";
+import { findeMonat, leseMonatsraster, vereineGruppen, type Wort } from "@/lib/privat/screenshot-raster";
 import {
   fuehreAus,
   macheRueckgaengig,
@@ -69,6 +72,21 @@ const MODI: { id: Modus; text: string; hinweis: string }[] = [
 
 const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
 
+const MAX_BILD_BYTES = 15 * 1024 * 1024;
+
+interface Bild {
+  id: number;
+  name: string;
+  vorschau: string;
+  status: "liest" | "fertig" | "fehler";
+  /** 0–1 */
+  anteil: number;
+  woerter: Wort[];
+  jahr: number;
+  monat: number;
+  fehler?: string;
+}
+
 const tagText = (tag: string) => {
   const [j, m, t] = tag.split("-");
   return `${Number(t)}.${Number(m)}.${j}`;
@@ -104,18 +122,43 @@ export function PrivatImport() {
   const [schritt, setSchritt] = useState(0);
   const [quelle, setQuelle] = useState<string>("supershift");
   const [dateiname, setDateiname] = useState("");
-  const [gelesen, setGelesen] = useState<LeseErgebnis | null>(null);
+  const [ics, setIcs] = useState<LeseErgebnis | null>(null);
+  const [bilder, setBilder] = useState<Bild[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
-  const [ziele, setZiele] = useState<Record<string, Ziel>>({});
+  const [ueberschrieben, setUeberschrieben] = useState<Record<string, Ziel>>({});
   const [vorhanden, setVorhanden] = useState<Record<string, TagEintrag>>({});
   const [modus, setModus] = useState<Modus>("leer");
   const [arbeitet, setArbeitet] = useState(false);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [zurueck, setZurueck] = useState(false);
   const eingabe = useRef<HTMLInputElement>(null);
+  const lauf = useRef(0);
+  const urls = useRef<string[]>([]);
 
+  // Beim Verlassen: Bildvorschauen freigeben und die Texterkennung beenden.
+  useEffect(() => {
+    const liste = urls.current;
+    return () => {
+      lauf.current += 1;
+      for (const u of liste) URL.revokeObjectURL(u);
+      void beendeTexterkennung();
+    };
+  }, []);
+
+  // Screenshots: Monatsraster je Bild; mit Monat/Jahr der Person neu gerechnet.
+  const raster = useMemo(() => bilder.map((b) => (b.status === "fertig" ? leseMonatsraster(b.woerter, b.jahr, b.monat) : null)), [bilder]);
+  const gelesen = useMemo<LeseErgebnis | null>(() => {
+    const gr = vereineGruppen(ics?.gruppen ?? [], ...raster.map((r) => r?.gruppen ?? []));
+    if (!gr.length) return null;
+    const tage = gr.flatMap((g) => g.tage).sort();
+    return { gruppen: gr, termine: ics?.termine ?? 0, von: tage[0] ?? null, bis: tage[tage.length - 1] ?? null, einfach: ics?.einfach ?? 0 };
+  }, [ics, raster]);
   const gruppen = useMemo(() => gelesen?.gruppen ?? [], [gelesen]);
+  const ziele = useMemo<Record<string, Ziel>>(
+    () => Object.fromEntries(gruppen.map((g) => [g.name, ueberschrieben[g.name] ?? schlageVor(g, arten)])),
+    [gruppen, ueberschrieben, arten],
+  );
   const gruppeNach = useMemo(() => new Map(gruppen.map((g) => [g.name, g])), [gruppen]);
 
   const artVon = (ref: string) => {
@@ -132,23 +175,33 @@ export function PrivatImport() {
     [gruppen, ziele, vorhanden, modus, gruppeNach, artNach],
   );
 
+  function aendereBild(id: number, teil: Partial<Bild>) {
+    setBilder((alle) => alle.map((b) => (b.id === id ? { ...b, ...teil } : b)));
+  }
+
   async function dateienGewaehlt(liste: File[]) {
     if (!liste.length) return;
+    const dieserLauf = ++lauf.current;
     setFehler(null);
     setHinweis(null);
-    setGelesen(null);
+    setIcs(null);
+    setBilder([]);
+    setUeberschrieben({});
+    for (const u of urls.current.splice(0)) URL.revokeObjectURL(u);
     setDateiname(liste.length === 1 ? liste[0]!.name : `${liste.length} Dateien`);
-    // Egal welche Endung: Es zählt, ob eine Kalender-Datei drinsteckt.
+
+    // Egal welche Endung: Es zählt, ob eine Kalender-Datei oder ein Bild drinsteckt.
     const texte: string[] = [];
-    const bilder: string[] = [];
+    const bildDateien: File[] = [];
     const andere: string[] = [];
     for (const d of liste) {
-      if (d.size > MAX_BYTES) {
-        andere.push(d.name);
+      if (d.type.startsWith("image/") || /\.(png|jpe?g|heic|heif|gif|webp)$/i.test(d.name)) {
+        if (d.size > MAX_BILD_BYTES) andere.push(d.name);
+        else bildDateien.push(d);
         continue;
       }
-      if (d.type.startsWith("image/") || /\.(png|jpe?g|heic|heif|gif|webp)$/i.test(d.name)) {
-        bilder.push(d.name);
+      if (d.size > MAX_BYTES) {
+        andere.push(d.name);
         continue;
       }
       try {
@@ -159,31 +212,45 @@ export function PrivatImport() {
         andere.push(d.name);
       }
     }
-    if (!texte.length) {
-      setFehler(
-        bilder.length
-          ? "Screenshots und Fotos kann die App noch nicht lesen. Wähl bitte eine Kalender-Datei aus dem Export."
-          : "In dieser Auswahl ist keine Kalender-Datei. Gesucht ist eine Datei aus dem Export deiner Schicht-App, meist mit der Endung .ics.",
-      );
+    if (!texte.length && !bildDateien.length) {
+      setFehler("In dieser Auswahl ist keine Kalender-Datei und kein Bild. Gesucht ist eine Datei aus dem Export deiner Schicht-App (meist .ics) oder ein Screenshot.");
       return;
     }
-    try {
-      // Mehrere Kalender-Dateien werden wie eine gelesen.
-      const erg = leseIcs(texte.join("\n"));
-      if (!erg.gruppen.length) {
-        setFehler("In den Dateien sind keine Termine mit Datum zu finden.");
-        return;
+    if (andere.length) {
+      setHinweis(`${andere.length === 1 ? "1 Datei" : `${andere.length} Dateien`} übersprungen (kein Kalender, kein Bild oder zu groß): ${andere.slice(0, 3).join(", ")}${andere.length > 3 ? " …" : ""}`);
+    }
+    if (texte.length) {
+      try {
+        // Mehrere Kalender-Dateien werden wie eine gelesen.
+        const erg = leseIcs(texte.join("\n"));
+        if (!erg.gruppen.length) setFehler("In den Kalender-Dateien sind keine Termine mit Datum zu finden.");
+        else setIcs(erg);
+      } catch (e) {
+        setFehler(e instanceof IcsFehler ? e.message : "Die Kalender-Dateien konnten nicht gelesen werden.");
       }
-      const ausgelassen = [...bilder, ...andere];
-      if (ausgelassen.length) {
-        setHinweis(
-          `${ausgelassen.length === 1 ? "1 Datei" : `${ausgelassen.length} Dateien`} übersprungen (keine Kalender-Datei): ${ausgelassen.slice(0, 3).join(", ")}${ausgelassen.length > 3 ? " …" : ""}`,
-        );
+    }
+
+    // Screenshots nacheinander lesen (das Handy hat nur einen Prozessor für die Texterkennung).
+    const heute = heuteInBerlin();
+    const neueBilder: Bild[] = bildDateien.map((d, i) => {
+      const url = URL.createObjectURL(d);
+      urls.current.push(url);
+      return { id: i + 1, name: d.name, vorschau: url, status: "liest", anteil: 0, woerter: [], jahr: Number(heute.slice(0, 4)), monat: Number(heute.slice(5, 7)) };
+    });
+    setBilder(neueBilder);
+    for (const [i, d] of bildDateien.entries()) {
+      const id = i + 1;
+      try {
+        const r = await erkenneScreenshot(d, (anteil) => {
+          if (lauf.current === dieserLauf) aendereBild(id, { anteil });
+        });
+        if (lauf.current !== dieserLauf) return;
+        const m = findeMonat(r.woerter);
+        aendereBild(id, { status: "fertig", anteil: 1, woerter: r.woerter, ...(m ? { jahr: m.jahr, monat: m.monat } : {}) });
+      } catch (e) {
+        if (lauf.current !== dieserLauf) return;
+        aendereBild(id, { status: "fehler", fehler: e instanceof Error ? e.message : "Das Bild konnte nicht gelesen werden." });
       }
-      setGelesen(erg);
-      setZiele(Object.fromEntries(erg.gruppen.map((g) => [g.name, schlageVor(g, arten)])));
-    } catch (e) {
-      setFehler(e instanceof IcsFehler ? e.message : "Die Dateien konnten nicht gelesen werden.");
     }
   }
 
@@ -322,6 +389,10 @@ export function PrivatImport() {
                 ))}
               </ol>
               <p className="mt-2 text-[12px] text-ink-faint">Menünamen können je nach Version der App abweichen.</p>
+              <p className="mt-2 text-[13px] text-ink-muted">
+                Geht auch ohne Export: Mach einen Screenshot der Monatsansicht (ein Bild je Monat, die Namen oder Kürzel der Schichten
+                sollten im Kalender zu sehen sein) und wähl ihn im nächsten Schritt aus.
+              </p>
             </div>
             <button type="button" className={cn(knopf, "w-full")} onClick={() => setSchritt(1)}>
               Weiter
@@ -331,14 +402,14 @@ export function PrivatImport() {
       ) : null}
 
       {schritt === 1 ? (
-        <PrivatKarte titel="Kalender-Dateien wählen">
+        <PrivatKarte titel="Datei oder Screenshot wählen">
           <div className="space-y-3 px-4 py-4">
             <input
               ref={eingabe}
               type="file"
               multiple
               className="sr-only"
-              aria-label="Kalender-Dateien"
+              aria-label="Kalender-Dateien oder Screenshots"
               onChange={(e) => {
                 void dateienGewaehlt(Array.from(e.target.files ?? []));
                 e.target.value = "";
@@ -351,27 +422,98 @@ export function PrivatImport() {
             >
               <FileUp className="h-7 w-7 text-brand-600" />
               <span className="text-[15px] font-semibold">{dateiname || "Datei(en) auswählen"}</span>
-              <span className="text-[13px] text-ink-muted">Kalender-Datei aus dem Export, auch mehrere auf einmal</span>
+              <span className="text-[13px] text-ink-muted">Kalender-Datei (.ics) oder Screenshots der Monatsansicht, auch mehrere auf einmal</span>
             </button>
             <p className="flex items-start gap-2 text-[13px] text-ink-muted">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-              Die Datei wird nur auf deinem Handy gelesen und nicht hochgeladen. Gespeichert werden erst die Tage, die du im
-              letzten Schritt bestätigst.
+              Dateien und Bilder werden nur auf deinem Handy gelesen und nicht hochgeladen. Gespeichert werden erst die Tage,
+              die du im letzten Schritt bestätigst.
             </p>
             {fehler ? <Alert tone="error">{fehler}</Alert> : null}
             {hinweis ? <Alert tone="warning">{hinweis}</Alert> : null}
-            {gelesen ? (
+            {ics ? (
               <Alert tone="success">
-                {gelesen.termine} {gelesen.termine === 1 ? "Eintrag" : "Einträge"} gelesen
-                {gelesen.von && gelesen.bis ? `, ${tagText(gelesen.von)} bis ${tagText(gelesen.bis)}` : ""}.
-                {gelesen.einfach ? ` Bei ${gelesen.einfach} Wiederholungen wurde nur der erste Termin gelesen.` : ""}
+                {ics.termine} {ics.termine === 1 ? "Eintrag" : "Einträge"} aus Kalender-Dateien gelesen
+                {ics.von && ics.bis ? `, ${tagText(ics.von)} bis ${tagText(ics.bis)}` : ""}.
+                {ics.einfach ? ` Bei ${ics.einfach} Wiederholungen wurde nur der erste Termin gelesen.` : ""}
               </Alert>
+            ) : null}
+            {bilder.length ? (
+              <ul className="space-y-2" aria-label="Screenshots">
+                {bilder.map((b, i) => {
+                  const r = raster[i];
+                  const jahre = Array.from({ length: 4 }, (_, k) => Number(heuteInBerlin().slice(0, 4)) - 1 + k);
+                  return (
+                    <li key={b.id} className="rounded-[16px] bg-ink/[0.05] p-3" data-bild={b.name}>
+                      <div className="flex gap-3">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={b.vorschau} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover object-top" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[14px] font-semibold">{b.name}</p>
+                          {b.status === "liest" ? (
+                            <p className="flex items-center gap-1.5 text-[13px] text-ink-muted">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              {b.anteil > 0 ? `Wird gelesen … ${Math.round(b.anteil * 100)} %` : "Texterkennung startet … beim ersten Mal lädt sie etwa 5 MB"}
+                            </p>
+                          ) : null}
+                          {b.status === "fehler" ? <p className="text-[13px] text-crit-fg">{b.fehler}</p> : null}
+                          {b.status === "fertig" && r ? (
+                            <p className="text-[13px] text-ink-muted">
+                              {r.tageGefunden
+                                ? `${r.tageGefunden} Tage erkannt, ${r.tageMitEintrag} mit Eintrag, ${r.gruppen.length} ${r.gruppen.length === 1 ? "Name" : "Namen"}`
+                                : "Kein Monatsraster erkannt"}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      {b.status === "fertig" ? (
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-ink-muted">Monat</span>
+                            <select
+                              aria-label={`Monat von ${b.name}`}
+                              className="min-w-0 flex-1 rounded-[10px] bg-ink/[0.06] px-2.5 py-2 text-[14px]"
+                              value={b.monat}
+                              onChange={(e) => aendereBild(b.id, { monat: Number(e.target.value) })}
+                            >
+                              {MONATE.map((m, k) => (
+                                <option key={m} value={k + 1}>
+                                  {m}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              aria-label={`Jahr von ${b.name}`}
+                              className="rounded-[10px] bg-ink/[0.06] px-2.5 py-2 text-[14px]"
+                              value={b.jahr}
+                              onChange={(e) => aendereBild(b.id, { jahr: Number(e.target.value) })}
+                            >
+                              {jahre.map((j) => (
+                                <option key={j} value={j}>
+                                  {j}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {r?.warnung ? <Alert tone="warning">{r.warnung}</Alert> : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            {bilder.length ? (
+              <p className="text-[12.5px] text-ink-faint">
+                Screenshots werden mit einer Texterkennung gelesen und sind nie ganz sicher. Im nächsten Schritt kannst du jeden Namen
+                zuordnen oder überspringen, und in der Vorschau siehst du alles, bevor etwas gespeichert wird.
+              </p>
             ) : null}
             <div className="flex gap-2">
               <button type="button" className={knopfLeise} onClick={() => setSchritt(0)}>
                 Zurück
               </button>
-              <button type="button" className={cn(knopf, "flex-1")} disabled={!gelesen} onClick={() => setSchritt(2)}>
+              <button type="button" className={cn(knopf, "flex-1")} disabled={!gelesen || bilder.some((b) => b.status === "liest")} onClick={() => setSchritt(2)}>
                 Weiter
               </button>
             </div>
@@ -401,7 +543,7 @@ export function PrivatImport() {
                     value={ziele[g.name]?.art === "vorhanden" ? (ziele[g.name] as { id: string }).id : (ziele[g.name]?.art ?? "skip")}
                     onChange={(e) => {
                       const v = e.target.value;
-                      setZiele((z) => ({
+                      setUeberschrieben((z) => ({
                         ...z,
                         [g.name]: v === "neu" ? { art: "neu" } : v === "skip" ? { art: "skip" } : { art: "vorhanden", id: v },
                       }));

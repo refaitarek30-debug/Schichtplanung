@@ -8,6 +8,9 @@
 # production
 /build
 
+# kopiert von scripts/ocr-kopieren.mjs
+/public/ocr/
+
 # misc
 .DS_Store
 *.pem

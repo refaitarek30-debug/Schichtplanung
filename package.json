@@ -3,7 +3,9 @@
   "version": "0.25.1",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/ocr-kopieren.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/ocr-kopieren.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -12,6 +14,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.112.4",
+    "@tesseract.js-data/deu": "1.0.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.454.0",
     "next": "^16.3.8",
@@ -19,6 +22,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tailwind-merge": "^2.5.4",
+    "tesseract.js": "7.0.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

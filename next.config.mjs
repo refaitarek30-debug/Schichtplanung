@@ -23,10 +23,12 @@ const supabaseHost = (() => {
  * Eine strengere Nonce-basierte Richtlinie bräuchte dynamisches Rendering aller
  * Seiten; das ist ein eigenes Vorhaben. `'unsafe-eval'` bleibt in der
  * Produktion aus (nur die Entwicklung braucht es für Hot Reload).
+ * `'wasm-unsafe-eval'` erlaubt nur WebAssembly (kein JavaScript-eval): die
+ * Texterkennung für Screenshots (`/ocr`, eigene Dateien) braucht es.
  */
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${istProduktion ? "" : " 'unsafe-eval'"}`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${istProduktion ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
