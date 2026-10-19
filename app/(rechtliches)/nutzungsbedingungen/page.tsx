@@ -9,9 +9,9 @@ import {
 import { NUTZUNGSBEDINGUNGEN_VERSION } from "@/lib/legal/version";
 
 export const metadata = {
-  title: "Nutzungsbedingungen – Schichtplan",
+  title: "Nutzungsbedingungen – ShiftNexo",
   description:
-    "Bedingungen für die Nutzung von Schichtplan durch Unternehmen: Leistung, Pflichten, Verfügbarkeit, Haftung.",
+    "Bedingungen für die Nutzung von ShiftNexo durch Unternehmen: Leistung, Pflichten, Verfügbarkeit, Haftung.",
 };
 
 /*
@@ -34,7 +34,7 @@ export default function NutzungsbedingungenPage() {
   return (
     <LegalPage
       title="Nutzungsbedingungen"
-      intro="Diese Bedingungen gelten für die Nutzung von Schichtplan durch Unternehmen."
+      intro="Diese Bedingungen gelten für die Nutzung von ShiftNexo durch Unternehmen."
       updated="30. September 2026"
       version={NUTZUNGSBEDINGUNGEN_VERSION}
     >
@@ -48,7 +48,7 @@ export default function NutzungsbedingungenPage() {
 
       <Abschnitt titel="1. Geltungsbereich und Vertragspartner">
         <Absatz>
-          (1) Vertragspartner ist der Betreiber von Schichtplan (
+          (1) Vertragspartner ist der Betreiber von ShiftNexo (
           <Platzhalter>Name oder Firma</Platzhalter>, Angaben im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
@@ -78,7 +78,7 @@ export default function NutzungsbedingungenPage() {
           ergibt sich aus der Anwendung.
         </Absatz>
         <Absatz>
-          (2) Schichtplan ist ein Hilfsmittel für die Planung. Es ist <strong>keine
+          (2) ShiftNexo ist ein Hilfsmittel für die Planung. Es ist <strong>keine
           Rechtsberatung</strong> und ersetzt weder die arbeits-, tarif- und
           datenschutzrechtliche Prüfung durch den Kunden noch die Entscheidung der dafür
           zuständigen Personen.

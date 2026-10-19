@@ -1,5 +1,5 @@
 /*
- * Service Worker für den Schichtplan.
+ * Service Worker für ShiftNexo.
  *
  * Bewusst zurückhaltend: Seiten werden NICHT zwischengespeichert. Sie sind
  * angemeldet und personenbezogen – ein Cache auf einem geteilten Diensthandy

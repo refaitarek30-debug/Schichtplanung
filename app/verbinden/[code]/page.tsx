@@ -11,7 +11,7 @@ import { Verbinden, type Vorschau } from "./verbinden";
  * hat – geprüft in der Datenbank (Migrationen 0157, 0163).
  */
 export const metadata: Metadata = {
-  title: "Einladung – Schichtplan",
+  title: "Einladung – ShiftNexo",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };

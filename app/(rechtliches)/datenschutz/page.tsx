@@ -9,9 +9,9 @@ import {
 import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 
 export const metadata = {
-  title: "Datenschutzerklärung – Schichtplan",
+  title: "Datenschutzerklärung – ShiftNexo",
   description:
-    "Welche personenbezogenen Daten Schichtplan verarbeitet, zu welchem Zweck, auf welcher Rechtsgrundlage und wie lange.",
+    "Welche personenbezogenen Daten ShiftNexo verarbeitet, zu welchem Zweck, auf welcher Rechtsgrundlage und wie lange.",
 };
 
 const kode = "rounded bg-surface-muted px-1 py-0.5 text-[12px]";
@@ -36,16 +36,16 @@ export default function DatenschutzPage() {
   return (
     <LegalPage
       title="Datenschutzerklärung"
-      intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
+      intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
       updated="20. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
         <p>
-          Schichtplan wird Unternehmen (Kunden) als Anwendung zur technischen Schicht- und
+          ShiftNexo wird Unternehmen (Kunden) als Anwendung zur technischen Schicht- und
           Personalplanung zur Verfügung gestellt. Für die Daten <strong>der Beschäftigten</strong>{" "}
           ist das jeweilige Unternehmen als Arbeitgeber die verantwortliche Stelle. Der
-          Betreiber von Schichtplan verarbeitet diese Daten insoweit als{" "}
+          Betreiber von ShiftNexo verarbeitet diese Daten insoweit als{" "}
           <strong>Auftragsverarbeiter</strong> nach Art. 28 DSGVO ausschließlich auf
           Weisung des Unternehmens (siehe{" "}
           <a href="/avv" className="font-medium text-brand-600 hover:underline">
@@ -525,7 +525,7 @@ export default function DatenschutzPage() {
       <Abschnitt titel="8a. Persönlicher Schichtkalender ohne Unternehmen">
         <Absatz>
           Wer sich ohne Unternehmen für den persönlichen Schichtkalender registriert, nutzt
-          Schichtplan als Privatperson. <strong>Verantwortlich ist dann der Betreiber</strong>{" "}
+          ShiftNexo als Privatperson. <strong>Verantwortlich ist dann der Betreiber</strong>{" "}
           (Abschnitt 1), nicht ein Arbeitgeber; ein Arbeitgeber hat keinen Zugriff auf diese
           Daten.
         </Absatz>

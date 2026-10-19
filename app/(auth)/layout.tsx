@@ -12,13 +12,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <section className="hidden flex-col justify-between border-r border-line bg-surface p-10 lg:flex">
         <Link
           href="/"
-          aria-label="Schichtplan – Startseite"
+          aria-label="ShiftNexo – Startseite"
           className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
             SP
           </span>
-          <span className="text-sm font-semibold tracking-tight">Schichtplan</span>
+          <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
         </Link>
 
         <div className="max-w-md">

@@ -7,7 +7,7 @@ import { GruppeBeitreten } from "./beitreten";
  * (`gruppe_info`, `gruppe_beitreten`).
  */
 export const metadata: Metadata = {
-  title: "Einladung – Schichtplan",
+  title: "Einladung – ShiftNexo",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };

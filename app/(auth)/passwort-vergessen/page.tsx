@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ResetForm } from "./reset-form";
 
-export const metadata = { title: "Passwort zurücksetzen – Schichtplan" };
+export const metadata = { title: "Passwort zurücksetzen – ShiftNexo" };
 
 export default function ForgotPasswordPage() {
   return (

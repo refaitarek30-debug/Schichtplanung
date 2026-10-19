@@ -47,7 +47,7 @@ export function Sidebar() {
     >
       <Link
         href="/dashboard"
-        aria-label="Schichtplan – Startseite"
+        aria-label="ShiftNexo – Startseite"
         className={cn(
           "flex h-16 items-center gap-2.5 border-b border-line hover:bg-surface-muted",
           eingeklappt ? "justify-center px-2" : "px-5",
@@ -58,7 +58,7 @@ export function Sidebar() {
         </span>
         {eingeklappt ? null : (
           <span className="min-w-0 leading-tight">
-            <span className="block text-sm font-semibold tracking-tight">Schichtplan</span>
+            <span className="block text-sm font-semibold tracking-tight">ShiftNexo</span>
             <span className="block truncate text-[11px] text-ink-faint">{company.name}</span>
           </span>
         )}

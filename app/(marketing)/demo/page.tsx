@@ -5,9 +5,9 @@ import { DemoStart } from "@/components/marketing/demo-start";
 import { PlanPreview } from "@/components/marketing/plan-preview";
 
 export const metadata: Metadata = {
-  title: "Live-Demo – Schichtplan",
+  title: "Live-Demo – ShiftNexo",
   description:
-    "Schichtplan ohne Registrierung ausprobieren: ein eigener Demo-Bereich mit Beispieldaten eines Schichtbetriebs, 24 Stunden gültig.",
+    "ShiftNexo ohne Registrierung ausprobieren: ein eigener Demo-Bereich mit Beispieldaten eines Schichtbetriebs, 24 Stunden gültig.",
 };
 
 /*
@@ -27,7 +27,7 @@ export default function DemoPage() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">Live-Demo</p>
           <h1 className="mt-2 text-[32px] font-semibold leading-tight tracking-tight sm:text-[42px]">
-            Schichtplan live ausprobieren
+            ShiftNexo live ausprobieren
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
             Mit einem Klick erhalten Sie einen eigenen Demo-Bereich mit den Beispieldaten eines

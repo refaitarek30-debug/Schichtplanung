@@ -184,7 +184,7 @@ export function baueIcs(
   const zeilen: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Schichtplan//Kalender-Abo//DE",
+    "PRODID:-//ShiftNexo//Kalender-Abo//DE",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${icsText(kopf.name)}`,

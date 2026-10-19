@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
-export const metadata = { title: "Willkommen – Schichtplan" };
+export const metadata = { title: "Willkommen – ShiftNexo" };
 
 /**
  * Freundliche Landeseite nach dem Bestätigungslink aus der Registrierungs-

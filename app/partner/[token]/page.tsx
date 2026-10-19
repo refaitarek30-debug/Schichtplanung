@@ -7,7 +7,7 @@ import { PartnerAnsicht } from "@/components/kalender/partner-ansicht";
  * (`partner_kalender`, `partner_tage_setzen`).
  */
 export const metadata: Metadata = {
-  title: "Schichtplan",
+  title: "ShiftNexo",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };

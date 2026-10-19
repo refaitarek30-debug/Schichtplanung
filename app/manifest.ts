@@ -8,8 +8,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Schichtplan – Urlaubs- und Schichtplanung",
-    short_name: "Schichtplan",
+    name: "ShiftNexo – Urlaubs- und Schichtplanung",
+    short_name: "ShiftNexo",
     description:
       "Urlaub beantragen, Schichten sehen und die Mindestbesetzung automatisch prüfen.",
     // Startet auf der gewählten Startseite (/start leitet dorthin); ohne

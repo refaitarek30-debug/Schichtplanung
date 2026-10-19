@@ -3,7 +3,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Alert } from "@/components/ui/alert";
 import { RegisterForm } from "./register-form";
 
-export const metadata = { title: "Unternehmen registrieren – Schichtplan" };
+export const metadata = { title: "Unternehmen registrieren – ShiftNexo" };
 
 export default function RegisterPage() {
   return (

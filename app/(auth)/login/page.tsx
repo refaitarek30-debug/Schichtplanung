@@ -3,7 +3,7 @@ import { Alert } from "@/components/ui/alert";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Anmelden – Schichtplan" };
+export const metadata = { title: "Anmelden – ShiftNexo" };
 
 export default async function LoginPage({
   searchParams,
