@@ -81,9 +81,9 @@ const RASTER = "grid grid-cols-3 md:grid-cols-[minmax(0,1fr)_repeat(3,10rem)]";
 export function Preise() {
   return (
     <div>
-      <div role="table" aria-label="Preise und Umfang der Stufen" className="overflow-hidden rounded-[28px] bg-surface shadow-[0_1px_2px_rgba(17,24,39,0.04),0_20px_50px_-30px_rgba(17,24,39,0.25)]">
+      <div role="table" aria-label="Preise und Umfang der Stufen" className="glas overflow-hidden rounded-[28px]">
         {/* Kopf: Name und Preis */}
-        <div role="row" className={cn(RASTER, "border-b border-line")}>
+        <div role="row" className={cn(RASTER, "border-b border-[var(--glas-linie)]")}>
           <span role="columnheader" className="hidden md:block" />
           {STUFEN.map((s) => (
             <div
@@ -106,13 +106,13 @@ export function Preise() {
 
         {GRUPPEN.map((g) => (
           <div key={g.titel} role="rowgroup">
-            <div role="row" className="bg-surface-muted/70 px-4 py-2 md:px-6">
+            <div role="row" className="bg-ink/[0.03] px-4 py-2 md:px-6">
               <span role="rowheader" className="text-[12px] font-semibold text-ink-muted">
                 {g.titel}
               </span>
             </div>
             {g.zeilen.map((z) => (
-              <div key={z.text} role="row" className={cn(RASTER, "border-t border-line first:border-t-0")}>
+              <div key={z.text} role="row" className={cn(RASTER, "border-t border-[var(--glas-linie)] first:border-t-0")}>
                 <span role="rowheader" className="col-span-3 px-4 pt-3 text-[14px] md:col-span-1 md:px-6 md:py-3.5 md:text-[15px]">
                   {z.text}
                 </span>
@@ -131,7 +131,7 @@ export function Preise() {
         ))}
 
         {/* Beispiel */}
-        <div role="row" className={cn(RASTER, "border-t border-line bg-surface-muted/70")}>
+        <div role="row" className={cn(RASTER, "border-t border-[var(--glas-linie)] bg-ink/[0.03]")}>
           <span role="rowheader" className="col-span-3 px-4 pt-3.5 text-[14px] font-semibold md:col-span-1 md:px-6 md:py-4 md:text-[15px]">
             Beispiel: {BEISPIEL} Personen im Monat
           </span>
@@ -165,7 +165,7 @@ export function Preise() {
             text: "Der Schichtkalender für Privatpersonen bleibt kostenlos, ohne Abo und ohne Werbung.",
           },
         ].map((x) => (
-          <div key={x.titel} className="rounded-[22px] bg-surface p-5">
+          <div key={x.titel} className="glas rounded-[22px] p-5">
             <p className="text-[15px] font-semibold">{x.titel}</p>
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">{x.text}</p>
           </div>

@@ -38,7 +38,7 @@ const SPALTEN = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-surface-muted">
+    <footer className="border-t border-[var(--glas-linie)] bg-surface/40">
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="max-w-xs">
           <Logo />
@@ -67,7 +67,7 @@ export function SiteFooter() {
           </nav>
         ))}
       </div>
-      <div className="border-t border-line">
+      <div className="border-t border-[var(--glas-linie)]">
         <p className="mx-auto w-full max-w-6xl px-4 py-5 text-[12px] text-ink-faint sm:px-6">
           © {new Date().getFullYear()} ShiftNexo
         </p>

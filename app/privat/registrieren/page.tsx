@@ -23,7 +23,9 @@ const PUNKTE = [
 
 export default function PrivatRegistrierenSeite() {
   return (
-    <div className="privat-schrift flex min-h-screen flex-col bg-surface-muted">
+    <div className="privat-schrift relative isolate flex min-h-screen flex-col">
+      {/* Hintergrund wie in der App */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-surface-muted [background-image:var(--glas-hinter)]" />
       <header className="flex justify-center px-5 pt-8 sm:pt-12">
         <Link href="/" aria-label="ShiftNexo – Startseite" className="flex items-center gap-2 rounded-lg hover:opacity-80">
           <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-brand-500 text-[12.5px] font-bold tracking-tight text-white">

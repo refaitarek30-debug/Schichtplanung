@@ -281,9 +281,9 @@ const FRAGEN_BETRIEB: Frage[] = [
 /* Bausteine                                                           */
 /* ------------------------------------------------------------------ */
 
-function Abschnitt({ id, grau, children, className }: { id?: string; grau?: boolean; children: ReactNode; className?: string }) {
+function Abschnitt({ id, children, className }: { id?: string; grau?: boolean; children: ReactNode; className?: string }) {
   return (
-    <section id={id} className={`scroll-mt-16 py-20 sm:py-28 ${grau ? "bg-surface-muted" : "bg-surface"} ${className ?? ""}`}>
+    <section id={id} className={`scroll-mt-16 py-20 sm:py-28 ${className ?? ""}`}>
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6">{children}</div>
     </section>
   );
@@ -316,7 +316,7 @@ function Held({
   show: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-16 overflow-x-clip bg-surface pb-16 pt-10 sm:pb-24 sm:pt-16">
+    <section id={id} className="scroll-mt-16 overflow-x-clip pb-16 pt-10 sm:pb-24 sm:pt-16">
       <div className="mx-auto w-full max-w-6xl px-4 text-center sm:px-6">
         <p className="text-[14px] font-medium text-ink-muted sm:text-[15px]">{hinweis}</p>
         <h1 className="mx-auto mt-3 max-w-3xl text-balance text-[44px] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[68px] lg:text-[80px]">
@@ -353,7 +353,7 @@ function Fragen({ id, fragen, titel }: { id: string; fragen: Frage[]; titel: str
   return (
     <Abschnitt id={id} grau>
       <Ueberschrift titel={titel} />
-      <div className="mx-auto mt-12 max-w-3xl divide-y divide-line overflow-hidden rounded-[28px] bg-surface">
+      <div className="glas mx-auto mt-12 max-w-3xl divide-y divide-[var(--glas-linie)] overflow-hidden rounded-[28px]">
         {fragen.map((f) => (
           <details key={f.frage} className="group px-5 sm:px-7">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-[16px] font-semibold tracking-tight sm:text-[17px] [&::-webkit-details-marker]:hidden">
@@ -386,7 +386,7 @@ function Sicherheit({ id, punkte, titel }: { id: string; punkte: Punkt[]; titel:
 
 function Schluss({ titel, knoepfe }: { titel: string; knoepfe: ReactNode }) {
   return (
-    <section className="bg-surface py-24 sm:py-32">
+    <section className="py-24 sm:py-32">
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
         <h2 className="text-balance text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] sm:text-[56px]">{titel}</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-3">{knoepfe}</div>
@@ -434,7 +434,7 @@ function PrivatSeite() {
             ["Schichtfolge eintippen", "Oder aus deiner bisherigen App übernehmen."],
             ["Aufs Handy legen", "Zum Startbildschirm hinzufügen, fertig."],
           ].map(([t, x], n) => (
-            <li key={t} className="rounded-[24px] bg-surface-muted p-6">
+            <li key={t} className="glas rounded-[24px] p-6">
               <span className="tnum text-[15px] font-semibold text-brand-600">{n + 1}</span>
               <p className="mt-2 text-[19px] font-semibold tracking-tight">{t}</p>
               <p className="mt-1 text-[15px] leading-relaxed text-ink-muted">{x}</p>
@@ -498,7 +498,7 @@ function BetriebSeite() {
         <Ueberschrift titel="Jeder sieht, was er braucht." />
         <div className="mt-14 grid gap-4 md:grid-cols-3">
           {ROLLEN.map((r) => (
-            <div key={r.name} className="rounded-[28px] bg-surface-muted p-7">
+            <div key={r.name} className="glas rounded-[28px] p-7">
               <p className="text-[14px] font-semibold text-brand-600">{r.name}</p>
               <p className="mt-2 text-[21px] font-semibold leading-snug tracking-tight">{r.satz}</p>
               <ul className="mt-5 space-y-2.5">
