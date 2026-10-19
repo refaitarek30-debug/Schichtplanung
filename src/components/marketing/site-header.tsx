@@ -6,6 +6,7 @@ const NAV = [
   { href: "/#kalender", label: "Schichtkalender" },
   { href: "/#unternehmen", label: "Für Unternehmen" },
   { href: "/#funktionen", label: "Funktionen" },
+  { href: "/#preise", label: "Preise" },
   { href: ZIELE.demo, label: "Demo" },
   { href: "/#faq", label: "FAQ" },
 ];
@@ -16,7 +17,7 @@ const NAV = [
  */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur supports-[backdrop-filter]:bg-surface/75">
+    <header className="sticky top-0 z-40 border-b border-line bg-surface/95">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" aria-label="ShiftNexo – Startseite">
           <Logo />

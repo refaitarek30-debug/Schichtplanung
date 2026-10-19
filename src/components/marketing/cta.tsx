@@ -53,7 +53,7 @@ export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-        SP
+        SN
       </span>
       <span className="text-[15px] font-semibold tracking-tight">ShiftNexo</span>
     </span>

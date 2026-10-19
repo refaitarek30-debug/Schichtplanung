@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-            SP
+            SN
           </span>
           <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
         </Link>

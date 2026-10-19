@@ -68,7 +68,7 @@ export function KalenderHandy({ className }: { className?: string }) {
       className={cn("relative mx-auto w-[300px] sm:w-[320px]", className)}
     >
       {/* Leuchten hinter dem Gerät */}
-      <div aria-hidden className="absolute -inset-10 -z-10 rounded-full opacity-70 blur-3xl [background:var(--glas-hinter)]" />
+      <div aria-hidden className="absolute -inset-10 -z-10 rounded-full opacity-70 [background:var(--glas-hinter)] [mask-image:radial-gradient(closest-side,black_55%,transparent)]" />
       <div
         aria-hidden
         className="rounded-[46px] border border-line bg-[rgb(22_24_29)] p-[9px] shadow-[0_30px_80px_-20px_rgba(31,41,77,0.45)]"

@@ -54,7 +54,7 @@ export function Sidebar() {
         )}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-          SP
+          SN
         </span>
         {eingeklappt ? null : (
           <span className="min-w-0 leading-tight">

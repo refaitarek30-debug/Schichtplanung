@@ -27,7 +27,7 @@ export default function PrivatRegistrierenSeite() {
       <section className="flex flex-col justify-between gap-8 border-b border-line bg-surface px-5 pb-8 pt-8 lg:border-b-0 lg:border-r lg:p-10">
         <Link href="/" aria-label="ShiftNexo – Startseite" className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-            SP
+            SN
           </span>
           <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
         </Link>
