@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Pencil, Repeat } from "lucide-react";
+import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import {
@@ -151,6 +152,15 @@ export function PrivatKalender() {
     const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
     if (!fehlend.length) return;
     setLaedt(true);
+    if (!erneut) {
+      // Gleich nach dem Öffnen: der zuletzt gemerkte Stand dieses Geräts, bis die frischen Daten da sind.
+      for (const j of fehlend) {
+        const g = ausGeraet<{ t: Record<string, TagEintrag>; f: Record<string, string> }>(`${konto.userId}:privat:jahr:${j}`);
+        if (!g?.t || !g.f) continue;
+        setTage((alt) => (Object.keys(alt).some((k) => k.startsWith(`${j}-`)) ? alt : { ...alt, ...g.t }));
+        setFeiertage((alt) => ({ ...g.f, ...alt }));
+      }
+    }
     try {
       const ergebnisse = await Promise.all(
         fehlend.map(async (j) => {
@@ -178,7 +188,19 @@ export function PrivatKalender() {
     } finally {
       setLaedt(false);
     }
-  }, []);
+  }, [konto.userId]);
+
+  // Den aktuellen Stand je Jahr auf dem Gerät merken (eigene Schichten und Feiertage, siehe geraete-speicher.ts).
+  useEffect(() => {
+    if (laedt) return;
+    for (const j of geladen.current) {
+      const t: Record<string, TagEintrag> = {};
+      for (const [k, v] of Object.entries(tage)) if (k.startsWith(`${j}-`)) t[k] = v;
+      const f: Record<string, string> = {};
+      for (const [k, v] of Object.entries(feiertage)) if (k.startsWith(`${j}-`)) f[k] = v;
+      aufGeraet(`${konto.userId}:privat:jahr:${j}`, { t, f });
+    }
+  }, [tage, feiertage, laedt, konto.userId]);
 
   useEffect(() => {
     const jahre = new Set([fromISO(bereich.von).getFullYear(), fromISO(bereich.bis).getFullYear()]);

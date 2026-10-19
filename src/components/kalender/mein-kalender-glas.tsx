@@ -26,6 +26,7 @@ import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/l
 import { useAktualisierung } from "@/lib/live-refresh";
 import { FARBEN, farbStil } from "@/lib/privat/daten";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
@@ -245,6 +246,7 @@ export function MeinKalenderGlas() {
       for (const z of zellen) if (z.isMe) tage.set(z.day, z);
       const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0 };
       inZwischenspeicher(schluessel(s, n), ergebnis);
+      merkeEigeneTage(schluessel(s, n), tage, tage.size > 0);
       return ergebnis;
     },
     [company.id, schluessel],
@@ -256,6 +258,11 @@ export function MeinKalenderGlas() {
     const n = tageImRaster;
     const gespeichert = ausZwischenspeicher<Stand>(schluessel(s, n));
     if (gespeichert) setStand(gespeichert);
+    else {
+      // Gleich nach dem Öffnen der App: der letzte Stand vom Gerät, bis die frischen Daten da sind.
+      const vomGeraet = holeEigeneTage(schluessel(s, n));
+      if (vomGeraet) setStand({ schluessel: schluessel(s, n), ...vomGeraet });
+    }
     for (let versuch = 0; versuch < 2; versuch++) {
       try {
         const neu = await holen(s, n);

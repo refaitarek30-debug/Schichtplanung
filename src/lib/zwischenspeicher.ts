@@ -13,7 +13,12 @@
  *     alles verworfen,
  *   * auf dem Server wird nie etwas gespeichert (dort gäbe es nur einen
  *     Speicher für alle Anfragen – genau das darf nicht passieren).
+ *
+ * Einzige Ausnahme: die eigenen Schichten des Kalenders werden zusätzlich auf
+ * dem Gerät gemerkt (geraete-speicher.ts), damit er sofort aufgeht.
  */
+
+import { leereGeraet } from "@/lib/geraete-speicher";
 
 const GRENZE = 40;
 const speicher = new Map<string, unknown>();
@@ -37,6 +42,8 @@ export function inZwischenspeicher<T>(schluessel: string, wert: T): void {
   }
 }
 
+/** Beim Abmelden und auf der Anmeldeseite: auch der gemerkte Stand auf dem Gerät (geraete-speicher.ts) geht. */
 export function leereZwischenspeicher(): void {
   speicher.clear();
+  leereGeraet();
 }
