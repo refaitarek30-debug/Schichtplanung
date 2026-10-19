@@ -18,6 +18,7 @@ import { CtaLink, ZIELE } from "@/components/marketing/cta";
 import { PlanPreview } from "@/components/marketing/plan-preview";
 import { BetriebBento } from "@/components/marketing/betrieb-bento";
 import { RollenUmschalter } from "@/components/marketing/rollen-umschalter";
+import { Preise } from "@/components/marketing/preise";
 import { AboBild, AuswertungBild, KalenderHandy, PartnerBild, RotationBild } from "@/components/marketing/privat-vorschau";
 
 const BESCHREIBUNG =
@@ -27,7 +28,7 @@ const META =
   "Kostenloser Schichtkalender mit Schichtfolge, Feiertagen, Partner-Ansicht und Kalender-Abo fürs Handy – und Schichtplanung mit Urlaub und Besetzung für Betriebe.";
 
 export const metadata: Metadata = {
-  title: "Schichtplan – kostenloser Schichtkalender und Schichtplanung für Betriebe",
+  title: "ShiftNexo – kostenloser Schichtkalender und Schichtplanung für Betriebe",
   description: META,
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ready-flame.vercel.app"),
   alternates: { canonical: "/" },
@@ -115,7 +116,7 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
   {
     frage: "Können Mitarbeiter ihre eigenen Schichten sehen?",
     antwort:
-      "Ja. Mitarbeiter erhalten einen eigenen Zugang über eine Einladung und sehen ihre eigenen Schichten sowie den Schichtplan. Im persönlichen Kalender tragen sie zusätzlich eigene Termine ein und können auf Wunsch ihren Partner oder ihre Partnerin per Link einladen. Die eingeladene Person braucht kein Konto und sieht die Schichten, Abwesenheiten nur als „Urlaub“ ohne Grund. Schichtplan lässt sich auf dem Handy wie eine App installieren. Welche Gründe für Abwesenheiten Kollegen sehen, ist standardmäßig eingeschränkt und kann je Person freigegeben werden.",
+      "Ja. Mitarbeiter erhalten einen eigenen Zugang über eine Einladung und sehen ihre eigenen Schichten sowie den Schichtplan. Im persönlichen Kalender tragen sie zusätzlich eigene Termine ein und können auf Wunsch ihren Partner oder ihre Partnerin per Link einladen. Die eingeladene Person braucht kein Konto und sieht die Schichten, Abwesenheiten nur als „Urlaub“ ohne Grund. ShiftNexo lässt sich auf dem Handy wie eine App installieren. Welche Gründe für Abwesenheiten Kollegen sehen, ist standardmäßig eingeschränkt und kann je Person freigegeben werden.",
   },
   {
     frage: "Kann Urlaub digital beantragt werden?",
@@ -293,6 +294,19 @@ export default function LandingPage() {
           <Kopf eyebrow="Für jede Rolle" titel="Jeder sieht, was er braucht." mitte />
           <div className="mt-10">
             <RollenUmschalter />
+          </div>
+        </div>
+      </section>
+
+      {/* 5b. Preise */}
+      <section id="preise" className="scroll-mt-20 py-16 sm:py-24">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+          <Kopf eyebrow="Preise für Betriebe" titel="Fair und einfach." mitte />
+          <p className="mx-auto mt-3 max-w-xl text-center text-[16px] leading-relaxed text-ink-muted">
+            Bis 15 Personen kostenlos. Darüber zahlst du pro Person und Monat. Preise für Betriebe, der private Schichtkalender bleibt kostenlos.
+          </p>
+          <div className="mt-10">
+            <Preise />
           </div>
         </div>
       </section>

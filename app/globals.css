@@ -362,6 +362,23 @@ body {
 }
 
 /*
+ * Startseite (öffentlicher Bereich): Die Handy- und Karten-Vorschauen sind
+ * statisch, es liegt nichts dahinter, was unscharf werden müsste – und viele
+ * Glas-Flächen mit Unschärfe sowie ein fest stehender Verlauf lassen das
+ * Scrollen auf dem Mac ruckeln. Hier also ohne Unschärfe und ohne
+ * mitlaufenden Hintergrund; das Aussehen bleibt gleich.
+ */
+.marketing-statisch .glas,
+.marketing-statisch .glas-dicht {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(var(--c-surface) / 0.8);
+}
+.marketing-statisch .privat {
+  background-attachment: scroll;
+}
+
+/*
  * Neuer Kalender (Mein Kalender, Glas) auf dem Handy: ganzer Bildschirm.
  * Die Kopfleiste entfällt, die untere Leiste schwebt im Glas-Stil – so wie
  * im Privatkalender. Greift nur, solange die Seite ein Element mit

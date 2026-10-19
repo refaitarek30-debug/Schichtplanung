@@ -24,7 +24,7 @@ const ZEILEN: { gruppe: string; name: string; tage: Kuerzel[] }[] = [
   { gruppe: "A", name: "J. Becker", tage: ["F", "F", "S", "S", "N", "N", ""] },
   { gruppe: "A", name: "L. Schmitz", tage: ["F", "F", "S", "S", "N", "N", ""] },
   { gruppe: "B", name: "M. Wagner", tage: ["S", "S", "N", "N", "", "", "F"] },
-  { gruppe: "B", name: "S. Krüger", tage: ["S", "U", "U", "U", "", "", "F"] },
+  { gruppe: "B", name: "Max Mustermann", tage: ["S", "U", "U", "U", "", "", "F"] },
   { gruppe: "C", name: "T. Hoffmann", tage: ["N", "N", "", "", "F", "F", "S"] },
   { gruppe: "C", name: "A. Yilmaz", tage: ["N", "K", "", "", "F", "F", "S"] },
   { gruppe: "D", name: "R. Neumann", tage: ["", "", "F", "F", "S", "S", "N"] },

@@ -17,7 +17,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-5 py-4">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-              SP
+              SN
             </span>
             <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
           </Link>

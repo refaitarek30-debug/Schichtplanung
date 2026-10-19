@@ -88,9 +88,9 @@ function AntragBild() {
   return (
     <div className="rounded-[18px] bg-surface-muted p-3.5">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-sunken text-[12px] font-semibold text-ink-muted">SK</span>
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-sunken text-[12px] font-semibold text-ink-muted">MM</span>
         <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold">S. Krüger · Urlaub</p>
+          <p className="text-[13.5px] font-semibold">Max Mustermann · Urlaub</p>
           <p className="text-[12px] text-ink-muted">23.–27. November · 5 Tage</p>
         </div>
       </div>
