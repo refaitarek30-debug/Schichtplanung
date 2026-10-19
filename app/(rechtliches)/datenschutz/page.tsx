@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="20. Oktober 2026"
+      updated="21. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -196,6 +196,16 @@ export default function DatenschutzPage() {
           <li>
             Einsehen kann das Protokoll nur eine vom Unternehmen ausdrücklich dafür
             freigeschaltete Person der Administration, nicht jede Administration
+          </li>
+          <li>
+            Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Im
+            Unternehmen erzeugt ihn die Administration oder Schichtleitung für die betroffene
+            Person (24 Stunden gültig, einmal verwendbar); bei Privatkonten erzeugt die Person ihn
+            selbst, im Ausnahmefall der Betreiber auf ihre Anfrage. Gespeichert werden nur ein
+            Prüfwert (SHA-256) des Codes, Art, Zeitpunkt, Gültigkeit, wer ihn erzeugt hat und die
+            Zahl falscher Eingaben – nie der Code selbst. Nach fünf falschen Eingaben ist das
+            Zurücksetzen 15 Minuten gesperrt. Ein neuer Code ersetzt den alten; mit dem Konto wird
+            alles gelöscht
           </li>
           <li>
             Ratenbegrenzung: für Anmeldung, Passwort-Zurücksetzen und Registrierung werden
@@ -533,8 +543,9 @@ export default function DatenschutzPage() {
           <li>
             frei gewählter Spitzname (ein Klarname ist nicht nötig), Passwort (nur als Hash) und
             Zeitpunkt der Registrierung. Eine E-Mail-Adresse ist <strong>nicht erforderlich</strong>;
-            wer möchte, hinterlegt sie freiwillig, damit „Passwort vergessen“ funktioniert. Ohne
-            Adresse kann ein vergessenes Passwort nicht zurückgesetzt werden
+            wer möchte, hinterlegt sie freiwillig, damit der Support das Konto leichter erkennt. Ein
+            vergessenes Passwort wird mit dem eigenen Wiederherstellungs-Code zurückgesetzt (siehe
+            „Passwort-Code“ in Abschnitt 3)
           </li>
           <li>
             die eigenen Schichtarten (Name, Kürzel, Farbe, Uhrzeit, Stunden) und die eingetragenen

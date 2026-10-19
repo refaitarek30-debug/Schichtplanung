@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PlattformTabelle, type Dashboard, type FirmaKennzahlen } from "./tabelle";
+import { SupportCode } from "./support-code";
 
 export const metadata = { title: "Plattform" };
 
@@ -83,5 +84,12 @@ export default async function PlattformPage() {
   // Das Dashboard ist eine Zugabe: schlägt es fehl, bleibt die Firmenliste da.
   const { data: dash } = await admin.rpc("platform_dashboard", { p_limit: 30 });
 
-  return <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} />;
+  return (
+    <>
+      <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} />
+      <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+        <SupportCode />
+      </div>
+    </>
+  );
 }

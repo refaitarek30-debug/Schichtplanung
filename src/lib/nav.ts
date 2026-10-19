@@ -72,13 +72,13 @@ export const navItems: NavItem[] = [
   },
   {
     // Wie im Privatbereich: eigene Liste mit Filtern, Suche und Erinnerung.
-    // Die To-dos sieht nur die Person selbst.
+    // Nicht in der Leiste unten – im Kalender steht der Zähler oben. Die
+    // To-dos sieht nur die Person selbst.
     href: "/todos",
     label: "To-dos",
     icon: ListChecks,
     todoZahl: true,
     roles: ["employee", "shift_leader", "admin"],
-    primary: true,
   },
   {
     href: "/besetzung",
