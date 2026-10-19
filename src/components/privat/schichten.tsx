@@ -19,6 +19,7 @@ import { kuerzelAus } from "@/lib/kuerzel";
 import { usePrivat } from "./kontext";
 import { PrivatKopf, RundKnopf } from "./rahmen";
 import { Blatt } from "./blatt";
+import { WochenendeWahl } from "@/components/kalender/anzeige-wahl";
 
 /** Eigene Schichten: Name, Kürzel, Farbe, Uhrzeit, Stunden. */
 export function PrivatSchichten({ unterKopf }: { unterKopf?: ReactNode } = {}) {
@@ -82,6 +83,12 @@ export function PrivatSchichten({ unterKopf }: { unterKopf?: ReactNode } = {}) {
       >
         <Plus className="h-4 w-4" /> Schicht hinzufügen
       </button>
+
+      <section className="glas rounded-[22px] p-4">
+        <h2 className="text-[15px] font-semibold">Wochenende hervorheben</h2>
+        <p className="mb-3 text-[13px] text-ink-muted">Samstag und Sonntag im Kalender – nur für dich.</p>
+        <WochenendeWahl />
+      </section>
 
       {offen ? (
         <SchichtBlatt

@@ -21,7 +21,7 @@ export function ShellMain({ children }: { children: ReactNode }) {
     <main
       className={cn(
         "mx-auto w-full flex-1 px-4 pb-8 pt-6 sm:px-6",
-        breit ? "max-w-6xl lg:max-w-none lg:px-8" : "max-w-6xl",
+        breit ? "max-w-none lg:px-6" : "max-w-6xl",
       )}
     >
       {children}

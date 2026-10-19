@@ -428,6 +428,14 @@ export default function DatenschutzPage() {
           oder in den Einstellungen des Geräts abschalten; dann wird die Adresse gelöscht.
         </Absatz>
         <Absatz>
+          <strong>Anzeige-Einstellungen:</strong> Jede Person kann für sich festlegen, ob Samstag
+          und Sonntag in Kalender und Schichtplan hervorgehoben werden, ob der Schichtplan kompakt
+          oder groß erscheint und ob er ihre eigenen Kalenderfarben zeigt. Diese drei Werte werden
+          mit dem Konto gespeichert, damit sie auf allen Geräten gleich sind, und zusätzlich auf
+          dem Gerät (<code className={kode}>schichtplan.anzeige</code>). Sie sieht nur die Person
+          selbst; sie ändern nichts am Schichtplan der anderen und werden mit dem Konto gelöscht.
+        </Absatz>
+        <Absatz>
           <strong>Eigene Farben und eigene Einträge:</strong> In der neueren Ansicht von{" "}
           <em>Mein Kalender</em> kann eine Person die Farben ihrer Schichten und Abwesenheiten für
           sich ändern und eigene Einträge anlegen, zum Beispiel „Nebenjob“ oder „Schicht getauscht“
@@ -693,9 +701,11 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <code className={kode}>schichtplan.theme</code>,{" "}
+            <code className={kode}>schichtplan.anzeige</code>,{" "}
             <code className={kode}>schichtplan.install-hint</code>,{" "}
             <code className={kode}>seitenleiste-eingeklappt</code> (lokaler Speicher, bis zum
-            Löschen) – Farbdarstellung, ein einmaliger Installationshinweis, Zustand der
+            Löschen) – Farbdarstellung (Hell, Dunkel, Graphit, Sand), Anzeige-Einstellungen
+            (Wochenende, Schichtplan), ein einmaliger Installationshinweis, Zustand der
             Seitenleiste
           </li>
           <li>

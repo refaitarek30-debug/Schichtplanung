@@ -25,6 +25,13 @@ import {
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { FARBEN, farbStil } from "@/lib/privat/daten";
+import {
+  ABW_IN_EINSTELLUNGEN,
+  farbeFuer,
+  schichtSchluessel,
+  SONSTIGE_SCHICHT_FARBE,
+  STANDARD_FARBE,
+} from "@/lib/kalender-farben";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
 import type { LiveShiftPlanCell } from "@/lib/types";
@@ -34,6 +41,8 @@ import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termi
 import { useZellenHoehe, terminZeilen } from "./zellen";
 import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
+import { useAnzeige } from "@/lib/anzeige";
+import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
@@ -74,40 +83,6 @@ const ABWESENHEIT: Record<string, { kurz: string; lang: string }> = {
   FB: { kurz: "Schul.", lang: "Schulung" },
   A: { kurz: "Abw.", lang: "Abwesend" },
 };
-
-/**
- * Standardfarben – kräftig, im Farbton wie im Schichtplan. Jede Person kann
- * sie für sich ändern (Kalender anpassen).
- */
-const STANDARD_FARBE: Record<string, string> = {
-  "schicht:F": "#F5A524",
-  "schicht:S": "#46A758",
-  "schicht:N": "#2F6FDE",
-  "abw:U": "#F2C200",
-  "abw:V": "#8E4EC6",
-  "abw:K": "#E5484D",
-  "abw:AF": "#18794E",
-  "abw:SU": "#D6409F",
-  "abw:BU": "#8D8D86",
-  "abw:G": "#A18072",
-  "abw:FB": "#6E56CF",
-  "abw:A": "#5B6472",
-};
-/** Andere Schichten (z. B. Tagschicht) ohne eigene Standardfarbe. */
-const SONSTIGE_SCHICHT_FARBE = "#12A594";
-
-/** Abwesenheiten, deren Farbe sich ändern lässt (Reihenfolge der Liste). */
-const ABW_IN_EINSTELLUNGEN = ["U", "V", "K", "AF", "SU", "BU", "G", "FB"];
-
-const schichtSchluessel = (code: string | null, name: string | null) =>
-  `schicht:${(code || name || "?").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 30) || "X"}`;
-
-function farbeFuer(schluessel: string, farben: Record<string, string>): string | null {
-  if (farben[schluessel]) return farben[schluessel]!;
-  if (STANDARD_FARBE[schluessel]) return STANDARD_FARBE[schluessel]!;
-  if (schluessel.startsWith("schicht:")) return SONSTIGE_SCHICHT_FARBE;
-  return null; // Frei: neutral
-}
 
 /** "Frühschicht" -> "Früh", "Tagschicht" -> "Tag". */
 function schichtKurz(name: string): string {
@@ -405,6 +380,8 @@ export function MeinKalenderGlas() {
   // ---- To-dos (nur für mich) ----------------------------------------------
   const [todos, setTodos] = useState<Todo[]>([]);
   const { vorlieben } = useVorlieben();
+  // Lädt die eigene Wochenend-Einstellung aus dem Konto (wirkt über globals.css).
+  useAnzeige();
   const ladeTodos = useCallback(async () => {
     try {
       setTodos(await fetchTodos());
@@ -565,6 +542,18 @@ export function MeinKalenderGlas() {
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<{ iso: string; person: string | null } | null>(null);
   const [anpassen, setAnpassen] = useState(false);
+  // Aus dem Schichtplan („Farben ändern“) direkt zu den Einstellungen.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("anpassen") === "1") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAnpassen(true);
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    } catch {
+      // ohne lesbare Adresse wie gewohnt
+    }
+  }, []);
   const [profilOffen, setProfilOffen] = useState(false);
   const { items: meldungen, setItems: setMeldungen } = useBenachrichtigungen();
   const ungelesen = (meldungen ?? []).some((n) => !n.readAt);
@@ -730,7 +719,7 @@ export function MeinKalenderGlas() {
           <span
             key={w}
             aria-hidden
-            className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "text-ink-faint" : "text-ink-muted")}
+            className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "we-kopf rounded-t-lg text-ink-faint" : "text-ink-muted")}
           >
             {w}
           </span>
@@ -764,7 +753,7 @@ export function MeinKalenderGlas() {
               className={cn(
                 "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
-                i % 7 >= 5 && "bg-ink/[0.025]",
+                i % 7 >= 5 && "we-zelle",
                 !imM && "opacity-35",
               )}
             >
@@ -1323,8 +1312,14 @@ function AnpassenBlatt({
   const abwZeilen = ABW_IN_EINSTELLUNGEN.map((c) => ({ schluessel: `abw:${c}`, name: ABWESENHEIT[c]!.lang }));
 
   return (
-    <Blatt titel="Kalender anpassen" unter="Gilt nur für dich – der Schichtplan bleibt unverändert." onClose={onClose}>
-      <p className="mb-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Farben der Schichten</p>
+    <Blatt titel="Kalender anpassen" unter="Gilt nur für dich – die anderen sehen ihre eigenen Einstellungen." onClose={onClose}>
+      <p className="mb-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Wochenende hervorheben</p>
+      <div className="rounded-[18px] bg-ink/[0.04] p-3">
+        <WochenendeWahl />
+        <p className="mt-2 px-1 text-[12px] text-ink-faint">Samstag und Sonntag – im Kalender und im Schichtplan.</p>
+      </div>
+
+      <p className="mb-1.5 mt-5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Farben der Schichten</p>
       <ul className="overflow-hidden rounded-[18px] bg-ink/[0.04]">
         {schichtZeilen.map((z) => (
           <FarbZeile key={z.schluessel} {...z} farben={farben} offen={offen} setOffen={setOffen} onFarbe={onFarbe} />
@@ -1337,6 +1332,10 @@ function AnpassenBlatt({
           <FarbZeile key={z.schluessel} {...z} farben={farben} offen={offen} setOffen={setOffen} onFarbe={onFarbe} />
         ))}
       </ul>
+
+      <div className="mt-3 rounded-[18px] bg-ink/[0.04] px-4 py-3">
+        <PlanFarbenSchalter />
+      </div>
 
       <p className="mb-1.5 mt-5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Eigene Einträge</p>
       <ul className="overflow-hidden rounded-[18px] bg-ink/[0.04]">

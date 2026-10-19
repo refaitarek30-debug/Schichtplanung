@@ -398,6 +398,38 @@ body {
     radial-gradient(at 8% 88%, rgba(200, 160, 100, 0.14) 0, transparent 46%);
 }
 
+/*
+ * Wochenende hervorheben – jede Person wählt selbst (anzeige.ts):
+ * data-wochenende am <html> ist aus, leicht oder kräftig. Getönt wird über
+ * background-image: so liegt der Ton über jeder vorhandenen Hintergrund-
+ * farbe (Ferien, Sperre) und unter dem Inhalt.
+ *   .we-kopf   Wochentag im Kopf (Kalender und Schichtplan)
+ *   .we-zelle  ganzer Tag im Kalender
+ *   .we-spalte Zelle im Schichtplan (der Ton zeigt sich am Rand der Schicht)
+ */
+:root {
+  --we-leicht: rgb(var(--c-ink) / 0.08);
+  --we-kraeftig: rgb(var(--c-brand-500) / 0.17);
+}
+:root[data-wochenende="leicht"] :is(.we-zelle, .we-spalte, .we-kopf) {
+  background-image: linear-gradient(var(--we-leicht), var(--we-leicht));
+}
+:root[data-wochenende="leicht"] .we-kopf,
+:root[data-wochenende="leicht"] .we-kopf * {
+  color: rgb(var(--c-ink));
+}
+:root[data-wochenende="kraeftig"] :is(.we-zelle, .we-spalte) {
+  background-image: linear-gradient(var(--we-kraeftig), var(--we-kraeftig));
+}
+:root[data-wochenende="kraeftig"] .we-kopf {
+  background-image: linear-gradient(rgb(var(--c-brand-500) / 0.32), rgb(var(--c-brand-500) / 0.32));
+}
+:root[data-wochenende="kraeftig"] .we-kopf,
+:root[data-wochenende="kraeftig"] .we-kopf * {
+  color: rgb(var(--c-brand-700));
+  font-weight: 700;
+}
+
 .privat,
 .privat-schrift {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
