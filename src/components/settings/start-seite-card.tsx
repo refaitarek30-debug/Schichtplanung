@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Gruppe, WahlZeile } from "./gruppe";
 import { createClient } from "@/lib/supabase/client";
-import { STARTSEITEN, type StartSeite } from "@/lib/start-seite";
+import { START_COOKIE, START_COOKIE_MAX_AGE, STARTSEITEN, startCookieWert, type StartSeite } from "@/lib/start-seite";
 import { useSession } from "@/context/session";
 
 /** Jede Person wählt, was beim Öffnen der App zuerst kommt. */
@@ -32,6 +32,8 @@ export function StartSeiteCard() {
         setFehler("Die Auswahl konnte nicht gespeichert werden.");
         return;
       }
+      // Merkzettel für den nächsten Start gleich anpassen (siehe middleware.ts).
+      document.cookie = `${START_COOKIE}=${encodeURIComponent(startCookieWert(profile.id, neu))}; path=/; max-age=${START_COOKIE_MAX_AGE}; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
       setGespeichert(true);
       router.refresh();
     });

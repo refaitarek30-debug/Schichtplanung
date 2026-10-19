@@ -7,6 +7,7 @@ import {
   FRIST_COOKIE,
   fristAusCookie,
 } from "@/lib/auth/idle";
+import { START_COOKIE, startZielAusCookie } from "@/lib/start-seite";
 
 /**
  * Alles unter diesen Pfaden setzt eine Anmeldung voraus.
@@ -140,11 +141,22 @@ export async function middleware(request: NextRequest) {
 
   // Angemeldete brauchen weder die Anmeldeseiten noch die öffentliche
   // Produktseite unter "/": sie gehen direkt in die Anwendung.
-  if (user && (AUTH_PATHS.includes(pathname) || pathname === "/")) {
+  if (user && (AUTH_PATHS.includes(pathname) || pathname === "/" || pathname === "/start")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/start";
-    url.search = "";
-    return merkeAktivitaet(NextResponse.redirect(url));
+    // Gemerkte Startseite dieser Person: gleich dorthin, ohne Umweg über /start.
+    const gemerkt = startZielAusCookie(request.cookies.get(START_COOKIE)?.value, user.id);
+    if (gemerkt) {
+      url.pathname = gemerkt;
+      url.search = "";
+      const antwort = NextResponse.redirect(url);
+      antwort.headers.set("Cache-Control", "no-store");
+      return merkeAktivitaet(antwort);
+    }
+    if (pathname !== "/start") {
+      url.pathname = "/start";
+      url.search = "";
+      return merkeAktivitaet(NextResponse.redirect(url));
+    }
   }
 
   // Ein Seitenaufruf ist Aktivität – damit läuft die Frist neu.
