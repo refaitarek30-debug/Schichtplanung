@@ -919,7 +919,7 @@ function MonatsAnsicht({
             {eintraege.map((a) => (
               <Chip key={a.id} art={a} klein={zwei} />
             ))}
-            <AndereTags eintraege={andereAm} />
+            <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
             {fei ? <span className="shrink-0 truncate text-[9.5px] leading-tight text-[#e5484d]">{fei}</span> : null}
             {zeigen.map((t) => (
               <span key={t.id} className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden">

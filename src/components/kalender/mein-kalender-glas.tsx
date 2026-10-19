@@ -798,7 +798,7 @@ export function MeinKalenderGlas() {
                 <span className="h-5 shrink-0 animate-pulse rounded-[7px] bg-ink/[0.07]" />
               )}
               {eigen && !eigenAlsPunkt ? <Chip text={eigen.name} stil={eigenStil(eigen.farbe)} klein={klein} /> : null}
-              <AndereTags eintraege={andereAm} />
+              <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
               {zeigen.map((t) => (
                 <span
                   key={t.id}
