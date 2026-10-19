@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PrivatKonto } from "@/lib/privat/server";
 import { ladeSchichtarten, type Schichtart } from "@/lib/privat/daten";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
+import { START_COOKIE, START_COOKIE_MAX_AGE, startCookieWert } from "@/lib/start-seite";
 
 interface PrivatKontext {
   konto: PrivatKonto;
@@ -32,6 +33,10 @@ export function PrivatProvider({ konto, children }: { konto: PrivatKonto; childr
   }, [konto.userId]);
 
   useEffect(() => {
+    // Merkzettel „diese Person startet im Privatbereich“: Die Middleware schickt dann gleich dorthin
+    // und lässt die lange Anmeldefrist der Privatkonten auch auf dem Weg dorthin gelten.
+    const sicher = window.location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${START_COOKIE}=${encodeURIComponent(startCookieWert(konto.userId, "privat"))}; path=/; max-age=${START_COOKIE_MAX_AGE}; samesite=lax${sicher}`;
     // Gleich nach dem Öffnen: die zuletzt gemerkten Schichten dieses Geräts, bis die frischen da sind.
     const gemerkt = ausGeraet<Schichtart[]>(`${konto.userId}:privat:arten`);
     // eslint-disable-next-line react-hooks/set-state-in-effect
