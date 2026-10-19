@@ -23,50 +23,41 @@ const PUNKTE = [
 
 export default function PrivatRegistrierenSeite() {
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <section className="flex flex-col justify-between gap-8 border-b border-line bg-surface px-5 pb-8 pt-8 lg:border-b-0 lg:border-r lg:p-10">
-        <Link href="/" aria-label="ShiftNexo – Startseite" className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
+    <div className="privat-schrift relative isolate flex min-h-screen flex-col">
+      {/* Hintergrund wie in der App */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-surface-muted [background-image:var(--glas-hinter)]" />
+      <header className="flex justify-center px-5 pt-8 sm:pt-12">
+        <Link href="/" aria-label="ShiftNexo – Startseite" className="flex items-center gap-2 rounded-lg hover:opacity-80">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-brand-500 text-[12.5px] font-bold tracking-tight text-white">
             SN
           </span>
-          <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
+          <span className="text-[16px] font-semibold tracking-tight">ShiftNexo</span>
         </Link>
-        <div className="max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">Für dich, kostenlos</p>
-          <h1 className="mt-3 text-[30px] font-semibold leading-tight tracking-tight text-balance sm:text-[34px]">
-            Dein Schichtkalender. Einfach und übersichtlich.
-          </h1>
-          <ul className="mt-6 space-y-3">
-            {PUNKTE.map((p) => (
-              <li key={p.text} className="flex items-start gap-3 text-[14px] leading-snug">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                  <p.icon className="h-4 w-4" />
-                </span>
-                <span className="pt-1.5">{p.text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="hidden text-[12px] text-ink-faint lg:block">
-          Kein Abo, keine Werbung. Deine Einträge gehören dir – löschen jederzeit mit einem Klick.
-        </p>
-      </section>
+      </header>
 
-      <section className="flex flex-col px-5 py-10">
-        <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-sm">
-            <h2 className="text-2xl font-semibold tracking-tight">Konto anlegen</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              Schon dabei?{" "}
-              <Link href="/login" className="font-medium text-brand-600 hover:underline">
-                Anmelden
-              </Link>
-            </p>
-            <PrivatRegistrierung disabled={!isSupabaseConfigured} />
-          </div>
+      <main className="flex flex-1 flex-col items-center px-4 pb-10 pt-6 sm:pt-8">
+        {/* Zuerst das Formular – auf dem Handy ohne Umweg. */}
+        <div className="w-full max-w-[420px] rounded-[28px] bg-surface p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04),0_24px_60px_-32px_rgba(17,24,39,0.3)] sm:p-8">
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Dein Schichtkalender</h1>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            Kostenlos, ohne Werbung, ohne E-Mail. Schon dabei?{" "}
+            <Link href="/login" className="font-medium text-brand-600 hover:underline">
+              Anmelden
+            </Link>
+          </p>
+          <PrivatRegistrierung disabled={!isSupabaseConfigured} />
         </div>
-        <LegalFooter className="mt-10 pt-4 text-[12px] text-ink-faint" />
-      </section>
+
+        <ul className="mt-8 grid w-full max-w-[420px] gap-3 px-2">
+          {PUNKTE.map((p) => (
+            <li key={p.text} className="flex items-start gap-3 text-[14px] leading-snug text-ink-muted">
+              <p.icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-600" aria-hidden />
+              {p.text}
+            </li>
+          ))}
+        </ul>
+      </main>
+      <LegalFooter className="px-5 pb-6 text-[12px] text-ink-faint" />
     </div>
   );
 }

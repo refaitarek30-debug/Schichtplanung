@@ -3,14 +3,14 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Links im Stil der App-Buttons (`@/components/ui/button`). Ein eigener
+ * Links im Stil von Buttons für die öffentlichen Seiten. Ein eigener
  * Baustein, weil die Landingpage echte Links braucht – ein <button> in
  * einem <a> wäre ungültiges HTML – und ohne Client-JavaScript auskommt.
  */
 const varianten = {
-  primary: "bg-brand-500 text-white shadow-sm hover:bg-brand-600",
-  secondary: "border border-line bg-surface text-ink hover:bg-surface-muted",
-  ghost: "text-ink-muted hover:bg-surface-muted hover:text-ink",
+  primary: "bg-brand-500 text-white hover:bg-brand-600",
+  secondary: "bg-ink/[0.06] text-ink hover:bg-ink/[0.1]",
+  ghost: "text-brand-600 hover:underline",
 } as const;
 
 export function CtaLink({
@@ -30,8 +30,8 @@ export function CtaLink({
     <Link
       href={href}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
-        size === "lg" ? "px-5 py-3 text-[15px]" : "px-3.5 py-2 text-sm",
+        "inline-flex items-center justify-center gap-1.5 rounded-full font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
+        size === "lg" ? "px-6 py-3 text-[16px]" : "px-4 py-2 text-[14px]",
         varianten[variant],
         className,
       )}
@@ -49,13 +49,13 @@ export const ZIELE = {
   anmelden: "/login",
 } as const;
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, nurZeichen = false }: { className?: string; nurZeichen?: boolean }) {
   return (
-    <span className={cn("flex items-center gap-2.5", className)}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
+    <span className={cn("flex items-center gap-2", className)}>
+      <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-brand-500 text-[12.5px] font-bold tracking-tight text-white">
         SN
       </span>
-      <span className="text-[15px] font-semibold tracking-tight">ShiftNexo</span>
+      {nurZeichen ? null : <span className="text-[16px] font-semibold tracking-tight">ShiftNexo</span>}
     </span>
   );
 }

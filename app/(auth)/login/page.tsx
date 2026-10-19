@@ -16,7 +16,7 @@ export default async function LoginPage({
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Anmelden</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
-        Mit der E-Mail-Adresse, die dein Unternehmen hinterlegt hat.
+        Mit deinem Spitznamen oder deiner E-Mail-Adresse – für den Schichtkalender und für deinen Betrieb.
       </p>
 
       {params.fehler === "dienst" ? (
@@ -49,18 +49,26 @@ export default async function LoginPage({
 
       <LoginForm next={params.weiter ?? ""} disabled={!isSupabaseConfigured} />
 
-      <p className="mt-6 text-[13px] text-ink-faint">
-        Noch kein Zugang? Zugänge werden von der Administration angelegt – melde dich
-        bei deiner Schichtleitung.
-      </p>
-      <p className="mt-2 text-center">
-        <Link
-          href="/registrieren"
-          className="text-[13px] font-medium text-brand-600 hover:underline"
-        >
-          Neues Unternehmen registrieren
-        </Link>
-      </p>
+      <div className="mt-8 border-t border-line pt-6">
+        <p className="text-center text-[13px] font-medium text-ink-muted">Noch kein Konto?</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href="/privat/registrieren"
+            className="rounded-xl bg-brand-50 px-3 py-2.5 text-center text-[13.5px] font-semibold text-brand-700 hover:bg-brand-100"
+          >
+            Privat starten
+          </Link>
+          <Link
+            href="/registrieren"
+            className="rounded-xl bg-surface-muted px-3 py-2.5 text-center text-[13.5px] font-semibold text-ink hover:bg-surface-sunken"
+          >
+            Betrieb registrieren
+          </Link>
+        </div>
+        <p className="mt-3 text-center text-[12px] leading-relaxed text-ink-faint">
+          Im Betrieb angestellt? Deinen Zugang bekommst du per Einladung von deiner Schichtleitung.
+        </p>
+      </div>
     </div>
   );
 }

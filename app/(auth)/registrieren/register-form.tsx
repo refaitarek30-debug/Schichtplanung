@@ -7,6 +7,7 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { PasswortInput } from "@/components/ui/passwort-input";
 import { VersionTag } from "@/components/legal/prose";
 import { registerCompany } from "@/lib/auth/company-actions";
 import type { FormState } from "@/lib/auth/form-state";
@@ -45,8 +46,7 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Passwort">
-          <Input
-            type="password"
+          <PasswortInput
             name="password"
             autoComplete="new-password"
             required
@@ -56,8 +56,7 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
           />
         </Field>
         <Field label="Passwort wiederholen">
-          <Input
-            type="password"
+          <PasswortInput
             name="password_repeat"
             autoComplete="new-password"
             required

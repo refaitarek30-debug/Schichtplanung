@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { PasswortInput } from "@/components/ui/passwort-input";
 import { signIn } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
@@ -38,14 +39,14 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
           autoCorrect="off"
           spellCheck={false}
           required
-          placeholder="name@unternehmen.de"
+          autoFocus
+          placeholder="Spitzname oder name@firma.de"
           disabled={disabled}
         />
       </Field>
 
       <Field label="Passwort">
-        <Input
-          type="password"
+        <PasswortInput
           name="password"
           autoComplete="current-password"
           required
