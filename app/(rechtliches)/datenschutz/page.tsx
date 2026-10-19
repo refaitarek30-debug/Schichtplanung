@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in Schichtplan verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="18. Oktober 2026"
+      updated="19. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -664,6 +664,20 @@ export default function DatenschutzPage() {
           <li>
             <code className={kode}>sp_frist</code> (Cookie, bis zu 7 Tage) – die für die eigene
             Rolle geltende Zeit bis zur automatischen Abmeldung
+          </li>
+          <li>
+            <code className={kode}>sp_start</code> (Cookie, bis zu 1 Jahr) – die gewählte
+            Startseite (mit der Benutzer-Kennung, nur für diese Person gültig), damit die App
+            beim Öffnen gleich dorthin führt
+          </li>
+          <li>
+            <code className={kode}>sp_geraet:…</code> (lokaler Speicher, bis zu 14 Tage; wird beim
+            Abmelden und auf der Anmeldeseite gelöscht) – der zuletzt geladene Stand der{" "}
+            <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
+            eigenen Schichtarten und die Feiertage, damit der Kalender beim Öffnen sofort
+            erscheint und danach aufgefrischt wird. Es werden weder Daten anderer Personen noch
+            Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
+            gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
           </li>
           <li>
             <code className={kode}>schichtplan.theme</code>,{" "}

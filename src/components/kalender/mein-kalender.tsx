@@ -9,6 +9,7 @@ import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -190,6 +191,7 @@ export function MeinKalender() {
       for (const z of zellen) if (z.isMe) tage.set(z.day, z);
       const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0, partner };
       inZwischenspeicher(schluessel(s, n), ergebnis);
+      merkeEigeneTage(schluessel(s, n), tage, tage.size > 0);
       return ergebnis;
     },
     [company.id, schluessel],
@@ -201,6 +203,11 @@ export function MeinKalender() {
     const n = tageImRaster;
     const gespeichert = ausZwischenspeicher<Stand>(schluessel(s, n));
     if (gespeichert) setStand(gespeichert);
+    else {
+      // Gleich nach dem Öffnen der App: der letzte Stand vom Gerät (ohne Partner), bis die frischen Daten da sind.
+      const vomGeraet = holeEigeneTage(schluessel(s, n));
+      if (vomGeraet) setStand({ schluessel: schluessel(s, n), ...vomGeraet, partner: {} });
+    }
     // Eine kurze Störung soll nicht gleich als Fehler auf dem Schirm landen:
     // einmal still nachfassen, dann erst melden.
     for (let versuch = 0; versuch < 2; versuch++) {
