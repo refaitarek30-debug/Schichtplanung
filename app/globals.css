@@ -328,6 +328,76 @@ body {
     radial-gradient(at 8% 88%, rgba(200, 120, 40, 0.1) 0, transparent 46%);
 }
 
+/*
+ * Zwei weitere Layouts neben Hell und Dunkel (Einstellung „Farbschema“).
+ * Sie sitzen als data-palette auf data-theme: Graphit ist ein Dunkelmodus,
+ * Sand ein Hellmodus – alle Regeln für hell/dunkel gelten weiter, hier
+ * wird nur nachgestimmt. Die Schichtfarben bleiben, damit Früh/Spät/Nacht
+ * überall gleich aussehen.
+ *
+ * Graphit: tiefschwarz, gut für OLED-Handys in der Nachtschicht.
+ */
+:root[data-theme][data-palette="graphit"] {
+  --c-surface: 22 22 24;
+  --c-surface-muted: 0 0 0;
+  --c-surface-sunken: 34 34 37;
+
+  --c-ink: 245 245 247;
+  --c-ink-muted: 152 152 159;
+  --c-ink-faint: 112 112 118;
+
+  --c-line: 44 44 48;
+
+  --c-brand-50: 8 34 64;
+  --c-brand-100: 12 50 94;
+  --c-brand-500: 10 132 255;
+  --c-brand-600: 64 156 255;
+  --c-brand-700: 112 182 255;
+
+  --c-info-bg: 8 34 64;
+  --c-info-fg: 112 182 255;
+  --c-info-dot: 10 132 255;
+
+  --glas-rand: rgba(255, 255, 255, 0.08);
+  --glas-licht: rgba(255, 255, 255, 0.05);
+  --glas-schatten: 0 12px 38px rgba(0, 0, 0, 0.6);
+  --glas-linie: rgba(255, 255, 255, 0.08);
+  --glas-hinter: radial-gradient(at 12% 8%, rgba(10, 132, 255, 0.1) 0, transparent 42%),
+    radial-gradient(at 88% 92%, rgba(94, 92, 230, 0.08) 0, transparent 44%);
+}
+
+/* Sand: warmes Hell, Akzent Petrol – ruhiger als das kühle Blau-Weiß. */
+:root[data-theme][data-palette="sand"] {
+  --c-surface: 255 253 248;
+  --c-surface-muted: 244 239 230;
+  --c-surface-sunken: 236 229 216;
+
+  --c-ink: 43 38 32;
+  --c-ink-muted: 107 97 85;
+  --c-ink-faint: 150 139 124;
+
+  --c-line: 228 219 203;
+
+  --c-brand-50: 229 243 240;
+  --c-brand-100: 204 233 228;
+  --c-brand-500: 15 118 110;
+  --c-brand-600: 13 98 92;
+  --c-brand-700: 17 78 74;
+
+  --c-info-bg: 229 243 240;
+  --c-info-fg: 15 100 95;
+  --c-info-dot: 15 118 110;
+
+  --glas-rand: rgba(255, 253, 248, 0.7);
+  --glas-licht: rgba(255, 253, 248, 0.85);
+  --glas-schatten: 0 10px 34px rgba(80, 60, 30, 0.1);
+  --glas-linie: rgba(43, 38, 32, 0.08);
+  --glas-hinter: radial-gradient(at 12% 8%, rgba(232, 170, 90, 0.18) 0, transparent 46%),
+    radial-gradient(at 92% 14%, rgba(230, 140, 110, 0.12) 0, transparent 44%),
+    radial-gradient(at 78% 92%, rgba(60, 160, 145, 0.12) 0, transparent 48%),
+    radial-gradient(at 8% 88%, rgba(200, 160, 100, 0.14) 0, transparent 46%);
+}
+
 .privat,
 .privat-schrift {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
