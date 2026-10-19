@@ -5,7 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivatRegistrierung } from "@/components/privat/registrierung";
 
 export const metadata = {
-  title: "Schichtkalender kostenlos – Schichtplan",
+  title: "Schichtkalender kostenlos – ShiftNexo",
   description:
     "Dein Schichtkalender mit Schichtfolge, Feiertagen, Auswertung, Partner-Ansicht und Kalender-Abo fürs Handy. Kostenlos, ohne Werbung, nur Spitzname und Passwort.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://ready-flame.vercel.app"),
@@ -25,11 +25,11 @@ export default function PrivatRegistrierenSeite() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <section className="flex flex-col justify-between gap-8 border-b border-line bg-surface px-5 pb-8 pt-8 lg:border-b-0 lg:border-r lg:p-10">
-        <Link href="/" aria-label="Schichtplan – Startseite" className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80">
+        <Link href="/" aria-label="ShiftNexo – Startseite" className="flex w-fit items-center gap-2.5 rounded-lg hover:opacity-80">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
             SP
           </span>
-          <span className="text-sm font-semibold tracking-tight">Schichtplan</span>
+          <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
         </Link>
         <div className="max-w-md">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-faint">Für dich, kostenlos</p>

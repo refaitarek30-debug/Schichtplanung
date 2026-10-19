@@ -62,7 +62,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-line">
         <p className="mx-auto w-full max-w-6xl px-4 py-5 text-[12px] text-ink-faint sm:px-6">
-          © {new Date().getFullYear()} Schichtplan
+          © {new Date().getFullYear()} ShiftNexo
         </p>
       </div>
     </footer>

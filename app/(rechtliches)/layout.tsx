@@ -19,7 +19,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
               SP
             </span>
-            <span className="text-sm font-semibold tracking-tight">Schichtplan</span>
+            <span className="text-sm font-semibold tracking-tight">ShiftNexo</span>
           </Link>
           <Link
             href="/login"

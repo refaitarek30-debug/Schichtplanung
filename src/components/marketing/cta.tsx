@@ -55,7 +55,7 @@ export function Logo({ className }: { className?: string }) {
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
         SP
       </span>
-      <span className="text-[15px] font-semibold tracking-tight">Schichtplan</span>
+      <span className="text-[15px] font-semibold tracking-tight">ShiftNexo</span>
     </span>
   );
 }

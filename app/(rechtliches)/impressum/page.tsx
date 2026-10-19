@@ -8,7 +8,7 @@ import {
 } from "@/components/legal/prose";
 
 export const metadata = {
-  title: "Impressum – Schichtplan",
+  title: "Impressum – ShiftNexo",
   description: "Anbieterkennzeichnung nach § 5 DDG.",
 };
 

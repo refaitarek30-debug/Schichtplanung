@@ -27,7 +27,7 @@ function remember() {
 }
 
 /**
- * Hinweis, dass sich der Schichtplan als App installieren lässt.
+ * Hinweis, dass sich der ShiftNexo als App installieren lässt.
  *
  * Android/Chrome liefert dafür ein eigenes Ereignis, das wir abfangen und
  * über einen Knopf auslösen. iOS kennt das nicht – dort steht nur der Weg
@@ -77,7 +77,7 @@ export function InstallHint() {
     <div className="mb-4 flex items-start gap-3 rounded-xl border border-line bg-brand-50 px-4 py-3">
       <Download className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" strokeWidth={2} />
       <div className="min-w-0 flex-1 text-[13px] leading-snug">
-        <p className="font-medium text-ink">Schichtplan als App installieren</p>
+        <p className="font-medium text-ink">ShiftNexo als App installieren</p>
         {promptEvent ? (
           <button
             type="button"

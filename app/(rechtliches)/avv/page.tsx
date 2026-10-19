@@ -9,7 +9,7 @@ import {
 import { AVV_VERSION } from "@/lib/legal/version";
 
 export const metadata = {
-  title: "Auftragsverarbeitungsvertrag – Schichtplan",
+  title: "Auftragsverarbeitungsvertrag – ShiftNexo",
   description: "Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO zwischen Kunde und Betreiber.",
 };
 
@@ -53,7 +53,7 @@ export default function AvvPage() {
         <Liste>
           <li>
             <strong>Auftraggeber (Verantwortlicher):</strong> das Unternehmen, das sich bei
-            Schichtplan registriert hat (Name und Vertretungsberechtigte laut Registrierung).
+            ShiftNexo registriert hat (Name und Vertretungsberechtigte laut Registrierung).
           </li>
           <li>
             <strong>Auftragnehmer (Auftragsverarbeiter):</strong>{" "}
@@ -64,7 +64,7 @@ export default function AvvPage() {
 
       <Abschnitt titel="§ 1 Gegenstand und Dauer">
         <Absatz>
-          (1) Der Auftragnehmer stellt dem Auftraggeber die Anwendung Schichtplan zur
+          (1) Der Auftragnehmer stellt dem Auftraggeber die Anwendung ShiftNexo zur
           technischen Schicht- und Personalplanung bereit (Hauptvertrag: die
           Nutzungsbedingungen). Gegenstand dieses Vertrags ist die Verarbeitung
           personenbezogener Daten, die der Auftragnehmer dabei im Auftrag des Auftraggebers

@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "de_DE",
     url: "/",
-    siteName: "Schichtplan",
+    siteName: "ShiftNexo",
     title: "Dein Schichtkalender. Kostenlos.",
     description: META,
-    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "Schichtplan" }],
+    images: [{ url: "/icon-512.png", width: 512, height: 512, alt: "ShiftNexo" }],
   },
   twitter: {
     card: "summary",
-    title: "Schichtplan – kostenloser Schichtkalender",
+    title: "ShiftNexo – kostenloser Schichtkalender",
     description: META,
   },
 };
@@ -103,7 +103,7 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
       "Ja. Er läuft im Browser und lässt sich auf dem Handy wie eine App auf den Startbildschirm legen. Über das Kalender-Abo erscheinen deine Schichten zusätzlich im Kalender deines Handys – auch als Widget. Neue Einträge holt der Handy-Kalender selbst ab; das kann einige Stunden dauern.",
   },
   {
-    frage: "Für welche Unternehmen ist Schichtplan geeignet?",
+    frage: "Für welche Unternehmen ist ShiftNexo geeignet?",
     antwort:
       "Für Unternehmen mit festen Schichtmodellen – etwa Produktion, Chemie- und Kunststoffindustrie, Maschinen- und Anlagenbau oder Logistik. Entscheidend ist nicht die Branche, sondern dass in Schichten gearbeitet wird und Urlaub, Abwesenheiten und Besetzung zusammen geplant werden müssen.",
   },
@@ -135,12 +135,12 @@ const FAQ: { frage: string; antwort: ReactNode }[] = [
   {
     frage: "Wie funktioniert die Besetzungskontrolle?",
     antwort:
-      "Je Schicht werden eine Mindest- und eine Sollbesetzung festgelegt, zusätzlich auf Wunsch eine Mindestanzahl je Qualifikation. Schichtplan zeigt pro Tag, ob die Besetzung erfüllt ist, unter Soll liegt oder die Mindestbesetzung reißt, und prüft Urlaubsanträge vor der Genehmigung dagegen. Die Entscheidung trifft immer ein Mensch.",
+      "Je Schicht werden eine Mindest- und eine Sollbesetzung festgelegt, zusätzlich auf Wunsch eine Mindestanzahl je Qualifikation. ShiftNexo zeigt pro Tag, ob die Besetzung erfüllt ist, unter Soll liegt oder die Mindestbesetzung reißt, und prüft Urlaubsanträge vor der Genehmigung dagegen. Die Entscheidung trifft immer ein Mensch.",
   },
   {
     frage: "Wird künstliche Intelligenz eingesetzt?",
     antwort:
-      "Nein. Schichtplan nutzt keine KI-Dienste und gibt keine Daten an KI-Anbieter weiter. Konten, Besetzung und Konflikte werden nach festen, nachvollziehbaren Regeln berechnet; über Anträge entscheidet immer ein Mensch.",
+      "Nein. ShiftNexo nutzt keine KI-Dienste und gibt keine Daten an KI-Anbieter weiter. Konten, Besetzung und Konflikte werden nach festen, nachvollziehbaren Regeln berechnet; über Anträge entscheidet immer ein Mensch.",
   },
   {
     frage: "Wo werden die Daten gespeichert?",

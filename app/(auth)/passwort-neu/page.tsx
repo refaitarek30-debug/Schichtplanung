@@ -1,6 +1,6 @@
 import { NewPasswordForm } from "./new-password-form";
 
-export const metadata = { title: "Neues Passwort – Schichtplan" };
+export const metadata = { title: "Neues Passwort – ShiftNexo" };
 
 export default function NewPasswordPage() {
   return (

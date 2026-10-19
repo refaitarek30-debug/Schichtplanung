@@ -11,7 +11,7 @@ import { signOut } from "@/lib/auth/actions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Mein Schichtkalender – Schichtplan", robots: { index: false, follow: false } };
+export const metadata = { title: "Mein Schichtkalender – ShiftNexo", robots: { index: false, follow: false } };
 
 /**
  * Privatbereich (ohne Firma). Zweite Linie hinter der Middleware; die

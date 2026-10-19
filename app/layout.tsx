@@ -24,12 +24,12 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Schichtplan – Urlaubs- und Schichtplanung",
+  title: "ShiftNexo – Urlaubs- und Schichtplanung",
   description:
     "Urlaub beantragen, Schichten sehen und die Mindestbesetzung automatisch prüfen.",
   // Macht die Seite auf dem Handy installierbar (siehe app/manifest.ts).
   manifest: "/manifest.webmanifest",
-  applicationName: "Schichtplan",
+  applicationName: "ShiftNexo",
   // Bestätigung für die Google Search Console (Methode „HTML-Tag“). Der Code
   // ist öffentlich; ohne Variable entfällt das Tag.
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     : {}),
   appleWebApp: {
     capable: true,
-    title: "Schichtplan",
+    title: "ShiftNexo",
     statusBarStyle: "default",
   },
   icons: {

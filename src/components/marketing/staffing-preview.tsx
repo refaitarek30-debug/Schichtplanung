@@ -59,7 +59,7 @@ export function StaffingPreview({ className }: { className?: string }) {
         <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-warn-dot" aria-hidden />
         <span>
           {fehlend} qualifizierte Person fehlt. Ein Urlaubsantrag für diesen Tag würde die
-          Lücke vergrößern – das zeigt Schichtplan vor der Entscheidung.
+          Lücke vergrößern – das zeigt ShiftNexo vor der Entscheidung.
         </span>
       </figcaption>
     </figure>
