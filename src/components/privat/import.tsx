@@ -106,6 +106,7 @@ export function PrivatImport() {
   const [dateiname, setDateiname] = useState("");
   const [gelesen, setGelesen] = useState<LeseErgebnis | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [hinweis, setHinweis] = useState<string | null>(null);
   const [ziele, setZiele] = useState<Record<string, Ziel>>({});
   const [vorhanden, setVorhanden] = useState<Record<string, TagEintrag>>({});
   const [modus, setModus] = useState<Modus>("leer");
@@ -131,25 +132,58 @@ export function PrivatImport() {
     [gruppen, ziele, vorhanden, modus, gruppeNach, artNach],
   );
 
-  async function dateiGewaehlt(datei: File | undefined) {
-    if (!datei) return;
+  async function dateienGewaehlt(liste: File[]) {
+    if (!liste.length) return;
     setFehler(null);
+    setHinweis(null);
     setGelesen(null);
-    setDateiname(datei.name);
-    if (datei.size > MAX_BYTES) {
-      setFehler("Die Datei ist größer als 5 MB – das ist keine normale Kalender-Datei.");
+    setDateiname(liste.length === 1 ? liste[0]!.name : `${liste.length} Dateien`);
+    // Egal welche Endung: Es zählt, ob eine Kalender-Datei drinsteckt.
+    const texte: string[] = [];
+    const bilder: string[] = [];
+    const andere: string[] = [];
+    for (const d of liste) {
+      if (d.size > MAX_BYTES) {
+        andere.push(d.name);
+        continue;
+      }
+      if (d.type.startsWith("image/") || /\.(png|jpe?g|heic|heif|gif|webp)$/i.test(d.name)) {
+        bilder.push(d.name);
+        continue;
+      }
+      try {
+        const text = await d.text();
+        if (/BEGIN:VCALENDAR/i.test(text)) texte.push(text);
+        else andere.push(d.name);
+      } catch {
+        andere.push(d.name);
+      }
+    }
+    if (!texte.length) {
+      setFehler(
+        bilder.length
+          ? "Screenshots und Fotos kann die App noch nicht lesen. Wähl bitte eine Kalender-Datei aus dem Export."
+          : "In dieser Auswahl ist keine Kalender-Datei. Gesucht ist eine Datei aus dem Export deiner Schicht-App, meist mit der Endung .ics.",
+      );
       return;
     }
     try {
-      const erg = leseIcs(await datei.text());
+      // Mehrere Kalender-Dateien werden wie eine gelesen.
+      const erg = leseIcs(texte.join("\n"));
       if (!erg.gruppen.length) {
-        setFehler("In der Datei sind keine Termine mit Datum zu finden.");
+        setFehler("In den Dateien sind keine Termine mit Datum zu finden.");
         return;
+      }
+      const ausgelassen = [...bilder, ...andere];
+      if (ausgelassen.length) {
+        setHinweis(
+          `${ausgelassen.length === 1 ? "1 Datei" : `${ausgelassen.length} Dateien`} übersprungen (keine Kalender-Datei): ${ausgelassen.slice(0, 3).join(", ")}${ausgelassen.length > 3 ? " …" : ""}`,
+        );
       }
       setGelesen(erg);
       setZiele(Object.fromEntries(erg.gruppen.map((g) => [g.name, schlageVor(g, arten)])));
     } catch (e) {
-      setFehler(e instanceof IcsFehler ? e.message : "Die Datei konnte nicht gelesen werden.");
+      setFehler(e instanceof IcsFehler ? e.message : "Die Dateien konnten nicht gelesen werden.");
     }
   }
 
@@ -297,16 +331,16 @@ export function PrivatImport() {
       ) : null}
 
       {schritt === 1 ? (
-        <PrivatKarte titel="Kalender-Datei wählen">
+        <PrivatKarte titel="Kalender-Dateien wählen">
           <div className="space-y-3 px-4 py-4">
             <input
               ref={eingabe}
               type="file"
-              accept=".ics,text/calendar"
+              multiple
               className="sr-only"
-              aria-label="Kalender-Datei (.ics)"
+              aria-label="Kalender-Dateien"
               onChange={(e) => {
-                void dateiGewaehlt(e.target.files?.[0]);
+                void dateienGewaehlt(Array.from(e.target.files ?? []));
                 e.target.value = "";
               }}
             />
@@ -316,8 +350,8 @@ export function PrivatImport() {
               className="flex w-full flex-col items-center gap-2 rounded-[18px] border-2 border-dashed border-ink/20 px-4 py-7 text-center"
             >
               <FileUp className="h-7 w-7 text-brand-600" />
-              <span className="text-[15px] font-semibold">{dateiname || "Datei auswählen"}</span>
-              <span className="text-[13px] text-ink-muted">Endung .ics</span>
+              <span className="text-[15px] font-semibold">{dateiname || "Datei(en) auswählen"}</span>
+              <span className="text-[13px] text-ink-muted">Kalender-Datei aus dem Export, auch mehrere auf einmal</span>
             </button>
             <p className="flex items-start gap-2 text-[13px] text-ink-muted">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" />
@@ -325,6 +359,7 @@ export function PrivatImport() {
               letzten Schritt bestätigst.
             </p>
             {fehler ? <Alert tone="error">{fehler}</Alert> : null}
+            {hinweis ? <Alert tone="warning">{hinweis}</Alert> : null}
             {gelesen ? (
               <Alert tone="success">
                 {gelesen.termine} {gelesen.termine === 1 ? "Eintrag" : "Einträge"} gelesen
