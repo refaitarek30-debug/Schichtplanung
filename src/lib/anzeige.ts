@@ -63,14 +63,50 @@ function setzeStand(neu: Anzeige) {
   hoerer.forEach((h) => h());
 }
 
+// ---- Einführung: einmal pro Konto, nicht pro Gerät ---------------------------
+
+interface KontoStand {
+  geladen: boolean;
+  einfuehrungGesehen: boolean;
+}
+const KONTO_LEER: KontoStand = { geladen: false, einfuehrungGesehen: false };
+let kontoStand: KontoStand = KONTO_LEER;
+
+function setzeKonto(neu: KontoStand) {
+  kontoStand = neu;
+  hoerer.forEach((h) => h());
+}
+
+/** Ob das Konto die Einführung schon gesehen hat – erst sicher, wenn `geladen` stimmt. */
+export function useEinfuehrungImKonto(): KontoStand {
+  return useSyncExternalStore(abonnieren, () => kontoStand, () => KONTO_LEER);
+}
+
+export async function setzeEinfuehrungGesehen(): Promise<void> {
+  setzeKonto({ geladen: true, einfuehrungGesehen: true });
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getClaims();
+    const userId = data?.claims?.sub;
+    if (!userId) return;
+    await supabase
+      .from("anzeige_einstellungen")
+      .upsert({ user_id: userId, einfuehrung_gesehen: true, geaendert_am: new Date().toISOString() }, { onConflict: "user_id" });
+  } catch {
+    // Dann gilt es zumindest auf diesem Gerät (der Aufrufer merkt es sich zusätzlich lokal).
+  }
+}
+
 async function ausKonto() {
   geladen = true;
   try {
     const { data, error } = await createClient()
       .from("anzeige_einstellungen")
-      .select("wochenende, plan_ansicht, plan_eigene_farben")
+      .select("wochenende, plan_ansicht, plan_eigene_farben, einfuehrung_gesehen")
       .maybeSingle();
-    if (error || !data) return;
+    if (error) return;
+    setzeKonto({ geladen: true, einfuehrungGesehen: data?.einfuehrung_gesehen === true });
+    if (!data) return;
     setzeStand(
       gueltig({ wochenende: data.wochenende, planAnsicht: data.plan_ansicht, planEigeneFarben: data.plan_eigene_farben }),
     );
