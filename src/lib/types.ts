@@ -33,6 +33,8 @@ export interface Company {
   /** Wie der Betrieb „V-Tag“ nennt (bei der Registrierung gewählt). Standard: V-Tag / V-Tage. */
   vTagName?: string;
   vTageName?: string;
+  /** Gibt es im Betrieb Zeitausgleich (V-Tage)? Nein = V-Tage werden ausgeblendet. */
+  zeitausgleich?: boolean;
 }
 
 /** Angemeldete Person: Auth-Benutzer + Zeile aus `profiles` (+ `employees`). */

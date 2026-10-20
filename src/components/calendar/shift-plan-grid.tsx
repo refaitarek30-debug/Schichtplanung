@@ -51,7 +51,7 @@ import { setzeAnzeige, useAnzeige } from "@/lib/anzeige";
 import { ladeFarben } from "@/lib/data/kalender-eigene";
 import { planZellStil } from "@/lib/kalender-farben";
 import { PlanAnsichtWahl, PlanFarbenSchalter, WochenendeWahl } from "@/components/kalender/anzeige-wahl";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -303,6 +303,7 @@ export function ShiftPlanGrid({
   randlos?: boolean;
 }) {
   const t = useBegriffe();
+  const za = useZeitausgleich();
   /**
    * Erster angezeigter Tag.
    *
@@ -1700,7 +1701,7 @@ export function ShiftPlanGrid({
 
             <Abschnitt titel="Urlaub und Freistellung" hinweis="sofort genehmigt">
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-                {leaveKnoepfe.map((k) => (
+                {leaveKnoepfe.filter((k) => za || k.aktion !== "v_tag").map((k) => (
                   <button
                     key={k.aktion}
                     type="button"

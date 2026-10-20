@@ -4,7 +4,7 @@ import { afTageAusStand } from "@/lib/af";
 import { formatDays, V_TAG_STUNDEN, vTageInStunden } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 /**
  * Das Urlaubskonto: Urlaub, V-Tage, Sonderurlaub und Altersfreizeit.
@@ -37,6 +37,7 @@ export function LiveBalanceCard({
   afGenommenJahr?: number | null;
 }) {
   const t = useBegriffe();
+  const za = useZeitausgleich();
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
 
@@ -107,6 +108,9 @@ export function LiveBalanceCard({
           ]}
         />
 
+        {/* Ohne Zeitausgleich im Betrieb gibt es kein V-Tage-Konto. */}
+        {za ? (
+          <>
         {/* V-Tage in Tagen. Sie dürfen ins Minus – deshalb steht hier auch
             ein negativer Stand, nicht 0. */}
         <Kontoblock
@@ -142,6 +146,8 @@ export function LiveBalanceCard({
           ]}
           fuss={`1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`}
         />
+          </>
+        ) : null}
 
         {sonderurlaub ? (
           <Kontoblock

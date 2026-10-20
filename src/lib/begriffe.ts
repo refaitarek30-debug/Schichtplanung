@@ -17,6 +17,12 @@ export function ersetzeVTag(text: string, einzahl: string, mehrzahl: string): st
     .replace(/V-Tag/g, einzahl);
 }
 
+/** Gibt es im eigenen Betrieb Zeitausgleich (V-Tage)? Standard: ja. */
+export function useZeitausgleich(): boolean {
+  const { company } = useSession();
+  return company.zeitausgleich !== false;
+}
+
 /** Text so zurückgeben, wie der eigene Betrieb ihn nennt: `const t = useBegriffe(); t("V-Tage")`. */
 export function useBegriffe(): (text: string) => string {
   const { company } = useSession();

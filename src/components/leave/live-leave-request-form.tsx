@@ -33,7 +33,7 @@ import type {
 } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 
@@ -83,7 +83,9 @@ export function LiveLeaveRequestForm({
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
   /** Immer "Automatisch", bis die Person selbst eine Art wählt. */
-  const [kind, setKind] = useState<LeaveKind>("auto");
+  // Ohne Zeitausgleich gibt es weder V-Tage noch das automatische Verteilen.
+  const za = useZeitausgleich();
+  const [kind, setKind] = useState<LeaveKind>(za ? "auto" : "urlaub");
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
   /** Jahreskontingente der vier Arten ohne Urlaubskonto. */
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
@@ -404,7 +406,7 @@ export function LiveLeaveRequestForm({
       setReason("");
       // Nach dem Absenden wieder auf "Automatisch" – der nächste Antrag
       // soll nicht die Art des vorigen erben.
-      setKind("auto");
+      setKind(za ? "auto" : "urlaub");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
@@ -592,7 +594,7 @@ export function LiveLeaveRequestForm({
               }}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
             >
-              <option value="auto">Automatisch verteilen</option>
+              {za ? <option value="auto">Automatisch verteilen</option> : null}
               {/* Die Reste gehören zum Jahr des gewählten Zeitraums, nicht
                   zum Jahr der Kontokarte daneben. */}
               <option value="urlaub">
@@ -601,12 +603,14 @@ export function LiveLeaveRequestForm({
                   ? ` · ${formatDays(jahresKonto.remainingDays)} übrig`
                   : ""}
               </option>
+              {za ? (
               <option value="v_tag">
-                {t("V-Tag")}
-                {jahresKonto
-                  ? ` · ${formatDays(jahresKonto.vRemainingDays)} übrig`
-                  : ""}
-              </option>
+                  {t("V-Tag")}
+                  {jahresKonto
+                    ? ` · ${formatDays(jahresKonto.vRemainingDays)} übrig`
+                    : ""}
+                </option>
+              ) : null}
               {/* Die vier übrigen Arten kommen nur in die Auswahl, wenn für
                   diese Person etwas übrig ist: bei Bildungsurlaub braucht
                   es den Haken in der Verwaltung, bei Altersfreizeit eine

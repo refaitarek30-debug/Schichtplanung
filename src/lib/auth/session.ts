@@ -33,7 +33,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
     .select(
       `id, company_id, employee_id, first_name, last_name, email, role, avatar_url, active,
        hidden_dashboard_tiles, start_seite,
-       companies ( id, name, logo_url, active, setup_completed_at, is_demo, demo_expires_at, v_tag_name, v_tage_name ),
+       companies ( id, name, logo_url, active, setup_completed_at, is_demo, demo_expires_at, v_tag_name, v_tage_name, zeitausgleich ),
        employees ( personnel_number, department, shifts ( name ) )`,
     )
     .eq("id", user.id)
@@ -92,6 +92,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       demoExpiresAt: companyRow?.demo_expires_at ?? null,
       vTagName: companyRow?.v_tag_name ?? "V-Tag",
       vTageName: companyRow?.v_tage_name ?? "V-Tage",
+      zeitausgleich: companyRow?.zeitausgleich !== false,
     },
   };
 });

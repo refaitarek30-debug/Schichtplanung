@@ -14,7 +14,7 @@ import { fetchLeaveBlockReason } from "@/lib/data/staffing";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 type Art =
   | "auto"
@@ -64,7 +64,8 @@ export function PlanLeaveRequest({
   onDone: (meldung: string) => void;
 }) {
   const t = useBegriffe();
-  const [art, setArt] = useState<Art>("auto");
+  const za = useZeitausgleich();
+  const [art, setArt] = useState<Art>(za ? "auto" : "urlaub");
   const [kommentar, setKommentar] = useState("");
   const [tage, setTage] = useState<number | null>(null);
   const [auto, setAuto] = useState<LiveAutoDay[] | null>(null);
@@ -215,13 +216,15 @@ export function PlanLeaveRequest({
             onChange={(e) => setArt(e.target.value as Art)}
             className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base sm:text-sm"
           >
-            <option value="auto">Automatisch verteilen</option>
+            {za ? <option value="auto">Automatisch verteilen</option> : null}
             <option value="urlaub">
               Urlaubstag{konto ? ` · ${formatDays(konto.remainingDays)} übrig` : ""}
             </option>
+            {za ? (
             <option value="v_tag">
-              {t("V-Tag")}{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
-            </option>
+                {t("V-Tag")}{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
+              </option>
+            ) : null}
             {KONTINGENT_ARTEN.map((k) => {
               const q = kontingente.find((x) => x.kind === k);
               if (!q?.erlaubt) return null;

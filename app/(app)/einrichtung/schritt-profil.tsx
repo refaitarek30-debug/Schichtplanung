@@ -10,7 +10,7 @@ import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { saveOwnSetupProfile } from "@/lib/auth/setup-actions";
 import { DataError, fetchOwnProfile, type OwnProfile } from "@/lib/data/setup";
 import { useSession } from "@/context/session";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 /**
  * Schritt 1 – die eigenen Stammdaten.
@@ -33,6 +33,7 @@ export function SchrittProfil({
   onFertig: () => void | Promise<void>;
 }) {
   const t = useBegriffe();
+  const za = useZeitausgleich();
   const { profile } = useSession();
   const [daten, setDaten] = useState<OwnProfile | null>(null);
   const [geladen, setGeladen] = useState(false);
@@ -122,18 +123,22 @@ export function SchrittProfil({
                 defaultValue={String(daten?.vacationDays ?? 0)}
               />
             </Field>
+            {za ? (
             <Field
-              label={`${t("V-Tage")} (Freischichten/Jahr)`}
-              hint="Eigenes Konto neben dem Urlaub. 0, wenn es das bei euch nicht gibt."
-            >
-              <Input
-                name="v_days"
-                type="number"
-                step="0.5"
-                min="0"
-                defaultValue={String(daten?.vDays ?? 0)}
-              />
-            </Field>
+                label={`${t("V-Tage")} (Freischichten/Jahr)`}
+                hint="Eigenes Konto neben dem Urlaub. 0, wenn es das bei euch nicht gibt."
+              >
+                <Input
+                  name="v_days"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  defaultValue={String(daten?.vDays ?? 0)}
+                />
+              </Field>
+            ) : (
+              <input type="hidden" name="v_days" value="0" />
+            )}
           </div>
 
           <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">

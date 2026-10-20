@@ -54,7 +54,7 @@ import { cn } from "@/lib/utils";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { FehlzeitenLeiste } from "@/components/dashboard/fehlzeiten-leiste";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 /**
  * Letzter Stand der Startseite. Wer vom Plan zurückkommt, sieht die Kacheln
@@ -80,6 +80,7 @@ function greeting(): string {
 
 export default function DashboardPage() {
   const t = useBegriffe();
+  const za = useZeitausgleich();
   const { mode, role, profile, user, company } = useSession();
 
   // Welche Kacheln diese Person ausgeblendet hat. Startwert kommt aus dem
@@ -239,8 +240,9 @@ export default function DashboardPage() {
   // Anspruch auf 0 gesetzt, nachdem jemand schon V-Tage genommen hat,
   // steht das Konto im Minus – und genau das darf nicht verschwinden.
   // Ausgeblendet wird deshalb nur ein Konto, auf dem nie etwas los war.
+  // Ohne Zeitausgleich im Betrieb gibt es keine V-Tage-Kachel.
   const hatVKonto =
-    vEntitlement > 0 || vCarriedOver > 0 || vUsed > 0 || vPending > 0 || vRemaining !== 0;
+    za && (vEntitlement > 0 || vCarriedOver > 0 || vUsed > 0 || vPending > 0 || vRemaining !== 0);
 
   // Zur Auswahl stehen nur Kacheln, die diese Person überhaupt sehen
   // könnte – ein Mitarbeiter soll nicht „Gesundheitsrate“ abwählen

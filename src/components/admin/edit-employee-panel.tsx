@@ -12,7 +12,7 @@ import type { FormState } from "@/lib/auth/form-state";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord, Role } from "@/lib/types";
-import { useBegriffe } from "@/lib/begriffe";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
@@ -41,6 +41,7 @@ export function EditEmployeePanel({
   onCancel: () => void;
 }) {
   const t = useBegriffe();
+  const za = useZeitausgleich();
   const [state, formAction] = useActionState(updateEmployee, initialState);
 
   useEffect(() => {
@@ -128,15 +129,19 @@ export function EditEmployeePanel({
                 defaultValue={String(employee.vacationDays)}
               />
             </Field>
-            <Field label={`${t("V-Tage")} (Freischichten/Jahr)`}>
-              <Input
-                name="v_days"
-                type="number"
-                step="0.5"
-                min="0"
-                defaultValue={String(employee.vDays)}
-              />
-            </Field>
+            {za ? (
+              <Field label={`${t("V-Tage")} (Freischichten/Jahr)`}>
+                <Input
+                  name="v_days"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  defaultValue={String(employee.vDays)}
+                />
+              </Field>
+            ) : (
+              <input type="hidden" name="v_days" value={String(employee.vDays)} />
+            )}
             <Field label="Status">
               <select
                 name="active"
