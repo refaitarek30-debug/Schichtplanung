@@ -405,8 +405,8 @@ function PrivatSeite() {
       <Held
         id="kalender"
         hinweis="Kostenlos · ohne Werbung · ohne E-Mail"
-        titel="Dein Schichtkalender."
-        zweite="Einfach schön."
+        titel="Dein Dienstplan. Dein Kalender."
+        zweite="Deine Daten."
         text="Schichtfolge einmal eintragen – der Kalender füllt sich von selbst. Auf dem Handy, am PC und im Kalender deines Handys."
         knoepfe={
           <>
