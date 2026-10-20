@@ -9,8 +9,10 @@ import { TodoZahlMarke } from "@/components/kalender/todo-zaehler";
 import { navForRole } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { NeuMarke } from "./neu-marke";
+import { useBegriffe } from "@/lib/begriffe";
 
 export function Sidebar() {
+  const t = useBegriffe();
   const pathname = usePathname();
   const { role, company, mode, profile } = useSession();
   const groups = navForRole(role, profile.protokoll === true);
@@ -84,8 +86,8 @@ export function Sidebar() {
                     <Link
                       href={item.href}
                       aria-current={active ? "page" : undefined}
-                      title={eingeklappt ? item.label : undefined}
-                      aria-label={eingeklappt ? item.label : undefined}
+                      title={eingeklappt ? t(item.label) : undefined}
+                      aria-label={eingeklappt ? t(item.label) : undefined}
                       className={cn(
                         "relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm transition-colors",
                         eingeklappt && "justify-center",
@@ -95,7 +97,7 @@ export function Sidebar() {
                       )}
                     >
                       <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-                      {eingeklappt ? null : item.label}
+                      {eingeklappt ? null : t(item.label)}
                       {item.neu && !eingeklappt ? <NeuMarke name={item.neu} /> : null}
                       {item.todoZahl ? <TodoZahlMarke pfad={pathname} className={eingeklappt ? "absolute -right-0.5 -top-0.5 scale-75" : "ml-auto"} /> : null}
                     </Link>

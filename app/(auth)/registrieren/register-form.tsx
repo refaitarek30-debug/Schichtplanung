@@ -24,6 +24,22 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
         <Input name="company_name" required placeholder="Muster GmbH" disabled={disabled} />
       </Field>
 
+      {/* Manche Betriebe nennen den V-Tag anders, zum Beispiel Zeitausgleich.
+          Nur die Beschriftung ändert sich, nicht die Berechnung. */}
+      <details className="rounded-xl border border-line bg-surface-muted px-3.5 py-3">
+        <summary className="cursor-pointer text-[13px] font-medium">
+          Bei uns heißt der V-Tag anders (optional)
+        </summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Field label="Einzahl" hint="zum Beispiel „Zeitausgleichstag“">
+            <Input name="v_tag_name" maxLength={40} placeholder="V-Tag" disabled={disabled} />
+          </Field>
+          <Field label="Mehrzahl" hint="zum Beispiel „Zeitausgleichstage“">
+            <Input name="v_tage_name" maxLength={40} placeholder="V-Tage" disabled={disabled} />
+          </Field>
+        </div>
+      </details>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Vorname">
           <Input name="first_name" required disabled={disabled} />

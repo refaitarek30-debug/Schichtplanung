@@ -13,6 +13,7 @@ import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { roleLabels } from "@/lib/nav";
 import type { SetupState } from "@/lib/data/setup";
 import type { Role } from "@/lib/types";
+import { useBegriffe } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
@@ -35,6 +36,7 @@ export function SchrittMitarbeiter({
   stand: SetupState | null;
   onFertig: () => void | Promise<void>;
 }) {
+  const t = useBegriffe();
   const [state, formAction] = useActionState(createEmployee, initialState);
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function SchrittMitarbeiter({
             <SendeKnopf />
 
             <p className="text-[12px] leading-snug text-ink-faint">
-              Urlaubsanspruch (30 Tage) und V-Tage (27) werden vorbelegt und lassen sich
+              Urlaubsanspruch (30 Tage) und {t("V-Tage")} (27) werden vorbelegt und lassen sich
               unter Mitarbeiter je Person ändern.
             </p>
           </form>

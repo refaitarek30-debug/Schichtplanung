@@ -14,6 +14,7 @@ import { fetchLeaveBlockReason } from "@/lib/data/staffing";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
+import { useBegriffe } from "@/lib/begriffe";
 
 type Art =
   | "auto"
@@ -62,6 +63,7 @@ export function PlanLeaveRequest({
   onClose: () => void;
   onDone: (meldung: string) => void;
 }) {
+  const t = useBegriffe();
   const [art, setArt] = useState<Art>("auto");
   const [kommentar, setKommentar] = useState("");
   const [tage, setTage] = useState<number | null>(null);
@@ -218,7 +220,7 @@ export function PlanLeaveRequest({
               Urlaubstag{konto ? ` · ${formatDays(konto.remainingDays)} übrig` : ""}
             </option>
             <option value="v_tag">
-              V-Tag{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
+              {t("V-Tag")}{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
             </option>
             {KONTINGENT_ARTEN.map((k) => {
               const q = kontingente.find((x) => x.kind === k);
@@ -250,8 +252,7 @@ export function PlanLeaveRequest({
 
       {art === "auto" && auto && auto.length > 0 ? (
         <p className="mt-2 text-[13px] text-ink-muted">
-          Automatisch: {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}, {autoV} V-Tag
-          {autoV === 1 ? "" : "e"}
+          Automatisch: {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}, {autoV} {autoV === 1 ? t("V-Tag") : t("V-Tage")}
           {autoOffen > 0 ? ` · ${autoOffen} Tag(e) nicht gedeckt` : ""}.
         </p>
       ) : null}
@@ -307,12 +308,13 @@ function KontoUebersicht({
   konto: LiveLeaveBalance | null;
   kontingente: LiveLeaveKindQuota[];
 }) {
+  const t = useBegriffe();
   if (!konto) return null;
   const su = kontingente.find((q) => q.kind === "sonderurlaub" && q.erlaubt);
   const af = kontingente.find((q) => q.kind === "altersfreizeit" && q.erlaubt);
   const kacheln = [
     { label: "Urlaub", wert: Math.max(konto.remainingDays, 0), farbe: "bg-shift-urlaub text-shift-urlaub-ink" },
-    { label: "V-Tage", wert: konto.vRemainingDays, farbe: "bg-shift-vtag text-shift-vtag-ink" },
+    { label: t("V-Tage"), wert: konto.vRemainingDays, farbe: "bg-shift-vtag text-shift-vtag-ink" },
     ...(su
       ? [{ label: "Sonderurl.", wert: Math.max(su.rest, 0), farbe: "bg-shift-sonderurlaub text-shift-sonderurlaub-ink" }]
       : []),

@@ -13,6 +13,7 @@ import { AgeLeaveTable } from "../altersfreizeit/age-leave-table";
 import { useSession } from "@/context/session";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useBegriffe } from "@/lib/begriffe";
 
 type Bereich = "mitarbeiter" | "schichtgruppen" | "schichten" | "regeln" | "altersfreizeit";
 
@@ -54,6 +55,7 @@ export default function VerwaltungPage() {
 }
 
 function VerwaltungInhalt() {
+  const t = useBegriffe();
   const router = useRouter();
   const params = useSearchParams();
   const { role } = useSession();
@@ -101,7 +103,7 @@ function VerwaltungInhalt() {
             )}
           >
             <Icon className="h-4 w-4" strokeWidth={2} />
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>

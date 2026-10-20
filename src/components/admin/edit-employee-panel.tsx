@@ -12,6 +12,7 @@ import type { FormState } from "@/lib/auth/form-state";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord, Role } from "@/lib/types";
+import { useBegriffe } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
@@ -39,6 +40,7 @@ export function EditEmployeePanel({
   onSaved: (ergebnis: FormState) => void;
   onCancel: () => void;
 }) {
+  const t = useBegriffe();
   const [state, formAction] = useActionState(updateEmployee, initialState);
 
   useEffect(() => {
@@ -126,7 +128,7 @@ export function EditEmployeePanel({
                 defaultValue={String(employee.vacationDays)}
               />
             </Field>
-            <Field label="V-Tage (Freischichten/Jahr)">
+            <Field label={`${t("V-Tage")} (Freischichten/Jahr)`}>
               <Input
                 name="v_days"
                 type="number"
@@ -159,7 +161,7 @@ export function EditEmployeePanel({
               <span className="text-ink-muted">
                 Urlaub wird dann automatisch verteilt: an Sonn- und Feiertagen sowie in der
                 Nachtschicht ein Urlaubstag, weil der Zuschlag mitbezahlt wird – an allen
-                anderen Tagen ein V-Tag.
+                anderen Tagen ein {t("V-Tag")}.
               </span>
             </span>
           </label>

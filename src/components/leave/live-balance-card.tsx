@@ -4,6 +4,7 @@ import { afTageAusStand } from "@/lib/af";
 import { formatDays, V_TAG_STUNDEN, vTageInStunden } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Das Urlaubskonto: Urlaub, V-Tage, Sonderurlaub und Altersfreizeit.
@@ -35,6 +36,7 @@ export function LiveBalanceCard({
   /** Im laufenden Jahr schon genommene AF-Tage; null = unbekannt. */
   afGenommenJahr?: number | null;
 }) {
+  const t = useBegriffe();
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
 
@@ -109,7 +111,7 @@ export function LiveBalanceCard({
             ein negativer Stand, nicht 0. */}
         <Kontoblock
           farbe="vtag"
-          titel="V-Tage"
+          titel={t("V-Tage")}
           untertitel="Freischichten"
           kopf={`${formatDays(balance.vEntitlement)} Tage Jahresanspruch${
             balance.vCarriedOver > 0 ? ` + ${formatDays(balance.vCarriedOver)} Übertrag` : ""
@@ -138,7 +140,7 @@ export function LiveBalanceCard({
               ? [{ label: "Fehlzeiten", wert: `−${formatDays(balance.vFehlStunden)} Std.` }]
               : []),
           ]}
-          fuss={`1 V-Tag = ${formatDays(V_TAG_STUNDEN)} Std.`}
+          fuss={`1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`}
         />
 
         {sonderurlaub ? (

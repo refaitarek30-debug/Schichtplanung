@@ -30,6 +30,9 @@ export interface Company {
   /** Befristeter Mandant der Live-Demo (wird automatisch gelöscht). */
   isDemo?: boolean;
   demoExpiresAt?: string | null;
+  /** Wie der Betrieb „V-Tag“ nennt (bei der Registrierung gewählt). Standard: V-Tag / V-Tage. */
+  vTagName?: string;
+  vTageName?: string;
 }
 
 /** Angemeldete Person: Auth-Benutzer + Zeile aus `profiles` (+ `employees`). */

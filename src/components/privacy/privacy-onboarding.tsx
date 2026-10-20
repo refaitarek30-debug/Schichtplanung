@@ -6,8 +6,10 @@ import { savePrivacySettings } from "@/lib/auth/privacy-actions";
 import { signOut } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { fetchGruendeFuerKollegen } from "@/lib/data/notifications";
+import { useBegriffe } from "@/lib/begriffe";
 
 export function PrivacyOnboarding() {
+  const t = useBegriffe();
   const [state, action] = useActionState(savePrivacySettings, {} as FormState);
   // Betriebsschalter: solange er aus ist, sehen Kollegen keine Gründe –
   // die Wahl hier wird gespeichert, wirkt aber erst nach der Freigabe.
@@ -75,7 +77,7 @@ export function PrivacyOnboarding() {
               <span>
                 <span className="block text-sm font-medium">Abwesenheitsgrund für meine Schicht erlauben</span>
                 <span className="block text-[12px] text-ink-muted">
-                  Eigene Schichtgruppe darf z. B. Urlaub, V-Tag oder Schulung sehen.
+                  {t("Eigene Schichtgruppe darf z. B. Urlaub, V-Tag oder Schulung sehen.")}
                 </span>
               </span>
             </label>

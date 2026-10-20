@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { fetchGruendeFuerKollegen } from "@/lib/data/notifications";
 import { setGruendeFuerKollegen } from "@/lib/auth/settings-actions";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Dürfen Kollegen Abwesenheitsgründe sehen?
@@ -15,6 +16,7 @@ import { setGruendeFuerKollegen } from "@/lib/auth/settings-actions";
  * auch dann nur für die eigene Schichtgruppe.
  */
 export function ReasonVisibilitySetting({ canManage }: { canManage: boolean }) {
+  const t = useBegriffe();
   const [aktiv, setAktiv] = useState<boolean | null>(null);
   const [meldung, setMeldung] = useState<{ error?: string; success?: string }>({});
   const [pending, startTransition] = useTransition();
@@ -41,7 +43,7 @@ export function ReasonVisibilitySetting({ canManage }: { canManage: boolean }) {
     <Card>
       <CardHeader
         title="Abwesenheitsgründe"
-        hint="Wer im Schichtplan sieht, warum jemand fehlt – Urlaub, V-Tag, Krank, AF und Co."
+        hint={t("Wer im Schichtplan sieht, warum jemand fehlt – Urlaub, V-Tag, Krank, AF und Co.")}
       />
       <CardBody className="space-y-4">
         <div className="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3">

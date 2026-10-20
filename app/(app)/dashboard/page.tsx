@@ -54,6 +54,7 @@ import { cn } from "@/lib/utils";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { FehlzeitenLeiste } from "@/components/dashboard/fehlzeiten-leiste";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Letzter Stand der Startseite. Wer vom Plan zurückkommt, sieht die Kacheln
@@ -78,6 +79,7 @@ function greeting(): string {
 }
 
 export default function DashboardPage() {
+  const t = useBegriffe();
   const { mode, role, profile, user, company } = useSession();
 
   // Welche Kacheln diese Person ausgeblendet hat. Startwert kommt aus dem
@@ -254,10 +256,10 @@ export default function DashboardPage() {
       liste.push({ key: "gesundheit", label: "Gesundheitsrate" });
       liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
     }
-    if (hatVKonto) liste.push({ key: "vtage", label: "V-Tage gesamt" });
+    if (hatVKonto) liste.push({ key: "vtage", label: t("V-Tage gesamt") });
     liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub", optIn: true });
     return liste;
-  }, [role, hatVKonto]);
+  }, [role, hatVKonto, t]);
 
   // Auf dem Handy (neue Oberfläche) steht die Auswahl im Profil-Fenster.
   const glas = useGlasModus();
@@ -390,7 +392,7 @@ export default function DashboardPage() {
 
         {hatVKonto && zeige("vtage") ? (
           <KpiCard
-            label="V-Tage gesamt"
+            label={t("V-Tage gesamt")}
             href="/urlaub"
             value={formatDays(vRemaining)}
             unit="Tage"

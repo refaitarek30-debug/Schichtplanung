@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Gruppe, WahlZeile } from "@/components/settings/gruppe";
 import { savePrivacySettings } from "@/lib/auth/privacy-actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { useBegriffe } from "@/lib/begriffe";
 
 type Props = {
   absenceVisibility: "minimal" | "shift";
@@ -28,6 +29,7 @@ export function PrivacySettingsForm({
   acknowledged,
   freigabeAktiv = false,
 }: Props) {
+  const t = useBegriffe();
   const [state, action] = useActionState(savePrivacySettings, initialState);
   const [absenceVisibility, setAbsenceVisibility] = useState(initialAbsence);
   const [sicknessVisibility, setSicknessVisibility] = useState(initialSickness);
@@ -66,7 +68,7 @@ export function PrivacySettingsForm({
           aktiv={absenceVisibility === "shift"}
           onChange={() => setAbsenceVisibility("shift")}
           titel="Abwesenheitsgrund in meiner Schicht"
-          text="Nur Kolleginnen und Kollegen derselben betrieblichen Schichtgruppe sehen z. B. Urlaub, V-Tag oder Schulung."
+          text={t("Nur Kolleginnen und Kollegen derselben betrieblichen Schichtgruppe sehen z. B. Urlaub, V-Tag oder Schulung.")}
         />
       </Gruppe>
 

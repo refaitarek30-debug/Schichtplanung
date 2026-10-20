@@ -75,6 +75,9 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   const termsAccepted = formData.get("terms_accepted") === "on";
   const businessConfirmed = formData.get("business_confirmed") === "on";
   const privacyRead = formData.get("privacy_read") === "on";
+  // Optional: wie der Betrieb den V-Tag nennt. Leer = V-Tag / V-Tage.
+  const vTagName = String(formData.get("v_tag_name") ?? "").trim().replace(/\s+/g, " ");
+  const vTageName = String(formData.get("v_tage_name") ?? "").trim().replace(/\s+/g, " ");
 
   if (!companyName) return { error: "Bitte einen Unternehmensnamen angeben." };
   if (!firstName || !lastName) return { error: "Bitte Vor- und Nachnamen angeben." };
@@ -83,6 +86,9 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   }
   if (companyName.length > 200 || firstName.length > 100 || lastName.length > 100) {
     return { error: "Eine der Angaben ist zu lang." };
+  }
+  if (vTagName.length > 40 || vTageName.length > 40) {
+    return { error: "Die Bezeichnung für den V-Tag darf höchstens 40 Zeichen lang sein." };
   }
   if (password.length < PASSWORT_MIN) {
     return { error: `Das Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
@@ -164,6 +170,24 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
     }
     await verwirfNeuesKonto(user.id, user.created_at);
     return { error: dataErrorMessage(rpcError) ?? "Das Unternehmen konnte nicht angelegt werden." };
+  }
+
+  // Eigene Bezeichnung für den V-Tag speichern. Fehlt eine Angabe, gilt die
+  // andere sinnvoll weiter; scheitert das Speichern, bleibt es bei „V-Tag“ –
+  // die Registrierung selbst ist dann trotzdem gelungen.
+  if (vTagName || vTageName) {
+    try {
+      const admin = createAdminClient();
+      const { data: profil } = await admin.from("profiles").select("company_id").eq("id", user.id).maybeSingle();
+      if (profil?.company_id) {
+        await admin
+          .from("companies")
+          .update({ v_tag_name: vTagName || vTageName, v_tage_name: vTageName || vTagName })
+          .eq("id", profil.company_id);
+      }
+    } catch {
+      // bewusst still – siehe oben
+    }
   }
 
   // Ist die Bestätigungsmail in Supabase deaktiviert, kommt sofort eine

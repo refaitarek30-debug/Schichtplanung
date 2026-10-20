@@ -10,6 +10,7 @@ import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { saveOwnSetupProfile } from "@/lib/auth/setup-actions";
 import { DataError, fetchOwnProfile, type OwnProfile } from "@/lib/data/setup";
 import { useSession } from "@/context/session";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Schritt 1 – die eigenen Stammdaten.
@@ -31,6 +32,7 @@ export function SchrittProfil({
 }: {
   onFertig: () => void | Promise<void>;
 }) {
+  const t = useBegriffe();
   const { profile } = useSession();
   const [daten, setDaten] = useState<OwnProfile | null>(null);
   const [geladen, setGeladen] = useState(false);
@@ -121,7 +123,7 @@ export function SchrittProfil({
               />
             </Field>
             <Field
-              label="V-Tage (Freischichten/Jahr)"
+              label={`${t("V-Tage")} (Freischichten/Jahr)`}
               hint="Eigenes Konto neben dem Urlaub. 0, wenn es das bei euch nicht gibt."
             >
               <Input

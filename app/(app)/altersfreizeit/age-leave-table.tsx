@@ -21,6 +21,7 @@ import {
 import { useSession } from "@/context/session";
 import { formatDE, formatDays, vTageInStunden } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { useBegriffe } from "@/lib/begriffe";
 
 function std(wert: number): string {
   return wert.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -44,6 +45,7 @@ const ARTEN = {
  * korrigiert nur die Administration.
  */
 export function AgeLeaveTable() {
+  const t = useBegriffe();
   const { role } = useSession();
   const istAdmin = role === "admin";
   const [zeilen, setZeilen] = useState<LiveAfUebersichtZeile[] | null>(null);
@@ -91,22 +93,22 @@ export function AgeLeaveTable() {
       <Alert tone="info">
         <strong>AF:</strong> aktuellen Stand in Stunden mit Datum eintragen (aus der Abrechnung).
         Danach rechnet die App weiter: je gearbeiteter Schicht +0,82 Std., je AF-Tag −8 Std.{" "}
-        <strong>V-Tage:</strong> werden in Tagen geführt – einfach Tage hinzufügen oder abziehen.
+        <strong>{t("V-Tage")}:</strong> werden in Tagen geführt – einfach Tage hinzufügen oder abziehen.
       </Alert>
 
       <Card>
         <CardHeader
-          title="AF-Stunden und V-Tage"
+          title={t("AF-Stunden und V-Tage")}
           action={
             <select
               value={jahr}
               onChange={(e) => setJahr(Number(e.target.value))}
-              aria-label="Jahr für die V-Tage"
+              aria-label={t("Jahr für die V-Tage")}
               className="tnum rounded-lg border border-line bg-surface px-2 py-1 text-[13px]"
             >
               {[jetzt, jetzt + 1].map((y) => (
                 <option key={y} value={y}>
-                  V-Tage {y}
+                  {t("V-Tage")} {y}
                 </option>
               ))}
             </select>
@@ -198,8 +200,8 @@ export function AgeLeaveTable() {
       </Card>
 
       <p className="text-[12px] leading-snug text-ink-faint">
-        V-Tage dürfen ins Minus, AF nicht. Jede Änderung an den V-Tagen steht mit Person, Zeitpunkt
-        und Grund im Protokoll. Sonderurlaub: 4 Tage im Jahr ab dem Jahr nach dem 55.
+        {t("V-Tage dürfen ins Minus, AF nicht. Jede Änderung an den V-Tagen steht mit Person, Zeitpunkt")}
+        {" "}und Grund im Protokoll. Sonderurlaub: 4 Tage im Jahr ab dem Jahr nach dem 55.
         Geburtstag, automatisch aus dem Geburtsdatum. Jede Änderung wird mit Person, Zeitpunkt und
         altem Wert protokolliert.
       </p>
@@ -301,10 +303,11 @@ function VTageKonto({
   jahr: number;
   action: (form: FormData) => void;
 }) {
+  const t = useBegriffe();
   return (
     <div className="rounded-lg border border-l-4 border-line border-l-shift-vtag px-2.5 py-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13px] font-semibold">V-Tage {jahr}</span>
+        <span className="text-[13px] font-semibold">{t("V-Tage")} {jahr}</span>
         {konto ? (
           <span
             className={cn(
@@ -347,7 +350,7 @@ function VTageKonto({
             min="0.5"
             max="100"
             defaultValue="1"
-            aria-label={`Anzahl V-Tage für ${name}`}
+            aria-label={`Anzahl ${t("V-Tage")} für ${name}`}
             className="w-16 rounded-lg border border-line bg-surface px-2 py-1 text-sm outline-none focus:border-brand-500"
           />
           <span className="text-[12px] text-ink-muted">Tage</span>
