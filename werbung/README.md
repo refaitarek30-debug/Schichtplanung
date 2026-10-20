@@ -30,3 +30,9 @@ Benötigt: Node, Playwright (Chromium) und ffmpeg. Die Videodateien selbst liege
 | 03 | Partner weiß nie, wann ich Spät habe (Teilen) | offen |
 | 04 | Stunden und Überstunden im Blick (Auswertung) | offen |
 | 05 | Urlaub planen ohne Überschneidung | offen |
+
+## Betrieb
+
+| Ordner | Inhalt | Stand |
+|--------|--------|-------|
+| 02-betrieb-demo | Querformat-Rundgang durch die Live-Demo (Dashboard, Plan, Anträge, Besetzung), Endkarte mit Pilotphase | fertig |
