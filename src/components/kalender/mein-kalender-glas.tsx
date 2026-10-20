@@ -41,7 +41,7 @@ import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termi
 import { useZellenHoehe, terminZeilen } from "./zellen";
 import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
 import { useVorlieben } from "./vorschlaege";
-import { useAnzeige } from "@/lib/anzeige";
+import { setzeEinfuehrungGesehen, useAnzeige, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
@@ -408,7 +408,10 @@ export function MeinKalenderGlas() {
   useEffect(() => {
     setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
   }, []);
-  const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
+  const einfuehrungLokal = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
+  // Einmal pro Konto: erst zeigen, wenn feststeht, dass das Konto sie noch nicht kennt.
+  const einfuehrungKonto = useEinfuehrungImKonto();
+  const einfuehrungGesehen = einfuehrungLokal || !einfuehrungKonto.geladen || einfuehrungKonto.einfuehrungGesehen;
   /** Tag einer eingeladenen Person selbst eintragen (ohne Personen: „Partner“). */
   async function partnerSetzen(person: string | null, von: string, anzahl: number, code: PartnerSchicht | null) {
     try {
@@ -1046,7 +1049,10 @@ export function MeinKalenderGlas() {
       ) : null}
 
       {!einfuehrungGesehen ? (
-        <KalenderEinfuehrung onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true)} />
+        <KalenderEinfuehrung onFertig={() => {
+            setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true);
+            void setzeEinfuehrungGesehen();
+          }} />
       ) : null}
     </div>
   );

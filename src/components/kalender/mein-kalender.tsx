@@ -38,6 +38,7 @@ import {
 } from "@/lib/data/partner";
 import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
+import { setzeEinfuehrungGesehen, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 
 /**
@@ -413,7 +414,10 @@ export function MeinKalender() {
     setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
   }, []);
   // Einführung (drei Fenster) beim ersten Öffnen.
-  const einfuehrungGesehen = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
+  const einfuehrungLokal = useLokalNachLaden(`schichtplan.kalender-einfuehrung-2.${profile.id}`, false, true);
+  // Einmal pro Konto: erst zeigen, wenn feststeht, dass das Konto sie noch nicht kennt.
+  const einfuehrungKonto = useEinfuehrungImKonto();
+  const einfuehrungGesehen = einfuehrungLokal || !einfuehrungKonto.geladen || einfuehrungKonto.einfuehrungGesehen;
   async function partnerSetzen(von: string, anzahl: number, code: PartnerSchicht | null) {
     try {
       await setzeMeinePartnerTage(von, anzahl, code);
@@ -868,7 +872,10 @@ export function MeinKalender() {
 
       {!einfuehrungGesehen ? (
         <KalenderEinfuehrung
-          onFertig={() => setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true)}
+          onFertig={() => {
+            setzeLokal(`schichtplan.kalender-einfuehrung-2.${profile.id}`, true);
+            void setzeEinfuehrungGesehen();
+          }}
         />
       ) : null}
 

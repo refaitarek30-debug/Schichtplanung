@@ -40,6 +40,10 @@ export function InstallHint() {
   useEffect(() => {
     if (alreadyDismissed()) return;
 
+    // Am PC nicht fragen: dort zeigen Chrome und Edge ohnehin ihr eigenes Symbol
+    // in der Adressleiste. Der Hinweis ist nur für Handy und Tablet (Touch).
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as { standalone?: boolean }).standalone === true;
