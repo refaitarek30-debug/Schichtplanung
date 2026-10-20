@@ -1,13 +1,14 @@
 # Folge 01: Welche Schicht hab ich nächsten Samstag?
 
-Länge: etwa 9 Sekunden. Format 1080x1920, ohne Ton.
+Länge: etwa 14 Sekunden. Format 1080x1920, ohne Ton. Die Untertitel sind der Sprechertext.
 
-| Zeit | Bild | Text im Bild |
-|------|------|--------------|
-| 0,0–2,8 s | Monatskalender mit der Schichtfolge | „Welche Schicht hab ich nächsten Samstag?" |
-| 2,8 s | Tipp auf Samstag, 24. Oktober | – |
-| 3,5–6,5 s | Tagesblatt: Nacht · 22:00–06:00 | „Nachtschicht. Ein Tipp. Fertig." |
-| 6,6–9,4 s | Endkarte | „ShiftNexo · Dein Dienstplan. Dein Kalender. Deine Daten. · Kostenlos · ohne Werbung · ohne E-Mail · shiftnexo.de" |
+| Bild | Sprechertext (Untertitel) |
+|------|---------------------------|
+| Monatskalender, Frage oben im Kasten | „Welche Schicht hab ich nächsten Samstag?" (oben) / „Zettel suchen? Im Chat scrollen?" |
+| Wischen durch November und zurück | „Oder einfach durch deinen Kalender wischen." |
+| Tipp auf Samstag, 24. Oktober, Tagesblatt „Nacht · 22:00–06:00" | „Samstag antippen. Nachtschicht. Fertig." |
+| Tag ansehen: Zeitleiste mit Nachtschicht | „Mit Uhrzeit: 22 bis 6 Uhr." |
+| Endkarte mit Logo, Handy, „Kostenlos starten" | – |
 
 ## Vorschlag für die TikTok-Beschreibung
 
@@ -15,5 +16,6 @@ Wissen, welche Schicht du am Samstag hast, ohne in Zettel und Chats zu suchen. #
 
 ## Tipps
 
-- In TikTok ein gerade beliebtes, lizenziertes Lied darunterlegen.
-- Das Video nicht mit „Werbung" überladen: Frage, Antwort, Name. Mehr braucht es nicht.
+- Die wichtigen Texte stehen in der Bildmitte. Unten und rechts überdeckt TikTok selbst Bereiche.
+- In TikTok ein beliebtes, lizenziertes Lied darunterlegen.
+- Wer will, spricht den Text selbst ein, der Untertitel bleibt als Hilfe stehen.

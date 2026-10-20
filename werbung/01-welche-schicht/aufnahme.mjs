@@ -46,6 +46,21 @@ const t0 = Date.now();
 const zeit = {};
 const marke = (n) => { zeit[n] = (Date.now() - t0) / 1000; };
 const page = await ctx.newPage();
+const cdp = await ctx.newCDPSession(page);
+
+// Wischen mit dem Finger (echte Touch-Ereignisse)
+async function wischen(x, y, dx, dy, schritte = 16) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (let i = 1; i <= schritte; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (dx * i) / schritte, y: y + (dy * i) / schritte }] });
+    await page.waitForTimeout(14);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+async function tippen(locator) {
+  const b = await locator.boundingBox();
+  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+}
 
 await page.goto(`${BASE}/privat`, { waitUntil: "networkidle", timeout: 180000 });
 const weiter = page.getByRole("button", { name: "Überspringen" });
@@ -53,14 +68,24 @@ if (await weiter.count()) await weiter.click();
 await page.waitForTimeout(600);
 marke("bereit");
 
-await page.waitForTimeout(2600); // Frage steht im Bild, der Kalender ist schon zu sehen
+await page.waitForTimeout(1800); // Frage steht im Bild, der Kalender ist schon zu sehen
+
+// Durch die Monate blättern (im Monat wischt man nach oben/unten): vor, zurück
+marke("blaettern");
+await wischen(270, 760, 0, -420);
+await page.waitForTimeout(1100);
+await wischen(270, 300, 0, 420);
+await page.waitForTimeout(1100);
 
 // Nächster Samstag: 24.10.2026
-const tag = page.locator('button[aria-label*="24.10.2026"]').first();
-const box = await tag.boundingBox();
 marke("tippen");
-await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-await page.waitForTimeout(3800);
+await tippen(page.locator('button[aria-label*="24.10.2026"]').first());
+await page.waitForTimeout(2200);
+
+// Tag ansehen
+marke("tagansicht");
+await tippen(page.getByRole("button", { name: "Tag ansehen" }));
+await page.waitForTimeout(2600);
 marke("ende");
 
 await ctx.close();

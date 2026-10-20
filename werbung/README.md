@@ -25,7 +25,7 @@ Benötigt: Node, Playwright (Chromium) und ffmpeg. Die Videodateien selbst liege
 
 | Nr | Problem | Stand |
 |----|---------|-------|
-| 01 | „Welche Schicht hab ich nächsten Samstag?" | fertig |
+| 01 | „Welche Schicht hab ich nächsten Samstag?" | fertig (Version 2, mit Wischen, Tippen, Untertiteln) |
 | 02 | Schicht getauscht und vergessen (eigener Eintrag) | offen |
 | 03 | Partner weiß nie, wann ich Spät habe (Teilen) | offen |
 | 04 | Stunden und Überstunden im Blick (Auswertung) | offen |
