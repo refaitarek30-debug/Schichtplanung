@@ -62,7 +62,7 @@ export default function DatenschutzPage() {
 
       <Abschnitt titel="1. Verantwortlicher für den Betrieb der Anwendung">
         <Absatz>
-          Tarek Refai, Herselerstraße 9, 53332 Bornheim, E-Mail:{" "}
+          Tarek Oussama Refai, Herselerstraße 9, 53332 Bornheim, E-Mail:{" "}
           <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">shiftfornexo@gmail.com</a>. Die vollständigen Angaben stehen im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
@@ -84,8 +84,9 @@ export default function DatenschutzPage() {
           </li>
         </Liste>
         <Absatz>
-          Ein Datenschutzbeauftragter ist{" "}
-          <Platzhalter>benannt (Kontakt) / nicht benannt – Pflicht nach § 38 BDSG prüfen</Platzhalter>.
+          Ein Datenschutzbeauftragter ist nicht benannt, da keine Pflicht nach Art. 37 DSGVO
+          und § 38 BDSG besteht. Fragen zum Datenschutz beantwortet der Betreiber unter der
+          oben genannten Adresse.
         </Absatz>
       </Abschnitt>
 

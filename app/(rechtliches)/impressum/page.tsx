@@ -3,7 +3,6 @@ import {
   Absatz,
   LegalPage,
   Liste,
-  Platzhalter,
 } from "@/components/legal/prose";
 
 export const metadata = {
@@ -13,7 +12,7 @@ export const metadata = {
 
 /*
  * Anbieterkennzeichnung nach § 5 DDG (Digitale-Dienste-Gesetz, vormals § 5 TMG).
- * Angaben vom Betreiber selbst. Noch offen (gelb): zweiter Kontaktweg.
+ * Angaben vom Betreiber selbst.
  * Pflichtangaben nie erfinden – eine erfundene Anschrift ist schlimmer als
  * eine fehlende, weil sie wie eine echte aussieht.
  *
@@ -33,7 +32,7 @@ export default function ImpressumPage() {
     >
       <Abschnitt titel="Anbieter">
         <Liste>
-          <li>Tarek Refai</li>
+          <li>Tarek Oussama Refai</li>
           <li>Herselerstraße 9, 53332 Bornheim, Deutschland</li>
         </Liste>
       </Abschnitt>
@@ -44,8 +43,10 @@ export default function ImpressumPage() {
             E-Mail: <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">shiftfornexo@gmail.com</a>
           </li>
           <li>
-            Zweiter Kommunikationsweg für eine schnelle Kontaktaufnahme:{" "}
-            <Platzhalter>Telefonnummer oder Kontaktformular</Platzhalter>
+            Telefon:{" "}
+            <a href="tel:+491743376978" className="font-medium text-brand-600 hover:underline">
+              +49 174 3376978
+            </a>
           </li>
         </Liste>
         <Absatz className="text-[13px] text-ink-muted">

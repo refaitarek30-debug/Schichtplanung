@@ -49,7 +49,7 @@ export default function NutzungsbedingungenPage() {
       <Abschnitt titel="1. Geltungsbereich und Vertragspartner">
         <Absatz>
           (1) Vertragspartner ist der Betreiber von ShiftNexo (
-          Tarek Refai, Bornheim, Angaben im{" "}
+          Tarek Oussama Refai, Bornheim, Angaben im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
           </a>

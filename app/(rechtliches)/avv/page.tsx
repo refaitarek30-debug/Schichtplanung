@@ -57,7 +57,7 @@ export default function AvvPage() {
           </li>
           <li>
             <strong>Auftragnehmer (Auftragsverarbeiter):</strong>{" "}
-            Tarek Refai, Herselerstraße 9, 53332 Bornheim, Deutschland
+            Tarek Oussama Refai, Herselerstraße 9, 53332 Bornheim, Deutschland
           </li>
         </Liste>
       </Abschnitt>
