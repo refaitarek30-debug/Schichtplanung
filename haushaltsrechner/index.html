@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Haushaltsrechner</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Haushaltsrechner</h1>
+    <div class="month-bar">
+      <button id="prev-month" class="icon" aria-label="Vormonat">‹</button>
+      <input id="month" type="month" aria-label="Monat">
+      <button id="next-month" class="icon" aria-label="Folgemonat">›</button>
+    </div>
+    <div class="actions">
+      <button id="copy-prev">Vormonat kopieren</button>
+      <button id="open-settings" class="ghost">Einstellungen</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+
+  <main>
+    <div id="warnings"></div>
+    <section id="cards" class="cards"></section>
+    <section id="income" class="panel"></section>
+    <section id="chart" class="panel"></section>
+    <section id="lists"></section>
+  </main>
+
+  <dialog id="item-dialog">
+    <form method="dialog" id="item-form">
+      <h2 id="item-title">Posten</h2>
+      <label>Name <input name="name" required maxlength="60"></label>
+      <label>Betrag (€) <input name="amount" inputmode="decimal" required placeholder="0,00"></label>
+      <label>Zuordnung
+        <select name="owner">
+          <option value="both">Gemeinsam</option>
+          <option value="A">Nur A</option>
+          <option value="B">Nur B</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" name="recurring"> Wiederkehrend (wird beim Kopieren übernommen)</label>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" data-close>Abbrechen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <h2>Einstellungen</h2>
+      <label>Name Person A <input name="nameA" maxlength="30"></label>
+      <label>Name Person B <input name="nameB" maxlength="30"></label>
+      <label>Aufteilung gemeinsamer Kosten
+        <select name="split">
+          <option value="proportional">Proportional zum Einkommen</option>
+          <option value="50/50">50 / 50</option>
+        </select>
+      </label>
+      <h3>Backup</h3>
+      <div class="actions">
+        <button type="button" id="export-btn" class="ghost">Export (JSON)</button>
+        <button type="button" id="import-btn" class="ghost">Import (JSON)</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" data-close>Abbrechen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
