@@ -35,7 +35,7 @@ export default function NutzungsbedingungenPage() {
     <LegalPage
       title="Nutzungsbedingungen"
       intro="Diese Bedingungen gelten für die Nutzung von ShiftNexo durch Unternehmen."
-      updated="30. September 2026"
+      updated="21. Oktober 2026"
       version={NUTZUNGSBEDINGUNGEN_VERSION}
     >
       <Hinweis titel="Entwurf zur rechtlichen Prüfung">
@@ -49,7 +49,7 @@ export default function NutzungsbedingungenPage() {
       <Abschnitt titel="1. Geltungsbereich und Vertragspartner">
         <Absatz>
           (1) Vertragspartner ist der Betreiber von ShiftNexo (
-          <Platzhalter>Name oder Firma</Platzhalter>, Angaben im{" "}
+          Tarek Refai, Bornheim, Angaben im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
           </a>
@@ -206,10 +206,9 @@ export default function NutzungsbedingungenPage() {
 
       <Abschnitt titel="9. Vergütung">
         <Absatz>
-          <Platzhalter>
-            Vergütung, Abrechnungszeitraum, Zahlungsziel und Preisänderung – oder Hinweis auf
-            kostenlose Testphase – vom Betreiber festzulegen
-          </Platzhalter>
+          Die Nutzung ist während einer Pilotphase von drei Monaten ab der Registrierung
+          kostenlos. Eine Vergütung fällt nur an, wenn die Parteien sie nach der Pilotphase
+          gesondert in Textform vereinbaren.
         </Absatz>
       </Abschnitt>
 
@@ -288,7 +287,7 @@ export default function NutzungsbedingungenPage() {
           (1) Es gilt deutsches Recht unter Ausschluss des UN-Kaufrechts. Ist der Kunde
           Kaufmann, juristische Person des öffentlichen Rechts oder öffentlich-rechtliches
           Sondervermögen, ist Gerichtsstand{" "}
-          <Platzhalter>Sitz des Betreibers</Platzhalter>; gesetzliche ausschließliche
+          Bornheim; gesetzliche ausschließliche
           Gerichtsstände bleiben unberührt.
         </Absatz>
         <Absatz>

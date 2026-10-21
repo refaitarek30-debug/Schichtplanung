@@ -454,6 +454,12 @@ function Pilot() {
           Erst die Live-Demo ansehen
         </CtaLink>
       </div>
+      <p className="mt-6 text-center text-[15px] text-ink-muted">
+        Fragen vorab? Schreibt an{" "}
+        <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">
+          shiftfornexo@gmail.com
+        </a>
+      </p>
     </Abschnitt>
   );
 }
