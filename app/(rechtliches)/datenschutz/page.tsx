@@ -62,9 +62,8 @@ export default function DatenschutzPage() {
 
       <Abschnitt titel="1. Verantwortlicher für den Betrieb der Anwendung">
         <Absatz>
-          <Platzhalter>Name oder Firma des Betreibers</Platzhalter>,{" "}
-          <Platzhalter>Anschrift</Platzhalter>, E-Mail:{" "}
-          <Platzhalter>Kontaktadresse</Platzhalter>. Die vollständigen Angaben stehen im{" "}
+          Tarek Oussama Refai, Herselerstraße 9, 53332 Bornheim, E-Mail:{" "}
+          <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">shiftfornexo@gmail.com</a>. Die vollständigen Angaben stehen im{" "}
           <a href="/impressum" className="font-medium text-brand-600 hover:underline">
             Impressum
           </a>
@@ -85,8 +84,9 @@ export default function DatenschutzPage() {
           </li>
         </Liste>
         <Absatz>
-          Ein Datenschutzbeauftragter ist{" "}
-          <Platzhalter>benannt (Kontakt) / nicht benannt – Pflicht nach § 38 BDSG prüfen</Platzhalter>.
+          Ein Datenschutzbeauftragter ist nicht benannt, da keine Pflicht nach Art. 37 DSGVO
+          und § 38 BDSG besteht. Fragen zum Datenschutz beantwortet der Betreiber unter der
+          oben genannten Adresse.
         </Absatz>
       </Abschnitt>
 
@@ -601,13 +601,19 @@ export default function DatenschutzPage() {
             EU haben.
           </li>
           <li>
+            <strong>GitHub</strong> (GitHub, Inc.) – Aufbewahrung der nächtlichen
+            Datensicherung. Die Sicherung wird vorher mit einem Schlüssel verschlüsselt, den nur
+            der Betreiber kennt; GitHub kann den Inhalt nicht lesen. Jede Sicherung wird nach
+            14 Tagen automatisch gelöscht.
+          </li>
+          <li>
             <strong>Mailversand:</strong>{" "}
             <Platzhalter>SMTP-Anbieter, Sitz, Region – oder streichen, falls kein externer Anbieter</Platzhalter>
           </li>
         </Liste>
         <Absatz>
-          <strong>Drittlandbezug:</strong> Supabase, Inc. und Vercel, Inc. haben Sitz in den
-          USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
+          <strong>Drittlandbezug:</strong> Supabase, Inc., Vercel, Inc. und GitHub, Inc. haben
+          Sitz in den USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
           ausgeschlossen werden kann, stützt er sich auf einen Angemessenheitsbeschluss der
           Europäischen Kommission (EU-US Data Privacy Framework) oder auf
           Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.{" "}
@@ -654,8 +660,9 @@ export default function DatenschutzPage() {
           <li>
             Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach
             dessen Wahl herausgegeben und gelöscht (siehe Auftragsverarbeitungsvertrag).
-            Sicherungskopien des Datenbankanbieters laufen turnusmäßig aus:{" "}
-            <Platzhalter>Aufbewahrungsdauer der Sicherungen laut gebuchtem Tarif eintragen</Platzhalter>.
+            Die verschlüsselten nächtlichen Sicherungen (Abschnitt 9) werden nach 14 Tagen
+            automatisch gelöscht; spätestens dann sind auch gelöschte Daten aus allen Sicherungen
+            entfernt.
           </li>
           <li>
             Zugriffsprotokolle der Hosting-Dienstleister werden nach deren Vorgaben nach
@@ -750,11 +757,12 @@ export default function DatenschutzPage() {
           Sie haben außerdem das Recht auf Beschwerde bei einer Datenschutz-Aufsichtsbehörde
           (Art. 77 DSGVO), etwa am Wohnort, am Arbeitsplatz oder am Ort des mutmaßlichen
           Verstoßes. Für den Betreiber ist zuständig:{" "}
-          <Platzhalter>zuständige Aufsichtsbehörde nach Sitz des Betreibers eintragen</Platzhalter>.
+          die Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen
+          (LDI NRW), Kavalleriestraße 2–4, 40213 Düsseldorf.
         </Absatz>
         <Absatz>
           Anfragen zu Beschäftigtendaten richten Sie an Ihren Arbeitgeber (Abschnitt 2),
-          Anfragen zum Betrieb der Anwendung an <Platzhalter>Kontaktadresse</Platzhalter>.
+          Anfragen zum Betrieb der Anwendung an <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">shiftfornexo@gmail.com</a>.
         </Absatz>
       </Abschnitt>
 

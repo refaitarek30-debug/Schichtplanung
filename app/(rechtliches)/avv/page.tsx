@@ -36,7 +36,7 @@ export default function AvvPage() {
     <LegalPage
       title="Auftragsverarbeitungsvertrag"
       intro="Vertrag über die Verarbeitung personenbezogener Daten im Auftrag nach Art. 28 DSGVO."
-      updated="30. September 2026"
+      updated="21. Oktober 2026"
       version={AVV_VERSION}
     >
       <Hinweis titel="Abschluss und Entwurfsstatus">
@@ -57,7 +57,7 @@ export default function AvvPage() {
           </li>
           <li>
             <strong>Auftragnehmer (Auftragsverarbeiter):</strong>{" "}
-            <Platzhalter>Name oder Firma, Anschrift, vertretungsberechtigte Person des Betreibers</Platzhalter>
+            Tarek Oussama Refai, Herselerstraße 9, 53332 Bornheim, Deutschland
           </li>
         </Liste>
       </Abschnitt>
@@ -156,7 +156,7 @@ export default function AvvPage() {
         </Absatz>
         <Absatz>
           (2) Weitere Weisungen erteilt der Auftraggeber in Textform an{" "}
-          <Platzhalter>Kontaktadresse des Auftragnehmers</Platzhalter>. Mündliche Weisungen
+          shiftfornexo@gmail.com. Mündliche Weisungen
           sind unverzüglich in Textform zu bestätigen. Weisungsberechtigt sind die
           Administratoren des Auftraggebers.
         </Absatz>
@@ -197,6 +197,11 @@ export default function AvvPage() {
             Serverfunktionen. Ort der Verarbeitung der Serverfunktionen: Region{" "}
             <code className={kode}>dub1</code> (Dublin, Irland, EU); Anfragen laufen über
             das Edge-Netzwerk des Anbieters.
+          </li>
+          <li>
+            <strong>GitHub, Inc.</strong> (USA) – Aufbewahrung der nächtlichen Datensicherung,
+            vorher verschlüsselt mit einem Schlüssel, den nur der Auftragnehmer kennt;
+            Löschung nach 14 Tagen.
           </li>
           <li>
             <strong>Mailversand:</strong>{" "}
