@@ -93,7 +93,7 @@ export interface EmployeeRecord {
    * Programm sie nicht mehr im Voraus – geraten wird deshalb nichts.
    */
   qualificationLabels: string[];
-  /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
+  /** Schichtgruppe A–E im Rotationsbetrieb, null = keine Rotation. */
   rotationTeam: string | null;
   /** Jahresanspruch V-Tage (Freischichten). */
   vDays: number;

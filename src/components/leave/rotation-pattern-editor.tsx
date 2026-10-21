@@ -86,7 +86,7 @@ export function RotationPatternEditor() {
     <Card>
       <CardHeader
         title="Schichtmuster festlegen"
-        hint="Einen kompletten Durchlauf eingeben – z. B. 2× Früh, 2× Spät, 3× Nacht, 2× frei. Das System setzt das Muster automatisch fort und verteilt die Gruppen A–D versetzt."
+        hint="Einen kompletten Durchlauf eingeben – z. B. 2× Früh, 2× Spät, 3× Nacht, 2× frei. Das System setzt das Muster automatisch fort und verteilt die Gruppen versetzt."
       />
       <CardBody className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">

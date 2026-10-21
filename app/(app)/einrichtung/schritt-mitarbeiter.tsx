@@ -72,7 +72,7 @@ export function SchrittMitarbeiter({
           {stand && stand.musterVorhanden && stand.mitarbeiterMitGruppe === 0 ? (
             <Alert tone="warning">
               Das Schichtmuster ist gespeichert, aber noch niemandem zugeordnet. Erst mit
-              einer Schichtgruppe (A–D) taucht jemand im Schichtplan auf.
+              einer Schichtgruppe (A–E) taucht jemand im Schichtplan auf.
             </Alert>
           ) : null}
 

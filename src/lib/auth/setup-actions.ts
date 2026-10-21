@@ -106,7 +106,7 @@ export async function saveShiftSystem(
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   if (blocks.length === 0) return { error: "Bitte mindestens einen Block anlegen." };
   if (blocks.some((b) => b.days < 1)) return { error: "Jeder Block braucht mindestens einen Tag." };
-  if (teams < 1 || teams > 4) return { error: "Es sind ein bis vier Rotationsgruppen möglich." };
+  if (teams < 1 || teams > 5) return { error: "Es sind ein bis fünf Rotationsgruppen möglich." };
 
   const supabase = await createClient();
 

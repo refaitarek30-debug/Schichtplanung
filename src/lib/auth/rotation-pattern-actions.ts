@@ -15,7 +15,7 @@ export interface PatternBlock {
  * Speichert das Schichtmuster des Unternehmens (nur Admin, per RPC serverseitig
  * geprüft) und ordnet es anschließend allen Mitarbeitern mit Schichtgruppe zu.
  * Der Admin gibt EINEN Zyklus ein (z. B. F F S S N N N frei frei); das System
- * setzt ihn fort und verteilt die Gruppen A–D versetzt.
+ * setzt ihn fort und verteilt die Gruppen (A–E) versetzt.
  */
 export async function saveRotationPattern(
   blocks: PatternBlock[],

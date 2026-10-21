@@ -21,7 +21,7 @@ import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
  * ein gepflegter Wert. Dieser Schritt füllt sie, bevor es an Feiertage,
  * Schichtsystem und Mitarbeiter geht.
  *
- * Die Schichtgruppen A–D liegen im Programm fest, deshalb lässt sich hier
+ * Die Schichtgruppen A–E liegen im Programm fest, deshalb lässt sich hier
  * schon eine wählen, obwohl das Rotationsmuster erst in Schritt 3
  * entsteht. Die Verknüpfung zum Muster stellt `save_own_setup_profile()`
  * her, sobald eines da ist; kommt das Muster später, zieht Schritt 3 sie
@@ -166,7 +166,7 @@ export function SchrittProfil({
           {schichtarbeiter ? (
             <Field
               label="Schichtgruppe"
-              hint="Die Gruppen A–D ergeben sich aus dem Rotationsmuster, das du in Schritt 3 festlegst."
+              hint="Die Gruppen A–E ergeben sich aus dem Rotationsmuster, das du in Schritt 3 festlegst."
             >
               <select
                 name="rotation_team"

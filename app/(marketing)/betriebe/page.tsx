@@ -7,7 +7,7 @@ import { BetriebSeite } from "@/components/marketing/startseite";
  * den Umweg über den privaten Kalender.
  */
 const META =
-  "Schichtplan, Urlaub und Besetzung für Schichtbetriebe – am PC planen, auf dem Handy für jeden im Team. Kostenlose, unverbindliche Pilotphase.";
+  "Schichtplan, Urlaub und Besetzung für Schichtbetriebe – am PC planen, auf dem Handy für jeden im Team. Drei Monate kostenlos testen in der Pilotphase.";
 
 export const metadata: Metadata = {
   title: "ShiftNexo für Betriebe – Schichtplanung, Urlaub und Besetzung",

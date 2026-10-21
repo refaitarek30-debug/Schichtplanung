@@ -51,7 +51,7 @@ function pruefeZeitraum(formData: FormData): string | null {
 
 /**
  * Findet das aktive Rotationsmuster des Unternehmens. Eine Schichtgruppe
- * (A–D) ohne verknüpftes Muster bewirkt nichts – der Versatz bleibt dann 0
+ * (A–E) ohne verknüpftes Muster bewirkt nichts – der Versatz bleibt dann 0
  * und die Rotation greift nicht (das war der eigentliche Fehler, den diese
  * Funktion behebt: das Formular setzte bisher nur `rotation_team`, nie
  * `rotation_pattern_id`). Geht davon aus, dass ein Unternehmen ein aktives

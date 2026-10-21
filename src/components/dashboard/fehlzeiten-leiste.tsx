@@ -104,7 +104,7 @@ export function FehlzeitenLeiste({
     [mitarbeiter, eigeneEmployeeId],
   );
 
-  /** Schichtgruppen für die Administration: A–D, dann Tagschicht. */
+  /** Schichtgruppen für die Administration: A–E, dann Tagschicht. */
   const gruppen = useMemo(() => {
     const set = new Set<string>();
     for (const e of mitarbeiter) set.add(e.rotationTeam ?? "");

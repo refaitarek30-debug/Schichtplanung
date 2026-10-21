@@ -1,0 +1,65 @@
+# Nächtliche Datensicherung der Supabase-Datenbank (der kostenlose Tarif sichert nicht selbst).
+# Die Sicherung wird mit BACKUP_PASSWORT verschlüsselt und 14 Tage als Artefakt aufbewahrt.
+# Einrichtung und Wiederherstellung: docs/datensicherung.md
+name: Datensicherung
+
+on:
+  schedule:
+    - cron: "17 2 * * *" # jede Nacht um 2:17 UTC
+  workflow_dispatch: {} # von Hand unter „Actions“ starten
+
+permissions:
+  contents: read
+
+concurrency:
+  group: datensicherung
+  cancel-in-progress: false
+
+jobs:
+  sichern:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Geheimnisse prüfen
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSWORT: ${{ secrets.BACKUP_PASSWORT }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSWORT" ]; then
+            echo "::error::SUPABASE_DB_URL und BACKUP_PASSWORT müssen unter Settings → Secrets → Actions eingetragen sein."
+            exit 1
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Datenbank sichern
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir sicherung
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f sicherung/rollen.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f sicherung/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f sicherung/daten.sql --use-copy --data-only
+          ls -la sicherung
+          # Eine leere Datendatei heißt: etwas ist schiefgegangen.
+          test -s sicherung/daten.sql
+
+      - name: Verschlüsseln
+        env:
+          BACKUP_PASSWORT: ${{ secrets.BACKUP_PASSWORT }}
+        run: |
+          name="shiftnexo-$(date -u +%Y-%m-%d)"
+          echo "NAME=$name" >> "$GITHUB_ENV"
+          tar -czf "$name.tar.gz" sicherung
+          printf '%s' "$BACKUP_PASSWORT" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 -o "$name.tar.gz.gpg" "$name.tar.gz"
+          rm -rf sicherung "$name.tar.gz"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.NAME }}.tar.gz.gpg
+          retention-days: 14
+          if-no-files-found: error

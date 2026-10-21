@@ -173,7 +173,7 @@ export function Preise() {
       </div>
 
       <p className="mt-5 text-center text-[12.5px] leading-relaxed text-ink-muted">
-        Pilotpreise, Änderungen vorbehalten. Bruttopreise inkl. 19 % USt. Während der Pilotphase nutzen Betriebe den vollen Umfang kostenlos.
+        Pilotpreise, Änderungen vorbehalten. Bruttopreise inkl. 19 % USt. Während der dreimonatigen Pilotphase nutzen Betriebe den vollen Umfang kostenlos.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <CtaLink href={ZIELE.demo} size="lg">

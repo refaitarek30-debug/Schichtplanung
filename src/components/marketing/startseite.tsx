@@ -200,7 +200,7 @@ const FRAGEN_BETRIEB: Frage[] = [
         <a href="#preise" className="font-medium text-brand-600 hover:underline">
           Preise
         </a>
-        . In der Pilotphase ist der volle Umfang kostenlos.
+        . In der dreimonatigen Pilotphase ist der volle Umfang kostenlos.
       </>
     ),
   },
@@ -212,7 +212,7 @@ const FRAGEN_BETRIEB: Frage[] = [
   {
     frage: "Welche Schichtsysteme werden unterstützt?",
     antwort:
-      "Schichten legt ihr selbst an – mit Name, Kürzel, Uhrzeiten, Wochentagen sowie Mindest- und Sollbesetzung. Rotierende Gruppen werden über Rotationsmuster abgebildet; derzeit sind bis zu vier Gruppen (A bis D) möglich. Damit lassen sich 2-, 3- und 4-Schicht-Modelle planen. Modelle mit fünf rotierenden Gruppen gehen noch nicht.",
+      "Schichten legt ihr selbst an – mit Name, Kürzel, Uhrzeiten, Wochentagen sowie Mindest- und Sollbesetzung. Rotierende Gruppen werden über Rotationsmuster abgebildet; möglich sind bis zu fünf Gruppen (A bis E). Damit lassen sich 2-, 3-, 4- und 5-Schicht-Modelle planen.",
   },
   {
     frage: "Wie funktioniert die Besetzungskontrolle?",
@@ -383,18 +383,18 @@ const PILOT_SCHRITTE = [
   { titel: "Registrieren", text: "Fünf kurze Fragen, eine Minute. Ihr bekommt einen eigenen, getrennten Bereich." },
   { titel: "Einrichten", text: "Ein Assistent führt durch Feiertage, Schichtsystem und Mitarbeiter. Auf Wunsch helfen wir dabei." },
   { titel: "Testen", text: "Am besten mit einer Schichtgruppe, parallel zum bisherigen Plan. Nichts muss sofort umgestellt werden." },
-  { titel: "Entscheiden", text: "Gemeinsam auswerten: weitermachen, anpassen oder beenden. Ohne Verpflichtung." },
+  { titel: "Entscheiden", text: "Nach drei Monaten gemeinsam auswerten: weitermachen, anpassen oder beenden. Ohne Verpflichtung." },
 ];
 
 const PILOT_ENTHALTEN = [
   "Voller Funktionsumfang, ohne Begrenzung der Personen",
-  "Keine Zahlungsdaten, keine Vertragslaufzeit",
+  "Drei Monate, keine Zahlungsdaten, keine Vertragslaufzeit",
   "Hilfe bei der Einrichtung, wenn ihr wollt",
   "Eure Wünsche fließen direkt in die Entwicklung ein",
 ];
 
 const PILOT_OFFEN = [
-  "Rotierende Gruppen: derzeit bis zu vier (A bis D).",
+  "Rotierende Gruppen: bis zu fünf (A bis E).",
   "Mitarbeiter werden einzeln angelegt; einen Datei-Import gibt es noch nicht.",
   "Gibt es bei euch einen Betriebsrat, sollte er vor dem Echtbetrieb eingebunden werden. Wir stellen die App gern vor.",
 ];
@@ -406,10 +406,10 @@ function Pilot() {
         titel={
           <>
             Die Pilotphase.
-            <span className="block text-ink-faint">Kostenlos und unverbindlich.</span>
+            <span className="block text-ink-faint">Drei Monate kostenlos.</span>
           </>
         }
-        text="Testet ShiftNexo im echten Betrieb, bevor ihr euch festlegt. Während der Pilotphase ist alles kostenlos."
+        text="Testet ShiftNexo drei Monate im echten Betrieb, bevor ihr euch festlegt. Die Pilotphase endet von selbst – ohne Kündigung und ohne Kosten."
       />
       <ol className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PILOT_SCHRITTE.map((p, n) => (
@@ -535,7 +535,7 @@ export function BetriebSeite() {
     <>
       <Held
         id="unternehmen"
-        hinweis="Für Schichtbetriebe · kostenlose Pilotphase"
+        hinweis="Für Schichtbetriebe · 3 Monate kostenlos testen"
         titel="Der ganze Betrieb."
         zweite="Ein Plan."
         text="Schichtplan, Urlaub und Besetzung an einem Ort. Am PC planen – auf dem Handy für jeden im Team."

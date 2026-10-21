@@ -1898,7 +1898,7 @@ export function ShiftPlanGrid({
                       colSpan={dates.length + vorspalten}
                       className="sticky left-0 bg-brand-50 p-0 text-left"
                     >
-                      {/* Zusammenklappen: mit vier Gruppen passt sonst nichts
+                      {/* Zusammenklappen: mit vier oder fünf Gruppen passt sonst nichts
                           anderes mehr auf den Bildschirm. */}
                       <button
                         type="button"

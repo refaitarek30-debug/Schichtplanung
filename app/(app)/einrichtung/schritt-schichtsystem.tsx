@@ -21,6 +21,16 @@ const blockMeta: Record<PatternBlock["code"], { label: string; cls: string }> = 
 /** Gängige Modelle als Startpunkt – von Hand ändern geht danach immer noch. */
 const VORLAGEN: { name: string; gruppen: number; blocks: PatternBlock[] }[] = [
   {
+    name: "Konti, 5 Gruppen (10 Tage)",
+    gruppen: 5,
+    blocks: [
+      { code: "F", days: 2 },
+      { code: "S", days: 2 },
+      { code: "N", days: 2 },
+      { code: "FREI", days: 4 },
+    ],
+  },
+  {
     name: "Konti, 4 Gruppen (28 Tage)",
     gruppen: 4,
     blocks: [
@@ -161,7 +171,7 @@ export function SchrittSchichtsystem({
                   onChange={(e) => setGruppen(Number(e.target.value))}
                   className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
                 >
-                  {[1, 2, 3, 4].map((n) => (
+                  {[1, 2, 3, 4, 5].map((n) => (
                     <option key={n} value={n}>
                       {n} {n === 1 ? "Gruppe" : "Gruppen"}
                       {n > 1 ? ` (A–${String.fromCharCode(64 + n)})` : " (A)"}
