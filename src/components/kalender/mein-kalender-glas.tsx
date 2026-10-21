@@ -55,6 +55,7 @@ import { PinselKnopf, PinselLeiste, useMonatWischen } from "./pinsel";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
 import { Avatar } from "@/components/ui/avatar";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Mein Kalender im Stil des Privatkalenders (Glas, Tagesfenster) – zunächst
@@ -151,15 +152,15 @@ interface Kaestchen {
 }
 
 /** Die Einträge aus dem Schichtplan für einen Tag – wie im bisherigen Kalender. */
-function planKaestchen(info: TagInfo, farben: Record<string, string>): Kaestchen[] {
+function planKaestchen(info: TagInfo, farben: Record<string, string>, t: (text: string) => string): Kaestchen[] {
   const liste: Kaestchen[] = [];
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
   const beantragt = abw !== null && abw !== gross;
   if (abw && !beantragt) {
     liste.push({
-      text: ABWESENHEIT[abw]?.kurz ?? abw,
-      lang: ABWESENHEIT[abw]?.lang ?? "Abwesend",
+      text: t(ABWESENHEIT[abw]?.kurz ?? abw),
+      lang: t(ABWESENHEIT[abw]?.lang ?? "Abwesend"),
       stil: gefuellt(farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]!),
     });
     return liste;
@@ -175,23 +176,24 @@ function planKaestchen(info: TagInfo, farben: Record<string, string>): Kaestchen
   }
   if (abw && beantragt && gross) {
     liste.push({
-      text: `${ABWESENHEIT[gross]?.kurz ?? gross}?`,
-      lang: `${ABWESENHEIT[gross]?.lang ?? "Antrag"} beantragt`,
+      text: `${t(ABWESENHEIT[gross]?.kurz ?? gross)}?`,
+      lang: `${t(ABWESENHEIT[gross]?.lang ?? "Antrag")} beantragt`,
       stil: beantragtStil(farbeFuer(`abw:${gross}`, farben)),
     });
   }
   return liste;
 }
 
-function beschreibung(info: TagInfo): string {
+function beschreibung(info: TagInfo, t: (text: string) => string): string {
   const abw = info.abwesenheit;
-  if (abw && abw === abw.toUpperCase()) return ABWESENHEIT[abw]?.lang ?? "Abwesend";
+  if (abw && abw === abw.toUpperCase()) return t(ABWESENHEIT[abw]?.lang ?? "Abwesend");
   const teil = info.schichtName ?? "Frei";
-  if (abw) return `${teil}, ${ABWESENHEIT[abw.toUpperCase()]?.lang ?? "Antrag"} beantragt`;
+  if (abw) return `${teil}, ${t(ABWESENHEIT[abw.toUpperCase()]?.lang ?? "Antrag")} beantragt`;
   return teil;
 }
 
 export function MeinKalenderGlas() {
+  const t = useBegriffe();
   const { profile, company } = useSession();
   const heute = heuteInBerlin();
   const [monat, setMonat] = useState(() => {
@@ -731,7 +733,7 @@ export function MeinKalenderGlas() {
           const info = tagInfo(zellen.get(iso));
           const d = fromISO(iso);
           const imM = d.getMonth() === monat.monat;
-          const plan = sichtbar ? planKaestchen(info, farben) : [];
+          const plan = sichtbar ? planKaestchen(info, farben, t) : [];
           const eigen = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
           const andereAm = andere.amTag(iso);
           const partner = andereAm.length > 0;
@@ -752,7 +754,7 @@ export function MeinKalenderGlas() {
               type="button"
               {...langDruck.zelle(iso)}
               onClick={() => tippen(iso)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
                 "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
@@ -910,7 +912,7 @@ export function MeinKalenderGlas() {
             const abw = info.abwesenheit;
             const liste: { name: string; farbe: string }[] = [];
             if (abw && abw === abw.toUpperCase()) {
-              liste.push({ name: ABWESENHEIT[abw]?.lang ?? "Abwesend", farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]! });
+              liste.push({ name: t(ABWESENHEIT[abw]?.lang ?? "Abwesend"), farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]! });
             }
             const e = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
             if (e && (!e.beginn || !e.ende)) liste.push({ name: e.name, farbe: e.farbe });
@@ -1159,6 +1161,7 @@ function TagBlatt({
   /** Die Auswahl für den eigenen Eintrag gleich offen (nach „Neu“). */
   offen?: boolean;
 }) {
+  const t = useBegriffe();
   const d = fromISO(iso);
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
@@ -1173,7 +1176,7 @@ function TagBlatt({
   if (geladen) {
     if (abw && !beantragt) {
       plan = {
-        name: ABWESENHEIT[abw]?.lang ?? "Abwesend",
+        name: t(ABWESENHEIT[abw]?.lang ?? "Abwesend"),
         zeit: info.schichtName ? `statt ${info.schichtName}` : null,
         farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]!,
       };
@@ -1209,7 +1212,7 @@ function TagBlatt({
           {plan ? <EintragPille name={plan.name} zeit={plan.zeit} farbe={plan.farbe} marke="Plan" /> : null}
           {beantragt && gross ? (
             <EintragPille
-              name={`${ABWESENHEIT[gross]?.lang ?? "Antrag"} beantragt`}
+              name={`${t(ABWESENHEIT[gross]?.lang ?? "Antrag")} beantragt`}
               farbe={farbeFuer(`abw:${gross}`, farben) ?? "#5B6472"}
             />
           ) : null}
@@ -1302,6 +1305,7 @@ function AnpassenBlatt({
   onNeueArt: () => void;
   onClose: () => void;
 }) {
+  const t = useBegriffe();
   const [offen, setOffen] = useState<string | null>(null);
 
   // Schichten der Firma (aktive), sonst Früh/Spät/Nacht.
@@ -1315,7 +1319,7 @@ function AnpassenBlatt({
           { schluessel: "schicht:N", name: "Nachtschicht" },
         ]
   ).concat([{ schluessel: "frei", name: "Frei" }]);
-  const abwZeilen = ABW_IN_EINSTELLUNGEN.map((c) => ({ schluessel: `abw:${c}`, name: ABWESENHEIT[c]!.lang }));
+  const abwZeilen = ABW_IN_EINSTELLUNGEN.map((c) => ({ schluessel: `abw:${c}`, name: t(ABWESENHEIT[c]!.lang) }));
 
   return (
     <Blatt titel="Kalender anpassen" unter="Gilt nur für dich – die anderen sehen ihre eigenen Einstellungen." onClose={onClose}>

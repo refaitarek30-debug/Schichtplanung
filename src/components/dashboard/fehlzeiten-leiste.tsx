@@ -19,6 +19,7 @@ import { deleteFehlzeit, saveFehlzeit } from "@/lib/auth/fehlzeit-actions";
 import { useAktualisierung } from "@/lib/live-refresh";
 import type { EmployeeRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useBegriffe } from "@/lib/begriffe";
 
 /** Auswahl in Viertelstunden: 0,25 … 7,75 Std. */
 const STUNDEN = Array.from({ length: 31 }, (_, i) => (i + 1) / 4);
@@ -55,6 +56,7 @@ export function FehlzeitenLeiste({
   istAdmin: boolean;
   eigeneEmployeeId: string | null;
 }) {
+  const t = useBegriffe();
   const [mitarbeiter, setMitarbeiter] = useState<EmployeeRecord[]>([]);
   const [eintraege, setEintraege] = useState<Fehlzeit[] | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export function FehlzeitenLeiste({
     [mitarbeiter, eigeneEmployeeId],
   );
 
-  /** Schichtgruppen für die Administration: A–D, dann Tagschicht. */
+  /** Schichtgruppen für die Administration: A–E, dann Tagschicht. */
   const gruppen = useMemo(() => {
     const set = new Set<string>();
     for (const e of mitarbeiter) set.add(e.rotationTeam ?? "");
@@ -145,7 +147,7 @@ export function FehlzeitenLeiste({
         `${gewaehlt.firstName} ${gewaehlt.lastName}: ${formatDays(stunden)} Std. ${ART_TEXT[art]} am ${formatDE(tag)} – ${
           abzugWirksam === "af"
             ? `${formatDays(stunden)} AF-Std.`
-            : `${formatDays(stunden)} V-Std. (${formatDays(vTage)} V-Tage)`
+            : `${formatDays(stunden)} V-Std. (${formatDays(vTage)} ${t("V-Tage")})`
         } abgezogen.`,
       );
       setNotiz("");
@@ -170,7 +172,7 @@ export function FehlzeitenLeiste({
     <Card>
       <CardHeader
         title="Früher gegangen / später gekommen"
-        hint="Die fehlenden Stunden gehen 1:1 vom V-Stundenkonto (1 V-Tag = 7,5 Std.) oder von den AF-Stunden ab. Die Altersfreizeit wird für den Tag nur anteilig angespart (8-Std.-Schicht)."
+        hint={t("Die fehlenden Stunden gehen 1:1 vom V-Stundenkonto (1 V-Tag = 7,5 Std.) oder von den AF-Stunden ab. Die Altersfreizeit wird für den Tag nur anteilig angespart (8-Std.-Schicht).")}
       />
       <div className="space-y-3 px-4 py-3 sm:px-5">
         {istAdmin && gruppen.length > 1 ? (
@@ -283,7 +285,7 @@ export function FehlzeitenLeiste({
                   abzugWirksam === "v" ? "bg-brand-600 font-semibold text-white" : "bg-surface text-ink hover:bg-surface-muted",
                 )}
               >
-                V-Tagen
+                {t("V-Tagen")}
               </button>
               <button
                 type="button"
@@ -328,11 +330,11 @@ export function FehlzeitenLeiste({
             <span className="font-medium text-ink">−{formatDays(stunden)} AF-Std.</span>
           ) : (
             <>
-              <span className="font-medium text-ink">−{formatDays(stunden)} V-Std.</span> ({formatDays(vTage)} V-Tage)
+              <span className="font-medium text-ink">−{formatDays(stunden)} V-Std.</span> ({formatDays(vTage)} {t("V-Tage")})
             </>
           )}{" "}
           · Altersfreizeit für den Tag {formatDays(Math.round(afAnteil * 100) / 100)} statt 0,82 Std.
-          {gewaehlt !== null && !afMoeglich && abzug === "af" ? " · kein AF-Konto, deshalb von den V-Tagen" : ""}
+          {gewaehlt !== null && !afMoeglich && abzug === "af" ? t(" · kein AF-Konto, deshalb von den V-Tagen") : ""}
         </p>
 
         {fehler ? <Alert tone="error">{fehler}</Alert> : null}

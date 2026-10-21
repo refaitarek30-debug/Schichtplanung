@@ -12,6 +12,7 @@ import { roleLabels } from "@/lib/nav";
 import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
 import type { Role } from "@/lib/types";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
@@ -22,6 +23,8 @@ export function CreateEmployeePanel({
   /** Bekommt das Ergebnis, damit der Einladungslink oben stehen bleibt. */
   onCreated: (result: FormState) => void;
 }) {
+  const t = useBegriffe();
+  const za = useZeitausgleich();
   const [state, formAction] = useActionState(createEmployee, initialState);
 
   useEffect(() => {
@@ -93,9 +96,13 @@ export function CreateEmployeePanel({
             <Field label="Urlaubsanspruch (Tage/Jahr)">
               <Input name="vacation_days" type="number" step="0.5" min="0" defaultValue="0" />
             </Field>
-            <Field label="V-Tage (Freischichten/Jahr)" hint="Eigenes Konto neben dem Urlaub.">
-              <Input name="v_days" type="number" step="0.5" min="0" defaultValue="0" />
-            </Field>
+            {za ? (
+              <Field label={`${t("V-Tage")} (Freischichten/Jahr)`} hint="Eigenes Konto neben dem Urlaub.">
+                <Input name="v_days" type="number" step="0.5" min="0" defaultValue="0" />
+              </Field>
+            ) : (
+              <input type="hidden" name="v_days" value="0" />
+            )}
           </div>
           <label className="flex items-start gap-3 rounded-xl border border-line px-4 py-3">
             <input
@@ -109,7 +116,7 @@ export function CreateEmployeePanel({
               <span className="text-ink-muted">
                 Urlaub wird dann automatisch verteilt: an Sonn- und Feiertagen sowie in der
                 Nachtschicht ein Urlaubstag, weil der Zuschlag mitbezahlt wird – an allen
-                anderen Tagen ein V-Tag.
+                anderen Tagen ein {t("V-Tag")}.
               </span>
             </span>
           </label>

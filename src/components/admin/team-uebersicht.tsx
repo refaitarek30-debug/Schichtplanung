@@ -75,7 +75,7 @@ export function TeamUebersicht() {
   }, [load]);
 
   // Gesamte Belegschaft nach Schichtgruppe. Eine feste Schicht hat im
-  // Rotationsbetrieb niemand – deshalb wird nach A–D gruppiert, nicht danach
+  // Rotationsbetrieb niemand – deshalb wird nach A–E gruppiert, nicht danach
   // gefiltert. Die Qualifikationen stehen direkt an der Person, damit die
   // Schichtleitung sieht, wer Messwarte, Labor oder B-Schein abdecken kann.
   const teamGroups = useMemo(() => {
@@ -214,7 +214,7 @@ export function TeamUebersicht() {
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       {/* Oben das eigene Team, darunter die übrigen Schichtgruppen der
-          Reihe nach (A–D, Tagschicht) – mit Filter. Eine Liste, wer in
+          Reihe nach (A–E, Tagschicht) – mit Filter. Eine Liste, wer in
           welcher Schicht wann fehlt, steht hier nicht mehr: das zeigt der
           Schichtplan. */}
       {role === "employee" ? (

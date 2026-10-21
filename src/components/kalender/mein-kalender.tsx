@@ -40,6 +40,7 @@ import { setzeLokal, useLokaleEinstellung, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { setzeEinfuehrungGesehen, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
+import { useBegriffe } from "@/lib/begriffe";
 
 /**
  * Mein Kalender – der eigene Schichtplan als Monat.
@@ -160,6 +161,7 @@ interface Stand {
 }
 
 export function MeinKalender() {
+  const t = useBegriffe();
   const { profile, company } = useSession();
   const heute = heuteInBerlin();
   const [monat, setMonat] = useState(() => {
@@ -563,7 +565,7 @@ export function MeinKalender() {
     const gross = abw?.toUpperCase() ?? null;
     const beantragt = abw !== null && abw !== gross;
     if (abw && !beantragt) {
-      liste.push({ text: ABWESENHEIT[abw]?.kurz ?? abw, klasse: FARBE[abw] ?? FARBE.A! });
+      liste.push({ text: t(ABWESENHEIT[abw]?.kurz ?? abw), klasse: FARBE[abw] ?? FARBE.A! });
       return liste;
     }
     if (info.schichtName) {
@@ -576,7 +578,7 @@ export function MeinKalender() {
     }
     if (abw && beantragt && gross) {
       liste.push({
-        text: `${ABWESENHEIT[gross]?.kurz ?? gross}?`,
+        text: `${t(ABWESENHEIT[gross]?.kurz ?? gross)}?`,
         klasse: FARBE_BEANTRAGT[gross] ?? FARBE_BEANTRAGT.U!,
       });
     }
@@ -703,7 +705,7 @@ export function MeinKalender() {
               key={iso}
               type="button"
               onClick={(e) => tagAntippen(iso, e.currentTarget)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info)}${partner ? `, Partner: ${partnerText(partner, true)}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info, t)}${partner ? `, Partner: ${partnerText(partner, true)}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
                 "flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t border-line px-[2px] pb-1 pt-1 text-center [@media(max-height:700px)]:gap-[2px] [@media(max-height:700px)]:pt-0.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
@@ -883,11 +885,11 @@ export function MeinKalender() {
   );
 }
 
-function beschreibung(info: TagInfo): string {
+function beschreibung(info: TagInfo, t: (text: string) => string): string {
   const abw = info.abwesenheit;
-  if (abw && abw === abw.toUpperCase()) return ABWESENHEIT[abw]?.lang ?? "Abwesend";
+  if (abw && abw === abw.toUpperCase()) return t(ABWESENHEIT[abw]?.lang ?? "Abwesend");
   const teil = info.schichtName ?? "Frei";
-  if (abw) return `${teil}, ${ABWESENHEIT[abw.toUpperCase()]?.lang ?? "Antrag"} beantragt`;
+  if (abw) return `${teil}, ${t(ABWESENHEIT[abw.toUpperCase()]?.lang ?? "Antrag")} beantragt`;
   return teil;
 }
 
@@ -908,6 +910,7 @@ function Sprechblase({
   onTermin: (t: Termin | null) => void;
   onPartner: () => void;
 }) {
+  const t = useBegriffe();
   const d = fromISO(iso);
   const abw = info.abwesenheit;
   const gross = abw?.toUpperCase() ?? null;
@@ -920,7 +923,7 @@ function Sprechblase({
   let dauer: string | null = null;
 
   if (abw && !beantragt) {
-    titel = ABWESENHEIT[abw]?.lang ?? "Abwesend";
+    titel = t(ABWESENHEIT[abw]?.lang ?? "Abwesend");
     farbe = FARBE[abw] ?? FARBE.A!;
     zeichen = abw.slice(0, 2);
     if (info.schichtName) unterzeile = `statt ${info.schichtName}`;
@@ -961,7 +964,7 @@ function Sprechblase({
       </div>
       {beantragt && gross ? (
         <p className="pb-2 text-[13px] text-ink-muted">
-          {ABWESENHEIT[gross]?.lang ?? "Antrag"} beantragt – noch nicht genehmigt.
+          {t(ABWESENHEIT[gross]?.lang ?? "Antrag")} beantragt – noch nicht genehmigt.
         </p>
       ) : null}
 

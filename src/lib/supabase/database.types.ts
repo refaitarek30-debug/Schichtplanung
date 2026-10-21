@@ -574,7 +574,7 @@ export interface ProfileWithRelations extends ProfileRow {
   companies: Pick<
     CompanyRow,
     "id" | "name" | "logo_url" | "active" | "setup_completed_at" | "is_demo" | "demo_expires_at"
-  > | null;
+  > & { v_tag_name?: string | null; v_tage_name?: string | null; zeitausgleich?: boolean | null } | null;
   employees:
     | (Pick<EmployeeRow, "personnel_number" | "department"> & {
         shifts: Pick<ShiftRow, "name"> | null;

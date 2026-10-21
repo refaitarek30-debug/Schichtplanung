@@ -9,9 +9,11 @@ import { TodoZahlMarke } from "@/components/kalender/todo-zaehler";
 import { navForRole, navItems } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { NeuMarke } from "./neu-marke";
+import { useBegriffe } from "@/lib/begriffe";
 
 /** Untere Tab-Leiste mit den vier Hauptbereichen plus Menü für den Rest. */
 export function MobileNav() {
+  const t = useBegriffe();
   const pathname = usePathname();
   const { role, profile } = useSession();
   const [open, setOpen] = useState(false);
@@ -60,7 +62,7 @@ export function MobileNav() {
                           )}
                         >
                           <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-                          {item.label}
+                          {t(item.label)}
                           {item.neu ? <NeuMarke name={item.neu} /> : null}
                           {item.todoZahl ? <TodoZahlMarke pfad={pathname} className="ml-auto" /> : null}
                         </Link>

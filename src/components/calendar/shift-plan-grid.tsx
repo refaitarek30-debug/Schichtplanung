@@ -51,6 +51,7 @@ import { setzeAnzeige, useAnzeige } from "@/lib/anzeige";
 import { ladeFarben } from "@/lib/data/kalender-eigene";
 import { planZellStil } from "@/lib/kalender-farben";
 import { PlanAnsichtWahl, PlanFarbenSchalter, WochenendeWahl } from "@/components/kalender/anzeige-wahl";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -301,6 +302,8 @@ export function ShiftPlanGrid({
   /** Auf dem Handy von Rand zu Rand – jeder Pixel ist ein sichtbarer Tag mehr. */
   randlos?: boolean;
 }) {
+  const t = useBegriffe();
+  const za = useZeitausgleich();
   /**
    * Erster angezeigter Tag.
    *
@@ -1548,7 +1551,7 @@ export function ShiftPlanGrid({
             >
               {cellLabel(item.code)}
             </span>
-            <span className="truncate">{item.label}</span>
+            <span className="truncate">{t(item.label)}</span>
           </span>
         ))}
         {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
@@ -1698,17 +1701,17 @@ export function ShiftPlanGrid({
 
             <Abschnitt titel="Urlaub und Freistellung" hinweis="sofort genehmigt">
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-                {leaveKnoepfe.map((k) => (
+                {leaveKnoepfe.filter((k) => za || k.aktion !== "v_tag").map((k) => (
                   <button
                     key={k.aktion}
                     type="button"
                     disabled={pending}
                     onClick={() => applyChange(k.aktion, "")}
-                    title={k.label}
+                    title={t(k.label)}
                     className={cn(bearbeitKnopf, "flex-col gap-0 py-1.5 leading-tight", cellStyles[k.code])}
                   >
                     <span className="text-[14px] font-bold">{k.code}</span>
-                    <span className="w-full truncate text-[10px] font-normal opacity-90">{k.label}</span>
+                    <span className="w-full truncate text-[10px] font-normal opacity-90">{t(k.label)}</span>
                   </button>
                 ))}
               </div>
@@ -1895,7 +1898,7 @@ export function ShiftPlanGrid({
                       colSpan={dates.length + vorspalten}
                       className="sticky left-0 bg-brand-50 p-0 text-left"
                     >
-                      {/* Zusammenklappen: mit vier Gruppen passt sonst nichts
+                      {/* Zusammenklappen: mit vier oder fünf Gruppen passt sonst nichts
                           anderes mehr auf den Bildschirm. */}
                       <button
                         type="button"

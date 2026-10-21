@@ -14,6 +14,7 @@ import { fetchLeaveBlockReason } from "@/lib/data/staffing";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 type Art =
   | "auto"
@@ -62,7 +63,9 @@ export function PlanLeaveRequest({
   onClose: () => void;
   onDone: (meldung: string) => void;
 }) {
-  const [art, setArt] = useState<Art>("auto");
+  const t = useBegriffe();
+  const za = useZeitausgleich();
+  const [art, setArt] = useState<Art>(za ? "auto" : "urlaub");
   const [kommentar, setKommentar] = useState("");
   const [tage, setTage] = useState<number | null>(null);
   const [auto, setAuto] = useState<LiveAutoDay[] | null>(null);
@@ -213,13 +216,15 @@ export function PlanLeaveRequest({
             onChange={(e) => setArt(e.target.value as Art)}
             className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-base sm:text-sm"
           >
-            <option value="auto">Automatisch verteilen</option>
+            {za ? <option value="auto">Automatisch verteilen</option> : null}
             <option value="urlaub">
               Urlaubstag{konto ? ` · ${formatDays(konto.remainingDays)} übrig` : ""}
             </option>
+            {za ? (
             <option value="v_tag">
-              V-Tag{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
-            </option>
+                {t("V-Tag")}{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
+              </option>
+            ) : null}
             {KONTINGENT_ARTEN.map((k) => {
               const q = kontingente.find((x) => x.kind === k);
               if (!q?.erlaubt) return null;
@@ -250,8 +255,7 @@ export function PlanLeaveRequest({
 
       {art === "auto" && auto && auto.length > 0 ? (
         <p className="mt-2 text-[13px] text-ink-muted">
-          Automatisch: {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}, {autoV} V-Tag
-          {autoV === 1 ? "" : "e"}
+          Automatisch: {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}, {autoV} {autoV === 1 ? t("V-Tag") : t("V-Tage")}
           {autoOffen > 0 ? ` · ${autoOffen} Tag(e) nicht gedeckt` : ""}.
         </p>
       ) : null}
@@ -307,12 +311,13 @@ function KontoUebersicht({
   konto: LiveLeaveBalance | null;
   kontingente: LiveLeaveKindQuota[];
 }) {
+  const t = useBegriffe();
   if (!konto) return null;
   const su = kontingente.find((q) => q.kind === "sonderurlaub" && q.erlaubt);
   const af = kontingente.find((q) => q.kind === "altersfreizeit" && q.erlaubt);
   const kacheln = [
     { label: "Urlaub", wert: Math.max(konto.remainingDays, 0), farbe: "bg-shift-urlaub text-shift-urlaub-ink" },
-    { label: "V-Tage", wert: konto.vRemainingDays, farbe: "bg-shift-vtag text-shift-vtag-ink" },
+    { label: t("V-Tage"), wert: konto.vRemainingDays, farbe: "bg-shift-vtag text-shift-vtag-ink" },
     ...(su
       ? [{ label: "Sonderurl.", wert: Math.max(su.rest, 0), farbe: "bg-shift-sonderurlaub text-shift-sonderurlaub-ink" }]
       : []),

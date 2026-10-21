@@ -30,6 +30,11 @@ export interface Company {
   /** Befristeter Mandant der Live-Demo (wird automatisch gelöscht). */
   isDemo?: boolean;
   demoExpiresAt?: string | null;
+  /** Wie der Betrieb „V-Tag“ nennt (bei der Registrierung gewählt). Standard: V-Tag / V-Tage. */
+  vTagName?: string;
+  vTageName?: string;
+  /** Gibt es im Betrieb Zeitausgleich (V-Tage)? Nein = V-Tage werden ausgeblendet. */
+  zeitausgleich?: boolean;
 }
 
 /** Angemeldete Person: Auth-Benutzer + Zeile aus `profiles` (+ `employees`). */
@@ -88,7 +93,7 @@ export interface EmployeeRecord {
    * Programm sie nicht mehr im Voraus – geraten wird deshalb nichts.
    */
   qualificationLabels: string[];
-  /** Schichtgruppe A–D im Rotationsbetrieb, null = keine Rotation. */
+  /** Schichtgruppe A–E im Rotationsbetrieb, null = keine Rotation. */
   rotationTeam: string | null;
   /** Jahresanspruch V-Tage (Freischichten). */
   vDays: number;

@@ -20,6 +20,7 @@ import {
 import { fetchCompanyRules } from "@/lib/data/staffing-rules";
 import { cn } from "@/lib/utils";
 import { Activity, CalendarCheck, Thermometer } from "lucide-react";
+import { useBegriffe } from "@/lib/begriffe";
 
 type Ebene = "gesamt" | "schicht" | "person";
 
@@ -41,6 +42,7 @@ function ZurStartseite() {
 }
 
 export default function AuswertungPage() {
+  const t = useBegriffe();
   const { mode, role } = useSession();
   const jetzt = new Date();
 
@@ -289,7 +291,7 @@ export default function AuswertungPage() {
                       <Kopf>Anwesend</Kopf>
                       <Kopf>Krank</Kopf>
                       <Kopf>Urlaub</Kopf>
-                      <Kopf>V-Tage</Kopf>
+                      <Kopf>{t("V-Tage")}</Kopf>
                       <Kopf>Sonderurl.</Kopf>
                       <Kopf>Altersfrz.</Kopf>
                       <Kopf>Bildungsurl.</Kopf>
@@ -345,7 +347,7 @@ export default function AuswertungPage() {
 
           <p className="text-center text-[12px] text-ink-faint">
             Gesundheitsrate = Anwesenheit ÷ (Anwesenheit + Ausfall). Seminar zählt als
-            Anwesenheit. Urlaub, V-Tage, Sonderurlaub, Altersfreizeit und Bildungsurlaub sind
+            Anwesenheit. Urlaub, {t("V-Tage")}, Sonderurlaub, Altersfreizeit und Bildungsurlaub sind
             geplante Abwesenheiten und gehen in keine der beiden Größen ein; der
             Gewerkschaftstag ebenso.
           </p>

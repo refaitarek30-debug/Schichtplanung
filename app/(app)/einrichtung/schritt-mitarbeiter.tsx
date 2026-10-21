@@ -13,6 +13,7 @@ import { ROTATION_TEAMS } from "@/lib/qualifications";
 import { roleLabels } from "@/lib/nav";
 import type { SetupState } from "@/lib/data/setup";
 import type { Role } from "@/lib/types";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 const roles: Role[] = ["employee", "shift_leader", "admin"];
@@ -35,6 +36,8 @@ export function SchrittMitarbeiter({
   stand: SetupState | null;
   onFertig: () => void | Promise<void>;
 }) {
+  const t = useBegriffe();
+  const za = useZeitausgleich();
   const [state, formAction] = useActionState(createEmployee, initialState);
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export function SchrittMitarbeiter({
           {stand && stand.musterVorhanden && stand.mitarbeiterMitGruppe === 0 ? (
             <Alert tone="warning">
               Das Schichtmuster ist gespeichert, aber noch niemandem zugeordnet. Erst mit
-              einer Schichtgruppe (A–D) taucht jemand im Schichtplan auf.
+              einer Schichtgruppe (A–E) taucht jemand im Schichtplan auf.
             </Alert>
           ) : null}
 
@@ -141,7 +144,7 @@ export function SchrittMitarbeiter({
             <SendeKnopf />
 
             <p className="text-[12px] leading-snug text-ink-faint">
-              Urlaubsanspruch (30 Tage) und V-Tage (27) werden vorbelegt und lassen sich
+              {za ? <>Urlaubsanspruch (30 Tage) und {t("V-Tage")} (27) werden vorbelegt</> : <>Der Urlaubsanspruch (30 Tage) wird vorbelegt</>} und lassen sich
               unter Mitarbeiter je Person ändern.
             </p>
           </form>

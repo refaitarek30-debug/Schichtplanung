@@ -33,6 +33,7 @@ import type {
 } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
 const initialState: FormState = {};
 
@@ -82,7 +83,9 @@ export function LiveLeaveRequestForm({
   const [reason, setReason] = useState("");
   const [impact, setImpact] = useState<LiveLeaveImpact | null>(null);
   /** Immer "Automatisch", bis die Person selbst eine Art wählt. */
-  const [kind, setKind] = useState<LeaveKind>("auto");
+  // Ohne Zeitausgleich gibt es weder V-Tage noch das automatische Verteilen.
+  const za = useZeitausgleich();
+  const [kind, setKind] = useState<LeaveKind>(za ? "auto" : "urlaub");
   const [suggestion, setSuggestion] = useState<LiveLeaveKindSuggestion | null>(null);
   /** Jahreskontingente der vier Arten ohne Urlaubskonto. */
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
@@ -403,12 +406,13 @@ export function LiveLeaveRequestForm({
       setReason("");
       // Nach dem Absenden wieder auf "Automatisch" – der nächste Antrag
       // soll nicht die Art des vorigen erben.
-      setKind("auto");
+      setKind(za ? "auto" : "urlaub");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.success]);
 
   const labels = kindLabels[kind];
+  const t = useBegriffe();
   const autoUrlaub = (autoDays ?? []).filter((d) => d.kind === "urlaub").length;
   const autoVTage = (autoDays ?? []).filter((d) => d.kind === "v_tag").length;
   const autoOffen = (autoDays ?? []).filter((d) => d.kind === "keins").length;
@@ -581,7 +585,7 @@ export function LiveLeaveRequestForm({
 
           <Field
             label="Art"
-            hint="Automatisch heißt: Zuschlagstage kosten Urlaub, der Rest V-Tage."
+            hint={t("Automatisch heißt: Zuschlagstage kosten Urlaub, der Rest V-Tage.")}
           >
             <select
               value={kind}
@@ -590,7 +594,7 @@ export function LiveLeaveRequestForm({
               }}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
             >
-              <option value="auto">Automatisch verteilen</option>
+              {za ? <option value="auto">Automatisch verteilen</option> : null}
               {/* Die Reste gehören zum Jahr des gewählten Zeitraums, nicht
                   zum Jahr der Kontokarte daneben. */}
               <option value="urlaub">
@@ -599,12 +603,14 @@ export function LiveLeaveRequestForm({
                   ? ` · ${formatDays(jahresKonto.remainingDays)} übrig`
                   : ""}
               </option>
+              {za ? (
               <option value="v_tag">
-                V-Tag
-                {jahresKonto
-                  ? ` · ${formatDays(jahresKonto.vRemainingDays)} übrig`
-                  : ""}
-              </option>
+                  {t("V-Tag")}
+                  {jahresKonto
+                    ? ` · ${formatDays(jahresKonto.vRemainingDays)} übrig`
+                    : ""}
+                </option>
+              ) : null}
               {/* Die vier übrigen Arten kommen nur in die Auswahl, wenn für
                   diese Person etwas übrig ist: bei Bildungsurlaub braucht
                   es den Haken in der Verwaltung, bei Altersfreizeit eine
@@ -631,7 +637,7 @@ export function LiveLeaveRequestForm({
                     {suggestion.kind === "urlaub"
                       ? "Empfehlung: Urlaubstag"
                       : suggestion.kind === "v_tag"
-                        ? "Empfehlung: V-Tag"
+                        ? t("Empfehlung: V-Tag")
                         : "Keine Empfehlung"}
                   </span>{" "}
                   – {suggestion.reason}
@@ -689,7 +695,7 @@ export function LiveLeaveRequestForm({
                       {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}
                     </span>
                     <span className="text-sm font-semibold">
-                      {autoVTage} V-Tag{autoVTage === 1 ? "" : "e"}
+                      {autoVTage} {autoVTage === 1 ? t("V-Tag") : t("V-Tage")}
                     </span>
                     {autoOffen > 0 ? (
                       <span className="text-sm font-semibold text-crit-fg">
@@ -724,7 +730,7 @@ export function LiveLeaveRequestForm({
             </div>
           ) : (
             <div className="flex items-center justify-between rounded-xl bg-surface-muted px-4 py-3">
-              <span className="text-sm text-ink-muted">Benötigte {labels.plural}</span>
+              <span className="text-sm text-ink-muted">Benötigte {t(labels.plural)}</span>
               <span className="tnum text-lg font-semibold">
                 {zaehltNoch || (!employeeId && !holidays) ? "…" : formatDays(days)}
               </span>
@@ -736,17 +742,17 @@ export function LiveLeaveRequestForm({
               <p className="flex items-center gap-2 text-sm font-semibold">
                 <PanelIcon className="h-4 w-4" strokeWidth={2} />
                 {insufficientBalance
-                  ? `Für diesen Zeitraum stehen im Konto ${startJahr} nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${labels.plural} zur Verfügung.`
+                  ? `Für diesen Zeitraum stehen im Konto ${startJahr} nur noch ${formatDays(Math.max(accountRemaining ?? 0, 0))} ${t(labels.plural)} zur Verfügung.`
                   : staffingCritical
                     ? "Mindestbesetzung wird unterschritten."
-                    : `${formatDays(accountRemaining ?? 0)} ${labels.plural} verfügbar${
+                    : `${formatDays(accountRemaining ?? 0)} ${t(labels.plural)} verfügbar${
                       kind === "urlaub" || kind === "v_tag" ? ` (Konto ${startJahr})` : ""
                     }.`}
               </p>
               <ul className="mt-2 space-y-1 text-[13px] leading-snug">
                 {remainingAfter !== null && !insufficientBalance ? (
                   <li>
-                    {formatDays(remainingAfter)} {labels.plural} verbleiben nach diesem Antrag.
+                    {formatDays(remainingAfter)} {t(labels.plural)} verbleiben nach diesem Antrag.
                   </li>
                 ) : null}
                 {staffingCritical ? (
@@ -777,7 +783,7 @@ export function LiveLeaveRequestForm({
           {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
           <SubmitButton
-            label={labels.action}
+            label={t(labels.action)}
             disabled={
               Boolean(sperrGrund) ||
               (kind === "auto"
@@ -802,9 +808,9 @@ export function LiveLeaveRequestForm({
 
           {insufficientBalance && kind !== "auto" ? (
             <p className="text-[12px] leading-snug text-crit-fg">
-              Absenden nicht möglich: Der Zeitraum braucht mehr {labels.plural}, als im Konto{" "}
+              Absenden nicht möglich: Der Zeitraum braucht mehr {t(labels.plural)}, als im Konto{" "}
               {startJahr} übrig sind. Kürzeren Zeitraum wählen, eine andere Art nehmen oder
-              „Automatisch verteilen“ – damit werden Urlaubstage und V-Tage gemischt.
+              {t("„Automatisch verteilen“ – damit werden Urlaubstage und V-Tage gemischt.")}
             </p>
           ) : null}
         </form>

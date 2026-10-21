@@ -22,5 +22,5 @@ export const qualificationLabels: Record<Qualification, string> = {
 };
 
 /** Schichtgruppen im Rotationsbetrieb. */
-export type RotationTeam = "A" | "B" | "C" | "D";
-export const ROTATION_TEAMS: RotationTeam[] = ["A", "B", "C", "D"];
+export type RotationTeam = "A" | "B" | "C" | "D" | "E";
+export const ROTATION_TEAMS: RotationTeam[] = ["A", "B", "C", "D", "E"];
