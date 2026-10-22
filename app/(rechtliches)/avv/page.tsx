@@ -309,8 +309,15 @@ export default function AvvPage() {
           Textform mit. Ohne Mitteilung werden die Daten nach Ablauf weiterer 30 Tage gelöscht.
         </Absatz>
         <Absatz>
-          (3) Sicherungskopien werden im Rahmen der üblichen Aufbewahrungszyklen des
-          Dienstleisters überschrieben. Gesetzliche Aufbewahrungspflichten bleiben unberührt.
+          (3) Sicherungskopien werden spätestens nach 14 Tagen automatisch gelöscht.
+          Gesetzliche Aufbewahrungspflichten bleiben unberührt.
+        </Absatz>
+        <Absatz>
+          (4) Eine veranlasste Löschung wird in zwei Stufen ausgeführt: Zunächst werden die Daten
+          des Auftraggebers für bis zu 14 Tage in einen Papierkorb verschoben. Die Zugänge sind
+          dann gesperrt und die Daten nicht mehr nutzbar; auf Wunsch des Auftraggebers in dieser
+          Zeit stellt der Auftragnehmer sie vollständig wieder her. Nach Ablauf werden die Daten
+          endgültig gelöscht, die Sicherungskopien nach weiteren höchstens 14 Tagen.
         </Absatz>
       </Abschnitt>
 

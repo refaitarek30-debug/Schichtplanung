@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PlattformTabelle, type Dashboard, type FirmaKennzahlen } from "./tabelle";
 import { SupportCode } from "./support-code";
+import { LoeschBereich, type LoeschListe } from "./loeschen";
 
 export const metadata = { title: "Plattform" };
 
@@ -83,6 +84,8 @@ export default async function PlattformPage() {
 
   // Das Dashboard ist eine Zugabe: schlägt es fehl, bleibt die Firmenliste da.
   const { data: dash } = await admin.rpc("platform_dashboard", { p_limit: 30 });
+  // Auch die Löschliste ist eine Zugabe: ohne sie bleibt der Rest der Seite stehen.
+  const { data: loeschliste } = await admin.rpc("plattform_loeschliste");
 
   return (
     <>
@@ -90,6 +93,11 @@ export default async function PlattformPage() {
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
         <SupportCode />
       </div>
+      {loeschliste ? (
+        <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+          <LoeschBereich liste={loeschliste as LoeschListe} />
+        </div>
+      ) : null}
     </>
   );
 }
