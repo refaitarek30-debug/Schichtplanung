@@ -662,9 +662,13 @@ export default function DatenschutzPage() {
           <li>
             Nach Ende des Vertrags mit dem Betreiber werden die Daten des Unternehmens nach
             dessen Wahl herausgegeben und gelöscht (siehe Auftragsverarbeitungsvertrag).
-            Die verschlüsselten nächtlichen Sicherungen (Abschnitt 9) werden nach 14 Tagen
-            automatisch gelöscht; spätestens dann sind auch gelöschte Daten aus allen Sicherungen
-            entfernt.
+            Wird ein Unternehmen gelöscht, liegen seine Daten zunächst bis zu 14 Tage in einem
+            Papierkorb: Die Zugänge sind gesperrt und die Daten nicht mehr nutzbar, bei einem
+            Versehen lässt sich alles zurückholen. Danach werden Unternehmen und alle zugehörigen
+            Zugänge endgültig gelöscht. Die verschlüsselten nächtlichen Sicherungen (Abschnitt 9)
+            werden nach 14 Tagen automatisch gelöscht; spätestens 28 Tage nach dem Löschauftrag
+            sind die Daten deshalb auch aus allen Sicherungen entfernt. Privatkonten werden auf
+            Wunsch der Person sofort gelöscht, ebenfalls ohne Papierkorb.
           </li>
           <li>
             Zugriffsprotokolle der Hosting-Dienstleister werden nach deren Vorgaben nach
