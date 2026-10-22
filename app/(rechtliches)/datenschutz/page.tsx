@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="21. Oktober 2026"
+      updated="22. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -586,6 +586,9 @@ export default function DatenschutzPage() {
             <strong>Supabase</strong> (Supabase, Inc.) – Datenbank, Authentifizierung,
             Serverfunktionen für den Mailversand. Die Datenbank dieses Projekts liegt in der
             Region <code className={kode}>eu-west-1</code> (Irland, Europäische Union).
+            Supabase setzt seinerseits Unterauftragnehmer ein, nach eigener Auskunft u. a. Amazon Web
+            Services (Datenbank), Google Cloud (Protokolle), Fly.io, Cloudflare und Upstash; die
+            aktuelle Liste führt Supabase unter supabase.com/legal/customer-resources/subprocessor-list.
           </li>
           <li>
             <strong>Vercel</strong> (Vercel, Inc.) – Auslieferung der Anwendung. Die
@@ -616,11 +619,10 @@ export default function DatenschutzPage() {
           Sitz in den USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
           ausgeschlossen werden kann, stützt er sich auf einen Angemessenheitsbeschluss der
           Europäischen Kommission (EU-US Data Privacy Framework) oder auf
-          Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO.{" "}
-          <Platzhalter>
-            Betreiber: Abschluss der Auftragsverarbeitungsverträge mit Supabase, Vercel und
-            Mailanbieter sowie aktuellen Zertifizierungs-/Klauselstand prüfen und bestätigen
-          </Platzhalter>
+          Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO. Mit Supabase besteht eine
+          Vereinbarung zur Auftragsverarbeitung einschließlich Standardvertragsklauseln; für den
+          Datentransfer liegt eine Transfer-Folgenabschätzung vor. Mit Vercel und GitHub gelten
+          die in deren Bedingungen enthaltenen Auftragsverarbeitungsvereinbarungen.
         </Absatz>
         <Absatz>
           Eine Weitergabe an sonstige Dritte findet nicht statt, außer aufgrund einer

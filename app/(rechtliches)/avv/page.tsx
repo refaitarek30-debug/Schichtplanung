@@ -36,7 +36,7 @@ export default function AvvPage() {
     <LegalPage
       title="Auftragsverarbeitungsvertrag"
       intro="Vertrag über die Verarbeitung personenbezogener Daten im Auftrag nach Art. 28 DSGVO."
-      updated="21. Oktober 2026"
+      updated="22. Oktober 2026"
       version={AVV_VERSION}
     >
       <Hinweis titel="Abschluss und Entwurfsstatus">
@@ -190,7 +190,10 @@ export default function AvvPage() {
           <li>
             <strong>Supabase, Inc.</strong> (USA) – Datenbank, Authentifizierung,
             Serverfunktionen für den Mailversand. Ort der Verarbeitung: Region{" "}
-            <code className={kode}>eu-west-1</code> (Irland, EU).
+            <code className={kode}>eu-west-1</code> (Irland, EU). Supabase setzt seinerseits
+            Unterauftragnehmer ein (u. a. Amazon Web Services, Google Cloud, Fly.io, Cloudflare,
+            Upstash); die aktuelle Liste führt Supabase unter
+            supabase.com/legal/customer-resources/subprocessor-list.
           </li>
           <li>
             <strong>Vercel, Inc.</strong> (USA) – Auslieferung der Anwendung,
@@ -216,11 +219,10 @@ export default function AvvPage() {
           (3) Soweit ein Unterauftragsverarbeiter Daten in einem Drittland verarbeitet oder ein
           Zugriff von dort möglich ist, stützt sich die Übermittlung auf einen
           Angemessenheitsbeschluss (EU-US Data Privacy Framework) oder Standardvertragsklauseln
-          nach Art. 46 Abs. 2 lit. c DSGVO mit ergänzenden Maßnahmen.{" "}
-          <Platzhalter>
-            Betreiber: Abschluss der Auftragsverarbeitungsverträge mit den genannten Anbietern
-            und aktuellen Zertifizierungs-/Klauselstand bestätigen
-          </Platzhalter>
+          nach Art. 46 Abs. 2 lit. c DSGVO mit ergänzenden Maßnahmen. Mit Supabase besteht eine
+          Vereinbarung zur Auftragsverarbeitung einschließlich Standardvertragsklauseln und einer
+          Transfer-Folgenabschätzung; mit Vercel und GitHub gelten die in deren Bedingungen
+          enthaltenen Auftragsverarbeitungsvereinbarungen.
         </Absatz>
         <Absatz>
           (4) Der Auftragnehmer schließt mit jedem Unterauftragsverarbeiter einen Vertrag, der
