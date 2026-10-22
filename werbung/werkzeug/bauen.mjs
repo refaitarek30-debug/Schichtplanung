@@ -37,15 +37,50 @@ const umbrechen = (t, max = 24) =>
   }).join("\n");
 const haken = text("t-haken.txt", umbrechen(folge.haken, 26));
 const hakenBis = Math.min(3.2, z.saetze[0].dauer + 0.6);
-const untertitel = z.saetze.map((s, i) => {
-  const ab = +(s.ab - start).toFixed(2);
-  const bis = +(i + 1 < z.saetze.length ? z.saetze[i + 1].ab - start : dauer).toFixed(2);
-  return dt(text(`t-u${i}.txt`, umbrechen(s.untertitel)), 64, `fontcolor=white:borderw=8:bordercolor=0x101a28:x=(w-text_w)/2:y=1300:enable='between(t,${ab},${bis - 0.05})'`);
-});
+const flott = folge.stil === "flott";
+
+// Ruhig: ein Untertitel je Satz. Flott: kurze Wortgruppen, abwechselnd weiß und gelb.
+const untertitel = flott
+  ? z.saetze.flatMap((s, i) => {
+      const ab = s.ab - start;
+      const bisSatz = i + 1 < z.saetze.length ? z.saetze[i + 1].ab - start : dauer;
+      const woerter = s.untertitel.replace(/\n/g, " ").split(" ").filter(Boolean);
+      const gruppen = [];
+      for (const w of woerter) {
+        const letzte = gruppen.at(-1);
+        if (letzte && letzte.length < 3 && (letzte.join(" ") + " " + w).length <= 16 && !/[.?!:]$/.test(letzte.at(-1))) letzte.push(w);
+        else gruppen.push([w]);
+      }
+      const zeichen = gruppen.reduce((n, g) => n + g.join(" ").length + 2, 0);
+      let t = ab;
+      return gruppen.map((g, j) => {
+        const von = t;
+        t += (s.dauer * (g.join(" ").length + 2)) / zeichen;
+        const bis = j === gruppen.length - 1 ? bisSatz : t;
+        const farbe = (i + j) % 2 ? "0xFFD400" : "white";
+        return dt(
+          text(`t-u${i}-${j}.txt`, g.join(" ").toUpperCase()),
+          88,
+          `fontcolor=${farbe}:borderw=10:bordercolor=0x0b1220:x=(w-text_w)/2:y=1270:alpha='min(1,(t-${von.toFixed(2)})/0.08)':enable='between(t,${von.toFixed(2)},${(bis - 0.02).toFixed(2)})'`,
+        );
+      });
+    })
+  : z.saetze.map((s, i) => {
+      const ab = +(s.ab - start).toFixed(2);
+      const bis = +(i + 1 < z.saetze.length ? z.saetze[i + 1].ab - start : dauer).toFixed(2);
+      return dt(text(`t-u${i}.txt`, umbrechen(s.untertitel)), 64, `fontcolor=white:borderw=8:bordercolor=0x101a28:x=(w-text_w)/2:y=1300:enable='between(t,${ab},${bis - 0.05})'`);
+    });
+
+// Flott: bei jedem Satz ein kurzer Zoom-Ruck, dazwischen langsames Hineinzoomen.
+const ruck = z.saetze.map((s) => `0.07*exp(-7*(on/30-${(s.ab - start).toFixed(2)}))*gte(on/30,${(s.ab - start).toFixed(2)})`).join("+");
+const zoom = flott
+  ? `,zoompan=z='1.02+0.02*on/30/${dauer.toFixed(2)}+${ruck}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30`
+  : "";
+const hakenY = flott ? `'if(lt(t,0.22),230-(0.22-t)*1400,230)'` : "230";
 
 const bild = [
-  `[0:v]trim=start=${start}:duration=${dauer},setpts=PTS-STARTPTS,fps=30,scale=1080:1920:flags=lanczos`,
-  dt(haken, 74, `box=1:boxcolor=0xE5484DF2:boxborderw=30:fontcolor=white:x=(w-text_w)/2:y=230:enable='between(t,0,${hakenBis})'`),
+  `[0:v]trim=start=${start}:duration=${dauer},setpts=PTS-STARTPTS,fps=30,scale=1080:1920:flags=lanczos${zoom}`,
+  dt(haken, flott ? 82 : 74, `box=1:boxcolor=0xE5484DF2:boxborderw=30:fontcolor=white:x=(w-text_w)/2:y=${hakenY}:enable='between(t,0,${hakenBis})'`),
   ...untertitel,
   `format=yuv420p[a]`,
 ].join(",");

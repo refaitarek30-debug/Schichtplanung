@@ -26,7 +26,7 @@ const saetze = folge.saetze.map((s, i) => {
 });
 
 // 2. Aufnahme im Takt der Sätze
-const s = await starte({ OUT: out });
+const s = await starte({ OUT: out, ohneSitzung: folge.ohneSitzung });
 await s.page.goto(s.base + folge.start, { waitUntil: "networkidle", timeout: 180000 });
 const ueberspringen = s.page.getByRole("button", { name: "Überspringen" });
 if (await ueberspringen.count()) await ueberspringen.first().click();
@@ -39,7 +39,7 @@ for (const [i, satz] of saetze.entries()) {
   s.marke(`satz${i}`);
   zeiten.push(s.zeit[`satz${i}`]);
   if (satz.aktion) await satz.aktion(s);
-  const rest = satz.dauer * 1000 + (satz.pause ?? 250) - (Date.now() - ab);
+  const rest = satz.dauer * 1000 + (satz.pause ?? folge.pause ?? 250) - (Date.now() - ab);
   if (rest > 0) await s.page.waitForTimeout(rest);
 }
 s.marke("ende");

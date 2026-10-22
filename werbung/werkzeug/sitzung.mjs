@@ -1,5 +1,5 @@
 // Gemeinsame Hilfen für die Aufnahmen: Browser mit Beispiel-Sitzung (Handyformat), Tipp-Ring, Wischen.
-export async function starte({ OUT, aufnahme = true, BASE = "http://localhost:3123" }) {
+export async function starte({ OUT, aufnahme = true, BASE = "http://localhost:3123", ohneSitzung = false }) {
   const { chromium } = await import(process.env.PLAYWRIGHT_PATH ?? "playwright");
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const U = "11111111-2222-4333-8444-555555555555";
@@ -11,7 +11,7 @@ export async function starte({ OUT, aufnahme = true, BASE = "http://localhost:31
     timezoneId: "Europe/Berlin", bypassCSP: true,
     ...(aufnahme ? { recordVideo: { dir: OUT, size: { width: 540, height: 960 } } } : {}),
   });
-  await ctx.addCookies([{ name: "sb-127-auth-token", value: sitzung, domain: "localhost", path: "/" }]);
+  if (!ohneSitzung) await ctx.addCookies([{ name: "sb-127-auth-token", value: sitzung, domain: "localhost", path: "/" }]);
   await ctx.addInitScript(() => {
     try { localStorage.setItem("schichtplan.einfuehrung", "1"); } catch {}
     addEventListener("pointerdown", (e) => {

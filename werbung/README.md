@@ -31,6 +31,19 @@ Benötigt: Node, Playwright (Chromium) und ffmpeg. Die Videodateien selbst liege
 | 04 | „Wie viele Nachtschichten hattest du dieses Jahr?" (Zählen) | fertig, mit Stimme |
 | 05 | „Urlaub eintragen? So geht's am schnellsten" (Pinsel) | fertig, mit Stimme |
 | 06 | „Schichtarbeiter, hört auf mit Zetteln!" (Samstag antippen) | fertig, mit Stimme |
+| 07 | „Diese App braucht jeder Schichtarbeiter" (App-Tour) | fertig, flott |
+| 08 | „Dein ganzes Jahr auf einen Blick" (Jahres- und Wochenansicht) | fertig, flott |
+| 09 | „Zahnarzt nach der Nachtschicht? Nein danke." (Termin mit Erinnerung) | fertig, flott |
+| 10 | „Nach der Nachtschicht alles vergessen?" (To-dos) | fertig, flott |
+| 11 | „Wann genau fängt deine Schicht an?" (Tagesansicht) | fertig, flott |
+| 12 | „Arbeitest du am Feiertag?" (Feiertage) | fertig, flott |
+| 13 | „Von deiner alten App wechseln? Easy." (Übernehmen) | fertig, flott |
+| 14 | „Nachtschicht? Dann Dunkelmodus." (Farbschemata) | fertig, flott |
+| 15 | „In 20 Sekunden startklar" (Registrierung) | fertig, flott |
+| 16 | „Deine Schichten. Deine Farben." (eigene Schichten, Wochenende) | fertig, flott |
+
+Stil „flott“ (`stil: "flott"` in folge.mjs): schnellere Stimme, Zoom-Ruck bei jedem Satz,
+Untertitel in kurzen Wortgruppen (weiß/gelb), Aufhänger fährt von oben ein.
 
 ## Folgen mit Stimme (02–06)
 

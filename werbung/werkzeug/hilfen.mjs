@@ -9,3 +9,10 @@ export async function knopf(s, name) {
   const k = s.page.getByRole("button", { name }).first();
   if (await k.count()) await s.tippen(k);
 }
+export async function textTippen(s, t) {
+  await s.tippen(s.page.getByText(t, { exact: true }).first());
+}
+export async function tippe(s, feld, wert) {
+  await s.tippen(feld);
+  await feld.pressSequentially(wert, { delay: 55 });
+}
