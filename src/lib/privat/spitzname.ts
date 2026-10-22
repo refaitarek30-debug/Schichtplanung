@@ -17,7 +17,12 @@ export function pruefeSpitzname(roh: string): string | null {
   if (s.length < SPITZNAME_MIN) return `Der Spitzname braucht mindestens ${SPITZNAME_MIN} Zeichen.`;
   if (s.length > SPITZNAME_MAX) return `Der Spitzname darf höchstens ${SPITZNAME_MAX} Zeichen haben.`;
   if (!MUSTER.test(s)) {
-    return "Erlaubt sind Buchstaben (a–z, ohne Umlaute), Ziffern, Punkt, Unterstrich und Bindestrich – ohne Leerzeichen.";
+    // Konkret sagen, was nicht geht – nicht nur die Regel aufzählen.
+    if (/\s/.test(s)) return "Bitte ohne Leerzeichen – zum Beispiel mit Punkt oder Bindestrich verbinden.";
+    if (/[äöüß]/.test(s)) return "Bitte ohne Umlaute: ä → ae, ö → oe, ü → ue, ß → ss.";
+    if (!/^[a-z0-9]/.test(s)) return "Bitte mit einem Buchstaben oder einer Ziffer beginnen.";
+    const zeichen = [...new Set(s.replace(/[a-z0-9._-]/g, ""))].join(" ");
+    return `Dieses Zeichen geht nicht: ${zeichen}. Erlaubt sind a–z, Ziffern, Punkt, Unterstrich, Bindestrich.`;
   }
   return null;
 }

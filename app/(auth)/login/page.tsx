@@ -52,13 +52,13 @@ export default async function LoginPage({
       <LoginForm next={params.weiter ?? ""} disabled={!isSupabaseConfigured} />
 
       <div className="mt-8 border-t border-line pt-6">
-        <p className="text-center text-[13px] font-medium text-ink-muted">Noch kein Konto?</p>
+        <p className="text-center text-[15px] font-semibold">Noch kein Konto? Hier registrieren:</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <Link
             href="/privat/registrieren"
             className="rounded-xl bg-brand-50 px-3 py-2.5 text-center text-[13.5px] font-semibold text-brand-700 hover:bg-brand-100"
           >
-            Privat starten
+            Privat registrieren
           </Link>
           <Link
             href="/registrieren"

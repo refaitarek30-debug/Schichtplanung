@@ -5,12 +5,10 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { authErrorMessage } from "@/lib/errors";
 import { LEGAL_VERSIONS } from "@/lib/legal/version";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 import { PRIVAT_DOMAIN, pruefeSpitzname, spitznameZuEmail } from "./spitzname";
-import { siteOrigin } from "@/lib/auth/invite";
 import { PASSWORT_MAX, PASSWORT_MIN } from "@/lib/auth/password-policy";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import type { FormState } from "@/lib/auth/form-state";
@@ -108,9 +106,10 @@ export async function registrierePrivat(_prev: FormState, formData: FormData): P
 }
 
 /**
- * Freiwillig eine echte E-Mail-Adresse hinterlegen – nur damit „Passwort
- * vergessen“ funktioniert. Die Adresse gilt erst nach Klick auf den Link in
- * der Bestätigungsmail.
+ * Freiwillig eine Kontakt-E-Mail hinterlegen, damit der Support das Konto
+ * erkennt (Migration 0181). Bewusst NICHT die Anmeldeadresse: deren Änderung
+ * verschickt Bestätigungsmails – auch an die interne Adresse, die es nicht
+ * gibt – und danach ginge die Anmeldung mit Spitznamen nicht mehr.
  */
 export async function speicherePrivatEmail(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Gerade nicht möglich." };
@@ -124,10 +123,13 @@ export async function speicherePrivatEmail(_prev: FormState, formData: FormData)
   const supabase = await createClient();
   const { data: anspruch } = await supabase.auth.getClaims();
   if (!anspruch?.claims?.sub) return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
-  const origin = await siteOrigin();
-  const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: `${origin}/auth/callback?weiter=/privat/mehr` });
-  if (error) return { error: authErrorMessage(error) ?? "Das hat nicht geklappt." };
-  return { success: "Wir haben dir eine E-Mail geschickt. Bitte bestätige die Adresse über den Link darin." };
+  const { error } = await supabase
+    .from("privat_konten")
+    .update({ kontakt_email: email })
+    .eq("user_id", anspruch.claims.sub);
+  if (error) return { error: "Die Adresse konnte nicht gespeichert werden. Bitte versuch es noch einmal." };
+  revalidatePath("/privat", "layout");
+  return { success: "Gespeichert. Darüber erkennt dich der Support, falls du deinen Code verlierst." };
 }
 
 /**
