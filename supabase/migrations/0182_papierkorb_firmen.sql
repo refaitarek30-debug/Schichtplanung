@@ -157,3 +157,6 @@ grant execute on function public.plattform_firma_papierkorb(uuid, boolean) to se
 grant execute on function public.firma_endgueltig_loeschen(uuid) to service_role;
 
 select cron.schedule('papierkorb-taeglich', '41 3 * * *', 'select public.papierkorb_leeren();');
+
+-- Aufräumen: Testfunktion aus der Fehlersuche
+drop function if exists public.zz_test_delete();
