@@ -167,5 +167,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  return NextResponse.redirect(`${origin}/login?fehler=verbraucht`, { status: 303 });
+  return NextResponse.redirect(`${origin}/login?fehler=verbraucht&art=${type === "recovery" ? "passwort" : "einladung"}`, {
+    status: 303,
+  });
 }
