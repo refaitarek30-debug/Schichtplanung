@@ -4,17 +4,26 @@ import { cn } from "@/lib/utils";
 export function Field({
   label,
   hint,
+  error,
   children,
 }: {
   label: string;
   hint?: string;
+  /** Fehler direkt unter dem Feld (statt des Hinweises). */
+  error?: string | null;
   children: ReactNode;
 }) {
   return (
     <label className="block min-w-0">
       <span className="mb-1.5 block text-[13px] font-medium text-ink-muted">{label}</span>
       {children}
-      {hint ? <span className="mt-1 block text-[12px] text-ink-faint">{hint}</span> : null}
+      {error ? (
+        <span role="alert" className="mt-1 block text-[12.5px] font-medium text-crit-fg">
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="mt-1 block text-[12px] text-ink-faint">{hint}</span>
+      ) : null}
     </label>
   );
 }

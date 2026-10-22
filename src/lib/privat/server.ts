@@ -26,7 +26,7 @@ export const getPrivatKonto = cache(async (): Promise<PrivatKonto | null> => {
   if (!userId) return null;
   const { data } = await supabase
     .from("privat_konten")
-    .select("user_id, name, bundesland, feiertage_zeigen, wochenstunden")
+    .select("user_id, name, bundesland, feiertage_zeigen, wochenstunden, kontakt_email")
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return null;
@@ -34,7 +34,7 @@ export const getPrivatKonto = cache(async (): Promise<PrivatKonto | null> => {
   return {
     userId: data.user_id as string,
     name: data.name as string,
-    email: hatEchteEmail(adresse) ? adresse : null,
+    email: (data.kontakt_email as string | null) ?? (hatEchteEmail(adresse) ? adresse : null),
     bundesland: data.bundesland as string,
     feiertageZeigen: data.feiertage_zeigen as boolean,
     wochenstunden: data.wochenstunden === null ? null : Number(data.wochenstunden),

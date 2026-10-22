@@ -38,9 +38,9 @@ export default function PrivatRegistrierenSeite() {
       <main className="flex flex-1 flex-col items-center px-4 pb-10 pt-6 sm:pt-8">
         {/* Zuerst das Formular – auf dem Handy ohne Umweg. */}
         <div className="w-full max-w-[420px] rounded-[28px] bg-surface p-6 shadow-[0_1px_2px_rgba(17,24,39,0.04),0_24px_60px_-32px_rgba(17,24,39,0.3)] sm:p-8">
-          <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Dein Schichtkalender</h1>
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight">Konto erstellen</h1>
           <p className="mt-1.5 text-sm text-ink-muted">
-            Kostenlos, ohne Werbung, ohne E-Mail. Schon dabei?{" "}
+            Dein Schichtkalender – kostenlos, ohne Werbung, ohne E-Mail. Schon dabei?{" "}
             <Link href="/login" className="font-medium text-brand-600 hover:underline">
               Anmelden
             </Link>
