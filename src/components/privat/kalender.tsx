@@ -878,7 +878,6 @@ function MonatsAnsicht({
           kaestchen: eintraege.length,
           klein: zwei,
           eingeladene: andereAm.length > 0,
-          extraZeilen: fei ? 1 : 0,
         });
         const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
         const rest = ts.length - zeigen.length;
@@ -895,6 +894,7 @@ function MonatsAnsicht({
               "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
               i % 7 !== 0 && "border-l",
               i % 7 >= 5 && "we-zelle",
+              fei && "feiertag-zelle",
               !imMonat && "opacity-35",
             )}
           >
@@ -923,7 +923,6 @@ function MonatsAnsicht({
               <Chip key={a.id} art={a} klein={zwei} />
             ))}
             <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
-            {fei ? <span className="shrink-0 truncate text-[9.5px] leading-tight text-[#e5484d]">{fei}</span> : null}
             {zeigen.map((t) => (
               <span key={t.id} className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden">
                 <span className={cn("mr-0.5 inline-block h-[5px] w-[5px] rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
+import { fetchHolidays } from "@/lib/data/holidays";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
@@ -164,6 +165,21 @@ export function MeinKalender() {
   const t = useBegriffe();
   const { profile, company } = useSession();
   const heute = heuteInBerlin();
+  // Gesetzliche Feiertage des Betriebs: im Monat nur gefärbt, der Name steht in der Sprechblase.
+  const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let ab = false;
+    fetchHolidays()
+      .then((liste) => {
+        if (!ab) setFeiertage(new Map(liste.map((h) => [h.date, h.name])));
+      })
+      .catch(() => {
+        // Ohne Feiertage fehlt nur die Färbung.
+      });
+    return () => {
+      ab = true;
+    };
+  }, []);
   const [monat, setMonat] = useState(() => {
     const d = fromISO(heute);
     return { jahr: d.getFullYear(), monat: d.getMonth() };
@@ -710,6 +726,7 @@ export function MeinKalender() {
                 "flex min-h-0 flex-col items-stretch gap-[3px] overflow-hidden border-t border-line px-[2px] pb-1 pt-1 text-center [@media(max-height:700px)]:gap-[2px] [@media(max-height:700px)]:pt-0.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
                 wochenende && "bg-surface-muted/70",
+                feiertage.has(iso) && "feiertag-zelle",
                 istHeute && "bg-ink/[0.07]",
                 gewaehlt === iso && "ring-2 ring-inset ring-brand-500",
               )}
@@ -718,7 +735,13 @@ export function MeinKalender() {
                 <span
                   className={cn(
                     "tnum flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[16px] leading-none [@media(max-height:700px)]:h-5 [@media(max-height:700px)]:min-w-5 [@media(max-height:700px)]:text-[14px]",
-                    istHeute ? "bg-ink font-bold text-surface" : imM ? "font-medium" : "text-ink-faint",
+                    istHeute
+                      ? "bg-ink font-bold text-surface"
+                      : feiertage.has(iso)
+                        ? "font-semibold text-[#e5484d]"
+                        : imM
+                          ? "font-medium"
+                          : "text-ink-faint",
                   )}
                 >
                   {d.getDate()}
@@ -813,6 +836,7 @@ export function MeinKalender() {
               />
               <Sprechblase
                 iso={gewaehlt}
+                feiertag={feiertage.get(gewaehlt)}
                 info={gewaehltInfo}
                 schicht={gewaehltInfo.schichtName ? uhrzeit.get(gewaehltInfo.schichtName) : undefined}
                 termine={gewaehltTermine}
@@ -895,6 +919,7 @@ function beschreibung(info: TagInfo, t: (text: string) => string): string {
 
 function Sprechblase({
   iso,
+  feiertag,
   info,
   schicht,
   termine,
@@ -903,6 +928,8 @@ function Sprechblase({
   onPartner,
 }: {
   iso: string;
+  /** Name des Feiertags – steht nur hier, im Monat ist der Tag nur gefärbt. */
+  feiertag?: string;
   info: TagInfo;
   schicht: ShiftDetail | undefined;
   termine: Termin[];
@@ -946,6 +973,7 @@ function Sprechblase({
       <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
         {WOCHENTAG_LANG[d.getDay()]}, {formatDE(iso)}
       </p>
+      {feiertag ? <p className="text-[14px] font-medium text-[#e5484d]">{feiertag}</p> : null}
       <div className="flex items-center gap-3 py-2">
         <span
           className={cn(

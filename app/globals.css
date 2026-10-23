@@ -407,6 +407,17 @@ body {
  *   .we-zelle  ganzer Tag im Kalender
  *   .we-spalte Zelle im Schichtplan (der Ton zeigt sich am Rand der Schicht)
  */
+/*
+ * Feiertag im Kalender: der ganze Tag zart rosa. Der Name steht erst im
+ * Tagesblatt. Als innerer Schatten, damit er auch über dem Wochenende-Ton
+ * (background-image) liegt.
+ */
+.feiertag-zelle {
+  box-shadow: inset 0 0 0 999px rgb(229 72 77 / 0.1);
+}
+:root[data-theme="dark"] .feiertag-zelle {
+  box-shadow: inset 0 0 0 999px rgb(229 72 77 / 0.18);
+}
 :root {
   --we-leicht: rgb(var(--c-ink) / 0.08);
   --we-kraeftig: rgb(var(--c-brand-500) / 0.17);
