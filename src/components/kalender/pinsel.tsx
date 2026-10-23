@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
 import { Eraser, Ellipsis, Paintbrush, Plus, X } from "lucide-react";
@@ -118,7 +118,7 @@ export function PinselLeiste({
       ) : null}
       <div
         role="toolbar"
-        aria-label="Pinsel: Eintrag wählen, dann Tage antippen"
+        aria-label="Pinsel: Eintrag wählen, dann Tage antippen oder darüber wischen"
         className="glas-dicht glas-voll flex h-[4.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4rem]"
       >
         {eintraege.map((a, i) => (
@@ -155,6 +155,68 @@ export function PinselLeiste({
   );
   return imFluss ? leiste : createPortal(leiste, document.body);
 }
+
+/**
+ * Mit dem Pinsel über mehrere Tage wischen: Der Finger fährt über die
+ * Monatsfläche, jeder überfahrene Tag (Zelle mit data-iso) kommt in den
+ * Strich und wird sofort markiert. Beim Loslassen geht der ganze Strich auf
+ * einmal an onStrich – ein einzelner Tipp ist ein Strich mit einem Tag. Den
+ * Klick danach schluckt geschluckt(); Tastatur-Klicks kommen weiter durch.
+ */
+export function usePinselStrich(onStrich: (tage: string[]) => void) {
+  const strich = useRef<{ id: number; tage: string[] } | null>(null);
+  const [markiert, setMarkiert] = useState<ReadonlySet<string>>(LEER_MENGE);
+  const schlucken = useRef(0);
+  const fertig = useRef(onStrich);
+  useEffect(() => {
+    fertig.current = onStrich;
+  });
+
+  function tagBei(x: number, y: number): string | null {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-iso]");
+    return el?.dataset.iso ?? null;
+  }
+
+  function ende(anwenden: boolean) {
+    const s = strich.current;
+    strich.current = null;
+    setMarkiert(LEER_MENGE);
+    if (!s || !anwenden || !s.tage.length) return;
+    schlucken.current = Date.now();
+    fertig.current(s.tage);
+  }
+
+  const griffe = {
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const iso = (e.target as Element).closest<HTMLElement>("[data-iso]")?.dataset.iso;
+      if (!iso) return;
+      strich.current = { id: e.pointerId, tage: [iso] };
+      setMarkiert(new Set([iso]));
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const s = strich.current;
+      if (!s || s.id !== e.pointerId) return;
+      const iso = tagBei(e.clientX, e.clientY);
+      if (!iso || s.tage.includes(iso)) return;
+      s.tage.push(iso);
+      setMarkiert(new Set(s.tage));
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (strich.current?.id === e.pointerId) ende(true);
+    },
+    onPointerCancel: () => ende(false),
+  };
+
+  return {
+    griffe,
+    markiert,
+    /** Der Klick direkt nach einem Strich gehört schon zum Strich. */
+    geschluckt: () => Date.now() - schlucken.current < 600,
+  };
+}
+
+const LEER_MENGE: ReadonlySet<string> = new Set();
 
 /**
  * Monate blättern durch Wischen nach oben (weiter) oder unten (zurück). Die

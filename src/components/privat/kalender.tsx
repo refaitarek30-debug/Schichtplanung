@@ -23,7 +23,8 @@ import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type To
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
-import { PinselKnopf, PinselLeiste, useMonatWischen } from "@/components/kalender/pinsel";
+import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "@/components/kalender/pinsel";
+import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "@/components/kalender/todo-zaehler";
 import {
   fetchMeineTermine,
@@ -134,6 +135,8 @@ export function PrivatKalender() {
   /** Pinsel: Schichtart-Id oder "leer" zum Löschen */
   const [pinsel, setPinsel] = useState<string | null>(null);
   const [pinselAn, setPinselAn] = useState(false);
+  // Rückfrage vor dem Löschen von Schichten
+  const loesch = useLoeschFrage();
 
   // ---- sichtbarer Zeitraum ----------------------------------------------
   const ankerD = fromISO(anker);
@@ -389,32 +392,43 @@ export function PrivatKalender() {
   }
 
   /**
-   * Wohin ein neuer Eintrag gehört: Ist der Tag leer, wird es die Schicht.
-   * Steht schon eine Schicht da, kommt der neue Eintrag als zweiter dazu und
-   * ersetzt nichts. Sind beide Plätze belegt, tauscht er den zweiten. Zum
-   * Ersetzen gibt es „Leeren“ oder das Tagesblatt.
+   * Pinsel: ein Strich über einen oder mehrere Tage. Ist ein Tag leer, wird
+   * es die Schicht. Steht schon eine da, kommt der neue Eintrag als zweiter
+   * dazu und ersetzt nichts; sind beide Plätze belegt, tauscht er den zweiten.
+   * „Leeren“ fragt vorher nach, weil dabei Schichten gelöscht werden.
    */
-  function hinzufuegen(iso: string, artId: string) {
-    const e = tage[iso] ?? LEER;
-    if (!e.schicht) return void setzen([iso], artId, 1);
-    if (e.schicht === artId || e.zusatz === artId) return;
-    void setzen([iso], artId, 2);
+  function pinselStrich(liste: string[]) {
+    if (!pinselAn || !pinsel) return;
+    if (pinsel === "leer") {
+      const voll = liste.filter((t) => tage[t]);
+      if (!voll.length) return;
+      loesch.frage({
+        titel: voll.length === 1 ? "Schicht löschen?" : `${voll.length} Tage leeren?`,
+        text:
+          voll.length === 1
+            ? `Der Eintrag am ${formatDE(voll[0]!)} wird gelöscht.`
+            : "Die Schichten an diesen Tagen werden gelöscht.",
+        onJa: () => {
+          merke(voll, "{n} geleert");
+          void leeren(voll);
+        },
+      });
+      return;
+    }
+    const neu = liste.filter((t) => !tage[t]?.schicht);
+    const dazu = liste.filter((t) => {
+      const e = tage[t];
+      return !!e?.schicht && e.schicht !== pinsel && e.zusatz !== pinsel;
+    });
+    if (!neu.length && !dazu.length) return;
+    const name = artNach.get(pinsel)?.name ?? "neu";
+    merke([...neu, ...dazu], !neu.length ? `{n} mit ${name} ergänzt` : `{n} auf ${name} gesetzt`);
+    if (neu.length) void setzen(neu, pinsel, 1);
+    if (dazu.length) void setzen(dazu, pinsel, 2);
   }
 
   function tagAntippen(iso: string) {
-    if (pinselAn && pinsel) {
-      if (pinsel === "leer") {
-        if (tage[iso]) {
-          merke([iso], "{n} geleert");
-          void leeren([iso]);
-        }
-        return;
-      }
-      const dabei = !!tage[iso]?.schicht && tage[iso]?.schicht !== pinsel;
-      merke([iso], `{n} ${dabei ? "mit" : "auf"} ${artNach.get(pinsel)?.name ?? "neu"} ${dabei ? "ergänzt" : "gesetzt"}`);
-      hinzufuegen(iso, pinsel);
-      return;
-    }
+    if (pinselAn && pinsel) return pinselStrich([iso]);
     setTagBlatt(iso);
   }
 
@@ -477,8 +491,11 @@ export function PrivatKalender() {
     if (pinselAn) return;
     setTerminBlatt({ datum: iso, termin: null });
   });
+  // Mit dem Pinsel über mehrere Tage wischen; der Monat blättert dann nur über die Pfeile.
+  const strich = usePinselStrich(pinselStrich);
   function tippen(iso: string) {
     if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
+    if (pinselAn && strich.geschluckt()) return;
     tagAntippen(iso);
   }
 
@@ -532,7 +549,7 @@ export function PrivatKalender() {
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
-          <span className="hidden gap-2 sm:flex">
+          <span className={cn("gap-2", pinselAn && ansicht === "monat" ? "flex" : "hidden sm:flex")}>
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>
@@ -568,7 +585,9 @@ export function PrivatKalender() {
           ansicht === "monat" ? "-m-2 touch-none overflow-hidden p-2" : "touch-pan-y px-3.5 sm:px-0",
         )}
         {...(ansicht === "monat"
-          ? monatGriffe
+          ? pinselAn
+            ? strich.griffe
+            : monatGriffe
           : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
         aria-busy={laedt || !schichtarten}
       >
@@ -585,6 +604,7 @@ export function PrivatKalender() {
             andere={andere}
             onTag={tippen}
             zelle={langDruck.zelle}
+            markiert={strich.markiert}
           />
           </div>
         ) : ansicht === "woche" ? (
@@ -631,6 +651,8 @@ export function PrivatKalender() {
           onClose={() => setPinselAn(false)}
         />
       ) : null}
+
+      {loesch.fenster}
 
       {rueck ? (
         <div
@@ -844,6 +866,7 @@ function MonatsAnsicht({
   andere,
   onTag,
   zelle,
+  markiert,
 }: AnsichtProps & {
   jahr: number;
   monat: number;
@@ -851,6 +874,8 @@ function MonatsAnsicht({
   andere: Andere;
   onTag: (iso: string) => void;
   zelle?: ZellGriffe;
+  /** Tage im laufenden Pinsel-Strich */
+  markiert?: ReadonlySet<string>;
 }) {
   const { start, wochen } = monatRaster(jahr, monat);
   const liste = Array.from({ length: wochen * 7 }, (_, i) => addDays(start, i));
@@ -886,6 +911,7 @@ function MonatsAnsicht({
             key={iso}
             ref={i === 7 ? zellenRef : undefined}
             type="button"
+            data-iso={iso}
             {...zelle?.(iso)}
             onClick={() => onTag(iso)}
             aria-label={`${WT_LANG[i % 7]}, ${formatDE(iso)}${eintraege.length ? `: ${eintraege.map((a) => a.name).join(" und ")}` : ""}${fei ? `, ${fei}` : ""}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
@@ -896,6 +922,7 @@ function MonatsAnsicht({
               i % 7 >= 5 && "we-zelle",
               fei && "feiertag-zelle",
               !imMonat && "opacity-35",
+              markiert?.has(iso) && "pinsel-strich",
             )}
           >
             <span className="relative mx-auto shrink-0">
@@ -1053,6 +1080,7 @@ function TagBlatt({
   const [nachricht, setNachricht] = useState(
     erster ? "Tippen = 2. Eintrag · nochmal tippen = nur diese Schicht" : "Was steht an diesem Tag an?",
   );
+  const loesch = useLoeschFrage();
 
   function tipp(id: string) {
     const neu = artNach.get(id);
@@ -1065,8 +1093,14 @@ function TagBlatt({
       setNachricht(`${neu.name} als 2. Eintrag · nochmal tippen = nur ${neu.name}.`);
     } else if (zweiter) {
       const weg = erster.id === id ? zweiter : erster;
-      onSetzen(id, null, "{n} geändert");
-      setNachricht(`Nur noch ${neu.name} – ${weg.name} ist weg.`);
+      loesch.frage({
+        titel: `${weg.name} löschen?`,
+        text: `An diesem Tag bleibt nur ${neu.name}.`,
+        onJa: () => {
+          onSetzen(id, null, "{n} geändert");
+          setNachricht(`Nur noch ${neu.name} – ${weg.name} ist weg.`);
+        },
+      });
     } else {
       setNachricht(`${neu.name} ist schon eingetragen.`);
     }
@@ -1074,8 +1108,14 @@ function TagBlatt({
 
   function entfernen(id: string) {
     const rest = [erster, zweiter].filter((a): a is Schichtart => !!a && a.id !== id);
-    onSetzen(rest[0]?.id ?? null, null, "Eintrag entfernt");
-    setNachricht("Eintrag entfernt.");
+    loesch.frage({
+      titel: `${artNach.get(id)?.name ?? "Eintrag"} löschen?`,
+      text: "Der Eintrag wird von diesem Tag entfernt.",
+      onJa: () => {
+        onSetzen(rest[0]?.id ?? null, null, "Eintrag entfernt");
+        setNachricht("Eintrag entfernt.");
+      },
+    });
   }
 
   const d = fromISO(iso);
@@ -1105,6 +1145,7 @@ function TagBlatt({
       }
       onClose={onClose}
     >
+      {loesch.fenster}
       {nichts ? <p className="px-1 py-2 text-[14.5px] text-ink-muted">An diesem Tag ist nichts geplant.</p> : null}
       <AmTag
         termine={termine}

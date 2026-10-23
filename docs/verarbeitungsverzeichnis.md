@@ -10,7 +10,7 @@ Bei Änderungen (neuer Dienstleister, neue Datenart) aktualisieren und das Datum
 ## 1. Auftragsverarbeiter
 
 - Tarek Oussama Refai, Herselerstraße 9, 53332 Bornheim
-- E-Mail shiftfornexo@gmail.com · Telefon +49 174 3376978
+- E-Mail shiftfornexo@gmail.com · Telefon +49 174 3376979
 - Datenschutzbeauftragter: nicht benannt (keine Pflicht nach Art. 37 DSGVO / § 38 BDSG)
 
 ## 2. Verantwortliche (Kunden)

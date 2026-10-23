@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react";
 import { useTodoZahl } from "@/components/kalender/todo-zaehler";
+import { LeisteHalten } from "@/components/layout/leiste-halten";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -24,6 +25,7 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
       <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
         {children}
       </main>
+      <LeisteHalten />
       {/* Schwebende Leiste im Glas-Stil – fest am unteren Rand. */}
       <nav
         aria-label="Bereiche"

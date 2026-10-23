@@ -44,8 +44,8 @@ export default function ImpressumPage() {
           </li>
           <li>
             Telefon:{" "}
-            <a href="tel:+491743376978" className="font-medium text-brand-600 hover:underline">
-              +49 174 3376978
+            <a href="tel:+491743376979" className="font-medium text-brand-600 hover:underline">
+              +49 174 3376979
             </a>
           </li>
         </Liste>
