@@ -6,6 +6,8 @@ import {
   setzeTage,
   speichereSchichtart,
   ladeSchichtarten,
+  MAX_JE_TAG,
+  idsVon,
   type Ebene,
   type SchichtArt,
   type Schichtart,
@@ -133,10 +135,13 @@ export function planeImport(
   let belegt = 0;
   let geschrieben = 0;
   for (const [tag, refs] of [...proTag.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    // Arbeit zuerst, dann Frei/Urlaub/Krank – höchstens zwei Einträge je Tag.
-    const ziele2 = [...refs].sort((a, b) => Number(artVon(b) === "arbeit") - Number(artVon(a) === "arbeit")).slice(0, 2);
+    // Arbeit zuerst, dann Frei/Urlaub/Krank – höchstens drei Einträge je Tag.
+    const ziele2 = [...refs]
+      .sort((a, b) => Number(artVon(b) === "arbeit") - Number(artVon(a) === "arbeit"))
+      .slice(0, MAX_JE_TAG);
     const e = vorhanden[tag];
-    const stehtSchon = !!(e?.schicht || e?.zusatz);
+    const da = idsVon(e);
+    const stehtSchon = da.length > 0;
     if (stehtSchon) belegt += 1;
 
     if (!stehtSchon || modus === "ueber") {
@@ -144,16 +149,10 @@ export function planeImport(
       ziele2.forEach((ref, i) => zeilen.push({ tag, ebene: (i + 1) as Ebene, ref }));
       geschrieben += 1;
     } else if (modus === "zusatz") {
-      if (!e?.schicht) {
-        ziele2.forEach((ref, i) => zeilen.push({ tag, ebene: (i + 1) as Ebene, ref }));
-        geschrieben += 1;
-      } else {
-        const weitere = ziele2.find((ref) => ref !== e.schicht);
-        if (weitere && weitere !== e.zusatz) {
-          zeilen.push({ tag, ebene: 2, ref: weitere });
-          geschrieben += 1;
-        }
-      }
+      // Hinter die vorhandenen Einträge, bis drei voll sind.
+      const dazu = ziele2.filter((ref) => !da.includes(ref)).slice(0, MAX_JE_TAG - da.length);
+      dazu.forEach((ref, i) => zeilen.push({ tag, ebene: (da.length + i + 1) as Ebene, ref }));
+      if (dazu.length) geschrieben += 1;
     }
     // modus === "leer" mit belegtem Tag: nichts schreiben
   }
@@ -196,7 +195,7 @@ export async function fuehreAus(
 
   const betroffen = [...new Set([...plan.zeilen.map((z) => z.tag), ...plan.leeren])];
   const vorher: Record<string, TagEintrag> = {};
-  for (const t of betroffen) vorher[t] = vorhanden[t] ?? { schicht: null, zusatz: null };
+  for (const t of betroffen) vorher[t] = vorhanden[t] ?? { schicht: null, zusatz: null, dritte: null };
 
   await inBloecken(plan.leeren, (teil) => leereTage(teil));
   const gruppen = new Map<string, string[]>();
@@ -218,8 +217,9 @@ export async function macheRueckgaengig(erg: Ergebnis): Promise<void> {
   await inBloecken(erg.betroffen, (teil) => leereTage(teil));
   const gruppen = new Map<string, string[]>();
   for (const [tag, e] of Object.entries(erg.vorher)) {
-    if (e.schicht) gruppen.set(`1|${e.schicht}`, [...(gruppen.get(`1|${e.schicht}`) ?? []), tag]);
-    if (e.zusatz) gruppen.set(`2|${e.zusatz}`, [...(gruppen.get(`2|${e.zusatz}`) ?? []), tag]);
+    ([e.schicht, e.zusatz, e.dritte] as (string | null)[]).forEach((id, i) => {
+      if (id) gruppen.set(`${i + 1}|${id}`, [...(gruppen.get(`${i + 1}|${id}`) ?? []), tag]);
+    });
   }
   for (const [k, tage] of gruppen) {
     const [ebene, id] = k.split("|") as [string, string];

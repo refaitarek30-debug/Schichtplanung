@@ -40,8 +40,8 @@ export interface LeistenEintrag {
   id: string;
   name: string;
   farbe: string;
-  /** 1 = erster Eintrag des Tages, 2 = zweiter, 0 = nicht gesetzt */
-  rang: 0 | 1 | 2;
+  /** 1 = erster Eintrag des Tages, 2 = zweiter, 3 = dritter, 0 = nicht gesetzt */
+  rang: 0 | 1 | 2 | 3;
 }
 
 export function SchichtLeiste({
@@ -68,14 +68,14 @@ export function SchichtLeiste({
             className={cn(
               "relative h-11 min-w-[4.6rem] shrink-0 rounded-full px-4 text-[14.5px] font-bold transition-transform active:scale-[0.96]",
               e.rang === 1 && "ring-[2.5px] ring-ink ring-offset-2 ring-offset-surface",
-              e.rang === 2 && "ring-[2.5px] ring-ink/45 ring-offset-2 ring-offset-surface",
+              e.rang >= 2 && "ring-[2.5px] ring-ink/45 ring-offset-2 ring-offset-surface",
             )}
             style={farbFlaeche(e.farbe)}
           >
             {e.name}
-            {e.rang === 2 ? (
+            {e.rang >= 2 ? (
               <span aria-hidden className="absolute -right-1 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-ink text-[11px] font-extrabold text-surface">
-                2
+                {e.rang}
               </span>
             ) : null}
           </button>

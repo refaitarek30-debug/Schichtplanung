@@ -9,7 +9,16 @@ import { heuteInBerlin } from "@/lib/dates";
 import { farbStil, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import { IcsFehler, leseIcs, MAX_BYTES, type Gruppe, type LeseErgebnis } from "@/lib/privat/ics-lesen";
 import { beendeTexterkennung, erkenneScreenshot } from "@/lib/privat/screenshot-ocr";
-import { findeMonat, leseMonatsraster, vereineGruppen, type Wort } from "@/lib/privat/screenshot-raster";
+import {
+  bestimmeMonat,
+  leseMonatsraster,
+  vereineGruppen,
+  type ErkannterTermin,
+  type Gitter,
+  type Monat,
+  type Wort,
+} from "@/lib/privat/screenshot-raster";
+import { loescheTermin, speichereTermin } from "@/lib/data/partner";
 import {
   fuehreAus,
   macheRueckgaengig,
@@ -67,7 +76,7 @@ const QUELLEN: { id: string; name: string; anleitung: string[] }[] = [
 const MODI: { id: Modus; text: string; hinweis: string }[] = [
   { id: "leer", text: "Nur leere Tage füllen", hinweis: "Was schon im Kalender steht, bleibt unverändert." },
   { id: "ueber", text: "Überschreiben", hinweis: "Tage aus der Datei ersetzen, was dort bisher stand." },
-  { id: "zusatz", text: "Als zweiten Eintrag ergänzen", hinweis: "Bleibt der erste Eintrag, kommt der neue dahinter." },
+  { id: "zusatz", text: "Als weiteren Eintrag ergänzen", hinweis: "Was schon steht, bleibt; der neue kommt dahinter (bis zu drei je Tag)." },
 ];
 
 const MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -82,9 +91,23 @@ interface Bild {
   /** 0–1 */
   anteil: number;
   woerter: Wort[];
+  gitter: Gitter | null;
   jahr: number;
   monat: number;
+  /** Woher Monat und Jahr kommen (null = nicht erkannt, Vorgabe heute) */
+  quelle: Monat["quelle"] | null;
   fehler?: string;
+}
+
+/** Was mit einem erkannten Termin passiert. */
+type TerminWahl = "termin" | "schicht" | "weg";
+const terminSchluessel = (t: ErkannterTermin) => `${t.tag}|${t.beginn}|${t.titel}`;
+
+/** "HH:MM" + 1 Stunde (höchstens 23:59). */
+function plusStunde(zeit: string): string {
+  const [h, m] = zeit.split(":").map(Number);
+  const n = Math.min(23 * 60 + 59, (h ?? 0) * 60 + (m ?? 0) + 60);
+  return `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
 }
 
 const tagText = (tag: string) => {
@@ -132,6 +155,8 @@ export function PrivatImport() {
   const [arbeitet, setArbeitet] = useState(false);
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [zurueck, setZurueck] = useState(false);
+  const [terminWahl, setTerminWahl] = useState<Record<string, TerminWahl>>({});
+  const [termineAngelegt, setTermineAngelegt] = useState<string[]>([]);
   const eingabe = useRef<HTMLInputElement>(null);
   const lauf = useRef(0);
   const urls = useRef<string[]>([]);
@@ -147,13 +172,30 @@ export function PrivatImport() {
   }, []);
 
   // Screenshots: Monatsraster je Bild; mit Monat/Jahr der Person neu gerechnet.
-  const raster = useMemo(() => bilder.map((b) => (b.status === "fertig" ? leseMonatsraster(b.woerter, b.jahr, b.monat) : null)), [bilder]);
+  // Namen und Kürzel der eigenen Schichten gelten sicher als Schicht.
+  const bekannte = useMemo(() => arten.flatMap((a) => [a.name, a.kuerzel]), [arten]);
+  const raster = useMemo(
+    () => bilder.map((b) => (b.status === "fertig" ? leseMonatsraster(b.woerter, b.jahr, b.monat, { bekannte, gitter: b.gitter }) : null)),
+    [bilder, bekannte],
+  );
+  // Termine aus den Screenshots (doppelte zusammengefasst); die Person entscheidet je Termin.
+  const erkannteTermine = useMemo(() => {
+    const m = new Map<string, ErkannterTermin>();
+    for (const r of raster) for (const t of r?.termine ?? []) m.set(terminSchluessel(t), t);
+    return [...m.values()].sort((a, b) => a.tag.localeCompare(b.tag) || a.beginn.localeCompare(b.beginn));
+  }, [raster]);
+  const wahlVon = (t: ErkannterTermin): TerminWahl => terminWahl[terminSchluessel(t)] ?? "termin";
+  const termineZuUebernehmen = erkannteTermine.filter((t) => wahlVon(t) === "termin");
   const gelesen = useMemo<LeseErgebnis | null>(() => {
-    const gr = vereineGruppen(ics?.gruppen ?? [], ...raster.map((r) => r?.gruppen ?? []));
-    if (!gr.length) return null;
-    const tage = gr.flatMap((g) => g.tage).sort();
+    // Termine, die eigentlich Schichten sind, kommen als eigene Namen dazu.
+    const alsSchicht = erkannteTermine
+      .filter((t) => (terminWahl[terminSchluessel(t)] ?? "termin") === "schicht")
+      .map((t) => ({ name: t.titel, tage: [t.tag], beginn: t.beginn, ende: t.ende, ganztaegig: !t.beginn || !t.ende }));
+    const gr = vereineGruppen(ics?.gruppen ?? [], ...raster.map((r) => r?.gruppen ?? []), alsSchicht);
+    const tage = [...gr.flatMap((g) => g.tage), ...erkannteTermine.map((t) => t.tag)].sort();
+    if (!tage.length) return null;
     return { gruppen: gr, termine: ics?.termine ?? 0, von: tage[0] ?? null, bis: tage[tage.length - 1] ?? null, einfach: ics?.einfach ?? 0 };
-  }, [ics, raster]);
+  }, [ics, raster, erkannteTermine, terminWahl]);
   const gruppen = useMemo(() => gelesen?.gruppen ?? [], [gelesen]);
   const ziele = useMemo<Record<string, Ziel>>(
     () => Object.fromEntries(gruppen.map((g) => [g.name, ueberschrieben[g.name] ?? schlageVor(g, arten)])),
@@ -187,6 +229,7 @@ export function PrivatImport() {
     setIcs(null);
     setBilder([]);
     setUeberschrieben({});
+    setTerminWahl({});
     for (const u of urls.current.splice(0)) URL.revokeObjectURL(u);
     setDateiname(liste.length === 1 ? liste[0]!.name : `${liste.length} Dateien`);
 
@@ -235,7 +278,18 @@ export function PrivatImport() {
     const neueBilder: Bild[] = bildDateien.map((d, i) => {
       const url = URL.createObjectURL(d);
       urls.current.push(url);
-      return { id: i + 1, name: d.name, vorschau: url, status: "liest", anteil: 0, woerter: [], jahr: Number(heute.slice(0, 4)), monat: Number(heute.slice(5, 7)) };
+      return {
+        id: i + 1,
+        name: d.name,
+        vorschau: url,
+        status: "liest",
+        anteil: 0,
+        woerter: [],
+        gitter: null,
+        jahr: Number(heute.slice(0, 4)),
+        monat: Number(heute.slice(5, 7)),
+        quelle: null,
+      };
     });
     setBilder(neueBilder);
     for (const [i, d] of bildDateien.entries()) {
@@ -245,8 +299,16 @@ export function PrivatImport() {
           if (lauf.current === dieserLauf) aendereBild(id, { anteil });
         });
         if (lauf.current !== dieserLauf) return;
-        const m = findeMonat(r.woerter);
-        aendereBild(id, { status: "fertig", anteil: 1, woerter: r.woerter, ...(m ? { jahr: m.jahr, monat: m.monat } : {}) });
+        // Erst Monat und Jahr (Überschrift, sonst aus den Wochentagen), dann die Einträge.
+        const m = bestimmeMonat(r.woerter, heute, r.gitter);
+        aendereBild(id, {
+          status: "fertig",
+          anteil: 1,
+          woerter: r.woerter,
+          gitter: r.gitter,
+          quelle: m?.quelle ?? null,
+          ...(m ? { jahr: m.jahr, monat: m.monat } : {}),
+        });
       } catch (e) {
         if (lauf.current !== dieserLauf) return;
         aendereBild(id, { status: "fehler", fehler: e instanceof Error ? e.message : "Das Bild konnte nicht gelesen werden." });
@@ -287,6 +349,25 @@ export function PrivatImport() {
           return eingabe;
         });
       setErgebnis(await fuehreAus(plan, neu, vorhanden));
+      const ids: string[] = [];
+      for (const t of termineZuUebernehmen) {
+        ids.push(
+          await speichereTermin({
+            id: null,
+            datum: t.tag,
+            bisDatum: null,
+            titel: t.titel,
+            ganztaegig: !t.beginn,
+            von: t.beginn,
+            bis: t.beginn ? t.ende || plusStunde(t.beginn) : "",
+            wiederholung: "nie",
+            notiz: "",
+            ort: "",
+            erinnerung: null,
+          }),
+        );
+      }
+      setTermineAngelegt(ids);
       await ladeArtenNeu();
       setSchritt(4);
     } catch (e) {
@@ -302,6 +383,7 @@ export function PrivatImport() {
     setArbeitet(true);
     try {
       await macheRueckgaengig(ergebnis);
+      for (const id of termineAngelegt) await loescheTermin(id);
       await ladeArtenNeu();
       setZurueck(true);
     } catch (e) {
@@ -458,11 +540,16 @@ export function PrivatImport() {
                           ) : null}
                           {b.status === "fehler" ? <p className="text-[13px] text-crit-fg">{b.fehler}</p> : null}
                           {b.status === "fertig" && r ? (
-                            <p className="text-[13px] text-ink-muted">
-                              {r.tageGefunden
-                                ? `${r.tageGefunden} Tage erkannt, ${r.tageMitEintrag} mit Eintrag, ${r.gruppen.length} ${r.gruppen.length === 1 ? "Name" : "Namen"}`
-                                : "Kein Monatsraster erkannt"}
-                            </p>
+                            <>
+                              <p className="text-[14px] font-semibold">
+                                {b.quelle ? `${MONATE[b.monat - 1]} ${b.jahr}` : "Monat nicht erkannt"}
+                              </p>
+                              <p className="text-[13px] text-ink-muted">
+                                {r.tageGefunden
+                                  ? `${r.tageMitEintrag} Tage mit Eintrag · ${r.gruppen.length} ${r.gruppen.length === 1 ? "Schicht" : "Schichten"}${r.termine.length ? ` · ${r.termine.length} ${r.termine.length === 1 ? "Termin" : "Termine"}` : ""}`
+                                  : "Kein Monatsraster erkannt"}
+                              </p>
+                            </>
                           ) : null}
                         </div>
                       </div>
@@ -495,6 +582,13 @@ export function PrivatImport() {
                               ))}
                             </select>
                           </div>
+                          {b.quelle === "kopf-ohne-jahr" ? (
+                            <p className="text-[12.5px] text-ink-muted">Das Jahr stand nicht dabei – aus den Wochentagen ergänzt. Bitte kurz prüfen.</p>
+                          ) : b.quelle === "raster" ? (
+                            <Alert tone="warning">Keine Überschrift gefunden – Monat aus den Wochentagen geschätzt. Bitte prüfen.</Alert>
+                          ) : !b.quelle ? (
+                            <Alert tone="warning">Monat und Jahr bitte selbst wählen.</Alert>
+                          ) : null}
                           {r?.warnung ? <Alert tone="warning">{r.warnung}</Alert> : null}
                         </div>
                       ) : null}
@@ -560,6 +654,41 @@ export function PrivatImport() {
                 </li>
               ))}
             </ul>
+            {erkannteTermine.length ? (
+              <div className="space-y-2">
+                <h3 className="text-[15px] font-semibold">Termine</h3>
+                <p className="text-[13px] text-ink-muted">
+                  Das sieht nach Terminen aus (mit Uhrzeit oder nur einmal im Monat). Sie kommen als Termin in deinen Kalender, nicht
+                  als Schicht.
+                </p>
+                <ul className="space-y-2">
+                  {erkannteTermine.map((t) => {
+                    const k = terminSchluessel(t);
+                    const [, mm, tt] = t.tag.split("-");
+                    return (
+                      <li key={k} className="flex items-center gap-2 rounded-[14px] bg-ink/[0.04] px-3 py-2.5">
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[14.5px] font-semibold">{t.titel}</span>
+                          <span className="block text-[12.5px] text-ink-muted">
+                            {Number(tt)}.{Number(mm)}.{t.beginn ? ` · ${t.beginn}${t.ende ? `–${t.ende}` : ""} Uhr` : " · ganztägig"}
+                          </span>
+                        </span>
+                        <select
+                          aria-label={`Was ist „${t.titel}“?`}
+                          className="shrink-0 rounded-[10px] bg-ink/[0.06] px-2.5 py-2 text-[14px]"
+                          value={wahlVon(t)}
+                          onChange={(e) => setTerminWahl((w) => ({ ...w, [k]: e.target.value as TerminWahl }))}
+                        >
+                          <option value="termin">Termin</option>
+                          <option value="schicht">Ist eine Schicht</option>
+                          <option value="weg">Weglassen</option>
+                        </select>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
             {fehler ? <Alert tone="error">{fehler}</Alert> : null}
             <div className="flex gap-2">
               <button type="button" className={knopfLeise} onClick={() => setSchritt(1)}>
@@ -568,7 +697,7 @@ export function PrivatImport() {
               <button
                 type="button"
                 className={cn(knopf, "flex-1")}
-                disabled={arbeitet || !gruppen.some((g) => ziele[g.name] && ziele[g.name]!.art !== "skip")}
+                disabled={arbeitet || (!gruppen.some((g) => ziele[g.name] && ziele[g.name]!.art !== "skip") && !termineZuUebernehmen.length)}
                 onClick={() => void zurVorschau()}
               >
                 {arbeitet ? "Einen Moment …" : "Weiter"}
@@ -668,8 +797,20 @@ export function PrivatImport() {
               <button type="button" className={knopfLeise} onClick={() => setSchritt(2)} disabled={arbeitet}>
                 Zurück
               </button>
-              <button type="button" className={cn(knopf, "flex-1")} disabled={arbeitet || plan.geschrieben === 0} onClick={() => void uebernehmen()}>
-                {arbeitet ? "Wird übernommen …" : `${plan.geschrieben} ${plan.geschrieben === 1 ? "Tag" : "Tage"} übernehmen`}
+              <button
+                type="button"
+                className={cn(knopf, "flex-1")}
+                disabled={arbeitet || (plan.geschrieben === 0 && !termineZuUebernehmen.length)}
+                onClick={() => void uebernehmen()}
+              >
+                {arbeitet
+                  ? "Wird übernommen …"
+                  : [
+                      plan.geschrieben ? `${plan.geschrieben} ${plan.geschrieben === 1 ? "Tag" : "Tage"}` : "",
+                      termineZuUebernehmen.length ? `${termineZuUebernehmen.length} ${termineZuUebernehmen.length === 1 ? "Termin" : "Termine"}` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" + ") + " übernehmen"}
               </button>
             </div>
           </div>
@@ -684,7 +825,14 @@ export function PrivatImport() {
             </span>
             <div>
               <h2 className="text-[20px] font-bold">
-                {zurueck ? "Rückgängig gemacht" : `${ergebnis.geschrieben} ${ergebnis.geschrieben === 1 ? "Tag" : "Tage"} übernommen`}
+                {zurueck
+                  ? "Rückgängig gemacht"
+                  : [
+                      ergebnis.geschrieben || !termineAngelegt.length ? `${ergebnis.geschrieben} ${ergebnis.geschrieben === 1 ? "Tag" : "Tage"}` : "",
+                      termineAngelegt.length ? `${termineAngelegt.length} ${termineAngelegt.length === 1 ? "Termin" : "Termine"}` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" + ") + " übernommen"}
               </h2>
               <p className="mt-1 text-[14px] text-ink-muted">
                 {zurueck

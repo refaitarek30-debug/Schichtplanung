@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { farbStil, istAbwesenheit, ladeTage, type TagEintrag } from "@/lib/privat/daten";
+import { farbStil, idsVon, istAbwesenheit, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
@@ -53,7 +53,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
     const stunden = new Map<string, number>();
     for (const [tag, e] of Object.entries(tage)) {
       if (tag < von || tag > bis) continue;
-      const ids = [e.schicht, e.zusatz].filter((x): x is string => !!x);
+      const ids = idsVon(e);
       for (const id of ids) anzahl.set(id, (anzahl.get(id) ?? 0) + 1);
       // Stunden: Ist an dem Tag Urlaub oder Krank eingetragen, zählen dessen
       // Stunden – die Schicht darunter nicht noch einmal.

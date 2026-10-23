@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Delete, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
+import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import { addDays, formatDE, fromISO, toISO } from "@/lib/dates";
 import { farbStil, wendeRotationAn, type Schichtart } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ const DAUER = [
   { monate: 6, text: "6 Monate" },
   { monate: 12, text: "1 Jahr" },
   { monate: 24, text: "2 Jahre" },
+  { monate: 36, text: "3 Jahre" },
+  { monate: 48, text: "4 Jahre" },
 ];
 
 const WT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
@@ -61,6 +64,14 @@ export function RotationBlatt({
   const [ueberschreiben, setUeberschreiben] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
   const [laeuft, setLaeuft] = useState(false);
+  const loesch = useLoeschFrage();
+  // Die Folge steht in einer festen Zeile, die seitlich scrollt – so wächst
+  // das Fenster beim Antippen nicht und kein Knopf rutscht unter den Finger.
+  const zeile = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const el = zeile.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [muster.length]);
 
   const nachKuerzel = useMemo(() => new Map(arten.map((a) => [a.kuerzel.toUpperCase(), a])), [arten]);
   const nachId = useMemo(() => new Map(arten.map((a) => [a.id, a])), [arten]);
@@ -110,6 +121,7 @@ export function RotationBlatt({
         </div>
       }
     >
+      {loesch.fenster}
       {vorlagen.length ? (
         <>
           <p className="mb-2 text-[13px] font-semibold text-ink-muted">Vorlage</p>
@@ -118,7 +130,16 @@ export function RotationBlatt({
               <button
                 key={v.kurz}
                 type="button"
-                onClick={() => setMuster(v.folge.map((k) => nachKuerzel.get(k)!.id))}
+                onClick={() => {
+                  const neu = v.folge.map((k) => nachKuerzel.get(k)!.id);
+                  if (!muster.length) return setMuster(neu);
+                  loesch.frage({
+                    titel: "Vorlage übernehmen?",
+                    text: "Deine bisherige Folge wird dabei ersetzt.",
+                    knopf: "Übernehmen",
+                    onJa: () => setMuster(neu),
+                  });
+                }}
                 className="rounded-[14px] bg-ink/[0.06] px-3 py-2 text-left text-[13px] hover:bg-ink/[0.1]"
               >
                 {v.name}
@@ -131,16 +152,20 @@ export function RotationBlatt({
       <p className="mb-2 text-[13px] font-semibold text-ink-muted">
         Deine Folge {muster.length ? <span className="font-normal">· {muster.length} Tage</span> : null}
       </p>
-      <div className="min-h-[52px] rounded-[16px] bg-ink/[0.05] p-2">
+      <div className="h-[52px] rounded-[16px] bg-ink/[0.05] p-2">
         {muster.length ? (
-          <ol className="flex flex-wrap gap-1.5">
+          <ol
+            ref={zeile}
+            aria-label="Deine Folge"
+            className="flex h-full gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {muster.map((id, i) => {
               const a = id ? nachId.get(id) : null;
               return (
                 <li
                   key={i}
                   className={cn(
-                    "flex h-9 min-w-9 items-center justify-center rounded-lg px-1.5 text-[13px] font-bold",
+                    "flex h-9 min-w-9 shrink-0 items-center justify-center rounded-lg px-1.5 text-[13px] font-bold",
                     !a && "border border-dashed border-ink/20 text-ink-faint",
                   )}
                   style={a ? farbStil(a.farbe) : undefined}
@@ -166,7 +191,14 @@ export function RotationBlatt({
         </button>
         <button
           type="button"
-          onClick={() => setMuster([])}
+          onClick={() =>
+            loesch.frage({
+              titel: "Wirklich neu beginnen?",
+              text: `Deine Folge mit ${muster.length} ${muster.length === 1 ? "Tag" : "Tagen"} wird gelöscht.`,
+              knopf: "Neu beginnen",
+              onJa: () => setMuster([]),
+            })
+          }
           disabled={!muster.length}
           className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-ink/[0.07] text-[14px] font-semibold text-ink disabled:opacity-40"
         >
