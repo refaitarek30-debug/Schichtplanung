@@ -95,32 +95,81 @@ export async function loescheSchichtart(id: string): Promise<void> {
 }
 
 /**
- * Bis zu zwei Einträge je Tag (Migration 0148): `schicht` (Ebene 1, z. B.
- * aus der Schichtfolge) und `zusatz` (Ebene 2, z. B. Urlaub an dem Tag).
+ * Bis zu drei Einträge je Tag (Migrationen 0148, 0184): `schicht` (Ebene 1,
+ * z. B. aus der Schichtfolge), `zusatz` (Ebene 2, z. B. Urlaub an dem Tag)
+ * und `dritte` (Ebene 3).
  */
 export interface TagEintrag {
   schicht: string | null;
   zusatz: string | null;
+  dritte: string | null;
 }
 
-export type Ebene = 1 | 2;
+export type Ebene = 1 | 2 | 3;
+
+/** Höchstens so viele Einträge je Tag. */
+export const MAX_JE_TAG = 3;
+
+/** Die Einträge eines Tages als Liste, in Anzeige-Reihenfolge. */
+export function idsVon(e: TagEintrag | undefined): string[] {
+  return e ? [e.schicht, e.zusatz, e.dritte].filter((x): x is string => !!x) : [];
+}
+
+/** Liste -> Tag (aufgerückt, ohne Lücken); leer = undefined. */
+export function eintragAus(ids: string[]): TagEintrag | undefined {
+  if (!ids.length) return undefined;
+  return { schicht: ids[0] ?? null, zusatz: ids[1] ?? null, dritte: ids[2] ?? null };
+}
 
 /** Tag -> Einträge für einen Zeitraum (beide Enden eingeschlossen). */
 export async function ladeTage(von: string, bis: string): Promise<Record<string, TagEintrag>> {
-  const { data, error } = await createClient()
-    .from("privat_tage")
-    .select("tag, ebene, schichtart_id")
-    .gte("tag", von)
-    .lte("tag", bis)
-    .limit(4000);
-  if (error) fehler(error, "Der Kalender konnte nicht geladen werden.");
+  // Seitenweise: Der Server gibt je Abfrage höchstens 1000 Zeilen, ein Jahr
+  // mit drei Einträgen je Tag hat bis zu 1098.
+  const SEITE = 1000;
+  const zeilen: { tag: string; ebene: number; schichtart_id: string }[] = [];
+  for (let ab = 0; ; ab += SEITE) {
+    const { data, error } = await createClient()
+      .from("privat_tage")
+      .select("tag, ebene, schichtart_id")
+      .gte("tag", von)
+      .lte("tag", bis)
+      .order("tag")
+      .order("ebene")
+      .range(ab, ab + SEITE - 1);
+    if (error) fehler(error, "Der Kalender konnte nicht geladen werden.");
+    zeilen.push(...((data ?? []) as typeof zeilen));
+    if ((data ?? []).length < SEITE) break;
+  }
   const tage: Record<string, TagEintrag> = {};
-  for (const z of (data ?? []) as { tag: string; ebene: number; schichtart_id: string }[]) {
-    const e = (tage[z.tag] ??= { schicht: null, zusatz: null });
-    if (z.ebene === 2) e.zusatz = z.schichtart_id;
+  for (const z of zeilen) {
+    const e = (tage[z.tag] ??= { schicht: null, zusatz: null, dritte: null });
+    if (z.ebene === 3) e.dritte = z.schichtart_id;
+    else if (z.ebene === 2) e.zusatz = z.schichtart_id;
     else e.schicht = z.schichtart_id;
   }
   return tage;
+}
+
+/**
+ * Mehrere Tage genau so speichern, wie sie in `neu` stehen (undefined =
+ * Tag leer). Je Ebene und Wert ein Aufruf, damit ein Pinsel-Strich über
+ * viele Tage nicht viele Anfragen braucht.
+ */
+export async function speichereTage(neu: Record<string, TagEintrag | undefined>): Promise<void> {
+  const leer = Object.entries(neu).filter(([, e]) => !e).map(([t]) => t);
+  if (leer.length) await leereTage(leer);
+  const gruppen = new Map<string, string[]>();
+  for (const [tag, e] of Object.entries(neu)) {
+    if (!e) continue;
+    ([e.schicht, e.zusatz, e.dritte] as (string | null)[]).forEach((id, i) => {
+      const k = `${i + 1}|${id ?? ""}`;
+      gruppen.set(k, [...(gruppen.get(k) ?? []), tag]);
+    });
+  }
+  for (const [k, tage] of gruppen) {
+    const [ebene, id] = k.split("|") as [string, string];
+    await setzeTage(tage, id || null, Number(ebene) as Ebene);
+  }
 }
 
 /** Eine Ebene an einem oder mehreren Tagen setzen (null = leeren). */
@@ -143,7 +192,7 @@ export async function setzeTage(tage: string[], schichtartId: string | null, ebe
   if (error) fehler(error, "Das konnte nicht gespeichert werden.");
 }
 
-/** Alles an diesen Tagen leeren (beide Ebenen). */
+/** Alles an diesen Tagen leeren (alle Ebenen). */
 export async function leereTage(tage: string[]): Promise<void> {
   if (!tage.length) return;
   const { error } = await createClient().from("privat_tage").delete().in("tag", tage);

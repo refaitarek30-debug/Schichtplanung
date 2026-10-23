@@ -530,14 +530,17 @@ export function MeinKalenderGlas() {
   const [pinsel, setPinsel] = useState<string | null>(null);
 
   // ---- Rückgängig (eigene Einträge) ---------------------------------------
-  const [rueck, setRueck] = useState<{ text: string; vorher: Record<string, string | undefined> } | null>(null);
+  const [rueck, setRueck] = useState<{ text: string; vorlage: string; vorher: Record<string, string | undefined> } | null>(null);
   const rueckUhr = useRef<number | null>(null);
   function merke(liste: string[], text: string) {
     setRueck((alt) => {
-      const vorher: Record<string, string | undefined> = { ...(alt && rueckUhr.current ? alt.vorher : {}) };
+      // Gleiche Art von Änderung kurz hintereinander (z. B. Tag für Tag
+      // antippen) nimmt „Rückgängig“ zusammen zurück, sonst nur die letzte.
+      const weiter = !!alt && !!rueckUhr.current && alt.vorlage === text;
+      const vorher: Record<string, string | undefined> = { ...(weiter ? alt.vorher : {}) };
       for (const t of liste) if (!(t in vorher)) vorher[t] = eigene[t];
       const n = Object.keys(vorher).length;
-      return { text: text.replace("{n}", n === 1 ? "1 Tag" : `${n} Tage`), vorher };
+      return { text: text.replace("{n}", n === 1 ? "1 Tag" : `${n} Tage`), vorlage: text, vorher };
     });
     if (rueckUhr.current) window.clearTimeout(rueckUhr.current);
     rueckUhr.current = window.setTimeout(() => {
@@ -636,8 +639,9 @@ export function MeinKalenderGlas() {
     setTerminBlatt({ datum: iso, termin: null });
   });
   /**
-   * Pinsel: ein Strich über einen oder mehrere Tage. „Leeren“ fragt vorher
-   * nach, weil dabei Einträge gelöscht werden; der Schichtplan selbst bleibt.
+   * Pinsel: ein Strich über einen oder mehrere Tage. Gleicher Eintrag am
+   * ersten Tag = wegnehmen. „Leeren“ fragt vorher nach, weil dabei Einträge
+   * gelöscht werden; der Schichtplan selbst bleibt.
    */
   function pinselStrich(liste: string[]) {
     if (!pinselAn || !pinsel) return;
@@ -658,13 +662,21 @@ export function MeinKalenderGlas() {
       return;
     }
     if (!artNach.has(pinsel)) return;
+    const name = artNach.get(pinsel)?.name ?? "neu";
+    // Steht der Eintrag am ersten Tag schon, nimmt der Strich ihn weg (nochmal tippen = weg).
+    if (eigene[liste[0]!] === pinsel) {
+      const weg = liste.filter((t) => eigene[t] === pinsel);
+      merke(weg, `${name} entfernt · {n}`);
+      void eigenSetzen(weg, null);
+      return;
+    }
     const neu = liste.filter((t) => eigene[t] !== pinsel);
     if (!neu.length) return;
-    merke(neu, `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
+    merke(neu, `{n} auf ${name} gesetzt`);
     void eigenSetzen(neu, pinsel);
   }
-  // Mit dem Pinsel über mehrere Tage wischen; der Monat blättert dann nur über die Pfeile.
-  const strich = usePinselStrich(pinselStrich);
+  // Pinsel: kurz halten und über mehrere Tage wischen; normales Wischen blättert weiter.
+  const strich = usePinselStrich(pinselStrich, griffe);
 
   function tippen(iso: string) {
     if (langDruck.geschluckt()) return;
@@ -720,7 +732,7 @@ export function MeinKalenderGlas() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
-          <span className={cn("gap-2", pinselAn ? "flex" : "hidden sm:flex")}>
+          <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorheriger Monat" onClick={() => blaettern(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>

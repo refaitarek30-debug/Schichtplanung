@@ -32,12 +32,14 @@ import {
 } from "@/lib/data/partner";
 import { addDays, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
+  MAX_JE_TAG,
+  eintragAus,
   farbStil,
+  idsVon,
   ladeFeiertage,
   ladeTage,
   leereTage,
-  setzeTage,
-  type Ebene,
+  speichereTage,
   type Schichtart,
   type TagEintrag,
 } from "@/lib/privat/daten";
@@ -52,15 +54,15 @@ import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
  * Antippen (Tagesblatt), per Pinsel (mehrere Tage nacheinander) oder als
  * Schichtfolge (Rotation).
  *
- * Je Tag bis zu zwei Einträge: die Schicht (Ebene 1) und ein Zusatz wie
- * Urlaub (Ebene 2). Die Schicht bleibt stehen, bis sie jemand entfernt.
+ * Je Tag bis zu drei Einträge (z. B. Schicht und Urlaub). Ein Eintrag
+ * bleibt stehen, bis ihn jemand entfernt.
  */
 
 
 const ANSICHT_SCHLUESSEL = "schichtplan.privat-ansicht";
 const WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const WT_LANG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
-const LEER: TagEintrag = { schicht: null, zusatz: null };
+const LEER: TagEintrag = { schicht: null, zusatz: null, dritte: null };
 
 /** 0 = Montag … 6 = Sonntag */
 const wochentag = (iso: string) => (fromISO(iso).getDay() + 6) % 7;
@@ -88,8 +90,9 @@ function zeitText(a: Schichtart): string {
 
 /** Die Einträge eines Tages als Schichtarten, in Anzeige-Reihenfolge. */
 function arten(e: TagEintrag | undefined, artNach: Map<string, Schichtart>): Schichtart[] {
-  if (!e) return [];
-  return [e.schicht, e.zusatz].map((id) => (id ? artNach.get(id) : undefined)).filter((a): a is Schichtart => !!a);
+  return idsVon(e)
+    .map((id) => artNach.get(id))
+    .filter((a): a is Schichtart => !!a);
 }
 
 export function PrivatKalender() {
@@ -118,7 +121,7 @@ export function PrivatKalender() {
   const [termine, setTermine] = useState<Termin[]>([]);
   const [teilen, setTeilen] = useState(false);
   /** Zuletzt geänderte Tage – für „Rückgängig“. */
-  const [rueck, setRueck] = useState<{ text: string; vorher: Record<string, TagEintrag | undefined> } | null>(null);
+  const [rueck, setRueck] = useState<{ text: string; vorlage: string; vorher: Record<string, TagEintrag | undefined> } | null>(null);
   const rueckUhr = useRef<number | null>(null);
 
   const [tagBlatt, setTagBlatt] = useState<string | null>(null);
@@ -279,10 +282,13 @@ export function PrivatKalender() {
   /** Vor einer Änderung den Stand merken – danach erscheint „Rückgängig“. */
   function merke(liste: string[], text: string) {
     setRueck((alt) => {
-      const vorher: Record<string, TagEintrag | undefined> = { ...(alt && rueckUhr.current ? alt.vorher : {}) };
+      // Gleiche Art von Änderung kurz hintereinander (z. B. Tag für Tag
+      // antippen) nimmt „Rückgängig“ zusammen zurück, sonst nur die letzte.
+      const weiter = !!alt && !!rueckUhr.current && alt.vorlage === text;
+      const vorher: Record<string, TagEintrag | undefined> = { ...(weiter ? alt.vorher : {}) };
       for (const t of liste) if (!(t in vorher)) vorher[t] = tage[t];
       const n = Object.keys(vorher).length;
-      return { text: text.replace("{n}", n === 1 ? "1 Tag" : `${n} Tage`), vorher };
+      return { text: text.replace("{n}", n === 1 ? "1 Tag" : `${n} Tage`), vorlage: text, vorher };
     });
     if (rueckUhr.current) window.clearTimeout(rueckUhr.current);
     rueckUhr.current = window.setTimeout(() => {
@@ -297,20 +303,16 @@ export function PrivatKalender() {
     if (rueckUhr.current) window.clearTimeout(rueckUhr.current);
     rueckUhr.current = null;
     setRueck(null);
-    const leerTage = Object.entries(r.vorher).filter(([, e]) => !e).map(([t]) => t);
-    const mitInhalt = Object.entries(r.vorher).filter((x): x is [string, TagEintrag] => !!x[1]);
     setTage((alt) => {
       const neu = { ...alt };
-      for (const t of leerTage) delete neu[t];
-      for (const [t, e] of mitInhalt) neu[t] = e;
+      for (const [t, e] of Object.entries(r.vorher)) {
+        if (e) neu[t] = e;
+        else delete neu[t];
+      }
       return neu;
     });
     try {
-      if (leerTage.length) await leereTage(leerTage);
-      for (const [t, e] of mitInhalt) {
-        await setzeTage([t], e.schicht, 1);
-        await setzeTage([t], e.zusatz, 2);
-      }
+      await speichereTage(r.vorher);
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Rückgängig hat nicht geklappt.");
       void ladeJahre([...geladen.current], true);
@@ -336,24 +338,21 @@ export function PrivatKalender() {
     setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
   }
 
-  /** Eine Ebene setzen (null = diese Ebene leeren); optimistisch. */
-  async function setzen(liste: string[], artId: string | null, ebene: Ebene) {
+  /** Tage genau so setzen, wie sie in `neu` stehen (undefined = leer); optimistisch. */
+  async function aendern(neu: Record<string, TagEintrag | undefined>) {
     const vorher = tage;
     setTage((alt) => {
-      const neu = { ...alt };
-      for (const t of liste) {
-        const e = { ...(neu[t] ?? LEER) };
-        if (ebene === 1) e.schicht = artId;
-        else e.zusatz = artId;
-        if (!e.schicht && !e.zusatz) delete neu[t];
-        else neu[t] = e;
+      const n = { ...alt };
+      for (const [t, e] of Object.entries(neu)) {
+        if (e) n[t] = e;
+        else delete n[t];
       }
-      return neu;
+      return n;
     });
     try {
-      await setzeTage(liste, artId, ebene);
+      await speichereTage(neu);
     } catch (e) {
-      await nachFehler(liste, vorher, e);
+      await nachFehler(Object.keys(neu), vorher, e);
     }
   }
 
@@ -371,31 +370,11 @@ export function PrivatKalender() {
     }
   }
 
-  /** Beide Einträge eines Tages auf einmal setzen; optimistisch. */
-  async function tagSetzen(iso: string, schicht: string | null, zusatz: string | null) {
-    const vorher = tage;
-    setTage((alt) => {
-      const neu = { ...alt };
-      if (!schicht && !zusatz) delete neu[iso];
-      else neu[iso] = { schicht, zusatz };
-      return neu;
-    });
-    try {
-      if (!schicht && !zusatz) await leereTage([iso]);
-      else {
-        await setzeTage([iso], schicht, 1);
-        await setzeTage([iso], zusatz, 2);
-      }
-    } catch (e) {
-      await nachFehler([iso], vorher, e);
-    }
-  }
-
   /**
-   * Pinsel: ein Strich über einen oder mehrere Tage. Ist ein Tag leer, wird
-   * es die Schicht. Steht schon eine da, kommt der neue Eintrag als zweiter
-   * dazu und ersetzt nichts; sind beide Plätze belegt, tauscht er den zweiten.
-   * „Leeren“ fragt vorher nach, weil dabei Schichten gelöscht werden.
+   * Pinsel: ein Strich über einen oder mehrere Tage. Steht die gewählte
+   * Schicht am ersten Tag schon, nimmt der Strich sie überall weg (nochmal
+   * tippen = weg). Sonst kommt sie dazu – bis zu drei Einträge je Tag, volle
+   * Tage bleiben, wie sie sind. „Leeren“ fragt vorher nach.
    */
   function pinselStrich(liste: string[]) {
     if (!pinselAn || !pinsel) return;
@@ -415,16 +394,27 @@ export function PrivatKalender() {
       });
       return;
     }
-    const neu = liste.filter((t) => !tage[t]?.schicht);
-    const dazu = liste.filter((t) => {
-      const e = tage[t];
-      return !!e?.schicht && e.schicht !== pinsel && e.zusatz !== pinsel;
-    });
-    if (!neu.length && !dazu.length) return;
     const name = artNach.get(pinsel)?.name ?? "neu";
-    merke([...neu, ...dazu], !neu.length ? `{n} mit ${name} ergänzt` : `{n} auf ${name} gesetzt`);
-    if (neu.length) void setzen(neu, pinsel, 1);
-    if (dazu.length) void setzen(dazu, pinsel, 2);
+    const weg = idsVon(tage[liste[0]!]).includes(pinsel);
+    const neu: Record<string, TagEintrag | undefined> = {};
+    let voll = 0;
+    for (const t of liste) {
+      const ids = idsVon(tage[t]);
+      if (weg) {
+        if (ids.includes(pinsel)) neu[t] = eintragAus(ids.filter((id) => id !== pinsel));
+      } else if (!ids.includes(pinsel)) {
+        if (ids.length >= MAX_JE_TAG) voll++;
+        else neu[t] = eintragAus([...ids, pinsel]);
+      }
+    }
+    const geaendert = Object.keys(neu);
+    if (!geaendert.length) {
+      if (voll) setFehler(`An ${voll === 1 ? "diesem Tag" : "diesen Tagen"} stehen schon ${MAX_JE_TAG} Einträge.`);
+      return;
+    }
+    setFehler(voll ? `An ${voll} ${voll === 1 ? "Tag" : "Tagen"} stehen schon ${MAX_JE_TAG} Einträge – dort nichts geändert.` : null);
+    merke(geaendert, weg ? `${name} entfernt · {n}` : `${name} eingetragen · {n}`);
+    void aendern(neu);
   }
 
   function tagAntippen(iso: string) {
@@ -491,8 +481,8 @@ export function PrivatKalender() {
     if (pinselAn) return;
     setTerminBlatt({ datum: iso, termin: null });
   });
-  // Mit dem Pinsel über mehrere Tage wischen; der Monat blättert dann nur über die Pfeile.
-  const strich = usePinselStrich(pinselStrich);
+  // Pinsel: kurz halten und über mehrere Tage wischen; normales Wischen blättert weiter.
+  const strich = usePinselStrich(pinselStrich, monatGriffe);
   function tippen(iso: string) {
     if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
     if (pinselAn && strich.geschluckt()) return;
@@ -549,7 +539,7 @@ export function PrivatKalender() {
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
-          <span className={cn("gap-2", pinselAn && ansicht === "monat" ? "flex" : "hidden sm:flex")}>
+          <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>
@@ -678,9 +668,9 @@ export function PrivatKalender() {
           todos={todosAm(todos, tagBlatt)}
           andere={andere.amTag(tagBlatt)}
           terminVon={andere.terminVon}
-          onSetzen={(schicht, zusatz, text) => {
+          onSetzen={(ids, text) => {
             merke([tagBlatt], text);
-            void tagSetzen(tagBlatt, schicht, zusatz);
+            void aendern({ [tagBlatt]: eintragAus(ids) });
           }}
           onTermin={(t) => {
             setTerminBlatt({ datum: tagBlatt, termin: t });
@@ -894,7 +884,7 @@ function MonatsAnsicht({
         const d = fromISO(iso);
         const imMonat = d.getMonth() === monat;
         const eintraege = arten(tage[iso], artNach);
-        const zwei = eintraege.length === 2;
+        const zwei = eintraege.length >= 2;
         const fei = feiertagVon(iso);
         const ts = termineAm(termine, iso);
         const andereAm = andere.amTag(iso);
@@ -994,13 +984,15 @@ function JahresAnsicht({
                 {Array.from({ length: wochen * 7 }, (_, i) => {
                   const iso = addDays(start, i);
                   if (fromISO(iso).getMonth() !== m) return <span key={iso} className="aspect-square" />;
-                  const [a1, a2] = arten(tage[iso], artNach);
+                  const [a1, a2, a3] = arten(tage[iso], artNach);
                   const fei = feiertagVon(iso);
-                  // Zwei Einträge: diagonal geteilt.
+                  // Zwei Einträge: diagonal geteilt, drei: in drei Streifen.
                   const stil = a1
                     ? a2
                       ? {
-                          backgroundImage: `linear-gradient(135deg, ${a1.farbe} 50%, ${a2.farbe} 50%)`,
+                          backgroundImage: a3
+                            ? `linear-gradient(135deg, ${a1.farbe} 33.3%, ${a2.farbe} 33.3% 66.6%, ${a3.farbe} 66.6%)`
+                            : `linear-gradient(135deg, ${a1.farbe} 50%, ${a2.farbe} 50%)`,
                           color: farbStil(a2.farbe).color,
                         }
                       : farbStil(a1.farbe)
@@ -1063,8 +1055,8 @@ function TagBlatt({
   todos: Todo[];
   andere: AndererEintrag[];
   terminVon: (t: Termin) => { name: string; farbe: string } | null;
-  /** Beide Einträge setzen; text für „Rückgängig“ */
-  onSetzen: (schicht: string | null, zusatz: string | null, text: string) => void;
+  /** Die Einträge des Tages setzen (Reihenfolge = Anzeige); text für „Rückgängig“ */
+  onSetzen: (ids: string[], text: string) => void;
   onTermin: (t: Termin | null) => void;
   onTerminLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void;
   darfLoeschen: (t: Termin) => boolean;
@@ -1072,47 +1064,41 @@ function TagBlatt({
   onTag: () => void;
   onClose: () => void;
 }) {
-  const s = eintrag.schicht ? artNach.get(eintrag.schicht) : undefined;
-  const z = eintrag.zusatz ? artNach.get(eintrag.zusatz) : undefined;
-  const erster = s ?? z;
-  const zweiter = s && z ? z : undefined;
+  const ids = idsVon(eintrag);
+  const gesetzt = ids.map((id) => artNach.get(id)).filter((a): a is Schichtart => !!a);
   const [aendern, setAendern] = useState(false);
   const [nachricht, setNachricht] = useState(
-    erster ? "Tippen = 2. Eintrag · nochmal tippen = nur diese Schicht" : "Was steht an diesem Tag an?",
+    gesetzt.length ? "Tippen = dazu · nochmal tippen = weg" : "Was steht an diesem Tag an?",
   );
   const loesch = useLoeschFrage();
 
+  /** Tippen = dazu (bis zu drei), nochmal tippen = weg (mit „Rückgängig“). */
   function tipp(id: string) {
-    const neu = artNach.get(id);
-    if (!neu) return;
-    if (!erster) {
-      onSetzen(id, null, "{n} geändert");
-      setNachricht(`${neu.name} eingetragen.`);
-    } else if (erster.id !== id && zweiter?.id !== id) {
-      onSetzen(erster.id, id, "{n} geändert");
-      setNachricht(`${neu.name} als 2. Eintrag · nochmal tippen = nur ${neu.name}.`);
-    } else if (zweiter) {
-      const weg = erster.id === id ? zweiter : erster;
-      loesch.frage({
-        titel: `${weg.name} löschen?`,
-        text: `An diesem Tag bleibt nur ${neu.name}.`,
-        onJa: () => {
-          onSetzen(id, null, "{n} geändert");
-          setNachricht(`Nur noch ${neu.name} – ${weg.name} ist weg.`);
-        },
-      });
+    const a = artNach.get(id);
+    if (!a) return;
+    if (ids.includes(id)) {
+      onSetzen(
+        ids.filter((x) => x !== id),
+        `${a.name} entfernt`,
+      );
+      setNachricht(`${a.name} ist weg.`);
+    } else if (ids.length >= MAX_JE_TAG) {
+      setNachricht(`Höchstens ${MAX_JE_TAG} Einträge – tippe erst einen weg.`);
     } else {
-      setNachricht(`${neu.name} ist schon eingetragen.`);
+      onSetzen([...ids, id], "{n} geändert");
+      setNachricht(ids.length ? `${a.name} dazu · nochmal tippen = weg.` : `${a.name} eingetragen.`);
     }
   }
 
   function entfernen(id: string) {
-    const rest = [erster, zweiter].filter((a): a is Schichtart => !!a && a.id !== id);
     loesch.frage({
       titel: `${artNach.get(id)?.name ?? "Eintrag"} löschen?`,
       text: "Der Eintrag wird von diesem Tag entfernt.",
       onJa: () => {
-        onSetzen(rest[0]?.id ?? null, null, "Eintrag entfernt");
+        onSetzen(
+          ids.filter((x) => x !== id),
+          "Eintrag entfernt",
+        );
         setNachricht("Eintrag entfernt.");
       },
     });
@@ -1120,26 +1106,24 @@ function TagBlatt({
 
   const d = fromISO(iso);
   const zeit = (a: Schichtart) => zeitText(a) || (a.art === "arbeit" ? null : a.art === "frei" ? "frei" : "ganztägig");
-  const nichts = !erster && !feiertag && !termine.length && !todos.length && !andere.length;
+  const nichts = !gesetzt.length && !feiertag && !termine.length && !todos.length && !andere.length;
   return (
     <Blatt
       wischZu
       titel={`${WT_LANG[wochentag(iso)]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
       unter={
-        feiertag || erster ? (
+        feiertag || gesetzt.length ? (
         <span className="mt-1 flex flex-wrap gap-1.5">
           {feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : null}
-          {[erster, zweiter].map((a) =>
-            a ? (
-              <EintragPille
-                key={a.id}
-                name={a.name}
-                zeit={zeit(a)}
-                farbe={a.farbe}
-                onEntfernen={aendern ? () => entfernen(a.id) : undefined}
-              />
-            ) : null,
-          )}
+          {gesetzt.map((a) => (
+            <EintragPille
+              key={a.id}
+              name={a.name}
+              zeit={zeit(a)}
+              farbe={a.farbe}
+              onEntfernen={aendern ? () => entfernen(a.id) : undefined}
+            />
+          ))}
         </span>
         ) : undefined
       }
@@ -1166,7 +1150,7 @@ function TagBlatt({
               id: a.id,
               name: a.name,
               farbe: a.farbe,
-              rang: erster?.id === a.id ? 1 : zweiter?.id === a.id ? 2 : 0,
+              rang: (ids.indexOf(a.id) + 1) as 0 | 1 | 2 | 3,
             }))}
             onTipp={tipp}
             nachricht={nachricht}

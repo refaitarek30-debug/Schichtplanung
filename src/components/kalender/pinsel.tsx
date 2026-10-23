@@ -118,7 +118,7 @@ export function PinselLeiste({
       ) : null}
       <div
         role="toolbar"
-        aria-label="Pinsel: Eintrag wählen, dann Tage antippen oder darüber wischen"
+        aria-label="Pinsel: Eintrag wählen, dann Tage antippen – oder kurz halten und über die Tage wischen"
         className="glas-dicht glas-voll flex h-[4.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4rem]"
       >
         {eintraege.map((a, i) => (
@@ -157,14 +157,20 @@ export function PinselLeiste({
 }
 
 /**
- * Mit dem Pinsel über mehrere Tage wischen: Der Finger fährt über die
- * Monatsfläche, jeder überfahrene Tag (Zelle mit data-iso) kommt in den
- * Strich und wird sofort markiert. Beim Loslassen geht der ganze Strich auf
- * einmal an onStrich – ein einzelner Tipp ist ein Strich mit einem Tag. Den
- * Klick danach schluckt geschluckt(); Tastatur-Klicks kommen weiter durch.
+ * Pinsel auf der Monatsfläche. Normales Wischen blättert den Monat (griffe
+ * von useMonatWischen laufen weiter mit). Wer einen Tag kurz hält (0,5 s,
+ * das Handy vibriert), malt: Jeder überfahrene Tag (Zelle mit data-iso)
+ * kommt in den Strich und wird markiert; beim Loslassen geht der ganze
+ * Strich auf einmal an onStrich. Ein einfacher Tipp bleibt ein Klick auf die
+ * Zelle – den Klick nach einem Strich schluckt geschluckt().
  */
-export function usePinselStrich(onStrich: (tage: string[]) => void) {
-  const strich = useRef<{ id: number; tage: string[] } | null>(null);
+const HALTEN_MS = 500;
+
+export function usePinselStrich(
+  onStrich: (tage: string[]) => void,
+  monat: ReturnType<typeof useMonatWischen>["griffe"],
+) {
+  const strich = useRef<{ id: number; tage: string[]; aktiv: boolean; x: number; y: number; uhr: number | null } | null>(null);
   const [markiert, setMarkiert] = useState<ReadonlySet<string>>(LEER_MENGE);
   const schlucken = useRef(0);
   const fertig = useRef(onStrich);
@@ -177,35 +183,65 @@ export function usePinselStrich(onStrich: (tage: string[]) => void) {
     return el?.dataset.iso ?? null;
   }
 
-  function ende(anwenden: boolean) {
+  function abbrechen() {
     const s = strich.current;
+    if (s?.uhr) window.clearTimeout(s.uhr);
     strich.current = null;
     setMarkiert(LEER_MENGE);
-    if (!s || !anwenden || !s.tage.length) return;
-    schlucken.current = Date.now();
-    fertig.current(s.tage);
   }
 
   const griffe = {
     onPointerDown: (e: React.PointerEvent) => {
+      monat.onPointerDown(e);
       if (e.pointerType === "mouse" && e.button !== 0) return;
       const iso = (e.target as Element).closest<HTMLElement>("[data-iso]")?.dataset.iso;
       if (!iso) return;
-      strich.current = { id: e.pointerId, tage: [iso] };
-      setMarkiert(new Set([iso]));
+      abbrechen();
+      const s = { id: e.pointerId, tage: [iso], aktiv: false, x: e.clientX, y: e.clientY, uhr: null as number | null };
+      s.uhr = window.setTimeout(() => {
+        s.uhr = null;
+        if (strich.current !== s) return;
+        s.aktiv = true;
+        // Das Blättern abbrechen: die Fläche springt zurück, der Finger malt.
+        monat.onPointerCancel();
+        setMarkiert(new Set(s.tage));
+        try {
+          navigator.vibrate?.(12);
+        } catch {
+          // ohne Vibration
+        }
+      }, HALTEN_MS);
+      strich.current = s;
     },
     onPointerMove: (e: React.PointerEvent) => {
       const s = strich.current;
-      if (!s || s.id !== e.pointerId) return;
-      const iso = tagBei(e.clientX, e.clientY);
-      if (!iso || s.tage.includes(iso)) return;
-      s.tage.push(iso);
-      setMarkiert(new Set(s.tage));
+      if (s?.aktiv && s.id === e.pointerId) {
+        const iso = tagBei(e.clientX, e.clientY);
+        if (!iso || s.tage.includes(iso)) return;
+        s.tage.push(iso);
+        setMarkiert(new Set(s.tage));
+        return;
+      }
+      // Vor Ablauf der Haltezeit bewegt: Das ist Wischen, kein Malen.
+      if (s && Math.hypot(e.clientX - s.x, e.clientY - s.y) > 10) abbrechen();
+      monat.onPointerMove(e);
     },
     onPointerUp: (e: React.PointerEvent) => {
-      if (strich.current?.id === e.pointerId) ende(true);
+      const s = strich.current;
+      if (s?.aktiv && s.id === e.pointerId) {
+        strich.current = null;
+        setMarkiert(LEER_MENGE);
+        schlucken.current = Date.now();
+        fertig.current(s.tage);
+        return;
+      }
+      abbrechen();
+      monat.onPointerUp(e);
     },
-    onPointerCancel: () => ende(false),
+    onPointerCancel: () => {
+      abbrechen();
+      monat.onPointerCancel();
+    },
   };
 
   return {
