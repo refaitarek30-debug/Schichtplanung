@@ -97,7 +97,7 @@ const FUNKTIONEN_PRIVAT: Punkt[] = [
 
 const FUNKTIONEN_BETRIEB: Punkt[] = [
   { icon: <CalendarRange className={i} />, titel: "Schichtplan", text: "Woche und Monat für alle Gruppen auf einen Blick." },
-  { icon: <Repeat className={i} />, titel: "Rotation A bis D", text: "Muster einmal festlegen, der Plan füllt sich." },
+  { icon: <Repeat className={i} />, titel: "Rotation A bis E", text: "Muster einmal festlegen, der Plan füllt sich." },
   { icon: <Gauge className={i} />, titel: "Besetzung", text: "Mindest- und Sollbesetzung je Schicht, mit Ampel für jeden Tag." },
   { icon: <BadgeCheck className={i} />, titel: "Qualifikationen", text: "Mindestanzahl je Schicht, jeden Tag geprüft." },
   { icon: <Plane className={i} />, titel: "Urlaub digital", text: "Beantragen und genehmigen – mit Blick auf die Besetzung." },

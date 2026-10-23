@@ -418,6 +418,10 @@ body {
 :root[data-theme="dark"] .feiertag-zelle {
   box-shadow: inset 0 0 0 999px rgb(229 72 77 / 0.18);
 }
+/* Pinsel: Tage im laufenden Strich (Finger wischt über den Monat). */
+.pinsel-strich {
+  box-shadow: inset 0 0 0 2px rgb(var(--c-brand-500)), inset 0 0 0 999px rgb(var(--c-brand-500) / 0.16);
+}
 :root {
   --we-leicht: rgb(var(--c-ink) / 0.08);
   --we-kraeftig: rgb(var(--c-brand-500) / 0.17);

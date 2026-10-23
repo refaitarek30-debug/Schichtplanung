@@ -6,6 +6,7 @@ import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
 import { NeueVersionHinweis } from "./neue-version";
 import { AbsturzMelder } from "@/components/protokoll/fehler-melder";
+import { LeisteHalten } from "./leiste-halten";
 import { MobileNav } from "./mobile-nav";
 import { ShellMain } from "./shell-main";
 import { Sidebar } from "./sidebar";
@@ -31,6 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <LegalFooter className="border-t border-line px-5 pb-28 pt-4 text-[12px] text-ink-faint lg:pb-4" />
       </div>
       <MobileNav />
+      <LeisteHalten />
       {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
       <LiveRefresh />
       <NeueVersionHinweis />

@@ -52,7 +52,8 @@ import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } f
 import { setzeLokal, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
-import { PinselKnopf, PinselLeiste, useMonatWischen } from "./pinsel";
+import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "./pinsel";
+import { useLoeschFrage } from "./loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
 import { Avatar } from "@/components/ui/avatar";
@@ -524,6 +525,8 @@ export function MeinKalenderGlas() {
 
   // ---- Pinsel ------------------------------------------------------------
   const [pinselAn, setPinselAn] = useState(false);
+  // Rückfrage vor dem Löschen von Schichten
+  const loesch = useLoeschFrage();
   const [pinsel, setPinsel] = useState<string | null>(null);
 
   // ---- Rückgängig (eigene Einträge) ---------------------------------------
@@ -632,13 +635,42 @@ export function MeinKalenderGlas() {
     if (pinselAn) return;
     setTerminBlatt({ datum: iso, termin: null });
   });
+  /**
+   * Pinsel: ein Strich über einen oder mehrere Tage. „Leeren“ fragt vorher
+   * nach, weil dabei Einträge gelöscht werden; der Schichtplan selbst bleibt.
+   */
+  function pinselStrich(liste: string[]) {
+    if (!pinselAn || !pinsel) return;
+    if (pinsel === "leer") {
+      const voll = liste.filter((t) => eigene[t]);
+      if (!voll.length) return;
+      loesch.frage({
+        titel: voll.length === 1 ? "Eintrag löschen?" : `${voll.length} Tage leeren?`,
+        text:
+          voll.length === 1
+            ? `Dein Eintrag am ${formatDE(voll[0]!)} wird gelöscht. Der Schichtplan bleibt.`
+            : "Deine Einträge an diesen Tagen werden gelöscht. Der Schichtplan bleibt.",
+        onJa: () => {
+          merke(voll, "{n} geleert");
+          void eigenSetzen(voll, null);
+        },
+      });
+      return;
+    }
+    if (!artNach.has(pinsel)) return;
+    const neu = liste.filter((t) => eigene[t] !== pinsel);
+    if (!neu.length) return;
+    merke(neu, `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
+    void eigenSetzen(neu, pinsel);
+  }
+  // Mit dem Pinsel über mehrere Tage wischen; der Monat blättert dann nur über die Pfeile.
+  const strich = usePinselStrich(pinselStrich);
+
   function tippen(iso: string) {
     if (langDruck.geschluckt()) return;
     if (gewischt.current) return;
-    if (pinselAn && pinsel && (pinsel === "leer" || artNach.has(pinsel))) {
-      if (pinsel === "leer" && !eigene[iso]) return;
-      merke([iso], pinsel === "leer" ? "{n} geleert" : `{n} auf ${artNach.get(pinsel)?.name ?? "neu"} gesetzt`);
-      void eigenSetzen([iso], pinsel === "leer" ? null : pinsel);
+    if (pinselAn && pinsel) {
+      if (!strich.geschluckt()) pinselStrich([iso]);
       return;
     }
     setTagBlatt({ iso, auswahl: false });
@@ -688,7 +720,7 @@ export function MeinKalenderGlas() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
-          <span className="hidden gap-2 sm:flex">
+          <span className={cn("gap-2", pinselAn ? "flex" : "hidden sm:flex")}>
             <GlasKnopf label="Vorheriger Monat" onClick={() => blaettern(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>
@@ -733,7 +765,7 @@ export function MeinKalenderGlas() {
         ref={flaeche}
         className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-none will-change-transform sm:rounded-[22px]"
         style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
-        {...griffe}
+        {...(pinselAn ? strich.griffe : griffe)}
         aria-busy={!sichtbar}
       >
         {WT.map((w, i) => (
@@ -768,6 +800,7 @@ export function MeinKalenderGlas() {
               key={iso}
               ref={i === 7 ? zellenRef : undefined}
               type="button"
+              data-iso={iso}
               {...langDruck.zelle(iso)}
               onClick={() => tippen(iso)}
               aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}${feiertage.has(iso) ? `, ${feiertage.get(iso)}` : ""}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
@@ -777,6 +810,7 @@ export function MeinKalenderGlas() {
                 i % 7 >= 5 && "we-zelle",
                 feiertage.has(iso) && "feiertag-zelle",
                 !imM && "opacity-35",
+                strich.markiert.has(iso) && "pinsel-strich",
               )}
             >
               <span className="relative mx-auto shrink-0">
@@ -1058,6 +1092,8 @@ export function MeinKalenderGlas() {
         <KalenderTeilen vorname={profile.firstName} onGeaendert={() => void andere.neuLaden()} onClose={() => setEinladen(false)} />
       ) : null}
 
+      {loesch.fenster}
+
       {rueck ? (
         <div
           role="status"
@@ -1193,6 +1229,7 @@ function TagBlatt({
   const [nachricht, setNachricht] = useState(
     arten.length ? "Antippen = dein eigener Eintrag dazu · der Schichtplan bleibt" : "Leg eigene Einträge an, z. B. Nebenjob oder Sport.",
   );
+  const loesch = useLoeschFrage();
 
   // Der Eintrag aus dem Schichtplan – fest, nur zum Ansehen.
   let plan: { name: string; zeit: string | null; farbe: string } | null = null;
@@ -1247,10 +1284,15 @@ function TagBlatt({
               farbe={eigen.farbe}
               onEntfernen={
                 aendern
-                  ? () => {
-                      onEigen(null);
-                      setNachricht("Eintrag entfernt.");
-                    }
+                  ? () =>
+                      loesch.frage({
+                        titel: `${eigen.name} löschen?`,
+                        text: "Dein Eintrag wird von diesem Tag entfernt. Der Schichtplan bleibt.",
+                        onJa: () => {
+                          onEigen(null);
+                          setNachricht("Eintrag entfernt.");
+                        },
+                      })
                   : undefined
               }
             />
@@ -1259,6 +1301,7 @@ function TagBlatt({
       }
       onClose={onClose}
     >
+      {loesch.fenster}
       {nichts ? <p className="px-1 py-2 text-[14.5px] text-ink-muted">An diesem Tag ist nichts geplant.</p> : null}
       <AmTag
         termine={termine}

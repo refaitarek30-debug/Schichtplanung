@@ -32,7 +32,7 @@ const GRUPPEN: { titel: string; zeilen: { text: string; w: [Wert, Wert, Wert] }[
     titel: "Planen",
     zeilen: [
       { text: "Schichtplan für Woche und Monat", w: [true, true, true] },
-      { text: "Rotation für Schichtgruppen A bis D", w: [true, true, true] },
+      { text: "Rotation für Schichtgruppen A bis E", w: [true, true, true] },
       { text: "Urlaub beantragen und genehmigen", w: [true, true, true] },
       { text: "Mein Kalender für jeden im Team", w: [true, true, true] },
       { text: "Mitteilungen", w: [true, true, true] },
