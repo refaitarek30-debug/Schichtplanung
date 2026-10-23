@@ -8,6 +8,7 @@ import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
 import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
+import { fetchHolidays } from "@/lib/data/holidays";
 import {
   fetchMeineTermine,
   personTageSetzen,
@@ -196,6 +197,21 @@ export function MeinKalenderGlas() {
   const t = useBegriffe();
   const { profile, company } = useSession();
   const heute = heuteInBerlin();
+  // Gesetzliche Feiertage des Betriebs: im Monat nur gefärbt, der Name steht im Tagesblatt.
+  const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    let ab = false;
+    fetchHolidays()
+      .then((liste) => {
+        if (!ab) setFeiertage(new Map(liste.map((h) => [h.date, h.name])));
+      })
+      .catch(() => {
+        // Ohne Feiertage fehlt nur die Färbung.
+      });
+    return () => {
+      ab = true;
+    };
+  }, []);
   const [monat, setMonat] = useState(() => {
     const d = fromISO(heute);
     return { jahr: d.getFullYear(), monat: d.getMonth() };
@@ -754,11 +770,12 @@ export function MeinKalenderGlas() {
               type="button"
               {...langDruck.zelle(iso)}
               onClick={() => tippen(iso)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}${feiertage.has(iso) ? `, ${feiertage.get(iso)}` : ""}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
               className={cn(
                 "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
                 i % 7 !== 0 && "border-l",
                 i % 7 >= 5 && "we-zelle",
+                feiertage.has(iso) && "feiertag-zelle",
                 !imM && "opacity-35",
               )}
             >
@@ -766,7 +783,9 @@ export function MeinKalenderGlas() {
                 <span
                   className={cn(
                     "tnum flex h-[24px] min-w-[24px] items-center justify-center rounded-full px-1 text-[14.5px] font-medium leading-none [@media(max-height:750px)]:h-[21px] [@media(max-height:750px)]:min-w-[21px] [@media(max-height:750px)]:text-[13.5px]",
-                    iso === heute && "bg-[#ff3b30] font-bold text-white shadow-[0_2px_8px_rgba(255,59,48,0.45)]",
+                    iso === heute
+                      ? "bg-[#ff3b30] font-bold text-white shadow-[0_2px_8px_rgba(255,59,48,0.45)]"
+                      : feiertage.has(iso) && "font-semibold text-[#e5484d]",
                   )}
                 >
                   {d.getDate()}
@@ -838,6 +857,7 @@ export function MeinKalenderGlas() {
         <TagBlatt
           key={tagBlatt.iso}
           iso={tagBlatt.iso}
+          feiertag={feiertage.get(tagBlatt.iso)}
           info={tagInfo(zellen.get(tagBlatt.iso))}
           geladen={!!sichtbar}
           farben={farben}
@@ -1136,8 +1156,11 @@ function TagBlatt({
   onPartner,
   onClose,
   offen = false,
+  feiertag,
 }: {
   iso: string;
+  /** Name des Feiertags – steht nur hier, im Monat ist der Tag nur gefärbt. */
+  feiertag?: string;
   info: TagInfo;
   geladen: boolean;
   farben: Record<string, string>;
@@ -1209,6 +1232,7 @@ function TagBlatt({
       titel={`${WOCHENTAG_LANG[d.getDay()]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
       unter={
         <span className="mt-1 flex flex-wrap gap-1.5">
+          {feiertag ? <span className="w-full font-medium text-[#e5484d]">{feiertag}</span> : null}
           {plan ? <EintragPille name={plan.name} zeit={plan.zeit} farbe={plan.farbe} marke="Plan" /> : null}
           {beantragt && gross ? (
             <EintragPille

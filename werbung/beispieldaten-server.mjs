@@ -67,6 +67,10 @@ db.personen = []; db.termine = []; db.todos = []; db.gruppen = []; db.verbindung
   }
 }
 
+// Varianten für einzelne Folgen: LEER = Kalender ohne Schichten, PARTNER = Lea ist schon verbunden.
+if (process.env.LEER) db.tage.clear();
+if (process.env.PARTNER) db.personen = [{ id: LEA, name: "Lea", art: "partner", darf_eintragen: true, termine_sehen: true, link_aktiv: true, link_erstellt_am: "2026-10-01T10:00:00Z", zuletzt_genutzt: "2026-10-15T18:00:00Z", erstellt_am: "2026-10-01T10:00:00Z" }];
+
 http.createServer((req, res) => {
   let b = ""; req.on("data", (c) => (b += c)); req.on("end", () => {
     const url = new URL(req.url, "http://x"); const q = [...url.searchParams.entries()];
@@ -143,7 +147,7 @@ http.createServer((req, res) => {
       if (f === "person_entfernen") { db.personen = db.personen.filter((x) => x.id !== body.p_id); return send(204); }
       if (f === "meine_personen_tage") {
         const aus = []; const folge = ["S", "S", "N", "N", "X", "X", "F", "F"];
-        for (let t = body.p_von, i = 0; t <= body.p_bis; t = add(t, 1), i++) if (db.personen.some((x) => x.id === LEA)) aus.push({ person_id: LEA, tag: t, schicht: folge[i % 8] });
+        for (let t = body.p_von, i = 0; t <= body.p_bis; t = add(t, 1), i++) if (db.personen.some((x) => x.id === LEA)) aus.push({ person_id: LEA, tag: t, schicht: folge[(i + (process.env.PARTNER ? 1 : 0)) % 8] });
         return send(200, aus);
       }
       if (f === "meine_gruppen") return send(200, db.gruppen);

@@ -25,8 +25,37 @@ Benötigt: Node, Playwright (Chromium) und ffmpeg. Die Videodateien selbst liege
 
 | Nr | Problem | Stand |
 |----|---------|-------|
-| 01 | „Welche Schicht hab ich nächsten Samstag?" | fertig (Version 2, mit Wischen, Tippen, Untertiteln) |
-| 02 | Schicht getauscht und vergessen (eigener Eintrag) | offen |
-| 03 | Partner weiß nie, wann ich Spät habe (Teilen) | offen |
-| 04 | Stunden und Überstunden im Blick (Auswertung) | offen |
-| 05 | Urlaub planen ohne Überschneidung | offen |
+| 01 | „Welche Schicht hab ich nächsten Samstag?" (ohne Stimme) | fertig |
+| 02 | „Ein ganzes Jahr Schichten in 10 Sekunden" (Schichtfolge) | fertig, mit Stimme |
+| 03 | „Wann hast du frei?" (Partner sieht die Schichten) | fertig, mit Stimme |
+| 04 | „Wie viele Nachtschichten hattest du dieses Jahr?" (Zählen) | fertig, mit Stimme |
+| 05 | „Urlaub eintragen? So geht's am schnellsten" (Pinsel) | fertig, mit Stimme |
+| 06 | „Schichtarbeiter, hört auf mit Zetteln!" (Samstag antippen) | fertig, mit Stimme |
+| 07 | „Diese App braucht jeder Schichtarbeiter" (App-Tour) | fertig, flott |
+| 08 | „Dein ganzes Jahr auf einen Blick" (Jahres- und Wochenansicht) | fertig, flott |
+| 09 | „Zahnarzt nach der Nachtschicht? Nein danke." (Termin mit Erinnerung) | fertig, flott |
+| 10 | „Nach der Nachtschicht alles vergessen?" (To-dos) | fertig, flott |
+| 11 | „Wann genau fängt deine Schicht an?" (Tagesansicht) | fertig, flott |
+| 12 | „Arbeitest du am Feiertag?" (Feiertage) | fertig, flott |
+| 13 | „Von deiner alten App wechseln? Easy." (Übernehmen) | fertig, flott |
+| 14 | „Nachtschicht? Dann Dunkelmodus." (Farbschemata) | fertig, flott |
+| 15 | „In 20 Sekunden startklar" (Registrierung) | fertig, flott |
+| 16 | „Deine Schichten. Deine Farben." (eigene Schichten, Wochenende) | fertig, flott |
+
+Stil „flott“ (`stil: "flott"` in folge.mjs): schnellere Stimme, Zoom-Ruck bei jedem Satz,
+Untertitel in kurzen Wortgruppen (weiß/gelb), Aufhänger fährt von oben ein.
+
+## Folgen mit Stimme (02–06)
+
+Jede Folge ist eine Datei `NN-name/folge.mjs`: Aufhänger oben, Sätze mit Aktion.
+Die Stimme kommt offline aus Piper (Stimme „Thorsten“, de_DE). Die Aufnahme bedient
+die App im Takt der Sätze, der Schnitt legt Stimme, Untertitel und am Ende „ShiftNexo“ darüber.
+
+```
+PIPER=…/piper STIMME=…/de_DE-thorsten-high.onnx PLAYWRIGHT_PATH=… \
+  node werbung/werkzeug/aufnehmen.mjs werbung/02-schichtfolge ./roh
+node werbung/werkzeug/bauen.mjs werbung/02-schichtfolge ./roh werbung/02-schichtfolge/video.mp4
+```
+
+Beispieldaten passend starten: 02 mit `LEER=1` (leerer Kalender), 03 mit `PARTNER=1` (Lea verbunden).
+Die App läuft dafür als Produktions-Build auf Port 3123 gegen den Beispieldaten-Server.
