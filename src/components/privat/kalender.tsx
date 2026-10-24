@@ -47,6 +47,8 @@ import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
+import { UeberstundenStreifen, useGehalt } from "./gehalt";
+import { rechne } from "@/lib/privat/gehalt";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 
 /**
@@ -491,6 +493,27 @@ export function PrivatKalender() {
 
   const leer = schichtarten && !laedt && Object.keys(tage).length === 0;
 
+  // Überstunden und Brutto für den angezeigten Monat (Streifen unter der Kopfzeile).
+  const { einst: gehaltEinst } = useGehalt(konto.userId);
+  const monatsRechnung = useMemo(() => {
+    if (ansicht !== "monat" || !schichtarten) return null;
+    const von = toISO(new Date(ankerD.getFullYear(), ankerD.getMonth(), 1));
+    const bis = toISO(new Date(ankerD.getFullYear(), ankerD.getMonth() + 1, 0));
+    const imMonat: Record<string, TagEintrag> = {};
+    for (const [k, v] of Object.entries(tage)) if (k >= von && k <= bis) imMonat[k] = v;
+    if (!Object.keys(imMonat).length) return null;
+    return rechne({
+      tage: imMonat,
+      von,
+      bis,
+      arten: schichtarten,
+      feiertage: new Set(Object.keys(feiertage)),
+      wochenstunden: konto.wochenstunden,
+      einst: gehaltEinst,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ansicht, anker, tage, schichtarten, feiertage, konto.wochenstunden, gehaltEinst]);
+
   /** Was die Tagesansicht braucht – als Vollbild und als „Woche“. */
   const tagesProps = {
     heute,
@@ -555,6 +578,10 @@ export function PrivatKalender() {
         <div className="mb-2 px-3.5 sm:px-0">
           <Alert tone="error">{fehler ?? artenFehler}</Alert>
         </div>
+      ) : null}
+
+      {monatsRechnung ? (
+        <UeberstundenStreifen re={monatsRechnung} wochenstundenFehlen={konto.wochenstunden === null && !gehaltEinst.stundenlohn} />
       ) : null}
 
       {leer ? (
