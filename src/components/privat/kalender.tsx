@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, X } from "lucide-react";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
@@ -112,6 +112,30 @@ export function PrivatKalender() {
     }
   }, []);
   const [anker, setAnker] = useState(heute);
+
+  // Hinweise im leeren Kalender lassen sich wegklicken – pro Gerät gemerkt. Bis zum Lesen bleiben sie zu.
+  const hinweisKey = `sp_hinweis:${konto.userId}`;
+  const [hinweisZu, setHinweisZu] = useState<{ upload: boolean; los: boolean }>({ upload: true, los: true });
+  useEffect(() => {
+    let v = { upload: false, los: false };
+    try {
+      const g = JSON.parse(window.localStorage.getItem(hinweisKey) ?? "{}") as Partial<typeof v>;
+      v = { upload: g.upload === true, los: g.los === true };
+    } catch {
+      // ohne Speicher: Hinweise zeigen
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHinweisZu(v);
+  }, [hinweisKey]);
+  function hinweisSchliessen(welcher: "upload" | "los") {
+    const v = { ...hinweisZu, [welcher]: true };
+    setHinweisZu(v);
+    try {
+      window.localStorage.setItem(hinweisKey, JSON.stringify(v));
+    } catch {
+      // egal
+    }
+  }
 
   const [tage, setTage] = useState<Record<string, TagEintrag>>({});
   const [feiertage, setFeiertage] = useState<Record<string, string>>({});
@@ -581,19 +605,27 @@ export function PrivatKalender() {
         }}
       />
 
-      {leer ? (
-        <div className="mx-3.5 mb-2.5 rounded-[22px] bg-gradient-to-br from-brand-500 to-[#4a3fd6] p-4 text-white shadow-[0_12px_28px_rgba(47,91,234,0.3)] sm:mx-0">
+      {leer && !hinweisZu.upload ? (
+        <div className="relative mx-3.5 mb-2.5 rounded-[22px] bg-gradient-to-br from-brand-500 to-[#4a3fd6] p-4 text-white shadow-[0_12px_28px_rgba(47,91,234,0.3)] sm:mx-0">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-white/20">
               <Upload className="h-5 w-5" />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 pr-7">
               <h2 className="text-[16.5px] font-bold leading-tight">Schon einen Plan in einer anderen App?</h2>
               <p className="mt-1 text-[13px] leading-snug text-white/85">
                 Screenshot der Monatsansicht hochladen – ShiftNexo erkennt Monat, Schichten und Termine.
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => hinweisSchliessen("upload")}
+            aria-label="Hinweis schließen"
+            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-white/80 active:bg-white/20"
+          >
+            <X className="h-5 w-5" />
+          </button>
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
             <button
               type="button"
@@ -613,16 +645,26 @@ export function PrivatKalender() {
         </div>
       ) : null}
 
-      {leer ? (
-        <button type="button" onClick={() => setRotation(true)} className="glas mx-3.5 mb-2.5 flex w-[calc(100%-1.75rem)] items-center gap-3 rounded-[18px] px-3.5 py-3 text-left sm:mx-0 sm:w-full">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-            <Repeat className="h-[18px] w-[18px]" />
-          </span>
-          <span className="text-[13.5px] leading-snug">
-            <b className="font-semibold">Los geht&apos;s:</b> Trag deine Schichtfolge einmal ein – der Kalender füllt
-            sich von selbst.
-          </span>
-        </button>
+      {leer && !hinweisZu.los ? (
+        <div className="glas relative mx-3.5 mb-2.5 flex items-center rounded-[18px] sm:mx-0">
+          <button type="button" onClick={() => setRotation(true)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-3.5 pr-1 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Repeat className="h-[18px] w-[18px]" />
+            </span>
+            <span className="text-[13.5px] leading-snug">
+              <b className="font-semibold">Los geht&apos;s:</b> Trag deine Schichtfolge einmal ein – der Kalender füllt
+              sich von selbst.
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => hinweisSchliessen("los")}
+            aria-label="Hinweis schließen"
+            className="mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-muted active:bg-black/5"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       ) : null}
 
       <div
