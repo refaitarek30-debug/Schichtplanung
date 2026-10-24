@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Clock, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
 import { monthName, toISO } from "@/lib/dates";
 import { ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import {
@@ -28,7 +28,6 @@ const GEHALT_EREIGNIS = "sp-gehalt-geaendert";
 const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 const mitVorzeichen = (n: number) => `${n > 0.05 ? "+" : ""}${std(Math.abs(n) < 0.05 ? 0 : n)}`;
 const euro = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
-const euroGanz = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
 export function useGehalt(userId: string) {
   const [einst, setEinst] = useState<GehaltEinstellungen>(GEHALT_STANDARD);
@@ -51,39 +50,6 @@ export function useGehalt(userId: string) {
     [userId],
   );
   return { einst, setze };
-}
-
-/** Schmale Zeile im Kalender: Überstunden und Brutto für den angezeigten Monat. */
-export function UeberstundenStreifen({ re, wochenstundenFehlen }: { re: Rechnung; wochenstundenFehlen: boolean }) {
-  if (re.differenz === null && !re.geld) {
-    if (!wochenstundenFehlen) return null;
-    return (
-      <Link
-        href="/privat/mehr"
-        className="glas mx-3.5 mb-2 flex items-center gap-2 rounded-[14px] px-3 py-2 text-[12.5px] font-medium text-ink-muted sm:mx-0"
-      >
-        <Clock className="h-4 w-4 shrink-0" />
-        <span className="truncate">Wochenstunden eintragen – dann siehst du hier deine Überstunden.</span>
-      </Link>
-    );
-  }
-  const plus = (re.differenz ?? 0) > 0.05;
-  return (
-    <Link
-      href="/privat/schichten"
-      aria-label="Überstunden und Gehalt öffnen"
-      className="glas mx-3.5 mb-2 flex items-center gap-2 rounded-[14px] px-3 py-2 text-[13px] font-semibold sm:mx-0"
-    >
-      <Clock className={cn("h-4 w-4 shrink-0", plus ? "text-warn-dot" : "text-ink-muted")} />
-      <span className="tnum min-w-0 truncate">
-        {re.differenz !== null ? (
-          <span className={plus ? "text-warn-fg" : undefined}>{mitVorzeichen(re.differenz)} Std Überstunden</span>
-        ) : null}
-        {re.differenz !== null && re.geld ? <span className="text-ink-faint"> · </span> : null}
-        {re.geld ? <span>ca. {euroGanz(re.geld.summe)} brutto</span> : null}
-      </span>
-    </Link>
-  );
 }
 
 /** Soll, Ist und Überstunden – mit den einzelnen Wochen. */

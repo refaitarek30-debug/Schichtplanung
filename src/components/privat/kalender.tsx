@@ -23,7 +23,7 @@ import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type To
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
-import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "@/components/kalender/pinsel";
+import { PinselKnopf, PinselLeiste, useMonatKarussell, usePinselStrich } from "@/components/kalender/pinsel";
 import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "@/components/kalender/todo-zaehler";
 import {
@@ -47,9 +47,7 @@ import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
-import { UeberstundenStreifen, useGehalt } from "./gehalt";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
-import { rechne } from "@/lib/privat/gehalt";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 
 /**
@@ -215,9 +213,11 @@ export function PrivatKalender() {
   }, [tage, feiertage, laedt, konto.userId]);
 
   useEffect(() => {
-    const jahre = new Set([fromISO(bereich.von).getFullYear(), fromISO(bereich.bis).getFullYear()]);
+    // Im Monat auch die Nachbarmonate vorladen, damit sie beim Wischen schon da sind.
+    const rand = ansicht === "monat" ? 35 : 0;
+    const jahre = new Set([fromISO(addDays(bereich.von, -rand)).getFullYear(), fromISO(addDays(bereich.bis, rand)).getFullYear()]);
     void ladeJahre([...jahre]);
-  }, [bereich, ladeJahre]);
+  }, [bereich, ansicht, ladeJahre]);
 
   const ladeTermine = useCallback(async () => {
     try {
@@ -477,8 +477,8 @@ export function PrivatKalender() {
       else springe(dx < 0 ? 1 : -1);
     }
   }
-  // Im Monat: nach oben/unten wischen, mit Bewegung (wie „Mein Kalender“).
-  const { flaeche: monatFlaeche, griffe: monatGriffe, gewischt: monatGewischt } = useMonatWischen(springe);
+  // Im Monat: seitlich oder nach oben/unten wischen – Vor- und Folgemonat folgen dem Finger.
+  const { flaeche: monatFlaeche, seite: monatSeite, griffe: monatGriffe, gewischt: monatGewischt } = useMonatKarussell(springe);
   // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
   const langDruck = useLangDruck((iso) => {
     if (pinselAn) return;
@@ -501,27 +501,6 @@ export function PrivatKalender() {
     merkeImportDateien(dateien);
     router.push("/privat/import");
   }
-
-  // Überstunden und Brutto für den angezeigten Monat (Streifen unter der Kopfzeile).
-  const { einst: gehaltEinst } = useGehalt(konto.userId);
-  const monatsRechnung = useMemo(() => {
-    if (ansicht !== "monat" || !schichtarten) return null;
-    const von = toISO(new Date(ankerD.getFullYear(), ankerD.getMonth(), 1));
-    const bis = toISO(new Date(ankerD.getFullYear(), ankerD.getMonth() + 1, 0));
-    const imMonat: Record<string, TagEintrag> = {};
-    for (const [k, v] of Object.entries(tage)) if (k >= von && k <= bis) imMonat[k] = v;
-    if (!Object.keys(imMonat).length) return null;
-    return rechne({
-      tage: imMonat,
-      von,
-      bis,
-      arten: schichtarten,
-      feiertage: new Set(Object.keys(feiertage)),
-      wochenstunden: konto.wochenstunden,
-      einst: gehaltEinst,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ansicht, anker, tage, schichtarten, feiertage, konto.wochenstunden, gehaltEinst]);
 
   /** Was die Tagesansicht braucht – als Vollbild und als „Woche“. */
   const tagesProps = {
@@ -587,10 +566,6 @@ export function PrivatKalender() {
         <div className="mb-2 px-3.5 sm:px-0">
           <Alert tone="error">{fehler ?? artenFehler}</Alert>
         </div>
-      ) : null}
-
-      {monatsRechnung ? (
-        <UeberstundenStreifen re={monatsRechnung} wochenstundenFehlen={konto.wochenstunden === null && !gehaltEinst.stundenlohn} />
       ) : null}
 
       <input
@@ -663,20 +638,28 @@ export function PrivatKalender() {
         aria-busy={laedt || !schichtarten}
       >
         {ansicht === "monat" ? (
-          <div ref={monatFlaeche} className="h-full will-change-transform">
-          <MonatsAnsicht
-            jahr={ankerD.getFullYear()}
-            monat={ankerD.getMonth()}
-            heute={heute}
-            tage={tage}
-            artNach={artNach}
-            feiertagVon={feiertagVon}
-            termine={sichtbareTermine}
-            andere={andere}
-            onTag={tippen}
-            zelle={langDruck.zelle}
-            markiert={strich.markiert}
-          />
+          <div ref={monatFlaeche} className="relative h-full">
+            {([-1, 0, 1] as const).map((o) => {
+              const m = new Date(ankerD.getFullYear(), ankerD.getMonth() + o, 1);
+              const mitte = o === 0;
+              return (
+                <div key={o} ref={monatSeite(o)} className={cn("absolute inset-0 will-change-transform", !mitte && "invisible")} aria-hidden={!mitte}>
+                  <MonatsAnsicht
+                    jahr={m.getFullYear()}
+                    monat={m.getMonth()}
+                    heute={heute}
+                    tage={tage}
+                    artNach={artNach}
+                    feiertagVon={feiertagVon}
+                    termine={sichtbareTermine}
+                    andere={andere}
+                    onTag={mitte ? tippen : () => undefined}
+                    zelle={mitte ? langDruck.zelle : undefined}
+                    markiert={mitte ? strich.markiert : undefined}
+                  />
+                </div>
+              );
+            })}
           </div>
         ) : ansicht === "woche" ? (
           <Tagesansicht

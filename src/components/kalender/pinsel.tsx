@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type React from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Eraser, Ellipsis, Paintbrush, Plus, X } from "lucide-react";
 import { farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
@@ -168,7 +168,7 @@ const HALTEN_MS = 500;
 
 export function usePinselStrich(
   onStrich: (tage: string[]) => void,
-  monat: ReturnType<typeof useMonatWischen>["griffe"],
+  monat: ReturnType<typeof useMonatWischen>["griffe"] | ReturnType<typeof useMonatKarussell>["griffe"],
 ) {
   const strich = useRef<{ id: number; tage: string[]; aktiv: boolean; x: number; y: number; uhr: number | null } | null>(null);
   const [markiert, setMarkiert] = useState<ReadonlySet<string>>(LEER_MENGE);
@@ -357,4 +357,176 @@ export function useMonatWischen(springe: (schritt: number) => void) {
   };
 
   return { flaeche, griffe, blaettern, gewischt };
+}
+
+
+/**
+ * Monate wie ein Karussell blättern: Vormonat, aktueller Monat und Folgemonat
+ * liegen nebeneinander; beim Wischen (seitlich oder nach oben/unten) folgen alle
+ * dem Finger, beim Loslassen rastet der nächste Monat weich ein. Wer diesen
+ * Haken nutzt, zeichnet drei Seiten (`seite(-1)`, `seite(0)`, `seite(1)`) in
+ * einen gemeinsamen Rahmen (`flaeche`). Bei „Bewegung reduzieren“ ohne Animation.
+ */
+export function useMonatKarussell(springe: (schritt: number) => void) {
+  const flaeche = useRef<HTMLDivElement>(null);
+  const seiten = useRef<(HTMLDivElement | null)[]>([null, null, null]);
+  const stand = useRef<{
+    x: number;
+    y: number;
+    achse: "x" | "y" | null;
+    groesse: number;
+    d: number;
+    letzt: number;
+    letztT: number;
+    v: number;
+  } | null>(null);
+  const gewischt = useRef(false);
+  const laeuft = useRef(false);
+  const bild = useRef<number | null>(null);
+  const uhr = useRef<number | null>(null);
+  const KURVE = "cubic-bezier(.22,1,.36,1)";
+
+  const seite = (i: -1 | 0 | 1) => (el: HTMLDivElement | null) => {
+    seiten.current[i + 1] = el;
+  };
+
+  function lege(achse: "x" | "y", d: number, groesse: number, dauer = 0) {
+    seiten.current.forEach((el, i) => {
+      if (!el) return;
+      el.style.visibility = "visible";
+      el.style.transition = dauer ? `transform ${dauer}ms ${KURVE}` : "none";
+      const v = d + (i - 1) * groesse;
+      el.style.transform = achse === "x" ? `translate3d(${v}px,0,0)` : `translate3d(0,${v}px,0)`;
+    });
+  }
+
+  function ruhe() {
+    for (const el of seiten.current) {
+      if (!el) continue;
+      el.style.transition = "none";
+      el.style.transform = "";
+      el.style.visibility = "";
+    }
+  }
+
+  function ende(achse: "x" | "y", d: number, groesse: number, schritt: number) {
+    if (schritt === 0) {
+      lege(achse, 0, groesse, 220);
+      uhr.current = window.setTimeout(() => {
+        ruhe();
+        laeuft.current = false;
+      }, 230);
+      return;
+    }
+    const rest = 1 - Math.min(1, Math.abs(d) / groesse);
+    const dauer = Math.round(150 + 150 * rest);
+    lege(achse, -schritt * groesse, groesse, dauer);
+    uhr.current = window.setTimeout(() => {
+      // Erst den neuen Monat zeichnen lassen, dann die Seiten zurücksetzen – kein Flackern.
+      flushSync(() => springe(schritt));
+      ruhe();
+      laeuft.current = false;
+    }, dauer + 15);
+  }
+
+  /** Per Knopf blättern (Pfeile): gleiche Bewegung, ohne Finger. */
+  function blaettern(schritt: number) {
+    const el = flaeche.current;
+    const ruhig = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!el || ruhig || laeuft.current) {
+      if (!laeuft.current) springe(schritt);
+      return;
+    }
+    laeuft.current = true;
+    const groesse = el.offsetWidth || 1;
+    lege("x", 0, groesse);
+    void el.offsetWidth; // erst die Ausgangslage zeichnen, dann bewegen
+    ende("x", 0, groesse, schritt);
+  }
+
+  const griffe = {
+    onPointerDown: (e: React.PointerEvent) => {
+      gewischt.current = false;
+      if (laeuft.current) return;
+      const el = flaeche.current;
+      stand.current = {
+        x: e.clientX,
+        y: e.clientY,
+        achse: null,
+        groesse: 1,
+        d: 0,
+        letzt: 0,
+        letztT: e.timeStamp,
+        v: 0,
+      };
+      if (el) stand.current.groesse = Math.max(el.offsetWidth, el.offsetHeight) || 1;
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const s = stand.current;
+      if (!s) return;
+      const dx = e.clientX - s.x;
+      const dy = e.clientY - s.y;
+      if (!s.achse) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        s.achse = Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : Math.abs(dy) > Math.abs(dx) * 1.2 ? "y" : null;
+        if (!s.achse) return;
+        const el = flaeche.current;
+        if (el) s.groesse = (s.achse === "x" ? el.offsetWidth : el.offsetHeight) || 1;
+      }
+      const d = s.achse === "x" ? dx : dy;
+      const dt = e.timeStamp - s.letztT;
+      if (dt > 0) s.v = (d - s.letzt) / dt;
+      s.letzt = d;
+      s.letztT = e.timeStamp;
+      s.d = Math.max(-s.groesse, Math.min(s.groesse, d));
+      // Die Seiten folgen dem Finger – einmal je Bild, nicht je Ereignis.
+      if (bild.current) cancelAnimationFrame(bild.current);
+      const achse = s.achse;
+      bild.current = requestAnimationFrame(() => {
+        bild.current = null;
+        lege(achse, s.d, s.groesse);
+      });
+    },
+    onPointerUp: () => {
+      const s = stand.current;
+      stand.current = null;
+      if (bild.current) cancelAnimationFrame(bild.current);
+      bild.current = null;
+      if (!s?.achse) return;
+      const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      // Weit genug gezogen – oder kurz und schnell geschnippt.
+      const weit = Math.abs(s.d) > s.groesse * 0.2;
+      const schnell = Math.abs(s.v) > 0.35 && Math.abs(s.d) > 14;
+      const schritt = weit || schnell ? (s.d < 0 ? 1 : -1) : 0;
+      gewischt.current = Math.abs(s.d) > 10;
+      window.setTimeout(() => (gewischt.current = false), 120);
+      if (ruhig) {
+        ruhe();
+        if (schritt) springe(schritt);
+        return;
+      }
+      laeuft.current = true;
+      ende(s.achse, s.d, s.groesse, schritt);
+    },
+    onPointerCancel: () => {
+      const s = stand.current;
+      stand.current = null;
+      if (bild.current) cancelAnimationFrame(bild.current);
+      bild.current = null;
+      if (s?.achse) {
+        laeuft.current = true;
+        ende(s.achse, s.d, s.groesse, 0);
+      }
+    },
+  };
+
+  useEffect(
+    () => () => {
+      if (uhr.current) window.clearTimeout(uhr.current);
+      if (bild.current) cancelAnimationFrame(bild.current);
+    },
+    [],
+  );
+
+  return { flaeche, seite, griffe, blaettern, gewischt };
 }
