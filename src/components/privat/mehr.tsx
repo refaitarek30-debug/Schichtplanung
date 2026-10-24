@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { FileUp, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
+import { FileUp, KeyRound, LogOut, Repeat, Trash2, Palmtree, CalendarHeart } from "lucide-react";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
 import { createClient } from "@/lib/supabase/client";
@@ -80,8 +80,26 @@ export function PrivatMehr() {
               <FileUp className="h-[18px] w-[18px]" />
             </span>
             <span>
-              <span className="block text-[15px] font-medium">Aus anderer App übernehmen</span>
-              <span className="block text-[13px] text-ink-muted">Schichten z. B. aus Supershift per Kalender-Datei holen</span>
+              <span className="block text-[15px] font-medium">Plan hochladen</span>
+              <span className="block text-[13px] text-ink-muted">Screenshot oder Kalender-Datei aus einer anderen App, z. B. Supershift</span>
+            </span>
+          </Link>
+          <Link href="/privat/urlaub" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Palmtree className="h-[18px] w-[18px]" />
+            </span>
+            <span>
+              <span className="block text-[15px] font-medium">Urlaub clever legen</span>
+              <span className="block text-[13px] text-ink-muted">Brückentage finden: viele freie Tage für wenige Urlaubstage</span>
+            </span>
+          </Link>
+          <Link href="/privat/gemeinsam" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <CalendarHeart className="h-[18px] w-[18px]" />
+            </span>
+            <span>
+              <span className="block text-[15px] font-medium">Gemeinsam frei</span>
+              <span className="block text-[13px] text-ink-muted">Wann ihr beide frei habt – Monat und Jahr</span>
             </span>
           </Link>
           <label className="flex items-center justify-between gap-3">

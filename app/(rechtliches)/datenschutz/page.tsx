@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="22. Oktober 2026"
+      updated="24. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -711,6 +711,15 @@ export default function DatenschutzPage() {
             erscheint und danach aufgefrischt wird. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
             gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
+          </li>
+          <li>
+            <code className={kode}>sp_gehalt:…</code> und <code className={kode}>sp_urlaub:…</code>{" "}
+            (lokaler Speicher, bis zum Löschen der Browserdaten; mit der Benutzer-Kennung, nur für
+            diese Person gültig) – bei Privatkonten die freiwillig eingetragenen Angaben für die
+            Gehalts-Schätzung (Stundenlohn, Zuschläge in Prozent, ob in Schicht gearbeitet wird)
+            und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
+            läuft nur im Browser; diese Angaben werden weder an einen Server gesendet noch im Konto
+            gespeichert. Wer ein Gerät mit anderen teilt, kann sie in den Browserdaten löschen.
           </li>
           <li>
             <code className={kode}>schichtplan.theme</code>,{" "}

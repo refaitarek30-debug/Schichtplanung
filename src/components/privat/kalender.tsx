@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload } from "lucide-react";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
@@ -48,6 +48,7 @@ import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
 import { UeberstundenStreifen, useGehalt } from "./gehalt";
+import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { rechne } from "@/lib/privat/gehalt";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 
@@ -493,6 +494,14 @@ export function PrivatKalender() {
 
   const leer = schichtarten && !laedt && Object.keys(tage).length === 0;
 
+  // Plan hochladen: Dateien gleich hier wählen, die Import-Seite liest sie danach.
+  const hochladeFeld = useRef<HTMLInputElement>(null);
+  function hochgeladen(dateien: File[]) {
+    if (!dateien.length) return;
+    merkeImportDateien(dateien);
+    router.push("/privat/import");
+  }
+
   // Überstunden und Brutto für den angezeigten Monat (Streifen unter der Kopfzeile).
   const { einst: gehaltEinst } = useGehalt(konto.userId);
   const monatsRechnung = useMemo(() => {
@@ -570,7 +579,7 @@ export function PrivatKalender() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
-          <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} />
+          <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} onHochladen={() => hochladeFeld.current?.click()} />
         </div>
       </header>
 
@@ -582,6 +591,51 @@ export function PrivatKalender() {
 
       {monatsRechnung ? (
         <UeberstundenStreifen re={monatsRechnung} wochenstundenFehlen={konto.wochenstunden === null && !gehaltEinst.stundenlohn} />
+      ) : null}
+
+      <input
+        ref={hochladeFeld}
+        type="file"
+        multiple
+        className="sr-only"
+        tabIndex={-1}
+        aria-label="Plan hochladen: Screenshots oder Kalender-Datei"
+        onChange={(e) => {
+          hochgeladen(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+
+      {leer ? (
+        <div className="mx-3.5 mb-2.5 rounded-[22px] bg-gradient-to-br from-brand-500 to-[#4a3fd6] p-4 text-white shadow-[0_12px_28px_rgba(47,91,234,0.3)] sm:mx-0">
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-white/20">
+              <Upload className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[16.5px] font-bold leading-tight">Schon einen Plan in einer anderen App?</h2>
+              <p className="mt-1 text-[13px] leading-snug text-white/85">
+                Screenshot der Monatsansicht hochladen – ShiftNexo erkennt Monat, Schichten und Termine.
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+            <button
+              type="button"
+              onClick={() => hochladeFeld.current?.click()}
+              className="h-11 rounded-[14px] bg-white text-[14.5px] font-bold text-brand-700"
+            >
+              Screenshot hochladen
+            </button>
+            <button
+              type="button"
+              onClick={() => hochladeFeld.current?.click()}
+              className="h-11 rounded-[14px] border-2 border-white/45 px-3.5 text-[13.5px] font-semibold"
+            >
+              .ics wählen
+            </button>
+          </div>
+        </div>
       ) : null}
 
       {leer ? (

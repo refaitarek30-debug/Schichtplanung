@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Link2, Smartphone, Users } from "lucide-react";
+import Link from "next/link";
+import { CalendarHeart, ChevronRight, Link2, Smartphone, Users } from "lucide-react";
 import { GruppenListe, KalenderTeilen, PERSON_FARBEN, PersonenListe } from "@/components/kalender/teilen";
 import { VerbindungenListe } from "@/components/kalender/verbinden";
 import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
@@ -51,6 +52,17 @@ export function PrivatTeilen() {
   return (
     <div className="space-y-4">
       <PrivatKopf titel="Teilen" unter="Wer deinen Kalender sehen darf." />
+
+      <Link href="/privat/gemeinsam" className="glas flex items-center gap-3 rounded-[20px] px-4 py-3.5">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-bg text-ok-fg">
+          <CalendarHeart className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold">Gemeinsam frei</span>
+          <span className="block text-[13px] text-ink-muted">Wann habt ihr beide frei? Monat, Jahr und ganze Wochenenden</span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-ink-faint" />
+      </Link>
 
       <div className="flex items-center gap-2 pt-1 text-[13px] font-semibold text-ink-muted">
         <Users className="h-4 w-4" /> Partner, Familie, Freunde
