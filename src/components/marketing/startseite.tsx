@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
 import { WischShow, type Folie } from "@/components/marketing/wisch-show";
-import { Preise } from "@/components/marketing/preise";
+import { PAKETE, PILOT_RABATT_MONATE, PILOT_RABATT_PROZENT, Preise } from "@/components/marketing/preise";
 import {
   BetriebAntrag,
   BetriebBesetzung,
@@ -196,11 +196,13 @@ const FRAGEN_BETRIEB: Frage[] = [
     frage: "Was kostet ShiftNexo für einen Betrieb?",
     antwort: (
       <>
-        Bis 15 Personen nichts. Darüber zahlt ihr pro Person und Monat – je nach Stufe. Die Übersicht steht oben unter{" "}
+        Alle Funktionen sind für alle Betriebe dabei. Ihr zahlt nur nach der Größe des Teams: ab {PAKETE[0]!.preis} € netto im Monat (bis{" "}
+        {PAKETE[0]!.bis} Personen), zum Beispiel {PAKETE.find((p) => p.bis === 30)?.preis} € für bis zu 30 Personen. Die Übersicht steht oben unter{" "}
         <a href="#preise" className="font-medium text-brand-600 hover:underline">
           Preise
         </a>
-        . In der dreimonatigen Pilotphase ist der volle Umfang kostenlos.
+        . In der dreimonatigen Pilotphase ist der volle Umfang kostenlos, danach gibt es für Pilotbetriebe {PILOT_RABATT_MONATE} Monate lang{" "}
+        {PILOT_RABATT_PROZENT} % Rabatt.
       </>
     ),
   },
@@ -586,7 +588,7 @@ export function BetriebSeite() {
       </Abschnitt>
 
       <Abschnitt id="preise" grau>
-        <Ueberschrift titel="Preise, die man versteht." text="Bis 15 Personen kostenlos. Darüber zahlt ihr pro Person und Monat – ohne Grundgebühr." />
+        <Ueberschrift titel="Preise, die man versteht." text="Alle Funktionen für alle. Ihr zahlt nur nach der Größe eures Teams." />
         <div className="mx-auto mt-12 max-w-5xl">
           <Preise />
         </div>
