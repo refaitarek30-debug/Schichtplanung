@@ -154,6 +154,8 @@ export function PrivatImport() {
   const [terminWahl, setTerminWahl] = useState<Record<string, TerminWahl>>({});
   const [termineAngelegt, setTermineAngelegt] = useState<string[]>([]);
   const [gestartet, setGestartet] = useState(false);
+  /** Selbst gewählte Namen für neue Schichten (Schlüssel: Name aus dem Bild) */
+  const [umbenannt, setUmbenannt] = useState<Record<string, string>>({});
   const eingabe = useRef<HTMLInputElement>(null);
   const weiterLaeuft = useRef(false);
   const geladenFuer = useRef("");
@@ -201,11 +203,16 @@ export function PrivatImport() {
     [gruppen, ueberschrieben, arten],
   );
   const gruppeNach = useMemo(() => new Map(gruppen.map((g) => [g.name, g])), [gruppen]);
+  /** Die Gruppe mit dem Namen, den die Person gewählt hat (nur für neue Schichten). */
+  const mitName = (g: Gruppe): Gruppe => {
+    const n = umbenannt[g.name]?.trim();
+    return n ? { ...g, name: n } : g;
+  };
 
   const artVon = (ref: string) => {
     if (ref.startsWith("neu:")) {
       const g = gruppeNach.get(ref.slice(4));
-      return g ? neueArtAus(g, [], 0, 0).art : "arbeit";
+      return g ? neueArtAus(mitName(g), [], 0, 0).art : "arbeit";
     }
     return artNach.get(ref)?.art ?? "arbeit";
   };
@@ -230,6 +237,7 @@ export function PrivatImport() {
     setIcs(null);
     setBilder([]);
     setUeberschrieben({});
+    setUmbenannt({});
     setTerminWahl({});
     for (const u of urls.current.splice(0)) URL.revokeObjectURL(u);
     setDateiname(liste.length === 1 ? liste[0]!.name : `${liste.length} Dateien`);
@@ -346,9 +354,9 @@ export function PrivatImport() {
       const neu = gruppen
         .filter((g) => ziele[g.name]?.art === "neu" && benutzt.has(`neu:${g.name}`))
         .map((g, i) => {
-          const eingabe = neueArtAus(g, vergeben, arten.length, i);
+          const eingabe = neueArtAus(mitName(g), vergeben, arten.length, i);
           vergeben.push(eingabe.kuerzel);
-          return eingabe;
+          return { ...eingabe, ref: `neu:${g.name}` };
         });
       setErgebnis(await fuehreAus(plan, neu, vorhanden));
       const ids: string[] = [];
@@ -467,7 +475,7 @@ export function PrivatImport() {
     if (!ref) return null;
     if (ref.startsWith("neu:")) {
       const g = gruppeNach.get(ref.slice(4));
-      return g ? neueArtAus(g, [], arten.length, 0) : null;
+      return g ? neueArtAus(mitName(g), [], arten.length, 0) : null;
     }
     return artNach.get(ref) ?? null;
   };
@@ -742,9 +750,9 @@ export function PrivatImport() {
             <ul className="divide-y divide-line px-4 pb-2">
               {gruppen.map((g: Gruppe) => {
                 const ziel = ziele[g.name];
-                const art = ziel?.art === "vorhanden" ? artNach.get(ziel.id) : ziel?.art === "neu" ? neueArtAus(g, [], arten.length, 0) : null;
+                const art = ziel?.art === "vorhanden" ? artNach.get(ziel.id) : ziel?.art === "neu" ? neueArtAus(mitName(g), [], arten.length, 0) : null;
                 return (
-                  <li key={g.name} className="flex items-center gap-3 py-3">
+                  <li key={g.name} className="flex flex-wrap items-center gap-3 py-3">
                     <span
                       className={cn("flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] text-[12px] font-bold", !art && "bg-ink/10 text-ink-muted")}
                       style={art ? farbStil(art.farbe) : undefined}
@@ -782,12 +790,24 @@ export function PrivatImport() {
                       <option value="neu">Neue Schicht</option>
                       <option value="skip">Überspringen</option>
                     </select>
+                    {ziel?.art === "neu" ? (
+                      <label className="mt-2 flex basis-full items-center gap-2 text-[13px] font-semibold text-ink-muted">
+                        Name
+                        <input
+                          value={umbenannt[g.name] ?? g.name}
+                          maxLength={40}
+                          onChange={(e) => setUmbenannt((u) => ({ ...u, [g.name]: e.target.value }))}
+                          aria-label={`Name der neuen Schicht für ${g.name}`}
+                          className="min-w-0 flex-1 rounded-[10px] bg-ink/[0.06] px-3 py-2 text-[15px] font-normal text-ink outline-none focus:ring-2 focus:ring-brand-500/40"
+                        />
+                      </label>
+                    ) : null}
                   </li>
                 );
               })}
             </ul>
             <p className="px-4 pb-3 text-[12.5px] leading-snug text-ink-muted">
-              Neue Schichten legt die App für dich an. Namen, Farbe und Uhrzeit änderst du später unter „Schichten“. Screenshots werden mit
+              Neue Schichten legt die App für dich an – den Namen kannst du hier gleich ändern, wenn die Erkennung ihn abgeschnitten hat. Farbe und Uhrzeit änderst du später unter „Meine Schichten“. Screenshots werden mit
               einer Texterkennung gelesen und sind nie ganz sicher – prüf die Zuordnung kurz.
             </p>
           </PrivatKarte>

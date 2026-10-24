@@ -182,7 +182,8 @@ export interface Ergebnis {
 /** Führt den Plan aus: neue Schichtarten anlegen, Tage schreiben. */
 export async function fuehreAus(
   plan: Plan,
-  neu: SchichtartEingabe[],
+  /** `ref`: Verweis aus dem Plan ("neu:<Name im Bild>"); fehlt er, gilt der Name der Schicht. */
+  neu: (SchichtartEingabe & { ref?: string })[],
   vorhanden: Record<string, TagEintrag>,
 ): Promise<Ergebnis> {
   const vorherIds = new Set((await ladeSchichtarten()).map((a) => a.id));
@@ -193,7 +194,7 @@ export async function fuehreAus(
   for (const a of neu) {
     const treffer = jetzt.filter((x) => !vorherIds.has(x.id) && x.name === a.name.trim() && !angelegt.includes(x.id)).pop();
     if (treffer) {
-      neueIds.set(`neu:${a.name}`, treffer.id);
+      neueIds.set(a.ref ?? `neu:${a.name}`, treffer.id);
       angelegt.push(treffer.id);
     }
   }
