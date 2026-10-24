@@ -30,6 +30,7 @@ import {
   type Ziel,
 } from "@/lib/privat/import";
 import { holeImportDateien } from "@/lib/privat/import-dateien";
+import { GEBURTSJAHR_UNBEKANNT } from "@/components/kalender/termine";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf } from "./rahmen";
 
@@ -101,7 +102,22 @@ interface Bild {
 }
 
 /** Was mit einem erkannten Termin passiert. */
-type TerminWahl = "termin" | "schicht" | "weg";
+type TerminWahl = "termin" | "geburtstag" | "jaehrlich" | "schicht" | "weg";
+
+/**
+ * Namen wie „Nadia G“, „Nur Geb“ oder „Emily Ge“ sind meist abgeschnittene Geburtstage
+ * („… Geburtstag“); „Jahresta“ ist ein Jahrestag. Daran erkennen wir die Vorauswahl.
+ */
+const GEBURTSTAG_ENDE = /\s+(?:g|ge|geb|gebu|gebur|geburt|geburts|geburtst|geburtsta|geburtstag)\.?$/i;
+const vorauswahl = (titel: string): TerminWahl =>
+  titel.trimStart().startsWith("🎂") || /\bgeburtstag\b/i.test(titel) || GEBURTSTAG_ENDE.test(titel)
+    ? "geburtstag"
+    : /jahresta/i.test(titel)
+      ? "jaehrlich"
+      : "termin";
+/** Name ohne das abgeschnittene „Geburtstag“ am Ende. */
+const ohneGeburtstag = (titel: string) =>
+  titel.replace(/^\s*🎂\s*/, "").replace(/^\s*geburtstag\s+/i, "").replace(GEBURTSTAG_ENDE, "").trim() || titel;
 const terminSchluessel = (t: ErkannterTermin) => `${t.tag}|${t.beginn}|${t.titel}`;
 
 /** "HH:MM" + 1 Stunde (höchstens 23:59). */
@@ -152,6 +168,8 @@ export function PrivatImport() {
   const [ergebnis, setErgebnis] = useState<Ergebnis | null>(null);
   const [zurueck, setZurueck] = useState(false);
   const [terminWahl, setTerminWahl] = useState<Record<string, TerminWahl>>({});
+  /** Selbst geänderte Namen der Termine (Schlüssel wie bei terminWahl) */
+  const [terminNamen, setTerminNamen] = useState<Record<string, string>>({});
   const [termineAngelegt, setTermineAngelegt] = useState<string[]>([]);
   const [gestartet, setGestartet] = useState(false);
   /** Selbst gewählte Namen für neue Schichten (Schlüssel: Name aus dem Bild) */
@@ -185,17 +203,20 @@ export function PrivatImport() {
     for (const r of raster) for (const t of r?.termine ?? []) m.set(terminSchluessel(t), t);
     return [...m.values()].sort((a, b) => a.tag.localeCompare(b.tag) || a.beginn.localeCompare(b.beginn));
   }, [raster]);
-  const wahlVon = (t: ErkannterTermin): TerminWahl => terminWahl[terminSchluessel(t)] ?? "termin";
-  const termineZuUebernehmen = erkannteTermine.filter((t) => wahlVon(t) === "termin");
+  const wahlVon = (t: ErkannterTermin): TerminWahl => terminWahl[terminSchluessel(t)] ?? vorauswahl(t.titel);
+  /** Der Name, der gespeichert wird: selbst geändert, sonst bei Geburtstagen ohne „Geburtstag“-Rest. */
+  const nameVon = (t: ErkannterTermin) => terminNamen[terminSchluessel(t)] ?? (wahlVon(t) === "geburtstag" ? ohneGeburtstag(t.titel) : t.titel);
+  const termineZuUebernehmen = erkannteTermine.filter((t) => ["termin", "geburtstag", "jaehrlich"].includes(wahlVon(t)));
   const gelesen = useMemo<LeseErgebnis | null>(() => {
     // Termine, die eigentlich Schichten sind, kommen als eigene Namen dazu.
     const alsSchicht = erkannteTermine
-      .filter((t) => (terminWahl[terminSchluessel(t)] ?? "termin") === "schicht")
+      .filter((t) => wahlVon(t) === "schicht")
       .map((t) => ({ name: t.titel, tage: [t.tag], beginn: t.beginn, ende: t.ende, ganztaegig: !t.beginn || !t.ende }));
     const gr = vereineGruppen(ics?.gruppen ?? [], ...raster.map((r) => r?.gruppen ?? []), alsSchicht);
     const tage = [...gr.flatMap((g) => g.tage), ...erkannteTermine.map((t) => t.tag)].sort();
     if (!tage.length) return null;
     return { gruppen: gr, termine: ics?.termine ?? 0, von: tage[0] ?? null, bis: tage[tage.length - 1] ?? null, einfach: ics?.einfach ?? 0 };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ics, raster, erkannteTermine, terminWahl]);
   const gruppen = useMemo(() => gelesen?.gruppen ?? [], [gelesen]);
   const ziele = useMemo<Record<string, Ziel>>(
@@ -239,6 +260,7 @@ export function PrivatImport() {
     setUeberschrieben({});
     setUmbenannt({});
     setTerminWahl({});
+    setTerminNamen({});
     for (const u of urls.current.splice(0)) URL.revokeObjectURL(u);
     setDateiname(liste.length === 1 ? liste[0]!.name : `${liste.length} Dateien`);
 
@@ -361,20 +383,39 @@ export function PrivatImport() {
       setErgebnis(await fuehreAus(plan, neu, vorhanden));
       const ids: string[] = [];
       for (const t of termineZuUebernehmen) {
+        const w = wahlVon(t);
+        const name = nameVon(t).trim() || t.titel;
         ids.push(
-          await speichereTermin({
-            id: null,
-            datum: t.tag,
-            bisDatum: null,
-            titel: t.titel,
-            ganztaegig: !t.beginn,
-            von: t.beginn,
-            bis: t.beginn ? t.ende || plusStunde(t.beginn) : "",
-            wiederholung: "nie",
-            notiz: "",
-            ort: "",
-            erinnerung: null,
-          }),
+          await speichereTermin(
+            w === "geburtstag"
+              ? {
+                  // Geburtstag: ganztägig, jedes Jahr, Geburtsjahr unbekannt (Serie ab 1904), morgens eine Erinnerung.
+                  id: null,
+                  datum: `${GEBURTSJAHR_UNBEKANNT}-${t.tag.slice(5)}`,
+                  bisDatum: null,
+                  titel: `🎂 ${name}`,
+                  ganztaegig: true,
+                  von: "",
+                  bis: "",
+                  wiederholung: "jaehrlich",
+                  notiz: "",
+                  ort: "",
+                  erinnerung: "tag8",
+                }
+              : {
+                  id: null,
+                  datum: t.tag,
+                  bisDatum: null,
+                  titel: name,
+                  ganztaegig: !t.beginn,
+                  von: t.beginn,
+                  bis: t.beginn ? t.ende || plusStunde(t.beginn) : "",
+                  wiederholung: w === "jaehrlich" ? "jaehrlich" : "nie",
+                  notiz: "",
+                  ort: "",
+                  erinnerung: null,
+                },
+          ),
         );
       }
       setTermineAngelegt(ids);
@@ -817,26 +858,47 @@ export function PrivatImport() {
               <div className="space-y-2 px-4 py-4">
                 <p className="text-[13px] text-ink-muted">
                   Was nach Termin aussieht (mit Uhrzeit oder nur einmal im Monat), kommt als Termin in deinen Kalender und nicht als Schicht.
+                  Wähl „Geburtstag“, dann wiederholt er sich jedes Jahr. Namen kannst du antippen und ändern.
                 </p>
+                {erkannteTermine.length > 2 ? (
+                  <button
+                    type="button"
+                    className="text-[13px] font-semibold text-brand-600"
+                    onClick={() => setTerminWahl((w) => ({ ...w, ...Object.fromEntries(erkannteTermine.filter((t) => !t.beginn).map((t) => [terminSchluessel(t), "geburtstag" as TerminWahl])) }))}
+                  >
+                    Alle ganztägigen als Geburtstag
+                  </button>
+                ) : null}
                 <ul className="space-y-2">
                   {erkannteTermine.map((t) => {
                     const k = terminSchluessel(t);
                     const [, mm, tt] = t.tag.split("-");
+                    const w = wahlVon(t);
                     return (
                       <li key={k} className="flex items-center gap-2 rounded-[14px] bg-ink/[0.04] px-3 py-2.5">
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[14.5px] font-semibold">{t.titel}</span>
+                          <input
+                            value={w === "weg" || w === "schicht" ? t.titel : nameVon(t)}
+                            disabled={w === "weg" || w === "schicht"}
+                            maxLength={80}
+                            aria-label={`Name von „${t.titel}“`}
+                            onChange={(e) => setTerminNamen((n) => ({ ...n, [k]: e.target.value }))}
+                            className="block w-full min-w-0 rounded-md bg-transparent text-[14.5px] font-semibold outline-none focus:bg-ink/[0.06] focus:ring-2 focus:ring-brand-500/40 disabled:opacity-60"
+                          />
                           <span className="block text-[12.5px] text-ink-muted">
                             {Number(tt)}.{Number(mm)}.{t.beginn ? ` · ${t.beginn}${t.ende ? `–${t.ende}` : ""} Uhr` : " · ganztägig"}
+                            {w === "geburtstag" ? " · 🎂 jedes Jahr" : w === "jaehrlich" ? " · jedes Jahr" : ""}
                           </span>
                         </span>
                         <select
                           aria-label={`Was ist „${t.titel}“?`}
                           className="shrink-0 rounded-[10px] bg-ink/[0.06] px-2.5 py-2 text-[14px]"
-                          value={wahlVon(t)}
-                          onChange={(e) => setTerminWahl((w) => ({ ...w, [k]: e.target.value as TerminWahl }))}
+                          value={w}
+                          onChange={(e) => setTerminWahl((x) => ({ ...x, [k]: e.target.value as TerminWahl }))}
                         >
                           <option value="termin">Termin</option>
+                          <option value="geburtstag">Geburtstag (jährlich)</option>
+                          <option value="jaehrlich">Jährlicher Termin</option>
                           <option value="schicht">Ist eine Schicht</option>
                           <option value="weg">Weglassen</option>
                         </select>
