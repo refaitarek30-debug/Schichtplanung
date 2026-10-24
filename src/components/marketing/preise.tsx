@@ -1,168 +1,148 @@
-import { Check, Minus } from "lucide-react";
+import { Check } from "lucide-react";
 import { CtaLink, ZIELE } from "./cta";
 import { cn } from "@/lib/utils";
 
 /**
- * Preise für Betriebe (Pilotpreise). Beträge sind Bruttopreise inkl. 19 % USt,
- * der Nettobetrag steht klein darunter. Preise und Umfang stehen hier an
- * einer Stelle: PREISE, STUFEN und GRUPPEN.
+ * Preise für Betriebe: alle Funktionen für alle, der Preis richtet sich nur nach
+ * der Größe des Teams. Beträge sind Nettopreise pro Monat zzgl. 19 % USt (der
+ * Bruttobetrag steht klein darunter). Preise und Umfang stehen hier an einer
+ * Stelle: PAKETE und ENTHALTEN.
  */
 const UST = 1.19;
 const EINRICHTUNG = 99;
 /** Bei Jahreszahlung: 2 Monate geschenkt – 10 statt 12 Monate. */
 const JAHRES_MONATE = 10;
-const KOSTENLOS_BIS = 15;
-const BEISPIEL = 40;
+/** Pilotbetriebe: nach den drei Gratis-Monaten so viele Monate mit Rabatt. */
+export const PILOT_RABATT_MONATE = 12;
+export const PILOT_RABATT_PROZENT = 20;
+const HAEUFIG_BIS = 30;
 
-const PREISE = { start: 0, team: 2.49, komplett: 3.49 } as const;
-type Stufe = keyof typeof PREISE;
-
-const euro = (n: number) => `${n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
-const netto = (brutto: number) => Math.round((brutto / UST) * 100) / 100;
-
-const STUFEN: { id: Stufe; name: string; fuer: string }[] = [
-  { id: "start", name: "Start", fuer: `bis ${KOSTENLOS_BIS} Personen` },
-  { id: "team", name: "Team", fuer: "jede Größe" },
-  { id: "komplett", name: "Komplett", fuer: "jede Größe" },
+/** Bis zu so vielen Personen im Monat – Preis netto pro Monat. */
+export const PAKETE: { bis: number; preis: number }[] = [
+  { bis: 10, preis: 59 },
+  { bis: 15, preis: 79 },
+  { bis: 20, preis: 99 },
+  { bis: 30, preis: 139 },
+  { bis: 40, preis: 179 },
+  { bis: 50, preis: 215 },
+  { bis: 75, preis: 299 },
+  { bis: 100, preis: 379 },
 ];
 
-type Wert = boolean | string;
-const GRUPPEN: { titel: string; zeilen: { text: string; w: [Wert, Wert, Wert] }[] }[] = [
+const euro = (n: number, nachkomma = 2) =>
+  `${n.toLocaleString("de-DE", { minimumFractionDigits: nachkomma, maximumFractionDigits: nachkomma })} €`;
+const pilotPreis = (preis: number) => Math.round(preis * (1 - PILOT_RABATT_PROZENT / 100));
+
+const ENTHALTEN: { titel: string; punkte: string[] }[] = [
   {
     titel: "Planen",
-    zeilen: [
-      { text: "Schichtplan für Woche und Monat", w: [true, true, true] },
-      { text: "Rotation für Schichtgruppen A bis E", w: [true, true, true] },
-      { text: "Urlaub beantragen und genehmigen", w: [true, true, true] },
-      { text: "Mein Kalender für jeden im Team", w: [true, true, true] },
-      { text: "Mitteilungen", w: [true, true, true] },
+    punkte: [
+      "Schichtplan für Woche und Monat",
+      "Rotation für Schichtgruppen A bis E",
+      "Urlaub beantragen und genehmigen",
+      "Mein Kalender für jeden im Team",
+      "Mitteilungen",
     ],
   },
   {
     titel: "Besetzung",
-    zeilen: [
-      { text: "Mindest- und Sollbesetzung mit Ampel", w: [false, true, true] },
-      { text: "Qualifikationen je Schicht", w: [false, true, true] },
-      { text: "Anträge gegen die Besetzung prüfen", w: [false, true, true] },
-    ],
+    punkte: ["Mindest- und Sollbesetzung mit Ampel", "Qualifikationen je Schicht", "Anträge gegen die Besetzung prüfen"],
   },
   {
     titel: "Mehr",
-    zeilen: [
-      { text: "Push-Erinnerungen und Kalender-Abo", w: [false, true, true] },
-      { text: "Export des Plans", w: [false, true, true] },
-      { text: "V-Tage und Altersfreizeit", w: [false, false, true] },
-      { text: "Auswertung: Ausfall und Anwesenheit", w: [false, false, true] },
-      { text: "Ausbildung", w: [false, false, true] },
-      { text: "Änderungsprotokoll", w: [false, false, true] },
-      { text: "Hilfe", w: ["E-Mail", "E-Mail", "bevorzugt"] },
+    punkte: [
+      "Push-Erinnerungen und Kalender-Abo",
+      "Export des Plans",
+      "V-Tage und Altersfreizeit",
+      "Auswertung: Ausfall und Anwesenheit",
+      "Ausbildung",
+      "Änderungsprotokoll",
+      "Hilfe per E-Mail",
     ],
   },
 ];
 
-function Zelle({ w }: { w: Wert }) {
-  if (typeof w === "string") return <span className="text-[13px] font-medium">{w}</span>;
-  return w ? (
-    <>
-      <Check className="h-[18px] w-[18px] text-brand-600" strokeWidth={2.5} aria-hidden />
-      <span className="sr-only">enthalten</span>
-    </>
-  ) : (
-    <>
-      <Minus className="h-4 w-4 text-ink-faint/60" aria-hidden />
-      <span className="sr-only">nicht enthalten</span>
-    </>
-  );
-}
-
-/* Spalten: auf dem Handy steht der Text über den drei Werten, breit links daneben. */
-const RASTER = "grid grid-cols-3 md:grid-cols-[minmax(0,1fr)_repeat(3,10rem)]";
-
 export function Preise() {
+  const beispiel = PAKETE.find((p) => p.bis === HAEUFIG_BIS) ?? PAKETE[0]!;
   return (
     <div>
-      <div role="table" aria-label="Preise und Umfang der Stufen" className="glas overflow-hidden rounded-[28px]">
-        {/* Kopf: Name und Preis */}
-        <div role="row" className={cn(RASTER, "border-b border-[var(--glas-linie)]")}>
-          <span role="columnheader" className="hidden md:block" />
-          {STUFEN.map((s) => (
-            <div
-              key={s.id}
-              role="columnheader"
-              className={cn("px-2 pb-5 pt-6 text-center md:px-4", s.id === "komplett" && "bg-brand-500/[0.06]")}
-            >
-              <p className="text-[15px] font-semibold tracking-tight md:text-[17px]">{s.name}</p>
-              <p className="tnum mt-2 text-[24px] font-semibold leading-none tracking-tight md:text-[32px]">
-                {PREISE[s.id] === 0 ? "0 €" : euro(PREISE[s.id])}
-              </p>
-              <p className="mt-1.5 text-[11.5px] leading-tight text-ink-muted md:text-[12.5px]">
-                {PREISE[s.id] === 0 ? "kostenlos" : "pro Person und Monat"}
-              </p>
-              <p className="mt-0.5 text-[11px] text-ink-faint">{PREISE[s.id] === 0 ? s.fuer : `netto ${euro(netto(PREISE[s.id]))}`}</p>
-              {PREISE[s.id] !== 0 ? <p className="mt-0.5 text-[11px] text-ink-faint">{s.fuer}</p> : null}
-            </div>
-          ))}
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 md:items-start">
+        {/* Pakete nach Teamgröße */}
+        <section aria-label="Pakete nach Teamgröße" className="glas overflow-hidden rounded-[28px]">
+          <ul>
+            {PAKETE.map((p, i) => {
+              const haeufig = p.bis === HAEUFIG_BIS;
+              return (
+                <li
+                  key={p.bis}
+                  className={cn(
+                    "flex items-center justify-between gap-3 px-5 py-3.5 md:px-6",
+                    i > 0 && "border-t border-[var(--glas-linie)]",
+                    haeufig && "bg-brand-500/[0.07]",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-2 text-[16px] font-semibold tracking-tight">
+                      bis {p.bis} Personen
+                      {haeufig ? (
+                        <span className="rounded-full bg-brand-500 px-2 py-0.5 text-[11px] font-bold text-white">Häufig</span>
+                      ) : null}
+                    </p>
+                    <p className="tnum text-[13px] text-ink-muted">{euro(p.preis / p.bis)} pro Person</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="tnum text-[22px] font-semibold leading-tight tracking-tight">{euro(p.preis, 0)}</p>
+                    <p className="text-[12px] text-ink-muted">pro Monat, netto</p>
+                    <p className="tnum text-[11px] text-ink-faint">brutto {euro(p.preis * UST)}</p>
+                  </div>
+                </li>
+              );
+            })}
+            <li className="flex items-center justify-between gap-3 border-t border-[var(--glas-linie)] px-5 py-3.5 text-[14.5px] md:px-6">
+              <span className="font-semibold">Mehr als {PAKETE[PAKETE.length - 1]!.bis} Personen</span>
+              <span className="font-semibold text-brand-600">Preis auf Anfrage</span>
+            </li>
+          </ul>
+        </section>
 
-        {GRUPPEN.map((g) => (
-          <div key={g.titel} role="rowgroup">
-            <div role="row" className="bg-ink/[0.03] px-4 py-2 md:px-6">
-              <span role="rowheader" className="text-[12px] font-semibold text-ink-muted">
-                {g.titel}
-              </span>
-            </div>
-            {g.zeilen.map((z) => (
-              <div key={z.text} role="row" className={cn(RASTER, "border-t border-[var(--glas-linie)] first:border-t-0")}>
-                <span role="rowheader" className="col-span-3 px-4 pt-3 text-[14px] md:col-span-1 md:px-6 md:py-3.5 md:text-[15px]">
-                  {z.text}
-                </span>
-                {z.w.map((w, i) => (
-                  <span
-                    key={i}
-                    role="cell"
-                    className={cn("flex items-center justify-center pb-3 pt-2 md:py-3.5", i === 2 && "bg-brand-500/[0.06]")}
-                  >
-                    <Zelle w={w} />
-                  </span>
-                ))}
+        {/* Was dabei ist */}
+        <section aria-label="Das ist immer dabei" className="glas rounded-[28px] p-5 md:p-6">
+          <p className="text-[16px] font-semibold tracking-tight">Immer dabei – bei jedem Paket</p>
+          <div className="mt-3 space-y-4">
+            {ENTHALTEN.map((g) => (
+              <div key={g.titel}>
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">{g.titel}</p>
+                <ul className="mt-1.5 space-y-1.5">
+                  {g.punkte.map((t) => (
+                    <li key={t} className="flex items-start gap-2.5 text-[14.5px] leading-snug">
+                      <Check className="mt-0.5 h-[18px] w-[18px] shrink-0 text-brand-600" strokeWidth={2.5} aria-hidden />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
-        ))}
-
-        {/* Beispiel */}
-        <div role="row" className={cn(RASTER, "border-t border-[var(--glas-linie)] bg-ink/[0.03]")}>
-          <span role="rowheader" className="col-span-3 px-4 pt-3.5 text-[14px] font-semibold md:col-span-1 md:px-6 md:py-4 md:text-[15px]">
-            Beispiel: {BEISPIEL} Personen im Monat
-          </span>
-          {STUFEN.map((s) => (
-            <span key={s.id} role="cell" className="tnum flex flex-col items-center justify-center pb-3.5 pt-2 text-center md:py-4">
-              {s.id === "start" ? (
-                <span className="text-[12.5px] text-ink-muted">nur bis {KOSTENLOS_BIS}</span>
-              ) : (
-                <>
-                  <span className="text-[15px] font-semibold">{euro(BEISPIEL * PREISE[s.id])}</span>
-                  <span className="text-[11px] text-ink-faint">netto {euro(netto(BEISPIEL * PREISE[s.id]))}</span>
-                </>
-              )}
-            </span>
-          ))}
-        </div>
+        </section>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
+            titel: "Pilotbetriebe",
+            text: `Drei Monate kostenlos, danach ${PILOT_RABATT_MONATE} Monate lang ${PILOT_RABATT_PROZENT} % Rabatt. Beispiel bis ${beispiel.bis} Personen: statt ${euro(beispiel.preis, 0)} nur ${euro(pilotPreis(beispiel.preis), 0)} im Monat.`,
+          },
+          {
+            titel: "Wächst dein Team?",
+            text: "Gezählt wird der Monat mit den meisten Personen. Wird es mehr, gilt automatisch das nächste Paket. Monatlich kündbar.",
+          },
+          {
             titel: "Einrichtung",
-            text: `Selbst einrichten ist kostenlos. Auf Wunsch übernehmen wir das für einmalig ${euro(EINRICHTUNG)}: Mitarbeiter anlegen, Plan übernehmen, kurze Einweisung.`,
+            text: `Selbst einrichten ist kostenlos. Auf Wunsch übernehmen wir das für einmalig ${euro(EINRICHTUNG, 0)} netto: Mitarbeiter anlegen, Plan übernehmen, kurze Einweisung.`,
           },
           {
             titel: "Jahreszahlung",
             text: `Bei Zahlung für ein Jahr im Voraus schenken wir dir 2 Monate. Du zahlst ${JAHRES_MONATE} statt 12.`,
-          },
-          {
-            titel: "Privat kostenlos",
-            text: "Der Schichtkalender für Privatpersonen bleibt kostenlos, ohne Abo und ohne Werbung.",
           },
         ].map((x) => (
           <div key={x.titel} className="glas rounded-[22px] p-5">
@@ -173,7 +153,8 @@ export function Preise() {
       </div>
 
       <p className="mt-5 text-center text-[12.5px] leading-relaxed text-ink-muted">
-        Pilotpreise, Änderungen vorbehalten. Bruttopreise inkl. 19 % USt. Während der dreimonatigen Pilotphase nutzen Betriebe den vollen Umfang kostenlos.
+        Alle Preise netto pro Monat, zzgl. 19 % USt. Änderungen vorbehalten. Der Schichtkalender für Privatpersonen bleibt kostenlos, ohne
+        Abo und ohne Werbung.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <CtaLink href={ZIELE.demo} size="lg">
