@@ -84,7 +84,7 @@ export function PrivatMehr() {
               <span className="block text-[13px] text-ink-muted">Screenshot oder Kalender-Datei aus einer anderen App, z. B. Supershift</span>
             </span>
           </Link>
-          <Link href="/privat/urlaub" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
+          <Link href="/privat/schichten?reiter=urlaub" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
               <Palmtree className="h-[18px] w-[18px]" />
             </span>
@@ -93,7 +93,7 @@ export function PrivatMehr() {
               <span className="block text-[13px] text-ink-muted">Brückentage finden: viele freie Tage für wenige Urlaubstage</span>
             </span>
           </Link>
-          <Link href="/privat/gemeinsam" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
+          <Link href="/privat/schichten?reiter=gemeinsam" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
               <CalendarHeart className="h-[18px] w-[18px]" />
             </span>

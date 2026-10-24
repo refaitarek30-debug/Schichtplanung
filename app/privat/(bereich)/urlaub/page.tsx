@@ -1,5 +1,6 @@
-import { PrivatUrlaub } from "@/components/privat/urlaub";
+import { redirect } from "next/navigation";
 
+/** Der Urlaubs-Planer ist jetzt ein Bereich unter „Schichten“. */
 export default function Seite() {
-  return <PrivatUrlaub />;
+  redirect("/privat/schichten?reiter=urlaub");
 }

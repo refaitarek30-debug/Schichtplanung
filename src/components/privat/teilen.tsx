@@ -53,7 +53,7 @@ export function PrivatTeilen() {
     <div className="space-y-4">
       <PrivatKopf titel="Teilen" unter="Wer deinen Kalender sehen darf." />
 
-      <Link href="/privat/gemeinsam" className="glas flex items-center gap-3 rounded-[20px] px-4 py-3.5">
+      <Link href="/privat/schichten?reiter=gemeinsam" className="glas flex items-center gap-3 rounded-[20px] px-4 py-3.5">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-bg text-ok-fg">
           <CalendarHeart className="h-5 w-5" />
         </span>

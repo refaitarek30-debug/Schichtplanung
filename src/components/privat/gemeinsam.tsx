@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { CalendarHeart, Check, ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { fetchPersonen, fetchPersonenTage, type PartnerCode } from "@/lib/data/partner";
 import { fetchVerbindungen, fetchVerbundeneTage } from "@/lib/data/verbindungen";
@@ -19,7 +19,7 @@ import {
 } from "@/lib/privat/gemeinsam";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
-import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
+import { AbschnittKopf, PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
 
 /**
  * Gemeinsam frei: Wann habt ihr beide nicht gearbeitet? Monat mit zwei Balken
@@ -35,7 +35,7 @@ const WT = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const ICH_FARBE = "#2f5bea";
 const ER_FARBE = "#d6409f";
 
-export function PrivatGemeinsam() {
+export function PrivatGemeinsam({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const { konto, artNach } = usePrivat();
   const heute = heuteInBerlin();
   const [ansicht, setAnsicht] = useState<"monat" | "jahr">("monat");
@@ -129,20 +129,38 @@ export function PrivatGemeinsam() {
 
   return (
     <div className="space-y-4">
-      <PrivatKopf
-        titel="Gemeinsam frei"
-        unter={ansicht === "jahr" ? String(jahr) : `${monthName(monat)} ${jahr}`}
-        rechts={
-          <>
-            <RundKnopf label="Vorher" onClick={() => springe(-1)}>
-              <ChevronLeft className="h-5 w-5" />
-            </RundKnopf>
-            <RundKnopf label="Weiter" onClick={() => springe(1)}>
-              <ChevronRight className="h-5 w-5" />
-            </RundKnopf>
-          </>
-        }
-      />
+      {eingebettet ? (
+        <AbschnittKopf
+          icon={<CalendarHeart className="h-[18px] w-[18px]" />}
+          titel="Gemeinsam frei"
+          unter={ansicht === "jahr" ? String(jahr) : `${monthName(monat)} ${jahr}`}
+          rechts={
+            <>
+              <RundKnopf label="Vorher" onClick={() => springe(-1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Weiter" onClick={() => springe(1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      ) : (
+        <PrivatKopf
+          titel="Gemeinsam frei"
+          unter={ansicht === "jahr" ? String(jahr) : `${monthName(monat)} ${jahr}`}
+          rechts={
+            <>
+              <RundKnopf label="Vorher" onClick={() => springe(-1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Weiter" onClick={() => springe(1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      )}
 
       {gegenueber && !gegenueber.length ? (
         <PrivatKarte>

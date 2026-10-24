@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import {
   ART_TEXT,
@@ -17,12 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 import { kuerzelAus } from "@/lib/kuerzel";
 import { usePrivat } from "./kontext";
-import { PrivatKopf, RundKnopf } from "./rahmen";
+import { AbschnittKopf, PrivatKopf, RundKnopf } from "./rahmen";
 import { Blatt } from "./blatt";
 import { WochenendeWahl } from "@/components/kalender/anzeige-wahl";
 
 /** Eigene Schichten: Name, Kürzel, Farbe, Uhrzeit, Stunden. */
-export function PrivatSchichten({ unterKopf }: { unterKopf?: ReactNode } = {}) {
+export function PrivatSchichten({ unterKopf, eingebettet = false }: { unterKopf?: ReactNode; eingebettet?: boolean } = {}) {
   const { schichtarten, ladeArtenNeu, artenFehler } = usePrivat();
   const [offen, setOffen] = useState<SchichtartEingabe | null>(null);
 
@@ -42,15 +42,28 @@ export function PrivatSchichten({ unterKopf }: { unterKopf?: ReactNode } = {}) {
 
   return (
     <div className="space-y-4">
-      <PrivatKopf
-        titel="Schichten"
-        unter="Deine Schichtarten mit Farbe und Uhrzeit."
-        rechts={
-          <RundKnopf label="Neue Schicht" onClick={neu}>
-            <Plus className="h-5 w-5" />
-          </RundKnopf>
-        }
-      />
+      {eingebettet ? (
+        <AbschnittKopf
+          icon={<Layers className="h-[18px] w-[18px]" />}
+          titel="Meine Schichten"
+          unter="Deine Schichtarten mit Farbe und Uhrzeit."
+          rechts={
+            <RundKnopf label="Neue Schicht" onClick={neu}>
+              <Plus className="h-5 w-5" />
+            </RundKnopf>
+          }
+        />
+      ) : (
+        <PrivatKopf
+          titel="Schichten"
+          unter="Deine Schichtarten mit Farbe und Uhrzeit."
+          rechts={
+            <RundKnopf label="Neue Schicht" onClick={neu}>
+              <Plus className="h-5 w-5" />
+            </RundKnopf>
+          }
+        />
+      )}
       {unterKopf}
       {artenFehler ? <Alert tone="error">{artenFehler}</Alert> : null}
       <ul aria-busy={!schichtarten} className="glas overflow-hidden rounded-[22px]">
