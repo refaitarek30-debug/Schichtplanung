@@ -1,18 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { farbStil, idsVon, istAbwesenheit, ladeTage, type TagEintrag } from "@/lib/privat/daten";
+import { farbStil, idsVon, istAbwesenheit, ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
+import { rechne } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
+import { GehaltKarte, UeberstundenKarte, ZuschlagKarte, useGehalt } from "./gehalt";
 import { usePrivat } from "./kontext";
 import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
 
 /**
- * Auswertung: Schichten zählen, Stunden je Schicht, Soll und Ist.
- * Soll = Wochenstunden, gleichmäßig auf Montag bis Freitag verteilt.
+ * Auswertung: Schichten zählen, Stunden je Schicht, Soll und Ist, im Monat
+ * dazu Gehalts-Schätzung und Zuschläge (siehe gehalt.tsx).
  */
 
 type Zeitraum = "monat" | "jahr";
@@ -22,10 +23,12 @@ const zahl = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 2
 export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: string; unterKopf?: ReactNode }) {
   const { konto, schichtarten } = usePrivat();
   const heute = heuteInBerlin();
-  const [zeitraum, setZeitraum] = useState<Zeitraum>("jahr");
+  const [zeitraum, setZeitraum] = useState<Zeitraum>("monat");
   const [anker, setAnker] = useState(heute);
   const [bisHeute, setBisHeute] = useState(false);
   const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
+  const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
+  const { einst, setze } = useGehalt(konto.userId);
   const [fehler, setFehler] = useState<string | null>(null);
 
   const d = fromISO(anker);
@@ -37,6 +40,10 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
     let aus = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTage(null);
+    const jahre = [...new Set([fromISO(von).getFullYear(), fromISO(bisVoll).getFullYear()])];
+    Promise.all(jahre.map((j) => ladeFeiertage(j)))
+      .then((l) => !aus && setFeiertage(new Set(l.flat().map((h) => h.tag))))
+      .catch(() => undefined);
     ladeTage(von, bisVoll)
       .then((t) => !aus && setTage(t))
       .catch((e: unknown) => !aus && setFehler(e instanceof Error ? e.message : "Konnte nicht geladen werden."));
@@ -45,7 +52,6 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
     };
   }, [von, bisVoll]);
 
-  const wochenstunden = konto.wochenstunden;
   const werte = (() => {
     if (!tage || !schichtarten) return null;
     const nach = new Map(schichtarten.map((a) => [a.id, a]));
@@ -63,17 +69,13 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
     const zeilen = schichtarten.map((a) => ({ art: a, anzahl: anzahl.get(a.id) ?? 0, stunden: stunden.get(a.id) ?? 0 }));
     const gesamtAnzahl = zeilen.reduce((s, z) => s + z.anzahl, 0);
     const gesamtStunden = zeilen.reduce((s, z) => s + z.stunden, 0);
-    // Soll erst ab dem ersten eingetragenen Tag – wer im Oktober anfängt,
-    // hat nicht seit Januar Minusstunden.
-    const erster = Object.keys(tage).filter((t) => t >= von && t <= bis).sort()[0];
-    let werktage = 0;
-    for (let t = erster ?? addDays(bis, 1); t <= bis; t = addDays(t, 1)) {
-      const w = fromISO(t).getDay();
-      if (w !== 0 && w !== 6) werktage += 1;
-    }
-    const soll = wochenstunden !== null ? (werktage * wochenstunden) / 5 : null;
-    return { zeilen, gesamtAnzahl, gesamtStunden, soll };
+    return { zeilen, gesamtAnzahl, gesamtStunden };
   })();
+
+  const rechnung =
+    tage && schichtarten
+      ? rechne({ tage, von, bis: bis < von ? von : bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst })
+      : null;
 
   function springe(s: number) {
     setAnker(
@@ -148,31 +150,17 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
             gesamt={werte ? `${zahl(werte.gesamtStunden)} h` : "…"}
           />
         </PrivatKarte>
-        <PrivatKarte titel="Überstunden">
-          {werte && werte.soll !== null ? (
-            <dl className="divide-y divide-line">
-              <Zeile name="Sollstunden" wert={`${zahl(werte.soll)} h`} />
-              <Zeile name="Gearbeitet" wert={`${zahl(werte.gesamtStunden)} h`} />
-              <Zeile
-                name="Überstunden"
-                wert={`${werte.gesamtStunden - werte.soll > 0 ? "+" : ""}${zahl(werte.gesamtStunden - werte.soll)} h`}
-                fett
-              />
-            </dl>
-          ) : (
-            <p className="px-4 py-4 text-[14px] text-ink-muted">
-              Trag unter{" "}
-              <Link href="/privat/mehr" className="font-semibold text-brand-600">
-                Mehr
-              </Link>{" "}
-              deine Wochenstunden ein, dann siehst du hier Soll, Ist und Überstunden.
-            </p>
-          )}
-        </PrivatKarte>
-        <p className="text-[12px] leading-snug text-ink-faint">
-          Gearbeitet zählt die Stunden aller eingetragenen Tage. Steht an einem Tag Urlaub oder Krank, zählen dessen Stunden
-          (wie bei der Schicht hinterlegt) statt der Schicht darunter. Soll: Wochenstunden verteilt auf Montag bis Freitag, ab deinem ersten eingetragenen Tag.
-        </p>
+        {rechnung ? (
+          <>
+            <UeberstundenKarte re={rechnung} />
+            {zeitraum === "monat" ? (
+              <>
+                <GehaltKarte re={rechnung} einst={einst} setze={setze} />
+                <ZuschlagKarte einst={einst} setze={setze} />
+              </>
+            ) : null}
+          </>
+        ) : null}
       </div>
     </div>
   );
