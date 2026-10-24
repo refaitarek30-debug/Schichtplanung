@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, CalendarRange, Check, ChevronDown, LayoutGrid } from "lucide-react";
+import { CalendarDays, CalendarRange, Check, ChevronDown, LayoutGrid, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Ansicht = "woche" | "monat" | "jahr";
@@ -16,7 +16,7 @@ const ANSICHTEN = [
  * Ansicht wählen: ein Knopf im Kopf zeigt die aktuelle Ansicht, Antippen
  * klappt Woche, Monat und Jahr auf. Spart die breite Umschalt-Zeile.
  */
-export function AnsichtMenue({ ansicht, onWahl }: { ansicht: Ansicht; onWahl: (a: Ansicht) => void }) {
+export function AnsichtMenue({ ansicht, onWahl, onHochladen }: { ansicht: Ansicht; onWahl: (a: Ansicht) => void; onHochladen?: () => void }) {
   const [offen, setOffen] = useState(false);
   const aktuell = ANSICHTEN.find((a) => a.id === ansicht) ?? ANSICHTEN[1];
   const AktuellesIcon = aktuell.icon;
@@ -77,6 +77,23 @@ export function AnsichtMenue({ ansicht, onWahl }: { ansicht: Ansicht; onWahl: (a
                 </button>
               );
             })}
+            {onHochladen ? (
+              <>
+                <div className="glas-linie mx-2 my-1 border-t" aria-hidden />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setOffen(false);
+                    onHochladen();
+                  }}
+                  className="flex h-11 w-full items-center gap-2.5 rounded-[14px] px-3 text-left text-[15px] font-semibold text-ink"
+                >
+                  <Upload className="h-5 w-5" />
+                  Plan hochladen
+                </button>
+              </>
+            ) : null}
           </div>
         </>
       ) : null}

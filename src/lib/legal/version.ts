@@ -16,7 +16,7 @@
  * async-Funktionen exportieren.
  */
 export const LEGAL_VERSIONS = {
-  datenschutz: "2.19",
+  datenschutz: "2.20",
   nutzungsbedingungen: "1.1",
   avv: "1.3",
 } as const;
