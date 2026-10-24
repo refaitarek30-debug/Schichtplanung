@@ -1,5 +1,6 @@
-import { PrivatGemeinsam } from "@/components/privat/gemeinsam";
+import { redirect } from "next/navigation";
 
+/** „Gemeinsam frei“ ist jetzt ein Bereich unter „Schichten“. */
 export default function Seite() {
-  return <PrivatGemeinsam />;
+  redirect("/privat/schichten?reiter=gemeinsam");
 }

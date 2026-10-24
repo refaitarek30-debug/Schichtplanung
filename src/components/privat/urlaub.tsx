@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Minus, Plus, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus, Palmtree, Plus, Undo2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { fromISO, heuteInBerlin } from "@/lib/dates";
 import {
@@ -19,7 +19,7 @@ import { meineFreiheit } from "@/lib/privat/gemeinsam";
 import { findeUrlaub, vorschlagTitel, wochentagKurz, zeitraumText, type TagArt, type Vorschlag } from "@/lib/privat/urlaub";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
-import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
+import { AbschnittKopf, PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
 
 /**
  * Urlaubs-Planer: findet Zeiten, in denen du mit wenigen Urlaubstagen lange
@@ -35,7 +35,7 @@ const FARBEN: Record<TagArt, { grund: string; schrift: string }> = {
 };
 const KURZ = ["S", "M", "D", "M", "D", "F", "S"];
 
-function leseEinst(userId: string): { modus: Modus; tage: number } {
+export function leseUrlaubEinst(userId: string): { modus: Modus; tage: number } {
   try {
     const r = JSON.parse(window.localStorage.getItem(SCHLUESSEL + userId) ?? "{}") as { modus?: unknown; tage?: unknown };
     return {
@@ -47,7 +47,7 @@ function leseEinst(userId: string): { modus: Modus; tage: number } {
   }
 }
 
-export function PrivatUrlaub() {
+export function PrivatUrlaub({ eingebettet = false }: { eingebettet?: boolean } = {}) {
   const { konto, schichtarten, artNach } = usePrivat();
   const heute = heuteInBerlin();
   // Ab Oktober plant man den Urlaub fürs nächste Jahr.
@@ -61,7 +61,7 @@ export function PrivatUrlaub() {
   const [laeuft, setLaeuft] = useState(false);
 
   useEffect(() => {
-    const e = leseEinst(konto.userId);
+    const e = leseUrlaubEinst(konto.userId);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setModus(e.modus);
     setUrlaubTage(e.tage);
@@ -180,20 +180,38 @@ export function PrivatUrlaub() {
   const feld = "rounded-xl bg-ink/[0.07] px-3.5 py-2 text-[14px] font-semibold";
   return (
     <div className="space-y-4">
-      <PrivatKopf
-        titel="Urlaub clever legen"
-        unter="Viele freie Tage für wenige Urlaubstage"
-        rechts={
-          <>
-            <RundKnopf label="Vorheriges Jahr" onClick={() => setJahr((j) => j - 1)}>
-              <ChevronLeft className="h-5 w-5" />
-            </RundKnopf>
-            <RundKnopf label="Nächstes Jahr" onClick={() => setJahr((j) => j + 1)}>
-              <ChevronRight className="h-5 w-5" />
-            </RundKnopf>
-          </>
-        }
-      />
+      {eingebettet ? (
+        <AbschnittKopf
+          icon={<Palmtree className="h-[18px] w-[18px]" />}
+          titel="Urlaub clever legen"
+          unter="Viele freie Tage für wenige Urlaubstage"
+          rechts={
+            <>
+              <RundKnopf label="Vorheriges Jahr" onClick={() => setJahr((j) => j - 1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Nächstes Jahr" onClick={() => setJahr((j) => j + 1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      ) : (
+        <PrivatKopf
+          titel="Urlaub clever legen"
+          unter="Viele freie Tage für wenige Urlaubstage"
+          rechts={
+            <>
+              <RundKnopf label="Vorheriges Jahr" onClick={() => setJahr((j) => j - 1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Nächstes Jahr" onClick={() => setJahr((j) => j + 1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      )}
 
       <PrivatKarte>
         <div className="space-y-3.5 px-4 py-4">

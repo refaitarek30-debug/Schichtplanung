@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Wallet } from "lucide-react";
+import { monthName, toISO } from "@/lib/dates";
+import { ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import {
+  rechne,
   GEHALT_STANDARD,
   ladeGehaltEinstellungen,
   speichereGehaltEinstellungen,
@@ -12,12 +15,15 @@ import {
   type Rechnung,
 } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
-import { PrivatKarte } from "./rahmen";
+import { usePrivat } from "./kontext";
+import { AbschnittKopf, PrivatKarte, RundKnopf } from "./rahmen";
 
 /**
  * Überstunden und Brutto-Schätzung (nur für dich). Stundenlohn und Zuschläge
  * stehen nur in diesem Browser, nie auf dem Server.
  */
+
+const GEHALT_EREIGNIS = "sp-gehalt-geaendert";
 
 const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 const mitVorzeichen = (n: number) => `${n > 0.05 ? "+" : ""}${std(Math.abs(n) < 0.05 ? 0 : n)}`;
@@ -30,14 +36,18 @@ export function useGehalt(userId: string) {
     // Erst nach dem Laden im Browser: auf dem Server gibt es keinen lokalen Speicher.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEinst(ladeGehaltEinstellungen(userId));
+    // Andere Stellen auf der Seite (z. B. die Kachel „Geld“) lesen mit, wenn hier etwas geändert wird.
+    const neuLesen = () => setEinst(ladeGehaltEinstellungen(userId));
+    window.addEventListener(GEHALT_EREIGNIS, neuLesen);
+    return () => window.removeEventListener(GEHALT_EREIGNIS, neuLesen);
   }, [userId]);
   const setze = useCallback(
-    (teil: Partial<GehaltEinstellungen>) =>
-      setEinst((alt) => {
-        const neu = { ...alt, ...teil };
-        speichereGehaltEinstellungen(userId, neu);
-        return neu;
-      }),
+    (teil: Partial<GehaltEinstellungen>) => {
+      const neu = { ...ladeGehaltEinstellungen(userId), ...teil };
+      speichereGehaltEinstellungen(userId, neu);
+      setEinst(neu);
+      window.dispatchEvent(new Event(GEHALT_EREIGNIS));
+    },
     [userId],
   );
   return { einst, setze };
@@ -360,5 +370,65 @@ export function ZuschlagKarte({ einst, setze }: { einst: GehaltEinstellungen; se
         </button>
       </div>
     </PrivatKarte>
+  );
+}
+
+/** Der Monat mit Gehalt und Zuschlägen – für den Bereich „Geld“ unter den Kacheln. */
+export function PrivatGeld() {
+  const { konto, schichtarten } = usePrivat();
+  const { einst, setze } = useGehalt(konto.userId);
+  const [monat, setMonat] = useState(() => {
+    const h = new Date();
+    return new Date(h.getFullYear(), h.getMonth(), 1);
+  });
+  const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
+  const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
+  const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
+  const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
+
+  useEffect(() => {
+    let aus = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTage(null);
+    void ladeFeiertage(monat.getFullYear())
+      .then((f) => !aus && setFeiertage(new Set(f.map((h) => h.tag))))
+      .catch(() => undefined);
+    void ladeTage(von, bis)
+      .then((t) => !aus && setTage(t))
+      .catch(() => !aus && setTage({}));
+    return () => {
+      aus = true;
+    };
+  }, [von, bis, monat]);
+
+  const re = tage && schichtarten ? rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst }) : null;
+  const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + s, 1));
+
+  return (
+    <div className="space-y-4">
+      <AbschnittKopf
+        icon={<Wallet className="h-[18px] w-[18px]" />}
+        titel={`Geld · ${monthName(monat.getMonth())}`}
+        unter={String(monat.getFullYear())}
+        rechts={
+          <>
+            <RundKnopf label="Vorheriger Monat" onClick={() => springe(-1)}>
+              <ChevronLeft className="h-5 w-5" />
+            </RundKnopf>
+            <RundKnopf label="Nächster Monat" onClick={() => springe(1)}>
+              <ChevronRight className="h-5 w-5" />
+            </RundKnopf>
+          </>
+        }
+      />
+      {re ? (
+        <>
+          <GehaltKarte re={re} einst={einst} setze={setze} />
+          <ZuschlagKarte einst={einst} setze={setze} />
+        </>
+      ) : (
+        <p className="px-1 text-[14px] text-ink-muted">Wird berechnet …</p>
+      )}
+    </div>
   );
 }

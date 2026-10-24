@@ -82,6 +82,22 @@ export function PrivatKopf({ titel, unter, rechts }: { titel: ReactNode; unter?:
   );
 }
 
+/** Kopf eines Bereichs, der innerhalb einer Seite steht (z. B. unter den Kacheln bei „Schichten“). */
+export function AbschnittKopf({ icon, titel, unter, rechts }: { icon?: ReactNode; titel: ReactNode; unter?: ReactNode; rechts?: ReactNode }) {
+  return (
+    <header className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {icon ? <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px] bg-brand-500/15 text-brand-600">{icon}</span> : null}
+        <div className="min-w-0">
+          <h2 className="truncate text-[18px] font-bold leading-tight">{titel}</h2>
+          {unter ? <div className="truncate text-[13px] text-ink-muted">{unter}</div> : null}
+        </div>
+      </div>
+      {rechts ? <div className="flex shrink-0 items-center gap-1.5">{rechts}</div> : null}
+    </header>
+  );
+}
+
 /** Runde Knopf-Fläche wie im Kalender. */
 export function RundKnopf({
   label,

@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { farbStil, idsVon, istAbwesenheit, ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
-import { rechne } from "@/lib/privat/gehalt";
+import { GEHALT_STANDARD, rechne } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
-import { GehaltKarte, UeberstundenKarte, ZuschlagKarte, useGehalt } from "./gehalt";
+import { UeberstundenKarte } from "./gehalt";
 import { usePrivat } from "./kontext";
-import { PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
+import { AbschnittKopf, PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
 
 /**
  * Auswertung: Schichten zählen, Stunden je Schicht, Soll und Ist, im Monat
@@ -20,7 +20,7 @@ type Zeitraum = "monat" | "jahr";
 
 const zahl = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 2 });
 
-export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: string; unterKopf?: ReactNode }) {
+export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet = false }: { titel?: string; unterKopf?: ReactNode; eingebettet?: boolean }) {
   const { konto, schichtarten } = usePrivat();
   const heute = heuteInBerlin();
   const [zeitraum, setZeitraum] = useState<Zeitraum>("monat");
@@ -28,7 +28,6 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
   const [bisHeute, setBisHeute] = useState(false);
   const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
   const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
-  const { einst, setze } = useGehalt(konto.userId);
   const [fehler, setFehler] = useState<string | null>(null);
 
   const d = fromISO(anker);
@@ -74,7 +73,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
 
   const rechnung =
     tage && schichtarten
-      ? rechne({ tage, von, bis: bis < von ? von : bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst })
+      ? rechne({ tage, von, bis: bis < von ? von : bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst: GEHALT_STANDARD })
       : null;
 
   function springe(s: number) {
@@ -89,24 +88,46 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
 
   return (
     <div className="space-y-4">
-      <PrivatKopf
-        titel={titel}
-        unter={
-          <span className="tnum">
-            {formatDE(von)} – {formatDE(bis < von ? von : bis)}
-          </span>
-        }
-        rechts={
-          <>
-            <RundKnopf label="Vorher" onClick={() => springe(-1)}>
-              <ChevronLeft className="h-5 w-5" />
-            </RundKnopf>
-            <RundKnopf label="Weiter" onClick={() => springe(1)}>
-              <ChevronRight className="h-5 w-5" />
-            </RundKnopf>
-          </>
-        }
-      />
+      {eingebettet ? (
+        <AbschnittKopf
+          icon={<BarChart3 className="h-[18px] w-[18px]" />}
+          titel="Übersicht"
+          unter={
+            <span className="tnum">
+              {formatDE(von)} – {formatDE(bis < von ? von : bis)}
+            </span>
+          }
+          rechts={
+            <>
+              <RundKnopf label="Vorher" onClick={() => springe(-1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Weiter" onClick={() => springe(1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      ) : (
+        <PrivatKopf
+          titel={titel}
+          unter={
+            <span className="tnum">
+              {formatDE(von)} – {formatDE(bis < von ? von : bis)}
+            </span>
+          }
+          rechts={
+            <>
+              <RundKnopf label="Vorher" onClick={() => springe(-1)}>
+                <ChevronLeft className="h-5 w-5" />
+              </RundKnopf>
+              <RundKnopf label="Weiter" onClick={() => springe(1)}>
+                <ChevronRight className="h-5 w-5" />
+              </RundKnopf>
+            </>
+          }
+        />
+      )}
 
       {unterKopf}
 
@@ -150,17 +171,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf }: { titel?: 
             gesamt={werte ? `${zahl(werte.gesamtStunden)} h` : "…"}
           />
         </PrivatKarte>
-        {rechnung ? (
-          <>
-            <UeberstundenKarte re={rechnung} />
-            {zeitraum === "monat" ? (
-              <>
-                <GehaltKarte re={rechnung} einst={einst} setze={setze} />
-                <ZuschlagKarte einst={einst} setze={setze} />
-              </>
-            ) : null}
-          </>
-        ) : null}
+        {rechnung ? <UeberstundenKarte re={rechnung} /> : null}
       </div>
     </div>
   );
