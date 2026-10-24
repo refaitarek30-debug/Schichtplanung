@@ -17,6 +17,8 @@ export interface Gruppe {
   beginn: string;
   ende: string;
   ganztaegig: boolean;
+  /** Aus einem Screenshot gelesen (nicht aus einer Kalender-Datei) */
+  ausBild?: boolean;
 }
 
 export interface LeseErgebnis {
