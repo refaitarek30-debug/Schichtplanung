@@ -153,7 +153,7 @@ export function Blatt({
             <X className="h-[18px] w-[18px]" />
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-2">{children}</div>
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overflow-x-hidden overscroll-contain px-5 pb-5 pt-2">{children}</div>
         {fuss ? (
           <div className="glas-linie border-t px-5 pb-4 pt-3">{fuss}</div>
         ) : null}

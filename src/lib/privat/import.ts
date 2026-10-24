@@ -64,6 +64,9 @@ export function schlageVor(g: Gruppe, arten: Schichtart[]): Ziel {
     if (zeit) return { art: "vorhanden", id: zeit.id };
     if (g.tage.length >= 3) return { art: "neu" };
   }
+  // Screenshot: Ein Name, der an mehreren Tagen steht, ist fast immer eine Schicht
+  // (z. B. „BVA“) – als neue Schicht vorschlagen statt zu überspringen.
+  if (g.ausBild && g.tage.length >= 2) return { art: "neu" };
   return { art: "skip" };
 }
 
@@ -72,7 +75,9 @@ export function neueArtAus(g: Gruppe, vergeben: string[], vorhandene: number, la
   const n = normal(g.name);
   let art: SchichtArt = "arbeit";
   for (const s of STICHWORTE) if (s.art && s.schluessel.some((k) => n.includes(k))) art = s.art;
-  if (art === "arbeit" && (g.ganztaegig || !g.beginn)) art = "frei";
+  // Kalender-Datei: ganztägige Einträge ohne Zeit sind meist freie Tage. Screenshot: Ein
+  // unbekannter Name ist meist eine Arbeitsschicht ohne Uhrzeit (z. B. „BVA“).
+  if (art === "arbeit" && (g.ganztaegig || !g.beginn) && !g.ausBild) art = "frei";
   const name = g.name.slice(0, 30);
   const mitZeit = art === "arbeit" && !!g.beginn && !!g.ende;
   return {

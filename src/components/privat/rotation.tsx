@@ -228,22 +228,22 @@ export function RotationBlatt({
         </button>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <label className="block">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block min-w-0">
           <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Erster Tag der Folge</span>
           <input
             type="date"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
+            className="block w-full min-w-0 max-w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
           />
         </label>
-        <label className="block">
+        <label className="block min-w-0">
           <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Wie lange</span>
           <select
             value={monate}
             onChange={(e) => setMonate(Number(e.target.value))}
-            className="w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
+            className="block w-full min-w-0 max-w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
           >
             {DAUER.map((d) => (
               <option key={d.monate} value={d.monate}>

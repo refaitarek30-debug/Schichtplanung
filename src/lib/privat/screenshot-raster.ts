@@ -275,15 +275,75 @@ function laengsteFolge(zahlen: Zahl[]): Zahl[] {
   return folge;
 }
 
+/**
+ * Wochennummern am Rand (KW 1–31 sehen aus wie Tageszahlen) aussortieren.
+ * Zwei Merkmale: Sie passen nicht in die Spalten der Tage (anderer
+ * waagerechter Abstand zum Raster), und ganz links in einer Zeile stimmt
+ * ihr Wert nicht zum Abstand zur nächsten Zahl (Tage zählen je Spalte um 1).
+ */
+function ohneWochennummern(kandidaten: Zahl[]): Zahl[] {
+  if (kandidaten.length < 12) return kandidaten;
+  const h = median(kandidaten.map((k) => k.h));
+  const nachY = [...kandidaten].sort((a, b) => a.cy - b.cy);
+  const zeilen: Zahl[][] = [];
+  for (const k of nachY) {
+    const letzte = zeilen[zeilen.length - 1];
+    if (letzte && Math.abs(k.cy - median(letzte.map((z) => z.cy))) <= h * 0.9) letzte.push(k);
+    else zeilen.push([k]);
+  }
+  for (const z of zeilen) z.sort((a, b) => a.cx - b.cx);
+  // Spaltenbreite: Nachbarn in einer Zeile, Wert-Unterschied 1–6.
+  const schritte: number[] = [];
+  for (const z of zeilen)
+    for (let i = 1; i < z.length; i++) {
+      const dv = z[i]!.wert - z[i - 1]!.wert;
+      if (dv >= 1 && dv <= 6) schritte.push((z[i]!.cx - z[i - 1]!.cx) / dv);
+    }
+  if (schritte.length < 6) return kandidaten;
+  const breite = median(schritte);
+  if (!(breite > h)) return kandidaten;
+  // Lage der Spalten: häufigster Rest von cx modulo Breite.
+  const rest = (x: number) => ((x % breite) + breite) % breite;
+  const kreis = (a: number, b: number) => {
+    const d = Math.abs(a - b);
+    return Math.min(d, breite - d);
+  };
+  let phase = 0;
+  let beste = -1;
+  for (const k of kandidaten) {
+    const r = rest(k.cx);
+    const n = kandidaten.filter((q) => kreis(rest(q.cx), r) <= breite * 0.08).length;
+    if (n > beste) {
+      beste = n;
+      phase = r;
+    }
+  }
+  const dazu = kandidaten.filter((q) => kreis(rest(q.cx), phase) <= breite * 0.12);
+  phase = rest(median(dazu.map((q) => ((rest(q.cx) - phase + breite * 1.5) % breite) - breite / 2)) + phase);
+  const passt = new Set(kandidaten.filter((k) => kreis(rest(k.cx), phase) <= breite * 0.14));
+  // Ganz links in der Zeile: Wert muss zum Abstand zur nächsten Zahl passen.
+  for (const z of zeilen) {
+    const mit = z.filter((k) => passt.has(k));
+    const a = mit[0];
+    const b = mit[1];
+    if (!a || !b) continue;
+    const spalten = Math.round((b.cx - a.cx) / breite);
+    if (spalten >= 1 && b.wert - a.wert !== spalten) passt.delete(a);
+  }
+  return passt.size >= 10 ? kandidaten.filter((k) => passt.has(k)) : kandidaten;
+}
+
 const WOCHENTAGE = /^(mo|di|mi|do|fr|sa|so|mon|tue|wed|thu|fri|sat|sun|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)\.?$/i;
 
 /** Lage des Monatsrasters, oder null, wenn keins sicher zu erkennen ist. */
 export function leseGitter(woerter: Wort[]): Gitter | null {
   const sauber = woerter.filter((w) => w.text.trim() && w.x1 > w.x0 && w.y1 > w.y0);
-  const kandidaten: Zahl[] = sauber
+  let kandidaten: Zahl[] = sauber
     .map((w) => ({ w, t: w.text.trim().replace(/\.$/, "") }))
     .filter(({ t }) => /^\d{1,2}$/.test(t) && Number(t) >= 1 && Number(t) <= 31)
     .map(({ w, t }) => ({ wert: Number(t), cx: mitteX(w), cy: mitteY(w), x0: w.x0, y0: w.y0, h: w.y1 - w.y0 }));
+  if (kandidaten.length < 8) return null;
+  kandidaten = ohneWochennummern(kandidaten);
   if (kandidaten.length < 8) return null;
 
   // Zeilen: gleiche Höhe = gleiche Wochenzeile.
@@ -480,7 +540,8 @@ export function leseMonatsraster(
   const proTag = new Map<number, Wort[]>();
   for (const w of woerter) {
     const t = w.text.trim();
-    if (!t || w.konfidenz < 30) continue;
+    // Einzelne Buchstaben nur, wenn die Erkennung sicher war (sonst meist Kanten und Rauschen).
+    if (!t || w.konfidenz < (Array.from(t).length === 1 ? 50 : 35)) continue;
     const cx = mitteX(w);
     const cy = mitteY(w);
     if (g.zahlen.has(`${Math.round(cx)}|${Math.round(cy)}`)) continue;
@@ -615,7 +676,7 @@ export function leseMonatsraster(
     .map(([name, e]) => {
       const zeit = [...e.zeiten.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
       const [beginn, ende] = zeit ? zeit.split("|") : ["", ""];
-      return { name, tage: [...e.tage].sort(), beginn: beginn ?? "", ende: ende ?? "", ganztaegig: !zeit };
+      return { name, tage: [...e.tage].sort(), beginn: beginn ?? "", ende: ende ?? "", ganztaegig: !zeit, ausBild: true };
     })
     .sort((a, b) => b.tage.length - a.tage.length || a.name.localeCompare(b.name, "de"));
   termine.sort((a, b) => a.tag.localeCompare(b.tag) || a.beginn.localeCompare(b.beginn));
