@@ -129,6 +129,11 @@ export function SessionProvider({
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
+/** Wie useSession, aber ohne Fehler außerhalb des Betriebsbereichs (z. B. Privatbereich). */
+export function useSessionOptional() {
+  return useContext(SessionContext);
+}
+
 export function useSession() {
   const context = useContext(SessionContext);
   if (!context) throw new Error("useSession muss innerhalb von SessionProvider stehen.");

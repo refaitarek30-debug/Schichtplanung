@@ -7,6 +7,7 @@ import { signOut } from "@/lib/auth/actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { fetchGruendeFuerKollegen } from "@/lib/data/notifications";
 import { useBegriffe } from "@/lib/begriffe";
+import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
 
 export function PrivacyOnboarding() {
   const t = useBegriffe();
@@ -116,7 +117,10 @@ export function PrivacyOnboarding() {
 
           <input type="hidden" name="privacy_notice_acknowledged" value="on" />
 
-          {state.error ? <p role="alert" className="text-sm text-crit-fg">{state.error}</p> : null}
+          {state.error ? <p role="alert" className="text-sm text-crit-fg">
+              {state.error}
+              <SchichtleitungHinweis text={state.error} />
+            </p> : null}
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             <SaveButton />

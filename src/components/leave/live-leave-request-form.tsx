@@ -11,7 +11,7 @@ import { Field, Input } from "@/components/ui/input";
 import { addDays as addDaysISO, formatDE, formatDays } from "@/lib/dates";
 import { previewLeaveDays } from "@/lib/leave-days";
 import { fetchHolidays } from "@/lib/data/holidays";
-import { fetchLeaveBlockReason, fetchLeaveImpact } from "@/lib/data/staffing";
+import { fetchLeaveBlockReason, fetchLeaveImpact, fetchUrlaubssperre } from "@/lib/data/staffing";
 import {
   fetchAutoPreview,
   fetchLeaveDayCount,
@@ -246,6 +246,31 @@ export function LiveLeaveRequestForm({
         .sort((a, b) => a.tag.localeCompare(b.tag)),
     [sperren],
   );
+
+  /**
+   * Gilt die Sperre für diese Person? Dieselbe Regel wie beim Speichern:
+   * Sperren nur der eigenen Schicht, Azubis ausgenommen (sie zählen nicht
+   * zur Besetzung). null = noch offen oder Abfrage gescheitert.
+   */
+  const [sperre, setSperre] = useState<{ grund: string | null; azubi: boolean } | null>(null);
+  useEffect(() => {
+    if (!employeeId || stabil.bis < stabil.von || sperren.size === 0) {
+      setSperre(null);
+      return;
+    }
+    let cancelled = false;
+    fetchUrlaubssperre(employeeId, stabil.von, stabil.bis)
+      .then((r) => {
+        if (!cancelled) setSperre(r);
+      })
+      .catch(() => {
+        // Ohne Antwort nicht blockieren – die Sperre beim Speichern greift trotzdem.
+        if (!cancelled) setSperre(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, stabil, sperren]);
 
   /** Jeder Grund einmal – mehrere Tage derselben Sperre nennen ihn sonst mehrfach. */
   const sperrGruende = useMemo(
@@ -563,9 +588,9 @@ export function LiveLeaveRequestForm({
                 : `${formatDE(startDate)} – ${formatDE(endDate)}`}
             </p>
 
-            {gesperrt.length > 0 ? (
+            {gesperrt.length > 0 && !(sperre && !sperre.grund && !sperre.azubi) ? (
               <div className="mt-2">
-                <Alert tone="warning">
+                <Alert tone={sperre?.grund ? "error" : sperre?.azubi ? "info" : "warning"}>
                   <span className="font-medium">
                     {gesperrt.length === 1
                       ? `Am ${formatDE(gesperrt[0].tag)} gilt eine Urlaubssperre`
@@ -577,7 +602,11 @@ export function LiveLeaveRequestForm({
                       Betroffen: {gesperrt.map((s) => formatDE(s.tag)).join(", ")}.
                     </span>
                   ) : null}{" "}
-                  Du kannst den Antrag trotzdem stellen – die Schichtleitung entscheidet.
+                  {sperre?.azubi
+                    ? "Als Azubi zählst du nicht zur Mindestbesetzung – du kannst den Antrag trotzdem stellen."
+                    : sperre?.grund
+                      ? "In dieser Zeit kann kein Antrag gestellt werden. Bei Fragen wende dich bitte an deine Schichtleitung."
+                      : "Bei Fragen wende dich bitte an deine Schichtleitung."}
                 </Alert>
               </div>
             ) : null}
@@ -786,6 +815,7 @@ export function LiveLeaveRequestForm({
             label={t(labels.action)}
             disabled={
               Boolean(sperrGrund) ||
+              Boolean(sperre?.grund) ||
               (kind === "auto"
                 ? !valid || autoDays === null || autoDays.length === 0 || autoOffen > 0
                 : !valid ||

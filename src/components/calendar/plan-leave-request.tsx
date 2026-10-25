@@ -10,7 +10,7 @@ import {
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
 } from "@/lib/data/leave";
-import { fetchLeaveBlockReason } from "@/lib/data/staffing";
+import { fetchLeaveBlockReason, fetchUrlaubssperre } from "@/lib/data/staffing";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
@@ -70,6 +70,8 @@ export function PlanLeaveRequest({
   const [tage, setTage] = useState<number | null>(null);
   const [auto, setAuto] = useState<LiveAutoDay[] | null>(null);
   const [sperrGrund, setSperrGrund] = useState<string | null>(null);
+  /** Urlaubssperre der eigenen Schicht – Azubis ausgenommen (zählen nicht zur Besetzung). */
+  const [urlaubssperre, setUrlaubssperre] = useState<{ grund: string | null; azubi: boolean } | null>(null);
   const [konto, setKonto] = useState<LiveLeaveBalance | null>(null);
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -106,6 +108,7 @@ export function PlanLeaveRequest({
     setTage(null);
     setAuto(null);
     setSperrGrund(null);
+    setUrlaubssperre(null);
     setFehler(null);
     fetchLeaveDayCount(employeeId, von, bis)
       .then((n) => !cancelled && setTage(n))
@@ -116,6 +119,9 @@ export function PlanLeaveRequest({
     fetchLeaveBlockReason(employeeId, von, bis)
       .then((grund) => !cancelled && setSperrGrund(grund))
       .catch(() => !cancelled && setSperrGrund(null));
+    fetchUrlaubssperre(employeeId, von, bis)
+      .then((r) => !cancelled && setUrlaubssperre(r))
+      .catch(() => !cancelled && setUrlaubssperre(null));
     return () => {
       cancelled = true;
     };
@@ -139,6 +145,7 @@ export function PlanLeaveRequest({
   const gesperrt =
     sendet ||
     Boolean(sperrGrund) ||
+    Boolean(urlaubssperre?.grund) ||
     tage === null ||
     tage === 0 ||
     reichtNicht ||
@@ -278,6 +285,22 @@ export function PlanLeaveRequest({
       {sperrGrund ? (
         <div className="mt-2">
           <Alert tone="error">{sperrGrund}</Alert>
+        </div>
+      ) : null}
+
+      {urlaubssperre?.grund ? (
+        <div className="mt-2">
+          <Alert tone="error">
+            Für diesen Zeitraum gilt eine Urlaubssperre: {urlaubssperre.grund.replace(/[.\s]+$/, "")}. Bei Fragen wende
+            dich bitte an deine Schichtleitung.
+          </Alert>
+        </div>
+      ) : urlaubssperre?.azubi ? (
+        <div className="mt-2">
+          <Alert tone="info">
+            In diesem Zeitraum gilt eine Urlaubssperre. Als Azubi zählst du nicht zur Mindestbesetzung – du kannst
+            trotzdem beantragen.
+          </Alert>
         </div>
       ) : null}
 

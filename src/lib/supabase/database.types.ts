@@ -424,6 +424,11 @@ export interface Database {
         Args: { p_employee_id: string; p_start_date: string; p_end_date: string };
         Returns: string | null;
       };
+      /** Urlaubssperre für einen Antrag: grund = nicht möglich, azubi = Sperre gilt nicht. */
+      urlaubssperre_pruefen: {
+        Args: { p_employee_id: string; p_start_date: string; p_end_date: string };
+        Returns: { grund: string | null; azubi: boolean; sperre?: string };
+      };
       set_shift_staffing: {
         Args: { p_shift_id: string; p_target: number; p_minimum: number };
         Returns: null;

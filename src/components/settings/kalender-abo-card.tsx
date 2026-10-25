@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { formatZeitpunkt } from "@/lib/dates";
 import { ABO_TEILE, type AboTeil } from "@/lib/abo/ics";
 import { beendeAbo, erstelleAbo, fetchAboStatus, hatKalenderAbo, type AboStatus } from "@/lib/data/abo";
+import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
 
 const TEILE: AboTeil[] = ["frueh", "spaet", "nacht", "frei", "termine"];
 
@@ -91,7 +92,10 @@ export function KalenderAboCard() {
       titel="Kalender-Abo"
       hinweis={
         fehler ? (
-          <span className="text-crit-fg">{fehler}</span>
+          <span className="text-crit-fg">
+            {fehler}
+            <SchichtleitungHinweis text={fehler} />
+          </span>
         ) : (
           "Wer den Link kennt, sieht deinen Plan – gib ihn nicht weiter. Keine Kollegen, keine Gründe für Abwesenheit."
         )
