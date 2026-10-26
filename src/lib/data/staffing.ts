@@ -218,6 +218,28 @@ export async function fetchShiftStaffingOverview(
  * (leave_qualification_block_reason). Die Anzeige im Formular kann dadurch
  * nie von der echten Regel abweichen: was hier „frei" sagt, geht durch.
  */
+/**
+ * Urlaubssperre für einen geplanten Antrag – dieselbe Regel wie der Trigger
+ * beim Speichern. `grund` = Antrag nicht möglich; `azubi` = es gibt eine
+ * Sperre, sie gilt aber nicht (Azubis zählen nicht zur Besetzung).
+ */
+export async function fetchUrlaubssperre(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+): Promise<{ grund: string | null; azubi: boolean }> {
+  if (!isSupabaseConfigured) return { grund: null, azubi: false };
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("urlaubssperre_pruefen", {
+    p_employee_id: employeeId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+  if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+  const d = (data ?? {}) as { grund?: string | null; azubi?: boolean };
+  return { grund: typeof d.grund === "string" && d.grund ? d.grund : null, azubi: d.azubi === true };
+}
+
 export async function fetchLeaveBlockReason(
   employeeId: string,
   startDate: string,

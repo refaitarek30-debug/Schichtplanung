@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { FehlerAnzeigeMelden } from "@/components/protokoll/fehler-melder";
+import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
 
 const tones = {
   info: { box: "border-info-bg bg-info-bg/60 text-info-fg", Icon: Info },
@@ -30,7 +31,10 @@ export function Alert({
       )}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
-      <span>{children}</span>
+      <span>
+        {children}
+        {tone === "error" && typeof children === "string" ? <SchichtleitungHinweis text={children} /> : null}
+      </span>
       {/* Jede angezeigte Fehlermeldung landet im Protokoll – siehe /protokoll. */}
       {tone === "error" && typeof children === "string" ? <FehlerAnzeigeMelden text={children} /> : null}
     </p>

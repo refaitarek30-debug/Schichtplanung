@@ -5,6 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
+import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
 
 export interface TileOption {
   /** Stabiler Schlüssel – wird in `profiles.hidden_dashboard_tiles` gespeichert. */
@@ -101,7 +102,10 @@ export function KachelListe({
         );
       })}
       {fehler ? (
-        <p className="px-2 pb-1 pt-2 text-[12px] text-crit-fg">{fehler}</p>
+        <p className="px-2 pb-1 pt-2 text-[12px] text-crit-fg">
+          {fehler}
+          <SchichtleitungHinweis text={fehler} />
+        </p>
       ) : (
         <p className="px-2 pb-1 pt-2 text-[11px] text-ink-faint">Gilt nur für dich, auf allen Geräten.</p>
       )}

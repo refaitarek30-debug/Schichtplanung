@@ -126,6 +126,31 @@ export function istVoruebergehendeStoerung(error: FehlerInfo): boolean {
 
 const ALLGEMEINER_DATENFEHLER = "Die Daten konnten nicht geladen werden.";
 
+/**
+ * Ist das eine allgemeine Fehlermeldung ohne konkrete Ursache – „…konnte
+ * nicht gespeichert werden“, „Das hat nicht geklappt“, keine Berechtigung,
+ * Dienst nicht erreichbar? Dann bekommt die Person im Betrieb den Hinweis,
+ * sich an die Schichtleitung zu wenden. Konkrete Meldungen (Eingabe prüfen,
+ * Geschäftsregeln) und Meldungen, die schon auf eine Person verweisen,
+ * bleiben ohne Zusatz.
+ */
+export function istAllgemeinerFehler(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (/schichtleitung|leitung|administration|betreiber/i.test(t)) return false;
+  return (
+    t === ALLGEMEINER_DATENFEHLER ||
+    t === STOERUNG_MELDUNG ||
+    /^unbekannter fehler/i.test(t) ||
+    /keine berechtigung/i.test(t) ||
+    /\bkonnten? (gerade |momentan |leider )?nicht\b.*\bwerden\b/i.test(t) ||
+    /\bkann momentan nicht\b/i.test(t) ||
+    /(hat|ist) (gerade |leider )?nicht geklappt/i.test(t) ||
+    /ließ sich (gerade |leider )?nicht/i.test(t) ||
+    /schiefgelaufen|schief gegangen/i.test(t)
+  );
+}
+
 /** Fehler bei Datenzugriffen – inklusive abgewiesener RLS-Zugriffe. */
 export function dataErrorMessage(error: FehlerInfo | null) {
   if (!error) return null;

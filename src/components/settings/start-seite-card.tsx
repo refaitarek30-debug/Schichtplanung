@@ -6,6 +6,7 @@ import { Gruppe, WahlZeile } from "./gruppe";
 import { createClient } from "@/lib/supabase/client";
 import { START_COOKIE, START_COOKIE_MAX_AGE, STARTSEITEN, startCookieWert, type StartSeite } from "@/lib/start-seite";
 import { useSession } from "@/context/session";
+import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
 
 /** Jede Person wählt, was beim Öffnen der App zuerst kommt. */
 export function StartSeiteCard() {
@@ -44,7 +45,10 @@ export function StartSeiteCard() {
       titel="Startseite"
       hinweis={
         fehler ? (
-          <span className="text-crit-fg">{fehler}</span>
+          <span className="text-crit-fg">
+            {fehler}
+            <SchichtleitungHinweis text={fehler} />
+          </span>
         ) : gespeichert ? (
           <span className="text-ok-fg">Gespeichert – gilt ab dem nächsten Öffnen.</span>
         ) : (
