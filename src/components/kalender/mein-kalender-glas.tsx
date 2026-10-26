@@ -65,12 +65,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { useBegriffe } from "@/lib/begriffe";
 
 /**
- * Mein Kalender im Stil des Privatkalenders (Glas, Tagesfenster) – zunächst
- * nur für freigeschaltete Personen (funktion 'kalender_neu').
+ * Mein Kalender im Stil des Privatkalenders (Glas, Tagesfenster).
  *
  * Die Schichten kommen unverändert aus dem Schichtplan
- * (`schichtplan_kompakt()`, nur die eigene Zeile) – wie im bisherigen
- * Kalender. Dazu kommen, nur für die Person selbst sichtbar:
+ * (`schichtplan_kompakt()`, nur die eigene Zeile) – wie im Schichtplan. Dazu kommen, nur für die Person selbst sichtbar:
  *  - eigene Farben für Schichten und Abwesenheiten,
  *  - eigene Einträge (selbst angelegt, z. B. „Nebenjob“), auch mit Pinsel.
  * Der echte Schichtplan wird davon nie verändert.

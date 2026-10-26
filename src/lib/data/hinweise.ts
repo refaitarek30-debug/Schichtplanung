@@ -24,8 +24,22 @@ export function zielLabel(ziel: string | null): string | null {
   return HINWEIS_ZIELE.find((z) => z.wert && z.wert === ziel)?.label ?? null;
 }
 
-/** Wann die Mitteilung aufs Handy geht. */
+/**
+ * Wann der Hinweis ankommt: „schicht“ = Fenster und Mitteilung erst ab der
+ * nächsten Schicht, „sofort“ = gleich, „aus“ = gleich in der App, ohne Handy.
+ */
 export type HinweisPush = "schicht" | "sofort" | "aus";
+
+export const HINWEIS_PUSH_WERTE: HinweisPush[] = ["schicht", "sofort", "aus"];
+
+/** Vorgabe des Betriebs für das Senden-Fenster (Migration 0191). */
+export async function fetchHinweisStandard(): Promise<HinweisPush> {
+  if (!isSupabaseConfigured) return "schicht";
+  const { data, error } = await createClient().rpc("hinweis_standard");
+  // Noch ohne Migration oder Fehler: wie bisher „Zur Arbeitszeit“.
+  if (error) return "schicht";
+  return HINWEIS_PUSH_WERTE.includes(data as HinweisPush) ? (data as HinweisPush) : "schicht";
+}
 
 /** Häufige Hinweise zum Antippen – Text bleibt danach änderbar. */
 export const HINWEIS_VORLAGEN = [

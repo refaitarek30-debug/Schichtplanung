@@ -8,6 +8,7 @@ import { StaffingNeedsCard } from "@/components/settings/staffing-needs-card";
 import { LeaveQuotaCard } from "@/components/settings/leave-quota-card";
 import { HolidayWorkSetting } from "@/components/settings/holiday-work-setting";
 import { ReasonVisibilitySetting } from "@/components/settings/reason-visibility-setting";
+import { HinweisStandardSetting } from "@/components/settings/hinweis-standard-setting";
 import { useSession } from "@/context/session";
 import { AdminViewHeader } from "./view-header";
 
@@ -75,6 +76,7 @@ export function RulesView() {
           <LeaveQuotaCard canManage={role === "admin"} />
           <HolidayWorkSetting canManage={role === "admin"} />
           <ReasonVisibilitySetting canManage={role === "admin"} />
+          <HinweisStandardSetting canManage={role === "admin"} />
           <HolidaySettings canManage={role === "admin"} />
         </>
       ) : null}

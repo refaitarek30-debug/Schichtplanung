@@ -34,7 +34,13 @@ export function HinweisPopup() {
       if (document.visibilityState === "visible") void laden();
     };
     document.addEventListener("visibilitychange", sichtbar);
-    return () => document.removeEventListener("visibilitychange", sichtbar);
+    // Hinweise „zur Arbeitszeit“ werden erst ab Schichtbeginn sichtbar – bleibt
+    // die App offen, alle 10 Minuten kurz nachsehen (nur im Vordergrund).
+    const uhr = window.setInterval(sichtbar, 10 * 60_000);
+    return () => {
+      document.removeEventListener("visibilitychange", sichtbar);
+      window.clearInterval(uhr);
+    };
   }, [live, laden]);
 
   const h = offen[0];

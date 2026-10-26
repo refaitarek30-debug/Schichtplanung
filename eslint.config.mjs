@@ -47,6 +47,8 @@ const eslintConfig = [
       "next-env.d.ts",
       "tsconfig.tsbuildinfo",
       "supabase/**",
+      // Fremdcode der Texterkennung, wird beim Installieren hineinkopiert (scripts/ocr-kopieren.mjs).
+      "public/ocr/**",
     ],
   },
 ];

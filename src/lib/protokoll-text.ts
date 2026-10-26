@@ -208,6 +208,10 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       return aenderung(`hat das Geburtsdatum${von(e)} geändert`);
     case "privacy.settings.changed":
       return aenderung("hat die eigenen Datenschutz-Einstellungen geändert");
+    case "hinweise.standard":
+      return aenderung(
+        `hat die Vorgabe für Hinweise auf „${d.wert === "sofort" ? "Sofort" : d.wert === "aus" ? "Nur in der App" : "Zur Arbeitszeit"}“ gestellt`,
+      );
     case "datenschutz.gruende_fuer_kollegen":
       return aenderung(
         `hat die Freigabe von Abwesenheitsgründen für Kollegen ${d.erlaubt ? "eingeschaltet" : "ausgeschaltet"}`,

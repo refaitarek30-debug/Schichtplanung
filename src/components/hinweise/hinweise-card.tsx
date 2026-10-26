@@ -135,7 +135,7 @@ function Status({ h }: { h: GesendeterHinweis }) {
     return (
       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warn-bg px-2 py-0.5 text-[12px] font-medium text-warn-fg">
         <Clock className="h-3.5 w-3.5" />
-        Handy {wannText(h.pushAb)}
+        {h.push === "schicht" ? "kommt" : "Handy"} {wannText(h.pushAb)}
       </span>
     );
   }
