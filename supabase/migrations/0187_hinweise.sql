@@ -31,10 +31,10 @@ revoke all on public.hinweise from anon, authenticated;
 
 -- ---- Push: später senden ----------------------------------------------------------
 
+-- Hinweise laufen als Art 'antraege' durch die Warteschlange (keine neue Art,
+-- damit die bestehende Prüfung unverändert bleibt). Die Vorlieben gelten für
+-- sie nicht: hinweis_senden reiht direkt ein, nicht über push_einreihen.
 alter table public.push_warteschlange add column if not exists senden_ab timestamptz;
-alter table public.push_warteschlange drop constraint if exists push_warteschlange_art_check;
-alter table public.push_warteschlange add constraint push_warteschlange_art_check
-  check (art in ('antraege', 'plan', 'einspringen', 'teilen', 'hinweis'));
 
 create or replace function public.push_warteschlange_holen()
 returns table(user_id uuid, titel text, text text, url text, tag text)
@@ -207,7 +207,7 @@ begin
       konto := konto_zu_mitarbeiter(emp.id);
       if konto is not null and exists (select 1 from push_abos where user_id = konto) then
         insert into push_warteschlange (user_id, art, titel, text, url, tag, senden_ab)
-        values (konto, 'hinweis', '💬 Hinweis von ' || coalesce(nullif(neu.von_name, ''), 'deiner Schichtleitung'),
+        values (konto, 'antraege', '💬 Hinweis von ' || coalesce(nullif(neu.von_name, ''), 'deiner Schichtleitung'),
                 left(text_sauber, 300), coalesce(p_ziel, '/start'), 'hinweis-' || neu.id::text, ab);
       end if;
     end if;
