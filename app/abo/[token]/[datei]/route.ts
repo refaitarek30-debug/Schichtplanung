@@ -9,7 +9,18 @@ import { baueIcs, teilAusDatei, type AboTag, type AboTermin } from "@/lib/abo/ic
  */
 export const dynamic = "force-dynamic";
 
+/** Fehler und „Link ungültig“ nie zwischenspeichern. */
 const KOPF = { "Cache-Control": "private, no-store" };
+/**
+ * Der Plan selbst: Kalender-Apps (Apple, Google, Outlook) fragen den Link von
+ * sich aus in kurzen Abständen ab – das war mit Abstand die teuerste Abfrage
+ * der Datenbank (rund 0,4 s je Aufruf). Ein kurzer Zwischenspeicher am Rand
+ * des Netzes fängt die Wiederholungen ab: höchstens alle 10 Minuten kommt
+ * eine Anfrage bis zur Datenbank. Ein beendeter Link gilt damit bis zu 10
+ * Minuten nach; der Schlüssel im Link bleibt Teil der Adresse, andere
+ * Links teilen sich nichts.
+ */
+const KOPF_PLAN = { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300" };
 const TAGE_PRO_ABFRAGE = 62;
 
 function plusTage(tag: string, n: number): string {
@@ -69,7 +80,7 @@ export async function GET(_anfrage: Request, { params }: { params: Promise<{ tok
     );
     return new NextResponse(ics, {
       headers: {
-        ...KOPF,
+        ...KOPF_PLAN,
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": `inline; filename="${datei}"`,
       },

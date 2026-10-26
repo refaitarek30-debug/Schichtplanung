@@ -100,12 +100,12 @@ export function PartnerAnsicht({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void laden();
     // Was der Inhaber einträgt, soll ohne Neuladen erscheinen: beim
-    // Zurückkehren und alle 20 Sekunden, solange die Seite sichtbar ist.
+    // Zurückkehren und jede Minute, solange die Seite sichtbar ist (öffentlicher Link, viele Zuschauer möglich).
     const sichtbar = () => {
       if (document.visibilityState === "visible") void laden();
     };
     document.addEventListener("visibilitychange", sichtbar);
-    const takt = window.setInterval(sichtbar, 20_000);
+    const takt = window.setInterval(sichtbar, 60_000);
     return () => {
       document.removeEventListener("visibilitychange", sichtbar);
       window.clearInterval(takt);

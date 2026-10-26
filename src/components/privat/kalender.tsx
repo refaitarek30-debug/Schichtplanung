@@ -288,6 +288,32 @@ export function PrivatKalender() {
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
   const andere = useAndere({ benutzer: konto.userId, von: bereich.von, bis: bereich.bis, aktiv: ansicht !== "jahr" });
+  // Kommt die App nach einer Weile wieder nach vorn, die Beiwerk-Daten auffrischen: was Partner, Familie oder ein
+  // zweites Gerät inzwischen eingetragen haben. Kein Dauer-Abfragen – nur beim Zurückkehren, höchstens alle 90 Sekunden.
+  const auffrischen = useRef<() => void>(() => undefined);
+  useEffect(() => {
+    auffrischen.current = () => {
+      void ladeTermine();
+      void ladeTodos();
+      void andere.neuLaden();
+    };
+  });
+  useEffect(() => {
+    let zuletzt = Date.now();
+    const zurueck = () => {
+      if (document.visibilityState !== "visible" || Date.now() - zuletzt < 90_000) return;
+      zuletzt = Date.now();
+      auffrischen.current();
+    };
+    document.addEventListener("visibilitychange", zurueck);
+    window.addEventListener("focus", zurueck);
+    window.addEventListener("pageshow", zurueck);
+    return () => {
+      document.removeEventListener("visibilitychange", zurueck);
+      window.removeEventListener("focus", zurueck);
+      window.removeEventListener("pageshow", zurueck);
+    };
+  }, []);
   const sichtbareTermine = useMemo(
     () => [...termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
     [termine, andere.fremdeTermine, andere.terminSichtbar],
