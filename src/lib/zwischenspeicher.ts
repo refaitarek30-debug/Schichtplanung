@@ -46,4 +46,13 @@ export function inZwischenspeicher<T>(schluessel: string, wert: T): void {
 export function leereZwischenspeicher(): void {
   speicher.clear();
   leereGeraet();
+  // Auch die gemerkte Offline-Seite des Privat-Kalenders (public/sw.js).
+  try {
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.controller?.postMessage("leere-privat");
+      if (typeof caches !== "undefined") void caches.delete("schichtplan-privat-v1");
+    }
+  } catch {
+    // ohne Service Worker gibt es auch nichts zu löschen
+  }
 }

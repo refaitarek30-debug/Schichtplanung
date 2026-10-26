@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="26. Oktober 2026"
+      updated="27. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -718,10 +718,19 @@ export default function DatenschutzPage() {
             <code className={kode}>sp_geraet:…</code> (lokaler Speicher, bis zu 14 Tage; wird beim
             Abmelden und auf der Anmeldeseite gelöscht) – der zuletzt geladene Stand der{" "}
             <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
-            eigenen Schichtarten und die Feiertage, damit der Kalender beim Öffnen sofort
-            erscheint und danach aufgefrischt wird. Es werden weder Daten anderer Personen noch
+            eigenen Schichtarten, die Feiertage, die eigenen Termine und To-dos, damit der Kalender beim
+            Öffnen sofort erscheint und danach aufgefrischt wird – und damit er ohne Netz den
+            zuletzt geladenen Stand zeigen kann. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
             gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
+          </li>
+          <li>
+            <code className={kode}>schichtplan-privat-v1</code> (Zwischenspeicher des Browsers, bis zu
+            14 Tage; wird beim Abmelden und auf der Anmeldeseite gelöscht) – nur bei Privatkonten
+            die zuletzt geöffnete Seite des eigenen Kalenders, damit er auch ohne Netz startet.
+            Sie enthält denselben Stand wie <code className={kode}>sp_geraet:…</code>; sie wird
+            nicht an einen Server gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der
+            Nutzung abmelden.
           </li>
           <li>
             <code className={kode}>sp_gehalt:…</code> und <code className={kode}>sp_urlaub:…</code>{" "}

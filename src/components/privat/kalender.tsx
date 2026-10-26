@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, WifiOff, X } from "lucide-react";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
+import { istOffline, useOnline } from "@/lib/netz";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import {
@@ -137,6 +138,8 @@ export function PrivatKalender() {
     }
   }
 
+  const online = useOnline();
+
   const [tage, setTage] = useState<Record<string, TagEintrag>>({});
   const [feiertage, setFeiertage] = useState<Record<string, string>>({});
   const geladen = useRef(new Set<number>());
@@ -218,7 +221,8 @@ export function PrivatKalender() {
       for (const { j } of ergebnisse) geladen.current.add(j);
       setFehler(null);
     } catch (e) {
-      setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
+      // Ohne Netz zeigt der Kalender den gemerkten Stand (Banner „Offline“) – keine Fehlermeldung.
+      if (!istOffline()) setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
     } finally {
       setLaedt(false);
     }
@@ -245,22 +249,30 @@ export function PrivatKalender() {
 
   const ladeTermine = useCallback(async () => {
     try {
-      setTermine(await fetchMeineTermine());
+      const neu = await fetchMeineTermine();
+      setTermine(neu);
+      aufGeraet(`${konto.userId}:privat:termine`, neu);
     } catch {
-      // Termine sind Beiwerk – der Kalender bleibt nutzbar.
+      // Termine sind Beiwerk – der Kalender bleibt nutzbar. Ohne Netz: der gemerkte Stand dieses Geräts.
+      const gemerkt = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
+      if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
-  }, []);
+  }, [konto.userId]);
   useEffect(() => {
     void ladeTermine();
   }, [ladeTermine]);
 
   const ladeTodos = useCallback(async () => {
     try {
-      setTodos(await fetchTodos());
+      const neu = await fetchTodos();
+      setTodos(neu);
+      aufGeraet(`${konto.userId}:privat:todos`, neu);
     } catch {
-      // To-dos sind Beiwerk.
+      // To-dos sind Beiwerk. Ohne Netz: der gemerkte Stand dieses Geräts.
+      const gemerkt = ausGeraet<Todo[]>(`${konto.userId}:privat:todos`);
+      if (gemerkt) setTodos((alt) => (alt.length ? alt : gemerkt));
     }
-  }, []);
+  }, [konto.userId]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void ladeTodos();
@@ -612,7 +624,14 @@ export function PrivatKalender() {
         </div>
       </header>
 
-      {fehler || artenFehler ? (
+      {!online ? (
+        <div role="status" className="mx-3.5 mb-2 flex items-center gap-2 rounded-xl bg-warn-bg/70 px-3 py-2 text-[13px] leading-snug text-warn-fg sm:mx-0">
+          <WifiOff className="h-4 w-4 shrink-0" />
+          <span>Offline – du siehst den zuletzt geladenen Stand. Änderungen gehen erst mit Netz.</span>
+        </div>
+      ) : null}
+
+      {fehler || (online && artenFehler) ? (
         <div className="mb-2 px-3.5 sm:px-0">
           <Alert tone="error">{fehler ?? artenFehler}</Alert>
         </div>
