@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Users, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -13,6 +13,7 @@ import {
   fetchMeineTermine,
   personTageSetzen,
   setzeMeinePartnerTage,
+  speichereTermin,
 } from "@/lib/data/partner";
 import {
   ladeEigeneArten,
@@ -36,7 +37,9 @@ import {
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
-import { istOffline, useOnline } from "@/lib/netz";
+import { istOffline } from "@/lib/netz";
+import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
+import { OfflinePille } from "./offline-pille";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
@@ -196,6 +199,8 @@ function beschreibung(info: TagInfo, t: (text: string) => string): string {
   return teil;
 }
 
+const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
+
 export function MeinKalenderGlas() {
   const t = useBegriffe();
   const { profile, company } = useSession();
@@ -232,7 +237,6 @@ export function MeinKalenderGlas() {
     () => ausZwischenspeicher<Stand>(schluessel(start, tageImRaster)) ?? null,
   );
   const [fehler, setFehler] = useState<string | null>(null);
-  const online = useOnline();
   const [schichten, setSchichten] = useState<ShiftDetail[]>([]);
   const ladeNr = useRef(0);
 
@@ -342,7 +346,7 @@ export function MeinKalenderGlas() {
   }, [schichten]);
 
   // ---- Termine (wie im bisherigen Kalender) ------------------------------
-  const [termine, setTermine] = useState<Termin[]>([]);
+  const [termineServer, setTermine] = useState<Termin[]>([]);
   const ladeTermine = useCallback(async () => {
     try {
       const neu = await fetchMeineTermine();
@@ -355,6 +359,9 @@ export function MeinKalenderGlas() {
       if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
   }, [profile.id]);
+  // Ohne Netz angelegte Termine: warten auf dem Gerät und gehen hoch, sobald wieder Netz da ist.
+  const offline = useOfflineTermine(profile.id, speichereTermin, () => void ladeTermine());
+  const termine = useMemo(() => [...termineServer, ...offline.termine], [termineServer, offline.termine]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void ladeTermine();
@@ -371,6 +378,14 @@ export function MeinKalenderGlas() {
     };
   }, [ladeTermine]);
   async function terminSpeichern(t: TerminEingabe, alt: Termin | null = null) {
+    if (istWartend(alt) || (istOffline() && !alt && !t.ziel)) {
+      offline.merken(t, alt);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await terminSichernUeberall(t, alt);
       setFehler(null);
@@ -380,6 +395,14 @@ export function MeinKalenderGlas() {
     void ladeTermine();
   }
   async function terminLoeschen(t: Termin, modus: LoeschModus, datum: string) {
+    if (istWartend(t)) {
+      offline.entfernen(t.id);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await terminLoeschenModus(t, modus, datum);
       setFehler(null);
@@ -766,12 +789,7 @@ export function MeinKalenderGlas() {
         </div>
       </header>
 
-      {!online ? (
-        <div role="status" className="mx-3.5 mb-2 sm:mx-0 flex items-center gap-2 rounded-xl bg-warn-bg/70 px-3 py-2 text-[13px] leading-snug text-warn-fg">
-          <WifiOff className="h-4 w-4 shrink-0" />
-          <span>Offline – du siehst deinen zuletzt geladenen Kalender. Alles andere braucht Netz.</span>
-        </div>
-      ) : null}
+      <OfflinePille wartend={offline.anzahl} />
       {fehler ? (
         <div className="px-3.5 pb-2 sm:px-0">
           <Alert tone="error">{fehler}</Alert>

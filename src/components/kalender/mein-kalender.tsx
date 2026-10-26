@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, UserPlus, WifiOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
 import { fetchHolidays } from "@/lib/data/holidays";
@@ -12,7 +12,9 @@ import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
-import { istOffline, useOnline } from "@/lib/netz";
+import { istOffline } from "@/lib/netz";
+import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
+import { OfflinePille } from "./offline-pille";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -163,6 +165,8 @@ interface Stand {
   partner: Record<string, PartnerSchicht>;
 }
 
+const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
+
 export function MeinKalender() {
   const t = useBegriffe();
   const { profile, company } = useSession();
@@ -198,7 +202,6 @@ export function MeinKalender() {
     () => ausZwischenspeicher<Stand>(schluessel(start, tageImRaster)) ?? null,
   );
   const [fehler, setFehler] = useState<string | null>(null);
-  const online = useOnline();
   const [schichten, setSchichten] = useState<ShiftDetail[]>([]);
   const ladeNr = useRef(0);
 
@@ -358,7 +361,7 @@ export function MeinKalender() {
 
   // ---- Termine (nur auf diesem Gerät) ---------------------------------
   // In der Datenbank: eigene und die des Partners (0139).
-  const [termine, setTermine] = useState<Termin[]>([]);
+  const [termineServer, setTermine] = useState<Termin[]>([]);
   const ladeTermine = useCallback(async () => {
     try {
       const neu = await fetchMeineTermine();
@@ -372,6 +375,9 @@ export function MeinKalender() {
       if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
   }, [profile.id]);
+  // Ohne Netz angelegte Termine: warten auf dem Gerät und gehen hoch, sobald wieder Netz da ist.
+  const offline = useOfflineTermine(profile.id, speichereTermin, () => void ladeTermine());
+  const termine = useMemo(() => [...termineServer, ...offline.termine], [termineServer, offline.termine]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void ladeTermine();
@@ -412,6 +418,15 @@ export function MeinKalender() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile.id]);
   async function terminSpeichern(t: TerminEingabe) {
+    const wartend = t.id ? termine.find((x) => x.id === t.id) : null;
+    if (istWartend(wartend) || (istOffline() && !t.id)) {
+      offline.merken(t, wartend);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await speichereTermin(t);
       setFehler(null);
@@ -421,6 +436,14 @@ export function MeinKalender() {
     void ladeTermine();
   }
   async function terminLoeschen(id: string) {
+    if (istWartend({ id })) {
+      offline.entfernen(id);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await loescheTermin(id);
       setFehler(null);
@@ -681,12 +704,7 @@ export function MeinKalender() {
         </div>
       </div>
 
-      {!online ? (
-        <div role="status" className="mx-4 mb-2 sm:mx-6 lg:mx-0 flex items-center gap-2 rounded-xl bg-warn-bg/70 px-3 py-2 text-[13px] leading-snug text-warn-fg">
-          <WifiOff className="h-4 w-4 shrink-0" />
-          <span>Offline – du siehst deinen zuletzt geladenen Kalender. Alles andere braucht Netz.</span>
-        </div>
-      ) : null}
+      <OfflinePille wartend={offline.anzahl} />
       {fehler ? (
         <div className="px-4 pb-2 sm:px-6 lg:px-0">
           <Alert tone="error">{fehler}</Alert>

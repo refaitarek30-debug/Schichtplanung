@@ -20,8 +20,6 @@ const CACHE = "schichtplan-v1";
 const KALENDER_CACHE = "schichtplan-kalender-v1";
 const KALENDER_SEITEN = ["/privat", "/meine-schichten"];
 const KALENDER_MAX_ALTER_MS = 14 * 24 * 60 * 60 * 1000;
-/** Diese Aufrufe starten die App; ohne Netz zeigen sie den eigenen Kalender, falls einer gemerkt ist. */
-const KALENDER_STARTER = new Set(["/start", "/dashboard", "/privat", "/meine-schichten"]);
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
 
@@ -125,13 +123,17 @@ async function navigieren(request, url) {
     }
     return antwort;
   } catch {
-    // Kein Netz: der eigene Kalender (falls dieses Gerät einen gemerkt hat), sonst die Offline-Seite.
-    if (KALENDER_STARTER.has(pfad)) {
-      const reihenfolge = KALENDER_SEITEN.includes(pfad) ? [pfad, ...KALENDER_SEITEN] : KALENDER_SEITEN;
-      for (const kandidat of reihenfolge) {
-        const seite = await gemerkteKalenderSeite(kandidat).catch(() => null);
-        if (seite) return seite;
-      }
+    // Kein Netz: jede Seite springt zum eigenen Kalender, falls dieses Gerät einen gemerkt hat.
+    for (const kandidat of KALENDER_SEITEN) {
+      const seite = await gemerkteKalenderSeite(kandidat).catch(() => null);
+      if (!seite) continue;
+      // Genau die Kalender-Seite: gleich ausliefern. Jede andere Adresse: dorthin umleiten,
+      // damit Adresse und Inhalt zusammenpassen.
+      if (kandidat === pfad) return seite;
+      return new Response(
+        `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalender</title><script>location.replace(${JSON.stringify(kandidat)})</script>`,
+        { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
+      );
     }
     return (await caches.match(OFFLINE_URL)) || Response.error();
   }

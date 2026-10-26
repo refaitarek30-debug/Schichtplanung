@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, WifiOff, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, X } from "lucide-react";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
-import { istOffline, useOnline } from "@/lib/netz";
+import { istOffline } from "@/lib/netz";
+import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
+import { OfflinePille } from "@/components/kalender/offline-pille";
 import { Alert } from "@/components/ui/alert";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "@/components/kalender/termine";
 import {
@@ -97,6 +99,8 @@ function arten(e: TagEintrag | undefined, artNach: Map<string, Schichtart>): Sch
     .filter((a): a is Schichtart => !!a);
 }
 
+const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
+
 export function PrivatKalender() {
   const router = useRouter();
   const { konto, schichtarten, artNach, artenFehler } = usePrivat();
@@ -137,8 +141,6 @@ export function PrivatKalender() {
       // egal
     }
   }
-
-  const online = useOnline();
 
   const [tage, setTage] = useState<Record<string, TagEintrag>>({});
   const [feiertage, setFeiertage] = useState<Record<string, string>>({});
@@ -289,6 +291,14 @@ export function PrivatKalender() {
   }
 
   async function terminVerschieben(t: Termin, von: string, bis: string) {
+    if (istWartend(t)) {
+      offline.merken({ ...t, von, bis }, t);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
     try {
       await speichereTermin({ ...t, von, bis });
@@ -300,6 +310,8 @@ export function PrivatKalender() {
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
   const andere = useAndere({ benutzer: konto.userId, von: bereich.von, bis: bereich.bis, aktiv: ansicht !== "jahr" });
+  // Ohne Netz angelegte Termine: warten auf dem Gerät und gehen hoch, sobald wieder Netz da ist.
+  const offline = useOfflineTermine(konto.userId, speichereTermin, () => void ladeTermine());
   // Kommt die App nach einer Weile wieder nach vorn, die Beiwerk-Daten auffrischen: was Partner, Familie oder ein
   // zweites Gerät inzwischen eingetragen haben. Kein Dauer-Abfragen – nur beim Zurückkehren, höchstens alle 90 Sekunden.
   const auffrischen = useRef<() => void>(() => undefined);
@@ -327,12 +339,20 @@ export function PrivatKalender() {
     };
   }, []);
   const sichtbareTermine = useMemo(
-    () => [...termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
-    [termine, andere.fremdeTermine, andere.terminSichtbar],
+    () => [...termine, ...offline.termine, ...andere.fremdeTermine].filter(andere.terminSichtbar),
+    [termine, offline.termine, andere.fremdeTermine, andere.terminSichtbar],
   );
   /** Eigene Termine und Einträge bei Verbundenen darf man löschen – Termine anderer nur ansehen. */
   const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === konto.userId : !(t.vonPartner && !t.vonUser));
   async function terminWeg(t: Termin, modus: LoeschModus, datum: string) {
+    if (istWartend(t)) {
+      offline.entfernen(t.id);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await terminLoeschenModus(t, modus, datum);
       setFehler(null);
@@ -623,15 +643,10 @@ export function PrivatKalender() {
           <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} onHochladen={() => hochladeFeld.current?.click()} />
         </div>
       </header>
+      <OfflinePille wartend={offline.anzahl} />
 
-      {!online ? (
-        <div role="status" className="mx-3.5 mb-2 flex items-center gap-2 rounded-xl bg-warn-bg/70 px-3 py-2 text-[13px] leading-snug text-warn-fg sm:mx-0">
-          <WifiOff className="h-4 w-4 shrink-0" />
-          <span>Offline – du siehst den zuletzt geladenen Stand. Änderungen gehen erst mit Netz.</span>
-        </div>
-      ) : null}
 
-      {fehler || (online && artenFehler) ? (
+      {fehler || (!istOffline() && artenFehler) ? (
         <div className="mb-2 px-3.5 sm:px-0">
           <Alert tone="error">{fehler ?? artenFehler}</Alert>
         </div>
@@ -898,6 +913,15 @@ export function PrivatKalender() {
           onSpeichern={(t: TerminEingabe) => {
             const alt = terminBlatt.termin;
             setTerminBlatt(null);
+            // Ohne Netz: neue eigene Termine warten auf dem Gerät; Ändern bestehender braucht Netz.
+            if (istWartend(alt) || (istOffline() && !alt && !t.ziel)) {
+              offline.merken(t, alt);
+              return;
+            }
+            if (istOffline()) {
+              setFehler(OHNE_NETZ);
+              return;
+            }
             void terminSichernUeberall(t, alt)
               .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
               .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));

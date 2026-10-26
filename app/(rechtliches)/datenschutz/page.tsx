@@ -720,7 +720,10 @@ export default function DatenschutzPage() {
             <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
             eigenen Schichtarten, die Feiertage und die eigenen To-dos; dazu die eigenen Termine (ohne
             Termine anderer), damit der Kalender beim Öffnen sofort erscheint und danach aufgefrischt
-            wird – und damit er ohne Netz den zuletzt geladenen Stand zeigen kann. Es werden weder Daten anderer Personen noch
+            wird – und damit er ohne Netz den zuletzt geladenen Stand zeigen kann. Ohne Netz neu
+            angelegte eigene Termine liegen bis zum Hochladen unter{" "}
+            <code className={kode}>sp_offline_termine:…</code>; sie gehen hoch, sobald wieder Netz
+            da ist, und werden beim Abmelden gelöscht. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
             gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
           </li>

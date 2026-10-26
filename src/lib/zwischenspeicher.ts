@@ -46,6 +46,17 @@ export function inZwischenspeicher<T>(schluessel: string, wert: T): void {
 export function leereZwischenspeicher(): void {
   speicher.clear();
   leereGeraet();
+  // Offline angelegte, noch nicht hochgeladene Termine (offline-termine.ts).
+  try {
+    const weg: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k?.startsWith("sp_offline_termine:")) weg.push(k);
+    }
+    for (const k of weg) window.localStorage.removeItem(k);
+  } catch {
+    // ohne Speicher nichts zu löschen
+  }
   // Auch die gemerkte Offline-Seite des eigenen Kalenders (public/sw.js).
   try {
     if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
