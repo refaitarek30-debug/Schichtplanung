@@ -27,6 +27,7 @@ import {
 import type { LiveLeaveImpact, LiveLeaveRequest } from "@/lib/types";
 import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
 import { useSession } from "@/context/session";
+import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
 
@@ -58,7 +59,10 @@ export function ReviewPanel({
   /** Warum wird es knapp? Nur für die Anträge, die tatsächlich knapp sind. */
   const [details, setDetails] = useState<Record<string, LiveStaffingDetailDay[]>>({});
   const [hinweis, setHinweis] = useState<string | null>(null);
-  const { role } = useSession();
+  const { role, mode } = useSession();
+  /** Hinweis an die Person des Antrags (z. B. „bitte noch einmal stellen“). */
+  const [hinweisAn, setHinweisAn] = useState<string | null>(null);
+  const [hinweisMeldung, setHinweisMeldung] = useState<string | null>(null);
   const darfEntscheiden = role === "admin" || role === "shift_leader";
   const imJahr = (r: { startDate: string; endDate: string }) =>
     jahr === null ||
@@ -252,6 +256,20 @@ export function ReviewPanel({
         hint={requests ? `${visible.length} Anträge` : "wird geladen …"}
       />
 
+      {hinweisAn ? (
+        <HinweisSenden
+          vorauswahl={[hinweisAn]}
+          ziel="/urlaub"
+          onClose={() => setHinweisAn(null)}
+          onGesendet={() => setHinweisMeldung("Hinweis gesendet. Ob er gelesen wurde, siehst du unter Mitteilungen.")}
+        />
+      ) : null}
+      {hinweisMeldung ? (
+        <div className="px-5 pt-3">
+          <Alert tone="success">{hinweisMeldung}</Alert>
+        </div>
+      ) : null}
+
       {role === "shift_leader" ? (
         <p className="border-b border-line bg-surface-muted px-5 py-2 text-[12px] leading-snug text-ink-muted">
           Du siehst und entscheidest nur die Anträge deiner eigenen Schicht, deine eigenen
@@ -383,6 +401,21 @@ export function ReviewPanel({
                   ) : null}
                   <p className="tnum mt-1 text-[12px] text-ink-faint">
                     Antrag gestellt am {formatZeitpunkt(request.createdAt)}
+                    {mode === "live" && role !== "employee" ? (
+                      <>
+                        {" · "}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHinweisMeldung(null);
+                            setHinweisAn(request.employeeId);
+                          }}
+                          className="font-medium text-brand-600 hover:underline"
+                        >
+                          Hinweis senden
+                        </button>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <Badge tone={leaveStatusTone[request.status]}>

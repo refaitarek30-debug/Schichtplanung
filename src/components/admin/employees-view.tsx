@@ -24,6 +24,7 @@ import { InviteLinkCard } from "@/components/employees/invite-link-card";
 import type { FormState } from "@/lib/auth/form-state";
 import { CreateEmployeePanel } from "./create-employee-panel";
 import { EditEmployeePanel } from "./edit-employee-panel";
+import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -35,6 +36,9 @@ export function EmployeesView() {
   const [shiftFilter, setShiftFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** Hinweis an diese Person – Fenster zum Senden. */
+  const [hinweisAn, setHinweisAn] = useState<string | null>(null);
+  const [hinweisMeldung, setHinweisMeldung] = useState<string | null>(null);
   const [editing, setEditing] = useState<EmployeeRecord | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -179,6 +183,14 @@ export function EmployeesView() {
       />
 
       {error ? <Alert tone="error">{error}</Alert> : null}
+      {hinweisMeldung ? <Alert tone="success">{hinweisMeldung}</Alert> : null}
+      {hinweisAn ? (
+        <HinweisSenden
+          vorauswahl={[hinweisAn]}
+          onClose={() => setHinweisAn(null)}
+          onGesendet={() => setHinweisMeldung("Hinweis gesendet. Ob er gelesen wurde, siehst du unter Mitteilungen.")}
+        />
+      ) : null}
 
       {access ? (
         <InviteLinkCard
@@ -370,6 +382,18 @@ export function EmployeesView() {
                       onClick={() => setEditing(row)}
                     >
                       Bearbeiten
+                    </Button>
+                  ) : null}
+                  {(role === "admin" || role === "shift_leader") && mode === "live" && row.active ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setHinweisMeldung(null);
+                        setHinweisAn(row.id);
+                      }}
+                      title="Kurzen Hinweis schicken – erscheint beim nächsten Öffnen der App"
+                    >
+                      Hinweis
                     </Button>
                   ) : null}
                   {/* Einladen: Administration immer, Schichtleitung für

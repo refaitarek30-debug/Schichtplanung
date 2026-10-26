@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnnouncementsCard } from "@/components/settings/announcements-card";
 import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
+import { HinweiseCard } from "@/components/hinweise/hinweise-card";
 import { useSession } from "@/context/session";
 
 /**
@@ -29,11 +30,12 @@ export default function MitteilungenPage() {
       <PageHeader
         eyebrow="Führung"
         title="Mitteilungen"
-        description="Was hier steht, sieht jeder auf seinem Dashboard – Mitteilungen aus der Betriebsleitung und gesperrte Urlaubszeiträume."
+        description="Hinweise an einzelne Personen, Mitteilungen an alle und gesperrte Urlaubszeiträume."
       />
 
       {mode === "live" ? (
         <>
+          {role !== "employee" ? <HinweiseCard /> : null}
           <AnnouncementsCard canManage={role !== "employee"} />
           <LeaveBlocksCard canManage={role === "admin"} />
         </>
