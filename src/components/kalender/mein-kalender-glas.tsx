@@ -13,6 +13,7 @@ import {
   fetchMeineTermine,
   personTageSetzen,
   setzeMeinePartnerTage,
+  speichereTermin,
 } from "@/lib/data/partner";
 import {
   ladeEigeneArten,
@@ -35,6 +36,10 @@ import {
 } from "@/lib/kalender-farben";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
+import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
+import { istOffline } from "@/lib/netz";
+import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
+import { OfflinePille } from "./offline-pille";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
@@ -194,6 +199,8 @@ function beschreibung(info: TagInfo, t: (text: string) => string): string {
   return teil;
 }
 
+const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
+
 export function MeinKalenderGlas() {
   const t = useBegriffe();
   const { profile, company } = useSession();
@@ -278,6 +285,8 @@ export function MeinKalenderGlas() {
           continue;
         }
         if (nr !== ladeNr.current) return;
+        // Ohne Netz: der gemerkte Stand bleibt stehen, statt Fehler ein Hinweis (Banner).
+        if (istOffline()) return;
         setFehler(
           err instanceof DataError || err instanceof Error ? err.message : "Der Kalender konnte nicht geladen werden.",
         );
@@ -337,15 +346,22 @@ export function MeinKalenderGlas() {
   }, [schichten]);
 
   // ---- Termine (wie im bisherigen Kalender) ------------------------------
-  const [termine, setTermine] = useState<Termin[]>([]);
+  const [termineServer, setTermine] = useState<Termin[]>([]);
   const ladeTermine = useCallback(async () => {
     try {
       const neu = await fetchMeineTermine();
       setTermine((alt) => (JSON.stringify(alt) === JSON.stringify(neu) ? alt : neu));
+      // Nur die eigenen Termine auf dem Gerät merken – für den Kalender ohne Netz.
+      aufGeraet(`${profile.id}:kalender:termine`, neu.filter((t) => !t.vonPartner && !t.inhaber));
     } catch {
-      // Termine sind Beiwerk – der Kalender steht auch ohne sie.
+      // Termine sind Beiwerk – der Kalender steht auch ohne sie. Ohne Netz: der gemerkte Stand.
+      const gemerkt = ausGeraet<Termin[]>(`${profile.id}:kalender:termine`);
+      if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
-  }, []);
+  }, [profile.id]);
+  // Ohne Netz angelegte Termine: warten auf dem Gerät und gehen hoch, sobald wieder Netz da ist.
+  const offline = useOfflineTermine(profile.id, speichereTermin, () => void ladeTermine());
+  const termine = useMemo(() => [...termineServer, ...offline.termine], [termineServer, offline.termine]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void ladeTermine();
@@ -362,6 +378,14 @@ export function MeinKalenderGlas() {
     };
   }, [ladeTermine]);
   async function terminSpeichern(t: TerminEingabe, alt: Termin | null = null) {
+    if (istWartend(alt) || (istOffline() && !alt && !t.ziel)) {
+      offline.merken(t, alt);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await terminSichernUeberall(t, alt);
       setFehler(null);
@@ -371,6 +395,14 @@ export function MeinKalenderGlas() {
     void ladeTermine();
   }
   async function terminLoeschen(t: Termin, modus: LoeschModus, datum: string) {
+    if (istWartend(t)) {
+      offline.entfernen(t.id);
+      return;
+    }
+    if (istOffline()) {
+      setFehler(OHNE_NETZ);
+      return;
+    }
     try {
       await terminLoeschenModus(t, modus, datum);
       setFehler(null);
@@ -757,6 +789,7 @@ export function MeinKalenderGlas() {
         </div>
       </header>
 
+      <OfflinePille wartend={offline.anzahl} />
       {fehler ? (
         <div className="px-3.5 pb-2 sm:px-0">
           <Alert tone="error">{fehler}</Alert>

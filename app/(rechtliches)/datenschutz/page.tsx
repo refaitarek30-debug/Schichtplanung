@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="26. Oktober 2026"
+      updated="27. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -718,10 +718,24 @@ export default function DatenschutzPage() {
             <code className={kode}>sp_geraet:…</code> (lokaler Speicher, bis zu 14 Tage; wird beim
             Abmelden und auf der Anmeldeseite gelöscht) – der zuletzt geladene Stand der{" "}
             <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
-            eigenen Schichtarten und die Feiertage, damit der Kalender beim Öffnen sofort
-            erscheint und danach aufgefrischt wird. Es werden weder Daten anderer Personen noch
+            eigenen Schichtarten, die Feiertage und die eigenen To-dos; dazu die eigenen Termine (ohne
+            Termine anderer), damit der Kalender beim Öffnen sofort erscheint und danach aufgefrischt
+            wird – und damit er ohne Netz den zuletzt geladenen Stand zeigen kann. Ohne Netz neu
+            angelegte eigene Termine liegen bis zum Hochladen unter{" "}
+            <code className={kode}>sp_offline_termine:…</code>; sie gehen hoch, sobald wieder Netz
+            da ist, und werden beim Abmelden gelöscht. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
             gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
+          </li>
+          <li>
+            <code className={kode}>schichtplan-kalender-v1</code> (Zwischenspeicher des Browsers, bis
+            zu 14 Tage; wird beim Abmelden und auf der Anmeldeseite gelöscht) – nur die zuletzt
+            geöffnete Seite des eigenen Kalenders (Privatkalender bzw. „Mein Kalender“), damit er
+            auch ohne Netz startet. Andere Seiten, Schichtpläne anderer Personen, Anträge oder
+            Krankheitsgründe werden nicht so gespeichert.
+            Sie enthält denselben Stand wie <code className={kode}>sp_geraet:…</code>; sie wird
+            nicht an einen Server gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der
+            Nutzung abmelden.
           </li>
           <li>
             <code className={kode}>sp_gehalt:…</code> und <code className={kode}>sp_urlaub:…</code>{" "}
