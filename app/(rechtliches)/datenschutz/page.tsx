@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="24. Oktober 2026"
+      updated="26. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -161,6 +161,14 @@ export default function DatenschutzPage() {
             Administration beschränkt
           </li>
           <li>Benachrichtigungen in der Anwendung (z. B. zu Antragsentscheidungen)</li>
+          <li>
+            Hinweise der Schichtleitung oder Administration an einzelne Personen: Text, Absender,
+            Empfänger, gewählter Knopf, ob und ab wann eine Mitteilung aufs Handy geht, Zeitpunkt
+            des Sendens und des Lesens („Verstanden“). Absender und Leitung des Betriebs sehen, ob
+            ein Hinweis gelesen wurde; eine Antwort gibt es nicht. Zur Wahl „zur nächsten Schicht“
+            wird aus dem Schichtplan berechnet, wann die Person das nächste Mal arbeitet (Urlaub und
+            Abwesenheiten ausgenommen). Gelöscht nach 90 Tagen
+          </li>
         </Liste>
 
         <Absatz className="pt-1">
@@ -414,9 +422,11 @@ export default function DatenschutzPage() {
           bekommt als Push-Mitteilung: Erinnerungen an Termine und To-dos, die Benachrichtigungen
           der Glocke (z. B. Urlaub genehmigt oder abgelehnt, neuer Antrag für die Leitung,
           eingetragene Fehlzeit, Frage zum Einspringen), Änderungen des eigenen Plans durch die
-          Schichtleitung (Datum und neue Schicht, mehrere Tage zusammengefasst) und Hinweise, wenn
+          Schichtleitung (Datum und neue Schicht, mehrere Tage zusammengefasst), Hinweise der
+          Schichtleitung an die Person (Absender und Text; je nach Wahl der Leitung sofort oder erst
+          zu Beginn der nächsten eigenen Schicht) und Hinweise, wenn
           eingeladene oder verbundene Personen etwas eintragen, sich verbinden oder einer Gruppe
-          beitreten. Jede Art lässt sich einzeln abschalten. Bis zum Versand (meist unter einer
+          beitreten. Jede Art außer den Hinweisen der Schichtleitung lässt sich einzeln abschalten. Bis zum Versand (meist unter einer
           Minute) liegen Mitteilungen in einer Warteschlange, die nach 7 Tagen gelöscht wird. Dafür speichert die
           Anwendung je Gerät die vom Browser vergebene Zustelladresse mit den zugehörigen
           Schlüsseln und die Gerätart (z. B. „iPhone“), höchstens 10 Geräte je Person, sowie
@@ -650,7 +660,8 @@ export default function DatenschutzPage() {
             Ratenbegrenzungs-Zähler nach 1 Tag, Postausgang nach
             30 Tagen, Benachrichtigungen nach 180 Tagen, Kommentare im Schichtplan 12 Monate
             nach dem Tag, auf den sie sich beziehen, Anmeldeprotokoll und angezeigte
-            Fehlermeldungen nach 90 Tagen, Änderungsprotokoll nach 24 Monaten.
+            Fehlermeldungen nach 90 Tagen, Hinweise an einzelne Personen nach 90 Tagen,
+            Änderungsprotokoll nach 24 Monaten.
           </li>
           <li>
             Persönlicher Kalender (Abschnitt 8): eigene Termine, To-dos, Vorlieben für Vorschläge,

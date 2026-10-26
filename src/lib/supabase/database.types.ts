@@ -424,6 +424,34 @@ export interface Database {
         Args: { p_employee_id: string; p_start_date: string; p_end_date: string };
         Returns: string | null;
       };
+      /** Hinweise an einzelne Personen (Migration 0187). */
+      hinweis_senden: {
+        Args: { p_empfaenger: string[]; p_text: string; p_ziel?: string | null; p_push?: string };
+        Returns: number;
+      };
+      meine_hinweise: {
+        Args: Record<string, never>;
+        Returns: { id: string; text: string; ziel: string | null; von_name: string; erstellt_am: string }[];
+      };
+      hinweis_gelesen: { Args: { p_id: string }; Returns: null };
+      hinweis_zurueckziehen: { Args: { p_id: string }; Returns: null };
+      hinweise_gesendet: {
+        Args: { p_limit?: number };
+        Returns: {
+          id: string;
+          employee_id: string;
+          empfaenger: string;
+          text: string;
+          ziel: string | null;
+          push: string;
+          push_ab: string | null;
+          push_gesendet: boolean;
+          von_name: string;
+          erstellt_am: string;
+          gelesen_am: string | null;
+          zurueckgezogen_am: string | null;
+        }[];
+      };
       /** Urlaubssperre für einen Antrag: grund = nicht möglich, azubi = Sperre gilt nicht. */
       urlaubssperre_pruefen: {
         Args: { p_employee_id: string; p_start_date: string; p_end_date: string };

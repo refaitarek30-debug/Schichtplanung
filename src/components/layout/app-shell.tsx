@@ -6,6 +6,7 @@ import { LadeSperre } from "./lade-sperre";
 import { LiveRefresh } from "./live-refresh";
 import { NeueVersionHinweis } from "./neue-version";
 import { AbsturzMelder } from "@/components/protokoll/fehler-melder";
+import { HinweisPopup } from "@/components/hinweise/hinweis-popup";
 import { LeisteHalten } from "./leiste-halten";
 import { MobileNav } from "./mobile-nav";
 import { ShellMain } from "./shell-main";
@@ -36,6 +37,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Prüft still, ob sich etwas geändert hat – siehe live-refresh.ts. */}
       <LiveRefresh />
       <NeueVersionHinweis />
+      {/* Hinweise der Schichtleitung an diese Person – beim Öffnen als Fenster. */}
+      <HinweisPopup />
       {/* Technische Fehler im Browser ins Protokoll. */}
       <AbsturzMelder />
       {/* Blockiert Klicks, solange etwas gespeichert wird. */}
