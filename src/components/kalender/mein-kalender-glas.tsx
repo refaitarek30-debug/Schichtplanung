@@ -310,11 +310,11 @@ export function MeinKalenderGlas() {
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
   const andere = useAndere({ benutzer: profile.id, von: start, bis: ende });
   const neuLadenAndere = andere.neuLaden;
-  // Was Eingeladene eintragen, alle 20 Sekunden frisch, solange sichtbar.
+  // Was Eingeladene eintragen, jede Minute frisch, solange sichtbar.
   useEffect(() => {
     const takt = window.setInterval(() => {
       if (document.visibilityState === "visible") void neuLadenAndere();
-    }, 20_000);
+    }, 60_000);
     return () => window.clearInterval(takt);
     // Nur einmal einrichten – neuLaden bleibt aktuell genug.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -355,7 +355,7 @@ export function MeinKalenderGlas() {
     document.addEventListener("visibilitychange", sichtbar);
     const takt = window.setInterval(() => {
       if (document.visibilityState === "visible") void ladeTermine();
-    }, 20_000);
+    }, 60_000);
     return () => {
       document.removeEventListener("visibilitychange", sichtbar);
       window.clearInterval(takt);

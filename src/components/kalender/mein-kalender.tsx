@@ -286,7 +286,7 @@ export function MeinKalender() {
   }, [laden]);
 
   // Was der Partner auf seinem Handy einträgt, soll ohne Neuladen
-  // erscheinen: alle 20 Sekunden – nur solange der Kalender sichtbar ist –
+  // erscheinen: jede Minute – nur solange der Kalender sichtbar ist –
   // die Partnertage des angezeigten Monats frisch holen. Bewusst nicht den
   // ganzen Plan: der ändert sich selten und ist die teurere Abfrage.
   useEffect(() => {
@@ -307,7 +307,7 @@ export function MeinKalender() {
       } catch {
         // nächster Takt
       }
-    }, 20_000);
+    }, 60_000);
     return () => window.clearInterval(takt);
   }, [start, tageImRaster, schluessel]);
 
@@ -371,10 +371,10 @@ export function MeinKalender() {
       if (document.visibilityState === "visible") void ladeTermine();
     };
     document.addEventListener("visibilitychange", sichtbar);
-    // Termine des Partners ebenfalls alle 20 Sekunden, solange sichtbar.
+    // Termine des Partners ebenfalls jede Minute, solange sichtbar.
     const takt = window.setInterval(() => {
       if (document.visibilityState === "visible") void ladeTermine();
-    }, 20_000);
+    }, 60_000);
     return () => {
       document.removeEventListener("visibilitychange", sichtbar);
       window.clearInterval(takt);
