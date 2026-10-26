@@ -10,16 +10,18 @@
 
 const CACHE = "schichtplan-v1";
 /**
- * Der Privat-Kalender (nur diese eine Seite) darf zusätzlich offline geöffnet
- * werden: die zuletzt geladene Fassung liegt hier. Wie die Schichten auf dem
- * Gerät (geraete-speicher.ts) verfällt sie nach 14 Tagen und wird beim
- * Abmelden gelöscht (zwischenspeicher.ts schickt „leere-privat“ an diesen Worker).
+ * Der eigene Kalender darf zusätzlich offline geöffnet werden – nur er, nichts
+ * sonst: der Privat-Kalender (/privat) bzw. „Mein Kalender“ im Betrieb
+ * (/meine-schichten). Gemerkt wird die zuletzt geladene Fassung dieser einen
+ * Seite. Wie die eigenen Schichten auf dem Gerät (geraete-speicher.ts) verfällt
+ * sie nach 14 Tagen und wird beim Abmelden gelöscht (zwischenspeicher.ts
+ * schickt „leere-kalender“ an diesen Worker).
  */
-const PRIVAT_CACHE = "schichtplan-privat-v1";
-const PRIVAT_URL = "/privat";
-const PRIVAT_MAX_ALTER_MS = 14 * 24 * 60 * 60 * 1000;
-/** Diese Aufrufe starten die App; ohne Netz zeigen sie den Privat-Kalender, falls einer liegt. */
-const PRIVAT_STARTER = new Set(["/privat", "/privat/", "/start", "/start/"]);
+const KALENDER_CACHE = "schichtplan-kalender-v1";
+const KALENDER_SEITEN = ["/privat", "/meine-schichten"];
+const KALENDER_MAX_ALTER_MS = 14 * 24 * 60 * 60 * 1000;
+/** Diese Aufrufe starten die App; ohne Netz zeigen sie den eigenen Kalender, falls einer gemerkt ist. */
+const KALENDER_STARTER = new Set(["/start", "/dashboard", "/privat", "/meine-schichten"]);
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
 
@@ -36,7 +38,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== PRIVAT_CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== KALENDER_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -81,25 +83,28 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-/** Die gemerkte Privat-Seite, wenn sie noch jung genug ist. */
-async function gemerktePrivatSeite() {
-  const cache = await caches.open(PRIVAT_CACHE);
-  const hit = await cache.match(PRIVAT_URL);
+const ohneSchraegstrich = (pfad) => (pfad.length > 1 && pfad.endsWith("/") ? pfad.slice(0, -1) : pfad);
+
+/** Eine gemerkte Kalender-Seite, wenn sie noch jung genug ist. */
+async function gemerkteKalenderSeite(pfad) {
+  const cache = await caches.open(KALENDER_CACHE);
+  const hit = await cache.match(pfad);
   if (!hit) return null;
   const gemerkt = Number(hit.headers.get("x-gemerkt-am") || 0);
-  if (!gemerkt || Date.now() - gemerkt > PRIVAT_MAX_ALTER_MS) {
-    await cache.delete(PRIVAT_URL);
+  if (!gemerkt || Date.now() - gemerkt > KALENDER_MAX_ALTER_MS) {
+    await cache.delete(pfad);
     return null;
   }
   return hit;
 }
 
 async function navigieren(request, url) {
+  const pfad = ohneSchraegstrich(url.pathname);
   try {
     const antwort = await fetch(request);
-    // Nur den Privat-Kalender selbst merken: eine echte Seite (kein Umleiten, kein Fehler).
+    // Nur den eigenen Kalender merken: eine echte Seite (kein Umleiten, kein Fehler).
     if (
-      (url.pathname === "/privat" || url.pathname === "/privat/") &&
+      KALENDER_SEITEN.includes(pfad) &&
       antwort.ok &&
       !antwort.redirected &&
       (antwort.headers.get("content-type") || "").includes("text/html")
@@ -110,25 +115,32 @@ async function navigieren(request, url) {
         .then((blob) => {
           const kopf = new Headers(kopie.headers);
           kopf.set("x-gemerkt-am", String(Date.now()));
-          return caches.open(PRIVAT_CACHE).then((cache) => cache.put(PRIVAT_URL, new Response(blob, { status: 200, headers: kopf })));
+          return caches.open(KALENDER_CACHE).then(async (cache) => {
+            // Immer nur eine Kalender-Seite liegen lassen – die zuletzt geöffnete.
+            for (const anderer of KALENDER_SEITEN) if (anderer !== pfad) await cache.delete(anderer);
+            await cache.put(pfad, new Response(blob, { status: 200, headers: kopf }));
+          });
         })
         .catch(() => undefined);
     }
     return antwort;
   } catch {
-    // Kein Netz: Privat-Kalender (falls dieses Gerät einen gemerkt hat), sonst die Offline-Seite.
-    if (PRIVAT_STARTER.has(url.pathname)) {
-      const seite = await gemerktePrivatSeite().catch(() => null);
-      if (seite) return seite;
+    // Kein Netz: der eigene Kalender (falls dieses Gerät einen gemerkt hat), sonst die Offline-Seite.
+    if (KALENDER_STARTER.has(pfad)) {
+      const reihenfolge = KALENDER_SEITEN.includes(pfad) ? [pfad, ...KALENDER_SEITEN] : KALENDER_SEITEN;
+      for (const kandidat of reihenfolge) {
+        const seite = await gemerkteKalenderSeite(kandidat).catch(() => null);
+        if (seite) return seite;
+      }
     }
     return (await caches.match(OFFLINE_URL)) || Response.error();
   }
 }
 
-// Beim Abmelden: gemerkte Privat-Seite löschen.
+// Beim Abmelden: gemerkte Kalender-Seite löschen.
 self.addEventListener("message", (event) => {
-  if (event.data === "leere-privat") {
-    event.waitUntil(caches.delete(PRIVAT_CACHE));
+  if (event.data === "leere-kalender") {
+    event.waitUntil(caches.delete(KALENDER_CACHE));
   }
 });
 

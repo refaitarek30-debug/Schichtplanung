@@ -718,16 +718,18 @@ export default function DatenschutzPage() {
             <code className={kode}>sp_geraet:…</code> (lokaler Speicher, bis zu 14 Tage; wird beim
             Abmelden und auf der Anmeldeseite gelöscht) – der zuletzt geladene Stand der{" "}
             <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
-            eigenen Schichtarten, die Feiertage, die eigenen Termine und To-dos, damit der Kalender beim
-            Öffnen sofort erscheint und danach aufgefrischt wird – und damit er ohne Netz den
-            zuletzt geladenen Stand zeigen kann. Es werden weder Daten anderer Personen noch
+            eigenen Schichtarten, die Feiertage und die eigenen To-dos; dazu die eigenen Termine (ohne
+            Termine anderer), damit der Kalender beim Öffnen sofort erscheint und danach aufgefrischt
+            wird – und damit er ohne Netz den zuletzt geladenen Stand zeigen kann. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
             gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der Nutzung abmelden.
           </li>
           <li>
-            <code className={kode}>schichtplan-privat-v1</code> (Zwischenspeicher des Browsers, bis zu
-            14 Tage; wird beim Abmelden und auf der Anmeldeseite gelöscht) – nur bei Privatkonten
-            die zuletzt geöffnete Seite des eigenen Kalenders, damit er auch ohne Netz startet.
+            <code className={kode}>schichtplan-kalender-v1</code> (Zwischenspeicher des Browsers, bis
+            zu 14 Tage; wird beim Abmelden und auf der Anmeldeseite gelöscht) – nur die zuletzt
+            geöffnete Seite des eigenen Kalenders (Privatkalender bzw. „Mein Kalender“), damit er
+            auch ohne Netz startet. Andere Seiten, Schichtpläne anderer Personen, Anträge oder
+            Krankheitsgründe werden nicht so gespeichert.
             Sie enthält denselben Stand wie <code className={kode}>sp_geraet:…</code>; sie wird
             nicht an einen Server gesendet. Wer ein Gerät mit anderen teilt, sollte sich nach der
             Nutzung abmelden.

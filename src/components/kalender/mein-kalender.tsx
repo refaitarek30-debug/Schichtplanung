@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, UserPlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, UserPlus, WifiOff } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
 import { fetchHolidays } from "@/lib/data/holidays";
@@ -11,6 +11,8 @@ import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/l
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
+import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
+import { istOffline, useOnline } from "@/lib/netz";
 import type { LiveShiftPlanCell } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -196,6 +198,7 @@ export function MeinKalender() {
     () => ausZwischenspeicher<Stand>(schluessel(start, tageImRaster)) ?? null,
   );
   const [fehler, setFehler] = useState<string | null>(null);
+  const online = useOnline();
   const [schichten, setSchichten] = useState<ShiftDetail[]>([]);
   const ladeNr = useRef(0);
 
@@ -251,6 +254,8 @@ export function MeinKalender() {
           continue;
         }
         if (nr !== ladeNr.current) return;
+        // Ohne Netz: der gemerkte Stand bleibt stehen, statt Fehler ein Hinweis (Banner).
+        if (istOffline()) return;
         setFehler(
           err instanceof DataError || err instanceof Error
             ? err.message
@@ -359,10 +364,14 @@ export function MeinKalender() {
       const neu = await fetchMeineTermine();
       // Nur bei Änderung neu zeichnen – der 20-Sekunden-Takt bringt meist nichts Neues.
       setTermine((alt) => (JSON.stringify(alt) === JSON.stringify(neu) ? alt : neu));
+      // Nur die eigenen Termine auf dem Gerät merken – für den Kalender ohne Netz.
+      aufGeraet(`${profile.id}:kalender:termine`, neu.filter((t) => !t.vonPartner && !t.inhaber));
     } catch {
-      // Termine sind Beiwerk – der Kalender steht auch ohne sie.
+      // Termine sind Beiwerk – der Kalender steht auch ohne sie. Ohne Netz: der gemerkte Stand.
+      const gemerkt = ausGeraet<Termin[]>(`${profile.id}:kalender:termine`);
+      if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
-  }, []);
+  }, [profile.id]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void ladeTermine();
@@ -672,6 +681,12 @@ export function MeinKalender() {
         </div>
       </div>
 
+      {!online ? (
+        <div role="status" className="mx-4 mb-2 sm:mx-6 lg:mx-0 flex items-center gap-2 rounded-xl bg-warn-bg/70 px-3 py-2 text-[13px] leading-snug text-warn-fg">
+          <WifiOff className="h-4 w-4 shrink-0" />
+          <span>Offline – du siehst deinen zuletzt geladenen Kalender. Alles andere braucht Netz.</span>
+        </div>
+      ) : null}
       {fehler ? (
         <div className="px-4 pb-2 sm:px-6 lg:px-0">
           <Alert tone="error">{fehler}</Alert>
