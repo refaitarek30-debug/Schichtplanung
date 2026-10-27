@@ -1,7 +1,6 @@
 "use client";
 
 import { Alert } from "@/components/ui/alert";
-import { MeinKalender } from "@/components/kalender/mein-kalender";
 import { MeinKalenderGlas } from "@/components/kalender/mein-kalender-glas";
 import { useSession } from "@/context/session";
 
@@ -13,7 +12,7 @@ import { useSession } from "@/context/session";
  * Teamübersicht (Schichtgruppen mit Konten) liegt für Schichtleitung und
  * Administration jetzt unter Verwaltung → Schichtgruppen.
  */
-export function MeinKalenderSeite({ neu }: { neu: boolean }) {
+export function MeinKalenderSeite() {
   const { mode } = useSession();
 
   if (mode !== "live") {
@@ -23,7 +22,5 @@ export function MeinKalenderSeite({ neu }: { neu: boolean }) {
       </Alert>
     );
   }
-  // Neuer Kalender (Glas, eigene Farben und Einträge) – erst für
-  // freigeschaltete Personen, alle anderen sehen den bisherigen.
-  return neu ? <MeinKalenderGlas /> : <MeinKalender />;
+  return <MeinKalenderGlas />;
 }

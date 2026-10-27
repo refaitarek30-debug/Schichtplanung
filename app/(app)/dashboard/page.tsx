@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   CalendarCheck,
   CalendarClock,
@@ -78,9 +78,22 @@ function greeting(): string {
   return "Guten Abend";
 }
 
+const keinAbo = () => () => {};
+
+/**
+ * Die Tageszeit gibt es nur im Browser: Der Server rechnet in UTC, das Gerät in
+ * der eigenen Zeit – sonst passen Server- und Browser-Text zu bestimmten
+ * Stunden nicht zusammen (React-Fehler 418). Bis der Browser übernimmt, steht
+ * ein neutrales „Hallo“.
+ */
+function useGruss(): string {
+  return useSyncExternalStore(keinAbo, greeting, () => "Hallo");
+}
+
 export default function DashboardPage() {
   const t = useBegriffe();
   const za = useZeitausgleich();
+  const gruss = useGruss();
   const { mode, role, profile, user, company } = useSession();
 
   // Welche Kacheln diese Person ausgeblendet hat. Startwert kommt aus dem
@@ -313,7 +326,7 @@ export default function DashboardPage() {
       <header className="dash-kopf relative flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
-            {greeting()}, {profile.firstName} 👋
+            {gruss}, {profile.firstName} 👋
           </h1>
         </div>
         {mode === "live" && !glas ? (

@@ -9,7 +9,6 @@ import { getAppSession } from "@/lib/auth/session";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
-import { hatFunktionServer } from "@/lib/server/funktion";
 import { GlasProfil, GlasTitelAnpassung } from "@/components/layout/glas-profil";
 
 /**
@@ -40,24 +39,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login?fehler=deaktiviert");
   }
 
-  const [privacyOnboardingRequired, glasLeiste] = await Promise.all([
-    isPrivacyOnboardingRequired(session.profile.id),
-    // Schwebende Glas-Leiste unten – erst für freigeschaltete Personen.
-    hatFunktionServer("kalender_neu"),
-  ]);
+  const privacyOnboardingRequired = await isPrivacyOnboardingRequired(session.profile.id);
 
   return (
     <SessionProvider mode="live" profile={session.profile} company={session.company}>
       {/* Die Abmeldefrist laeuft auch waehrend der Datenschutzabfrage. Sonst
           bliebe ein unbeaufsichtigtes Geraet mit offener Sitzung stehen,
           nur weil die Abfrage noch nicht beantwortet ist. */}
-      {glasLeiste ? (
-        <>
-          <span hidden data-glas-leiste />
-          <GlasProfil />
-          <GlasTitelAnpassung />
-        </>
-      ) : null}
+      {/* Schwebende Glas-Leiste unten und Profil-Knopf – für alle. */}
+      <span hidden data-glas-leiste />
+      <GlasProfil />
+      <GlasTitelAnpassung />
       <IdleLogout fristMs={fristFuer(session.profile.role, session.profile.id)} />
       <StartWeiterleitung startSeite={session.profile.startSeite ?? null} />
       {privacyOnboardingRequired ? (

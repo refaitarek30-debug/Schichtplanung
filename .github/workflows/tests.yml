@@ -1,0 +1,46 @@
+# Automatische Prüfung bei jeder Änderung: Typen, Lint, Bauen und Oberflächen-Tests
+# (die App im Browser gegen eine nachgeahmte Datenbank, siehe tests/e2e/run.mjs).
+# Braucht keine Geheimnisse und berührt die echte Datenbank nicht.
+name: Tests
+
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruefen:
+    # Feste Version: Playwright kennt neuere Ubuntu-Fassungen oft noch nicht.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:5459
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: anon
+      NEXT_PUBLIC_SITE_URL: http://localhost:3125
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Pakete installieren
+        run: npm ci
+      - name: Typen prüfen
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Bauen
+        run: npm run build
+      - name: Browser installieren
+        run: npx playwright install --with-deps chromium
+      - name: Oberflächen-Tests
+        run: npm run test:e2e

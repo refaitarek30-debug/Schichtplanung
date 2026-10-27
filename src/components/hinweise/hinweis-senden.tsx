@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { BellRing, Check, Clock, Send, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   HINWEIS_VORLAGEN,
   HINWEIS_ZIELE,
   HinweisFehler,
+  fetchHinweisStandard,
   hinweisSenden,
   type HinweisPush,
 } from "@/lib/data/hinweise";
@@ -18,20 +19,20 @@ import { cn } from "@/lib/utils";
 
 const MAX = 300;
 
-const PUSH_WAHL: { wert: HinweisPush; titel: string; text: string }[] = [
+export const PUSH_WAHL: { wert: HinweisPush; titel: string; text: string }[] = [
   {
     wert: "schicht",
-    titel: "Zur nächsten Schicht",
-    text: "Aufs Handy erst, wenn die Person arbeitet – nicht in der Freizeit.",
+    titel: "Zur Arbeitszeit",
+    text: "Erst ab der nächsten Schicht – in der App und aufs Handy. Nicht in der Freizeit.",
   },
-  { wert: "sofort", titel: "Sofort", text: "Gleich aufs Handy, auch außerhalb der Arbeitszeit." },
-  { wert: "aus", titel: "Nur in der App", text: "Keine Mitteilung aufs Handy." },
+  { wert: "sofort", titel: "Sofort", text: "Gleich in der App und aufs Handy, auch in der Freizeit." },
+  { wert: "aus", titel: "Nur in der App", text: "Beim nächsten Öffnen der App, keine Mitteilung aufs Handy." },
 ];
 
 /**
  * Hinweis an eine oder mehrere Personen. Erscheint beim nächsten Öffnen der
  * App als Fenster; auf Wunsch zusätzlich als Mitteilung aufs Handy –
- * standardmäßig erst zur nächsten Schicht der Person.
+ * standardmäßig (Vorgabe des Betriebs) erst zur nächsten Schicht der Person.
  */
 export function HinweisSenden({
   vorauswahl = [],
@@ -54,6 +55,7 @@ export function HinweisSenden({
   const [text, setText] = useState(vorlage ?? "");
   const [ziel, setZiel] = useState<string>(zielStart);
   const [push, setPush] = useState<HinweisPush>("schicht");
+  const pushGewaehlt = useRef(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [sendet, starte] = useTransition();
 
@@ -62,6 +64,17 @@ export function HinweisSenden({
     fetchEmployees()
       .then((liste) => !ab && setPersonen(liste.filter((p) => p.active)))
       .catch(() => !ab && setLadeFehler("Die Personen konnten nicht geladen werden."));
+    return () => {
+      ab = true;
+    };
+  }, []);
+
+  // Vorgabe des Betriebs (Regeln) – nur solange noch nichts angetippt wurde.
+  useEffect(() => {
+    let ab = false;
+    void fetchHinweisStandard().then((w) => {
+      if (!ab && !pushGewaehlt.current) setPush(w);
+    });
     return () => {
       ab = true;
     };
@@ -123,7 +136,7 @@ export function HinweisSenden({
           <div className="min-w-0">
             <h2 className="text-[17px] font-semibold">Hinweis senden</h2>
             <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">
-              Erscheint beim nächsten Öffnen der App. Eine Antwort ist nicht nötig.
+              Erscheint als Fenster in der App – wann, stellst du unten ein. Eine Antwort ist nicht nötig.
             </p>
           </div>
           <button
@@ -272,15 +285,18 @@ export function HinweisSenden({
 
           {/* Push */}
           <section>
-            <p className="mb-1.5 text-[13px] font-medium text-ink-muted">Mitteilung aufs Handy</p>
-            <div className="space-y-1.5" role="radiogroup" aria-label="Mitteilung aufs Handy">
+            <p className="mb-1.5 text-[13px] font-medium text-ink-muted">Wann ankommen?</p>
+            <div className="space-y-1.5" role="radiogroup" aria-label="Wann ankommen?">
               {PUSH_WAHL.map((w) => (
                 <button
                   key={w.wert}
                   type="button"
                   role="radio"
                   aria-checked={push === w.wert}
-                  onClick={() => setPush(w.wert)}
+                  onClick={() => {
+                    pushGewaehlt.current = true;
+                    setPush(w.wert);
+                  }}
                   className={cn(
                     "flex w-full items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left",
                     push === w.wert ? "border-brand-500 bg-brand-500/[0.06]" : "border-line",
@@ -309,8 +325,8 @@ export function HinweisSenden({
               ))}
             </div>
             <p className="mt-1.5 text-[12px] leading-snug text-ink-faint">
-              Nur bei Personen, die Mitteilungen auf dem Handy eingeschaltet haben. In der App erscheint der Hinweis immer
-              beim nächsten Öffnen.
+              Aufs Handy nur bei Personen, die Mitteilungen eingeschaltet haben. Ohne Schichtplan gilt Mo–Fr 8–16 Uhr als
+              Arbeitszeit.
             </p>
           </section>
 

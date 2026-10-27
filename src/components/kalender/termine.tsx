@@ -27,7 +27,7 @@ export type { Erinnerung, Termin, TerminEingabe, Wiederholung };
 
 /**
  * Termine lagen anfangs nur im Browser. Was dort noch steht, wird einmal in
- * die Datenbank übernommen und danach gelöscht (siehe MeinKalender).
+ * die Datenbank übernommen und danach gelöscht (siehe MeinKalenderGlas).
  */
 export function alteLokaleTermine(benutzer: string): TerminEingabe[] | null {
   try {

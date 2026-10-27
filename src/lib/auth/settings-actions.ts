@@ -88,3 +88,16 @@ export async function setGruendeFuerKollegen(value: boolean): Promise<FormState>
       : "Abwesenheitsgründe sehen jetzt nur noch Schichtleitung und Administration.",
   };
 }
+
+/** Vorgabe im Senden-Fenster für Hinweise (nur Admin). */
+export async function setHinweisStandard(wert: "schicht" | "sofort" | "aus"): Promise<FormState> {
+  if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_hinweis_standard", { p_wert: wert });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Einstellung konnte nicht gespeichert werden." };
+  }
+  revalidatePath("/verwaltung");
+  return { success: "Gespeichert." };
+}
