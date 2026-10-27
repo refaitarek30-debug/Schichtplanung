@@ -18,7 +18,8 @@ concurrency:
 
 jobs:
   pruefen:
-    runs-on: ubuntu-latest
+    # Feste Version: Playwright kennt neuere Ubuntu-Fassungen oft noch nicht.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:5459
