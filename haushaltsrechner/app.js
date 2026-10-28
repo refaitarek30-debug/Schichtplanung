@@ -310,9 +310,16 @@ function copyPrevious() {
   persist(); render();
 }
 
-function exportData() {
-  const blob = new Blob([JSON.stringify(state.data, null, 2)], { type: 'application/json' });
-  const a = h('a', { href: URL.createObjectURL(blob), download: `haushalt-${new Date().toISOString().slice(0, 10)}.json` });
+async function exportData() {
+  const name = `haushalt-${new Date().toISOString().slice(0, 10)}.json`;
+  const json = JSON.stringify(state.data, null, 2);
+  const file = new File([json], name, { type: 'application/json' });
+  // Am Handy: Teilen-Menü (Dateien, AirDrop, Mail …); sonst normaler Download
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Haushaltsrechner Backup' }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = h('a', { href: URL.createObjectURL(file), download: name });
   document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
