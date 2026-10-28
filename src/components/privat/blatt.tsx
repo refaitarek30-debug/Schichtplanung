@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { halteSeiteFest } from "@/lib/seite-fest";
 
 export type WischModus = boolean | "kopf";
 
@@ -98,27 +99,10 @@ export function useWischZu(blatt: React.RefObject<HTMLElement | null>, modus: Wi
 
 /**
  * Solange ein Blatt offen ist, bleibt die Seite dahinter stehen – auch wenn
- * man im Blatt oder auf dem abgedunkelten Rand wischt. Mehrere Blätter
- * übereinander zählen mit; zurück kommt der Stand von vorher.
+ * man im Blatt oder auf dem abgedunkelten Rand wischt (siehe seite-fest.ts).
  */
-let offeneBlaetter = 0;
-let vorher: { html: string; body: string } | null = null;
 function useSeiteFest() {
-  useEffect(() => {
-    const html = document.documentElement;
-    if (offeneBlaetter++ === 0) {
-      vorher = { html: html.style.overflow, body: document.body.style.overflow };
-      html.style.overflow = "hidden";
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      if (--offeneBlaetter === 0 && vorher) {
-        html.style.overflow = vorher.html;
-        document.body.style.overflow = vorher.body;
-        vorher = null;
-      }
-    };
-  }, []);
+  useEffect(() => halteSeiteFest(), []);
 }
 
 /**

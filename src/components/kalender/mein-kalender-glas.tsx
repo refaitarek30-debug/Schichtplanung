@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { meldeBereichBereit } from "@/lib/bereich";
+import { halteSeiteFest } from "@/lib/seite-fest";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -640,14 +641,7 @@ export function MeinKalenderGlas() {
   // Auf dem Handy steht der Kalender fest – die Seite dahinter scrollt nicht.
   useEffect(() => {
     if (!window.matchMedia("(max-width: 1023px)").matches) return;
-    const html = document.documentElement;
-    const vorher = { html: html.style.overflow, body: document.body.style.overflow };
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = vorher.html;
-      document.body.style.overflow = vorher.body;
-    };
+    return halteSeiteFest();
   }, []);
 
   // ---- Blättern und Wischen ----------------------------------------------
