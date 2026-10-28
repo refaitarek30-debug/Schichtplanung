@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Lightbulb } from "lucide-react";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -8,12 +8,80 @@ import { hatNeues, istNeu, neuigkeitDatum, neuigkeitenFuer, type Neuigkeit } fro
 import { cn } from "@/lib/utils";
 
 /**
- * Glühbirne neben dem Profil: leuchtet gelb, wenn es seit dem letzten Öffnen
- * etwas Neues gibt. Ein Tipp öffnet die Liste – danach ist sie „gesehen“ und
- * leuchtet nicht mehr, bleibt aber zum Nachlesen da.
+ * Glühbirne – nur auf der Startseite: leuchtet gelb, wenn es seit dem letzten
+ * Öffnen etwas Neues gibt. Ein Tipp öffnet die Liste – danach ist sie
+ * „gesehen“ und leuchtet nicht mehr, bleibt aber zum Nachlesen da.
+ *
+ * „Gesehen“ steht im Konto und zusätzlich auf dem Gerät. Es gilt der spätere
+ * der beiden Zeitpunkte – so leuchtet sie auch dann nicht wieder auf, wenn
+ * die App einen älteren Stand der Seite zeigt.
  *
  * `rund` für die Glas-Kopfzeilen (Handy), sonst als Knopf in der Kopfleiste.
  */
+
+const LOKAL_EREIGNIS = "neuigkeiten-gesehen";
+const lokalSchluessel = (wer: string) => `sp_neuigkeiten_gesehen:${wer}`;
+
+/** Auf dem Gerät gemerkt; `undefined` solange die Seite noch vom Server kommt. */
+function useLokalGesehen(wer: string): string | null | undefined {
+  return useSyncExternalStore(
+    (rueckruf) => {
+      window.addEventListener("storage", rueckruf);
+      window.addEventListener(LOKAL_EREIGNIS, rueckruf);
+      return () => {
+        window.removeEventListener("storage", rueckruf);
+        window.removeEventListener(LOKAL_EREIGNIS, rueckruf);
+      };
+    },
+    () => {
+      try {
+        return window.localStorage.getItem(lokalSchluessel(wer));
+      } catch {
+        return null;
+      }
+    },
+    () => undefined,
+  );
+}
+
+function merkeLokal(wer: string, zeit: string) {
+  try {
+    window.localStorage.setItem(lokalSchluessel(wer), zeit);
+  } catch {
+    // ohne Speicher: dann zählt nur das Konto
+  }
+  window.dispatchEvent(new Event(LOKAL_EREIGNIS));
+}
+
+/** Der spätere von zwei Zeitpunkten (leer = nie). */
+function spaeter(a: string | null, b: string | null): string | null {
+  if (!a) return b;
+  if (!b) return a;
+  return Date.parse(a) >= Date.parse(b) ? a : b;
+}
+
+/**
+ * Zustand der Glühbirne für eine Person bzw. einen Bereich. Bis die Seite im
+ * Browser läuft, leuchtet nichts – sonst blitzte sie kurz auf.
+ */
+export function useNeuigkeitenStand(
+  wer: string,
+  rolle: Parameters<typeof hatNeues>[0],
+  gesehenKonto: string | null,
+  imKontoMerken: () => void,
+) {
+  const lokal = useLokalGesehen(wer);
+  const gesehen = spaeter(gesehenKonto, lokal ?? null);
+  return {
+    eintraege: neuigkeitenFuer(rolle),
+    neu: lokal !== undefined && hatNeues(rolle, gesehen),
+    gesehen,
+    onGelesen: () => {
+      merkeLokal(wer, new Date().toISOString());
+      imKontoMerken();
+    },
+  };
+}
 interface KnopfProps {
   rund?: boolean;
   /** Nur zeigen, solange es Neues gibt – für volle Kopfzeilen (Kalender). */
@@ -22,16 +90,9 @@ interface KnopfProps {
 }
 
 export function NeuigkeitenKnopf(props: KnopfProps) {
-  const { role, neuigkeitenGesehen, neuigkeitenGelesen } = useSession();
-  return (
-    <NeuigkeitenBasis
-      {...props}
-      eintraege={neuigkeitenFuer(role)}
-      neu={hatNeues(role, neuigkeitenGesehen)}
-      gesehen={neuigkeitenGesehen}
-      onGelesen={neuigkeitenGelesen}
-    />
-  );
+  const { role, profile, neuigkeitenGesehen, neuigkeitenGelesen } = useSession();
+  const stand = useNeuigkeitenStand(profile.id, role, neuigkeitenGesehen, neuigkeitenGelesen);
+  return <NeuigkeitenBasis {...props} {...stand} />;
 }
 
 /** Dieselbe Glühbirne im Privatbereich – mit dessen eigenen Einträgen und eigenem „gelesen“. */

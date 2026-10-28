@@ -35,6 +35,17 @@ export default async function startseite() {
     const nachher = await seite.locator("[data-neuigkeiten]").evaluateAll((l) => l.map((e) => `${e.getAttribute("data-neuigkeiten")}:${e.getBoundingClientRect().width}`));
     pruefe(nachher.every((x) => x.startsWith(":")), `Glühbirne leuchtet danach nicht mehr (${nachher.join(", ")})`);
 
+    // Bleibt aus – auch nach dem Neuladen (Konto und Gerät merken es sich).
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Glühbirne leuchtet nach dem Neuladen nicht wieder");
+    // Nur auf der Startseite.
+    await seite.goto(`${APP}/urlaub`, { waitUntil: "networkidle" });
+    await warte(800);
+    pruefe((await seite.locator("[data-neuigkeiten]").count()) === 0, "Glühbirne nicht auf anderen Seiten");
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1000);
+
     // Profil-Fenster: Abmelden oben, Umschalter Startseite.
     await seite.locator("[data-glas-profil]").first().click();
     await warte(500);

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { Building2, ChevronRight, FileUp, KeyRound, LogOut, Repeat, Trash2, Palmtree, CalendarHeart } from "lucide-react";
 import { wechsleBereich } from "@/lib/bereich";
-import { PrivatNeuigkeiten } from "./neuigkeiten";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
 import { createClient } from "@/lib/supabase/client";
@@ -53,7 +52,7 @@ export function PrivatMehr() {
 
   return (
     <div className="space-y-4">
-      <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" rechts={<PrivatNeuigkeiten />} />
+      <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" />
 
       {/* Ein Login, zwei Bereiche (Migration 0194). */}
       <PrivatKarte titel="Betrieb">

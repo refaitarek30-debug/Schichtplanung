@@ -31,6 +31,9 @@ export default async function bereiche() {
     pruefe(await seite.getByText("Einem Betrieb beitreten").first().isVisible(), "Privat: eigene Neuigkeiten in der Liste");
     await seite.keyboard.press("Escape");
     await warte(400);
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1500);
+    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Privat: Glühbirne leuchtet nach dem Antippen nicht wieder");
 
     // Tag antippen: die Betriebsschicht steht da, nur zum Ansehen.
     await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).first().click();

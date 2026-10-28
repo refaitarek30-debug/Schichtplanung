@@ -641,8 +641,8 @@ export function PrivatKalender() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
-          {/* Volle Zeile: die Glühbirne nur, solange es Neues gibt. */}
-          <PrivatNeuigkeiten nurWennNeu />
+          {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
+          <PrivatNeuigkeiten />
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
           <span className="hidden gap-2 sm:flex">
