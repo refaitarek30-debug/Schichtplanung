@@ -3,7 +3,8 @@
 import { PushAnstoss } from "./erinnerungen";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, Cog, LayoutGrid, LogOut, UserRound } from "lucide-react";
+import { Bell, ChevronRight, Cog, Home, LayoutGrid, LogOut, UserRound } from "lucide-react";
+import { usePrivatWechsel } from "@/components/layout/bereich";
 import { KachelListe } from "@/components/dashboard/tile-settings";
 import { useKachelAuswahl } from "@/lib/kachel-auswahl";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
@@ -79,7 +80,8 @@ export function ProfilBlatt({
   setItems: React.Dispatch<React.SetStateAction<LiveNotification[] | null>>;
   onClose: () => void;
 }) {
-  const { role, profile, echteRolle, ansicht, setAnsicht } = useSession();
+  const { role, profile, company, echteRolle, ansicht, setAnsicht } = useSession();
+  const privat = usePrivatWechsel(profile.hatPrivat === true);
   const ansichten = ROLLEN.filter((r) => ROLLEN.indexOf(r) < ROLLEN.indexOf(echteRolle));
   const ungelesen = (items ?? []).filter((n) => !n.readAt).length;
   const kacheln = useKachelAuswahl();
@@ -129,6 +131,26 @@ export function ProfilBlatt({
           </button>
         </form>
       </div>
+
+      {/* Ein Login, zwei Bereiche: hier geht es in den eigenen Privatbereich. */}
+      {!company.isDemo ? (
+        <button
+          type="button"
+          data-zum-privat
+          onClick={privat.wechseln}
+          className="mb-2 flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.05] px-4 py-3 text-left active:bg-ink/[0.09]"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-ok-bg text-ok-fg">
+            <Home className="h-5 w-5" strokeWidth={1.9} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15.5px] font-semibold">Zum Privatbereich wechseln</span>
+            <span className="block text-[13px] text-ink-muted">Nur dein eigener Kalender</span>
+          </span>
+          <ChevronRight className="h-5 w-5 text-ink-faint" />
+        </button>
+      ) : null}
+      {privat.fenster}
 
       <div className="grid grid-cols-2 gap-2">
         <Link href="/profil" onClick={onClose} className={zeile}>

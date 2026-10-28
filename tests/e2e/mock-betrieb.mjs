@@ -100,7 +100,8 @@ http.createServer((req, res) => {
       { id: "s3", name: "Nachtschicht", short_name: "N", start_time: "22:00:00", end_time: "06:00:00", target_staff: 4, minimum_staff: 2, weekdays: [1,2,3,4,5,6,7], color: null, active: true }]);
     if (p === "/rest/v1/privat_konten") {
       if (m === "PATCH") { Object.assign(db.konto, body); return send(204); }
-      return liste(filter(q, [db.konto]));
+      // Privatbereich erst nach „Privatbereich einrichten“ (Migration 0194).
+      return liste(db.privatAn ? filter(q, [db.konto]) : []);
     }
     if (p === "/rest/v1/privat_schichtarten") {
       if (m === "GET") return liste([...db.arten].sort((a, b) => a.reihenfolge - b.reihenfolge));
@@ -188,6 +189,18 @@ http.createServer((req, res) => {
       if (f === "hinweis_zurueckziehen") { const h = HINWEISE.find((x) => x.id === body.p_id); if (h) h.zurueckgezogen_am = new Date().toISOString(); return send(204); }
       if (f === "_letzter") return send(200, db.letzterHinweis ?? null);
       if (f === "hat_funktion") return send(200, true);
+      // ---- Ein Konto, zwei Bereiche (0194) ----
+      if (f === "privatbereich_einrichten") { db.privatAn = true; db.konto.neuigkeiten_gesehen = null; return send(204); }
+      if (f === "meine_betriebsschichten") {
+        if (!PROFIL.active) return send(200, []);
+        const aus = []; const folge = [["Frühschicht", "F"], ["Frühschicht", "F"], ["Spätschicht", "S"], ["Spätschicht", "S"], null, null];
+        for (let t = body.p_von, i = 0; t <= body.p_bis; t = add(t, 1), i++) { const s2 = folge[i % 6]; if (s2) aus.push({ tag: t, name: s2[0], kuerzel: s2[1] }); }
+        return send(200, aus);
+      }
+      if (f === "austritt_stand") return send(200, [{ ausgetreten: !PROFIL.active, firma: "Testbetrieb", hat_privat: !!db.privatAn, erledigt: !!PROFIL.austritt_uebernommen_am }]);
+      if (f === "privat_weitermachen") { if (PROFIL.active) return send(400, { code: "P0001", message: "Das geht nur, wenn dein Zugang zum Betrieb beendet ist." }); db.privatAn = true; PROFIL.austritt_uebernommen_am = new Date().toISOString(); return send(204); }
+      if (f === "privat_neuigkeiten_gelesen") { db.konto.neuigkeiten_gesehen = new Date().toISOString(); return send(204); }
+      if (f === "_austritt") { PROFIL.active = false; return send(204); }
       if (f === "meine_stammdaten_setzen") { PROFIL.employees.personnel_number = body.p_personalnummer; PROFIL.employees.department = body.p_abteilung; db.stammdaten = body; return send(204); }
       if (f === "geburtsdaten_offen") return send(200, db.geburtOffen ?? (db.geburtOffen = [{ employee_id: "e1", name: "Anna Becker", birth_date: "1969-03-14", geaendert_am: new Date().toISOString() }]));
       if (f === "geburtsdatum_bestaetigen") { db.geburtOffen = (db.geburtOffen ?? []).filter((z) => z.employee_id !== body.p_employee_id); return send(204); }

@@ -223,6 +223,8 @@ export async function createEmployee(_prev: FormState, formData: FormData): Prom
     return {
       success: `${firstName} ${lastName} wurde angelegt. ${zugang.success ?? ""}`.trim(),
       link: zugang.link,
+      code: zugang.code,
+      beitritt: zugang.beitritt,
     };
   }
 
@@ -398,6 +400,8 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
     return {
       success: `${firstName} ${lastName} wurde aktualisiert. ${zugang.success ?? ""}`.trim(),
       link: zugang.link,
+      code: zugang.code,
+      beitritt: zugang.beitritt,
     };
   }
 

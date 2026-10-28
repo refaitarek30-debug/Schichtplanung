@@ -748,3 +748,35 @@ body {
     animation: none;
   }
 }
+
+/* Wechsel Betrieb ↔ Privat (src/lib/bereich.ts): die Seite dreht sich weg,
+   der andere Bereich dreht sich herein. Ohne Bewegung, wenn das System das wünscht. */
+html.bereich-raus,
+html.bereich-rein {
+  overflow: hidden;
+  background: #0b0e16;
+}
+html.bereich-raus body {
+  animation: bereich-raus 0.3s cubic-bezier(0.55, 0, 0.75, 0.3) forwards;
+}
+html.bereich-rein body {
+  animation: bereich-rein 0.42s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes bereich-raus {
+  to {
+    transform: perspective(1400px) rotateY(88deg) scale(0.94);
+    opacity: 0.5;
+  }
+}
+@keyframes bereich-rein {
+  from {
+    transform: perspective(1400px) rotateY(-88deg) scale(0.94);
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.bereich-raus body,
+  html.bereich-rein body {
+    animation: none;
+  }
+}

@@ -12,4 +12,11 @@ export interface FormState {
    * statt auf eine Mail zu warten, die nie ankommt.
    */
   link?: string;
+  /**
+   * Beitritts-Code (Migration 0194): für Personen, die schon einen
+   * ShiftNexo-Privatkalender haben – sie treten mit ihrem Konto bei.
+   */
+  code?: string;
+  /** Der Link ist ein Beitritts-Link für ein bestehendes Konto (kein neues Passwort). */
+  beitritt?: boolean;
 }

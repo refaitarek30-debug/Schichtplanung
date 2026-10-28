@@ -9,6 +9,9 @@ import type { Role } from "@/lib/types";
  *
  * `rollen` leer = für alle. Sonst nur für diese Rollen, damit niemand von
  * Funktionen liest, die er gar nicht hat.
+ *
+ * `bereich`: wo der Eintrag erscheint – im Betrieb (Standard), im
+ * Privatbereich (`privat_konten.neuigkeiten_gesehen`) oder in beiden.
  */
 export interface Neuigkeit {
   /**
@@ -19,9 +22,45 @@ export interface Neuigkeit {
   titel: string;
   text: string;
   rollen?: Role[];
+  bereich?: "betrieb" | "privat" | "beide";
 }
 
 export const NEUIGKEITEN: Neuigkeit[] = [
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Dein Privatbereich",
+    text: "Ein eigener Kalender nur für dich – mit demselben Login. Im Kalender oben auf „Privat“ tippen. Deine Betriebsschichten stehen automatisch drin, dein Betrieb sieht nichts davon.",
+  },
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Beitritt mit bestehendem Konto",
+    text: "Hat jemand schon einen ShiftNexo-Privatkalender, gibt es beim Einrichten des Zugangs einen Link bzw. Code – die Person behält ihren Kalender.",
+    rollen: ["admin", "shift_leader"],
+  },
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Deaktivieren beendet den Zugang",
+    text: "Wer deaktiviert wird, kommt nicht mehr in den Betrieb. Beim nächsten Anmelden kann die Person ShiftNexo privat weiter nutzen – ohne Betriebsschichten, Krank- und Urlaubsanträge.",
+    rollen: ["admin"],
+  },
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Neu: die Glühbirne",
+    text: "Hier steht ab jetzt, was neu ist bei ShiftNexo. Leuchtet sie gelb, gibt es etwas Neues.",
+    bereich: "privat",
+  },
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Einem Betrieb beitreten",
+    text: "Arbeitet dein Betrieb mit ShiftNexo? Unter „Mehr“ den Code eingeben – dein Kalender bleibt, und du entscheidest, was mitkommt.",
+    bereich: "privat",
+  },
+  {
+    zeit: "2026-10-28T09:15:00+01:00",
+    titel: "Betriebsschichten im Kalender",
+    text: "Bist du auch im Betrieb bei ShiftNexo, stehen deine Betriebsschichten hier automatisch drin – nur zum Ansehen. Oben wechselst du zwischen Betrieb und Privat.",
+    bereich: "privat",
+  },
   {
     zeit: "2026-10-28T08:00:00+01:00",
     titel: "Startseite „Kompakt“",
@@ -53,8 +92,15 @@ export const NEUIGKEITEN: Neuigkeit[] = [
  * Die Einträge für eine Rolle, neueste zuerst. Einträge mit einer Zeit in der
  * Zukunft bleiben noch verborgen – sonst gälten sie nach dem Lesen weiter als neu.
  */
-export function neuigkeitenFuer(rolle: Role, jetzt = Date.now()): Neuigkeit[] {
-  return NEUIGKEITEN.filter((n) => (!n.rollen || n.rollen.includes(rolle)) && Date.parse(n.zeit) <= jetzt);
+export function neuigkeitenFuer(rolle: Role | "privat", jetzt = Date.now()): Neuigkeit[] {
+  return NEUIGKEITEN.filter((n) => {
+    const bereich = n.bereich ?? "betrieb";
+    const passt =
+      rolle === "privat"
+        ? bereich !== "betrieb"
+        : bereich !== "privat" && (!n.rollen || n.rollen.includes(rolle));
+    return passt && Date.parse(n.zeit) <= jetzt;
+  });
 }
 
 /** Ist ein Eintrag nach dem letzten Öffnen erschienen? */
@@ -64,7 +110,7 @@ export function istNeu(eintrag: Neuigkeit, gesehen: string | null): boolean {
 }
 
 /** Gibt es etwas, das nach dem letzten Öffnen erschienen ist? */
-export function hatNeues(rolle: Role, gesehen: string | null): boolean {
+export function hatNeues(rolle: Role | "privat", gesehen: string | null): boolean {
   return neuigkeitenFuer(rolle).some((n) => istNeu(n, gesehen));
 }
 

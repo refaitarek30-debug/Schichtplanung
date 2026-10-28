@@ -16,6 +16,8 @@ export interface PrivatKonto {
   bundesland: string;
   feiertageZeigen: boolean;
   wochenstunden: number | null;
+  /** Glühbirne: wann die Neuigkeiten zuletzt geöffnet wurden; leer = nie. */
+  neuigkeitenGesehen: string | null;
 }
 
 export const getPrivatKonto = cache(async (): Promise<PrivatKonto | null> => {
@@ -26,7 +28,7 @@ export const getPrivatKonto = cache(async (): Promise<PrivatKonto | null> => {
   if (!userId) return null;
   const { data } = await supabase
     .from("privat_konten")
-    .select("user_id, name, bundesland, feiertage_zeigen, wochenstunden, kontakt_email")
+    .select("user_id, name, bundesland, feiertage_zeigen, wochenstunden, kontakt_email, neuigkeiten_gesehen")
     .eq("user_id", userId)
     .maybeSingle();
   if (!data) return null;
@@ -38,5 +40,6 @@ export const getPrivatKonto = cache(async (): Promise<PrivatKonto | null> => {
     bundesland: data.bundesland as string,
     feiertageZeigen: data.feiertage_zeigen as boolean,
     wochenstunden: data.wochenstunden === null ? null : Number(data.wochenstunden),
+    neuigkeitenGesehen: (data.neuigkeiten_gesehen as string | null) ?? null,
   };
 });

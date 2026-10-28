@@ -32,7 +32,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
     .from("profiles")
     .select(
       `id, company_id, employee_id, first_name, last_name, email, role, avatar_url, active,
-       hidden_dashboard_tiles, start_seite, start_ansicht, neuigkeiten_gesehen,
+       hidden_dashboard_tiles, start_seite, start_ansicht, neuigkeiten_gesehen, austritt_uebernommen_am,
        companies ( id, name, logo_url, active, setup_completed_at, is_demo, demo_expires_at, v_tag_name, v_tage_name, zeitausgleich ),
        employees ( personnel_number, department, shifts ( name ) )`,
     )
@@ -46,14 +46,21 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
   // keinen Zugang. Geht die Frage schief, bleibt der Menüpunkt weg; die
   // Anmeldung selbst hängt nicht daran.
   let protokoll = false;
-  if (data.role === "admin") {
-    try {
-      const { data: darf } = await supabase.rpc("darf_protokoll");
-      protokoll = darf === true;
-    } catch {
-      protokoll = false;
-    }
-  }
+  const [, privat] = await Promise.all([
+    data.role === "admin"
+      ? Promise.resolve(supabase.rpc("darf_protokoll"))
+          .then(({ data: darf }) => {
+            protokoll = darf === true;
+          })
+          .catch(() => {
+            protokoll = false;
+          })
+      : null,
+    // Zusätzlich ein Privatbereich mit demselben Login (Migration 0194)?
+    Promise.resolve(supabase.from("privat_konten").select("user_id").eq("user_id", user.id).maybeSingle())
+      .then(({ data: k }) => !!k)
+      .catch(() => false),
+  ]);
 
   const companyRow = Array.isArray(data.companies) ? data.companies[0] : data.companies;
   const employeeRow = Array.isArray(data.employees) ? data.employees[0] : data.employees;
@@ -82,6 +89,8 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       startSeite: istStartSeite(data.start_seite) ? data.start_seite : null,
       startAnsicht: data.start_ansicht === "kompakt" ? "kompakt" : "klassisch",
       neuigkeitenGesehen: data.neuigkeiten_gesehen ?? null,
+      hatPrivat: privat,
+      austrittErledigt: !!data.austritt_uebernommen_am,
     },
     company: {
       id: companyRow?.id ?? data.company_id,
