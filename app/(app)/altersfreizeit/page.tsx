@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getAppSession } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/page-header";
 import { AgeLeaveTable } from "./age-leave-table";
+import { GeburtsdatenOffen } from "@/components/admin/geburtsdaten-offen";
 
 /**
  * Altersfreizeit prüfen und festlegen – ausschließlich für die
@@ -25,6 +26,7 @@ export default async function AgeLeavePage() {
         title="AF-Stunden & V-Tage"
         description="Altersfreizeit als Stundenstand eintragen, V-Tage hinzufügen oder abziehen."
       />
+      <GeburtsdatenOffen />
       <AgeLeaveTable />
     </div>
   );

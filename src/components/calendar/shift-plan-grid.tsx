@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Fragment,
   memo,
@@ -274,6 +275,7 @@ export function ShiftPlanGrid({
   merkName = "schichtplan-start",
   hilfe,
   randlos = false,
+  antragLink,
 }: {
   companyId: string;
   from: string;
@@ -297,6 +299,11 @@ export function ShiftPlanGrid({
    * Startseite verschiebt nicht den Plan.
    */
   merkName?: string;
+  /**
+   * Kleiner Knopf „Urlaub beantragen“ vorn in der Knopfleiste, der zu diesem
+   * Ziel führt – für die Startseite „Kompakt“ statt des großen Knopfs.
+   */
+  antragLink?: string;
   /** Kurze Anleitung im Menü „Mehr“ (statt eines langen Texts über dem Plan). */
   hilfe?: string;
   /** Auf dem Handy von Rand zu Rand – jeder Pixel ist ein sichtbarer Tag mehr. */
@@ -1418,6 +1425,15 @@ export function ShiftPlanGrid({
         </div>
 
         <div className="flex flex-wrap gap-1.5">
+          {antragLink && employeeId ? (
+            <Link
+              href={antragLink}
+              className={cn(chip, "border-transparent bg-brand-500/15 font-bold text-brand-700 hover:bg-brand-500/25")}
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
+              Urlaub beantragen
+            </Link>
+          ) : null}
           {!nurLesen && employeeId && antragSchalter ? (
             <button
               type="button"

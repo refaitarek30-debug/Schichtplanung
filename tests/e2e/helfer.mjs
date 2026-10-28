@@ -46,6 +46,9 @@ export function wartenderTermin(datum) {
   });
 }
 
+/** Das Anmelde-Cookie, z. B. für einen zweiten Browser in anderer Größe. */
+export const SITZUNG_COOKIE = { name: "sb-127-auth-token", value: SITZUNG, url: APP };
+
 export const warte = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Zählt Fehlschläge; run.mjs beendet mit Code 1, wenn einer dabei war. */
@@ -116,7 +119,7 @@ export async function neuerBrowser() {
     bypassCSP: true,
     serviceWorkers: "allow",
   });
-  await ctx.addCookies([{ name: "sb-127-auth-token", value: SITZUNG, url: APP }]);
+  await ctx.addCookies([SITZUNG_COOKIE]);
   const seite = await ctx.newPage();
   const seitenFehler = [];
   seite.on("pageerror", (e) => seitenFehler.push(e.message));

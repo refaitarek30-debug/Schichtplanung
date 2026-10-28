@@ -55,6 +55,8 @@ import { useAktualisierung } from "@/lib/live-refresh";
 import { FehlzeitenLeiste } from "@/components/dashboard/fehlzeiten-leiste";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
+import { gruppiereAntraege } from "@/lib/leave-groups";
+import { GeburtsdatenOffen } from "@/components/admin/geburtsdaten-offen";
 
 /**
  * Letzter Stand der Startseite. Wer vom Plan zurückkommt, sieht die Kacheln
@@ -94,7 +96,10 @@ export default function DashboardPage() {
   const t = useBegriffe();
   const za = useZeitausgleich();
   const gruss = useGruss();
-  const { mode, role, profile, user, company } = useSession();
+  const { mode, role, profile, user, company, startAnsicht } = useSession();
+  // Startseite „Kompakt“: kleine Kacheln, Raster für Tablet und Computer.
+  // „Klassisch“ bleibt Element für Element wie bisher.
+  const kompakt = startAnsicht === "kompakt";
 
   // Welche Kacheln diese Person ausgeblendet hat. Startwert kommt aus dem
   // Profil; die Karte schreibt Änderungen im Hintergrund zurück.
@@ -216,10 +221,11 @@ export default function DashboardPage() {
       : demoBalance.entitlement + demoBalance.carryOver;
 
   const ownRequests = requestsOfEmployee(user.id);
-  const ownPending =
+  // Wie auf der Urlaubsseite: zusammengehörige Teile zählen als ein Antrag.
+  const ownPendingAnzahl =
     mode === "live"
-      ? (liveMyRequests ?? []).filter((r) => r.status === "pending")
-      : ownRequests.filter((r) => r.status === "pending");
+      ? gruppiereAntraege(liveMyRequests ?? []).filter((g) => g.status === "pending").length
+      : ownRequests.filter((r) => r.status === "pending").length;
 
   const demoPending =
     role === "admin" ? allPendingRequests() : pendingRequestsForShift(user.shiftId);
@@ -322,6 +328,8 @@ export default function DashboardPage() {
       {/* Ganz oben, weil eine Ersatzanfrage schnell beantwortet werden
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
       <MyReplacementRequests />
+      {/* Nur für die Administration und nur, wenn etwas offen ist. */}
+      <GeburtsdatenOffen />
 
       <header className="dash-kopf relative flex items-start justify-between gap-3">
         <div>
@@ -340,10 +348,19 @@ export default function DashboardPage() {
         <ProfilInline />
       </header>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div
+        className={
+          kompakt
+            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]"
+            : "grid grid-cols-2 gap-3 lg:grid-cols-5"
+        }
+      >
         {zeige("urlaub") ? (
         <KpiCard
           label="Urlaubstage verfügbar"
+          kompakt={kompakt}
+          kurz="Urlaub"
+          kurzEinheit={`/${formatDays(totalLeave)}`}
           href="/urlaub"
           value={formatDays(availableLeave)}
           unit="Tage"
@@ -356,11 +373,14 @@ export default function DashboardPage() {
         {zeige("antraege") ? (
         <KpiCard
           label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
+          kompakt={kompakt}
+          kurz="Anträge"
+          kurzEinheit="offen"
           href={role === "employee" ? "/urlaub" : "/urlaubsantraege"}
-          value={role === "employee" ? ownPending.length : pendingCount}
+          value={role === "employee" ? ownPendingAnzahl : pendingCount}
           hint={
             role === "employee"
-              ? ownPending.length > 0
+              ? ownPendingAnzahl > 0
                 ? "warten auf Entscheidung"
                 : "alles entschieden"
               : "warten auf deine Entscheidung"
@@ -373,6 +393,9 @@ export default function DashboardPage() {
         {role === "employee" || !zeige("kritisch") ? null : (
           <KpiCard
             label="Kritische Tage (14 T.)"
+            kompakt={kompakt}
+            kurz="Kritisch"
+            kurzEinheit="Tage"
             href="/besetzung"
             value={criticalDays.length}
             hint={
@@ -388,6 +411,8 @@ export default function DashboardPage() {
         {zeige("krank") ? (
         <KpiCard
           label="Krank gesamt"
+          kompakt={kompakt}
+          kurz="Krank"
           href="/krank"
           value={sickDays}
           unit={sickDays === 1 ? "Tag" : "Tage"}
@@ -403,11 +428,14 @@ export default function DashboardPage() {
         <LeadershipKpis
           zeigeRate={zeige("gesundheit")}
           zeigeAnfragen={zeige("ersatz")}
+          kompakt={kompakt}
         />
 
         {hatVKonto && zeige("vtage") ? (
           <KpiCard
             label={t("V-Tage gesamt")}
+            kompakt={kompakt}
+            kurz={t("V-Tage")}
             href="/urlaub"
             value={formatDays(vRemaining)}
             unit="Tage"
@@ -422,13 +450,17 @@ export default function DashboardPage() {
       {/* Der eigene nächste Urlaub, direkt über dem Knopf zum Beantragen:
           erst sehen, was schon steht, dann den nächsten planen.
           Abwählbar wie die Kacheln. */}
+      <Raster an={kompakt}>
       {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
-        <NextLeaveCard antraege={liveMyRequests} heute={TODAY} />
+        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-2">
+          <NextLeaveCard antraege={liveMyRequests} heute={TODAY} />
+        </Fach>
       ) : null}
 
       {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
           Ende antippt. Die Art steht dort auf „Automatisch". */}
-      {mode === "live" && profile.employeeId ? (
+      {/* „Kompakt“: kleiner Knopf in der Leiste des Plans statt dieses großen. */}
+      {mode === "live" && profile.employeeId && !kompakt ? (
         <Link
           href="/schichtplan?antrag=1"
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
@@ -441,6 +473,7 @@ export default function DashboardPage() {
       {/* Der Schichtplan steht für alle auf dem Dashboard – ändern darf ihn
           nur die Führung, gelesen wird er von allen. */}
       {mode === "live" ? (
+        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-1 xl:row-span-3">
         <ShiftPlanGrid
           companyId={company.id}
           from={TODAY}
@@ -453,20 +486,25 @@ export default function DashboardPage() {
           // Umweg über die Seite „Plan“. Mitarbeiter sehen nur; beantragt
           // wird über den großen Knopf „Urlaub beantragen“ oder im Plan.
           nurLesen={!(role === "admin" || role === "shift_leader")}
+          antragLink={kompakt ? "/schichtplan?antrag=1" : undefined}
         />
+        </Fach>
       ) : null}
 
       {/* Direkt unter dem Plan: früher gegangen / später gekommen. Vorerst
           nur für die Administration (Testphase) – die Schichtleitung sieht
           die Leiste noch nicht. Die Datenbank prüft es noch einmal. */}
       {mode === "live" && role === "admin" ? (
+        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-1">
         <FehlzeitenLeiste
           heute={TODAY}
           istAdmin={role === "admin"}
           eigeneEmployeeId={profile.employeeId}
         />
+        </Fach>
       ) : null}
 
+      <Fach an={kompakt} platz="xl:col-start-2">
       {role === "employee" ? (
         <div className="grid gap-4">
           {mode === "live" ? (
@@ -525,7 +563,8 @@ export default function DashboardPage() {
           </div>
         </>
       )}
-
+      </Fach>
+      <Fach an={kompakt} platz="xl:col-start-2">
       <Card>
         <CardHeader
           title="Mitteilungen"
@@ -558,6 +597,29 @@ export default function DashboardPage() {
           )}
         </CardBody>
       </Card>
+      </Fach>
+      </Raster>
     </div>
   );
+}
+
+/**
+ * Startseite „Kompakt“ ab Tablet: zwei Spalten (Tablet: Anträge und
+ * Mitteilungen nebeneinander), am Computer links der Plan, rechts eine Spalte
+ * mit Urlaub, Anträgen und Mitteilungen. „Klassisch“ bekommt keinen Rahmen –
+ * dort bleibt alles wie gehabt untereinander.
+ */
+function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
+  if (!an) return <>{children}</>;
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-flow-row-dense xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start">
+      {children}
+    </div>
+  );
+}
+
+/** Ein Platz im Raster der kompakten Startseite; bei „Klassisch“ ohne Hülle. */
+function Fach({ an, platz, children }: { an: boolean; platz: string; children: React.ReactNode }) {
+  if (!an) return <>{children}</>;
+  return <div className={cn("min-w-0 empty:hidden", platz)}>{children}</div>;
 }

@@ -647,6 +647,10 @@ body {
   body:has([data-glas-leiste]) main > :not([data-glas-seite]) header h1 {
     padding-right: 3.1rem;
   }
+  /* Mit Glühbirne daneben: Platz für zwei runde Knöpfe. */
+  body:has([data-glas-leiste]) main > :not([data-glas-seite]) header:has([data-neuigkeiten]) h1 {
+    padding-right: 6rem;
+  }
   body:has([data-glas-leiste]) main > :not([data-glas-seite]) header p.uppercase {
     display: none;
   }
@@ -724,5 +728,23 @@ body {
   to {
     transform: none;
     opacity: 1;
+  }
+}
+
+/* Glühbirne „Neuigkeiten“: gelber Schein, solange es Neues gibt – kurz
+   aufleuchtend, danach ruhig. Ohne Bewegung, wenn das System das wünscht. */
+.neuigkeiten-leuchten {
+  background-color: rgba(255, 214, 10, 0.16);
+  box-shadow: 0 0 0 1px rgba(255, 214, 10, 0.5), 0 0 16px rgba(255, 214, 10, 0.5);
+  animation: neuigkeiten-puls 1.6s ease-in-out 2;
+}
+@keyframes neuigkeiten-puls {
+  50% {
+    box-shadow: 0 0 0 1px rgba(255, 214, 10, 0.7), 0 0 26px rgba(255, 214, 10, 0.85);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .neuigkeiten-leuchten {
+    animation: none;
   }
 }

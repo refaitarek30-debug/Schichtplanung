@@ -8,6 +8,7 @@ import { useSession } from "@/context/session";
 import { roleLabels } from "@/lib/nav";
 import { ProfileForm } from "./profile-form";
 import { PersonalDetailsForm } from "./personal-details-form";
+import { StammdatenForm } from "./stammdaten-form";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
@@ -16,8 +17,6 @@ export default function ProfilePage() {
     { label: "E-Mail", value: profile.email, note: "Änderung nur durch die Administration" },
     { label: "Rolle", value: roleLabels[profile.role], note: "wird von der Administration vergeben" },
     { label: "Unternehmen", value: company.name },
-    { label: "Personalnummer", value: profile.personnelNumber ?? "nicht hinterlegt" },
-    { label: "Abteilung", value: profile.department ?? "nicht hinterlegt" },
     { label: "Schicht", value: profile.shiftName ?? "keine Zuordnung" },
   ];
 
@@ -26,7 +25,7 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Mein Konto"
         title="Profil"
-        description="Deinen Namen kannst du selbst ändern. Alles andere pflegt die Administration."
+        description="Name, Personalnummer, Abteilung und Geburtsdatum kannst du selbst pflegen. Alles andere die Administration."
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -34,8 +33,17 @@ export default function ProfilePage() {
         {/* Geburtsdatum – freiwillig, nur selbst pflegbar. War importiert,
             stand aber nie auf der Seite; deshalb konnte es niemand eintragen. */}
         <div className="lg:col-start-1">
-          <PersonalDetailsForm readOnly={mode === "demo"} />
+          <PersonalDetailsForm readOnly={mode === "demo"} istAdmin={profile.role === "admin"} />
         </div>
+        {profile.employeeId ? (
+          <div className="lg:col-start-1">
+            <StammdatenForm
+              personalnummer={profile.personnelNumber ?? null}
+              abteilung={profile.department ?? null}
+              readOnly={mode === "demo"}
+            />
+          </div>
+        ) : null}
         <div className="lg:col-span-2">
           <a
             href="/profil/datenschutz"

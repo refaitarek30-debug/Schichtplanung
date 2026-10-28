@@ -4,6 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { ProfilBlatt, useBenachrichtigungen } from "@/components/kalender/profil-blatt";
+import { NeuigkeitenKnopf } from "@/components/layout/neuigkeiten";
 import { useSession } from "@/context/session";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,16 @@ function Knopf({ inline = false }: { inline?: boolean }) {
 
   return (
     <>
+      {/* Glühbirne links neben dem Profil – gleiche Höhe, gleicher Stil. */}
+      <NeuigkeitenKnopf
+        rund
+        className={cn(
+          "z-20 text-ink",
+          inline
+            ? "absolute right-[3.1rem] top-[-3px]"
+            : "fixed right-[3.6rem] top-[calc(max(0.5rem,env(safe-area-inset-top))+0.1rem)]",
+        )}
+      />
       <button
         type="button"
         data-glas-profil

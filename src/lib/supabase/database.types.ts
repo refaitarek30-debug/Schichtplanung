@@ -87,6 +87,8 @@ export interface PersonalDetailsRow {
   user_id: string;
   company_id: string;
   birth_date: string | null;
+  /** Selbst geändert = false, bis die Administration bestätigt (Sonderurlaub ab 55). */
+  birth_date_bestaetigt: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -105,6 +107,10 @@ export interface ProfileRow {
   hidden_dashboard_tiles: string[];
   /** Startseite beim Öffnen: dashboard, schichtplan, kalender – leer = Dashboard. */
   start_seite: "dashboard" | "schichtplan" | "kalender" | null;
+  /** Startseite: große Kacheln („klassisch“) oder kompakt. Neue Konten: kompakt. */
+  start_ansicht: "klassisch" | "kompakt";
+  /** Wann die Neuigkeiten zuletzt geöffnet wurden. */
+  neuigkeiten_gesehen: string | null;
   created_at: string;
   updated_at: string;
 }

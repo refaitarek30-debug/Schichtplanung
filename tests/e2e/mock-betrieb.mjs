@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 const U = "11111111-2222-4333-8444-555555555555";
 const FIRMA = true;
-const PROFIL = { id: U, company_id: "c0000000-0000-4000-8000-000000000001", employee_id: "e0", first_name: "Tarek", last_name: "Test", email: "t@example.invalid", role: process.env.ROLLE ?? "admin", avatar_url: null, active: true, hidden_dashboard_tiles: [], start_seite: null,
+const PROFIL = { id: U, company_id: "c0000000-0000-4000-8000-000000000001", employee_id: "e0", first_name: "Tarek", last_name: "Test", email: "t@example.invalid", role: process.env.ROLLE ?? "admin", avatar_url: null, active: true, hidden_dashboard_tiles: [], start_seite: null, start_ansicht: process.env.ANSICHT ?? "klassisch", neuigkeiten_gesehen: null,
   companies: { id: "c0000000-0000-4000-8000-000000000001", name: "Testbetrieb", logo_url: null, active: true, setup_completed_at: "2026-01-01T00:00:00Z", is_demo: false, demo_expires_at: null, v_tag_name: "Zeitausgleichstag", v_tage_name: "Zeitausgleichstage" },
   employees: { personnel_number: "100", department: null, shifts: { name: "Frühschicht" } } };
 const db = {
@@ -81,6 +81,11 @@ http.createServer((req, res) => {
     const p = url.pathname;
     if (p.startsWith("/auth/v1/user")) return send(200, { id: U, aud: "authenticated", email: "t@example.invalid" });
     if (p.startsWith("/auth/v1/logout")) return send(204);
+    if (p === "/rest/v1/profiles" && m === "PATCH") { for (const k of ["start_ansicht", "neuigkeiten_gesehen"]) if (k in body) PROFIL[k] = body[k]; return send(204); }
+    if (p === "/rest/v1/personal_details") {
+      if (m === "PATCH") { db.geburt = { birth_date: body.birth_date ?? null, birth_date_bestaetigt: !body.birth_date || PROFIL.role === "admin" }; return send(204); }
+      return liste([db.geburt ?? { birth_date: null, birth_date_bestaetigt: true }]);
+    }
     if (p === "/rest/v1/profiles") return liste(url.searchParams.get("select") === "employee_id" ? MITARBEITER.filter((e) => e._konto).map((e) => ({ employee_id: e.id })) : [PROFIL]);
     if (p === "/rest/v1/employees" && m === "GET") return liste(MITARBEITER.map(({ _konto, ...e }) => e));
     if (p === "/rest/v1/anzeige_einstellungen") {
@@ -183,6 +188,9 @@ http.createServer((req, res) => {
       if (f === "hinweis_zurueckziehen") { const h = HINWEISE.find((x) => x.id === body.p_id); if (h) h.zurueckgezogen_am = new Date().toISOString(); return send(204); }
       if (f === "_letzter") return send(200, db.letzterHinweis ?? null);
       if (f === "hat_funktion") return send(200, true);
+      if (f === "meine_stammdaten_setzen") { PROFIL.employees.personnel_number = body.p_personalnummer; PROFIL.employees.department = body.p_abteilung; db.stammdaten = body; return send(204); }
+      if (f === "geburtsdaten_offen") return send(200, db.geburtOffen ?? (db.geburtOffen = [{ employee_id: "e1", name: "Anna Becker", birth_date: "1969-03-14", geaendert_am: new Date().toISOString() }]));
+      if (f === "geburtsdatum_bestaetigen") { db.geburtOffen = (db.geburtOffen ?? []).filter((z) => z.employee_id !== body.p_employee_id); return send(204); }
       if (f === "hinweis_standard") return send(200, db.hinweisStandard ?? "schicht");
       if (f === "set_hinweis_standard") { db.hinweisStandard = body.p_wert; return send(200, null); }
       if (f === "schichtplan_kompakt") {

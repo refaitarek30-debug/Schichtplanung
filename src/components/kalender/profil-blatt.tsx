@@ -9,6 +9,7 @@ import { useKachelAuswahl } from "@/lib/kachel-auswahl";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { Blatt } from "@/components/privat/blatt";
 import { Avatar } from "@/components/ui/avatar";
+import { StartAnsichtSchalter } from "@/components/layout/start-ansicht-schalter";
 import { useSession } from "@/context/session";
 import { signOut } from "@/lib/auth/actions";
 import {
@@ -102,12 +103,31 @@ export function ProfilBlatt({
     <Blatt titel="Profil" onClose={onClose}>
       <div className="flex items-center gap-3 pb-4">
         <Avatar employee={profile} className="h-12 w-12 text-[15px]" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[17px] font-semibold">
             {profile.firstName} {profile.lastName}
           </p>
           <p className="truncate text-[13px] text-ink-muted">{roleLabels[role]}</p>
         </div>
+        {/* Abmelden gleich oben – ohne erst nach unten zu wischen. */}
+        <form
+          action={signOut}
+          // Wie im Profilmenü der Kopfleiste: alles Zwischengespeicherte verwerfen.
+          onSubmit={() => {
+            setAnsicht(null);
+            leereZwischenspeicher();
+            forgetIdentity();
+            vergissAenderungsstand();
+          }}
+          className="shrink-0"
+        >
+          <button
+            type="submit"
+            className="flex items-center gap-1.5 rounded-[14px] bg-crit-bg px-3.5 py-2.5 text-[14.5px] font-semibold text-crit-fg active:opacity-80"
+          >
+            <LogOut className="h-[18px] w-[18px]" strokeWidth={1.9} /> Abmelden
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -119,6 +139,11 @@ export function ProfilBlatt({
         </Link>
         <BetreiberLink onClick={onClose} className={zeile} />
       </div>
+
+      <p className="mb-1.5 mt-5 flex items-center gap-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+        <LayoutGrid className="h-3.5 w-3.5" /> Startseite
+      </p>
+      <StartAnsichtSchalter />
 
       {kacheln ? (
         <>
@@ -197,25 +222,6 @@ export function ProfilBlatt({
           </div>
         </>
       ) : null}
-
-      <form
-        action={signOut}
-        // Wie im Profilmenü der Kopfleiste: alles Zwischengespeicherte verwerfen.
-        onSubmit={() => {
-          setAnsicht(null);
-          leereZwischenspeicher();
-          forgetIdentity();
-          vergissAenderungsstand();
-        }}
-        className="mt-5"
-      >
-        <button
-          type="submit"
-          className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-ink/[0.05] py-3.5 text-[15.5px] font-semibold text-crit-fg active:bg-ink/[0.09]"
-        >
-          <LogOut className="h-5 w-5" strokeWidth={1.8} /> Abmelden
-        </button>
-      </form>
     </Blatt>
   );
 }

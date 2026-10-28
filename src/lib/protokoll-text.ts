@@ -206,6 +206,12 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       return aenderung(`hat die Rolle${von(e)} geändert`);
     case "personal_details.birth_date":
       return aenderung(`hat das Geburtsdatum${von(e)} geändert`);
+    case "personal_details.birth_date_selbst":
+      return aenderung("hat das eigene Geburtsdatum geändert (wartet auf Bestätigung)");
+    case "personal_details.birth_date_bestaetigt":
+      return aenderung(`hat das Geburtsdatum${von(e)} bestätigt`);
+    case "stammdaten.selbst":
+      return aenderung("hat die eigene Personalnummer bzw. Abteilung geändert");
     case "privacy.settings.changed":
       return aenderung("hat die eigenen Datenschutz-Einstellungen geändert");
     case "hinweise.standard":

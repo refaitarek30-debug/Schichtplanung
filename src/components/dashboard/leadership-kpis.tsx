@@ -24,9 +24,12 @@ import { fetchCompanyRules } from "@/lib/data/staffing-rules";
 export function LeadershipKpis({
   zeigeRate = true,
   zeigeAnfragen = true,
+  kompakt = false,
 }: {
   zeigeRate?: boolean;
   zeigeAnfragen?: boolean;
+  /** Kleine Kacheln (Startseite „Kompakt“). */
+  kompakt?: boolean;
 } = {}) {
   const { mode, role } = useSession();
   const [rate, setRate] = useState<number | null | undefined>(undefined);
@@ -78,6 +81,8 @@ export function LeadershipKpis({
       {zeigeRate ? (
       <KpiCard
         label="Gesundheitsrate"
+        kompakt={kompakt}
+        kurz="Gesundheit"
         value={rate === undefined ? "…" : typeof rate === "number" ? rate.toFixed(1) : "–"}
         unit="%"
         hint={
@@ -100,6 +105,9 @@ export function LeadershipKpis({
       {zeigeAnfragen ? (
       <KpiCard
         label="Offene Ersatzanfragen"
+        kompakt={kompakt}
+        kurz="Ersatz"
+        kurzEinheit="offen"
         value={offen ?? "–"}
         unit={offen === 1 ? "Anfrage" : "Anfragen"}
         hint={offen === 0 ? "nichts offen" : "warten auf Antwort"}

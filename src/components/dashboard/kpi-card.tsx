@@ -47,6 +47,9 @@ export function KpiCard({
   icon,
   href,
   ton = "neutral",
+  kompakt = false,
+  kurz,
+  kurzEinheit,
 }: {
   label: string;
   value: string | number;
@@ -58,7 +61,56 @@ export function KpiCard({
   href?: string;
   /** Hintergrundton der Kachel, zur schnellen Orientierung. */
   ton?: keyof typeof toene;
+  /** Kleine Kachel (Startseite „Kompakt“): Symbol, kurzer Name, Zahl. */
+  kompakt?: boolean;
+  /** Kurzer Name für schmale Kacheln (Handy), z. B. „Urlaub“. */
+  kurz?: string;
+  /** Kurze Einheit für schmale Kacheln, z. B. „/33“. */
+  kurzEinheit?: string;
 }) {
+  if (kompakt) {
+    // Handy und Tablet: Symbol oben, darunter kurzer Name und Zahl – vier
+    // passen nebeneinander. Ab Computerbreite liegt das Symbol links und der
+    // volle Name steht da, weil dort Platz ist.
+    const klein = (
+      <>
+        <span className={cn("flex shrink-0 lg:h-9 lg:w-9 lg:items-center lg:justify-center lg:rounded-xl lg:bg-ink/[0.05]", toene[ton].icon)}>
+          {icon}
+        </span>
+        <span className="mt-1.5 block min-w-0 lg:mt-0">
+          <span className="block truncate text-[11.5px] font-medium text-ink-muted sm:text-[12.5px] lg:line-clamp-2 lg:whitespace-normal lg:leading-tight">
+            <span className="lg:hidden">{kurz ?? label}</span>
+            <span className="hidden lg:inline">{label}</span>
+          </span>
+          <span className="flex items-baseline gap-1">
+            <span className="tnum text-[20px] font-semibold leading-tight tracking-tight sm:text-[22px]">{value}</span>
+            {kurzEinheit || unit ? (
+              <span className="truncate text-[11px] text-ink-muted sm:text-[12px]">{kurzEinheit ?? unit}</span>
+            ) : null}
+          </span>
+        </span>
+      </>
+    );
+    const rahmenKlein = cn(
+      "block min-w-0 rounded-[18px] border border-line p-2.5 shadow-card sm:p-3 lg:flex lg:items-center lg:gap-3",
+      toene[ton].kachel,
+    );
+    if (!href) return <div className={rahmenKlein}>{klein}</div>;
+    return (
+      <Link
+        href={href}
+        aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`}
+        className={cn(
+          rahmenKlein,
+          "transition-[filter] hover:brightness-[0.97]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
+        )}
+      >
+        {klein}
+      </Link>
+    );
+  }
+
   const inhalt = (
     <>
       <div className="flex items-center justify-between">
