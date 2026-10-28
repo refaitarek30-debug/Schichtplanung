@@ -61,6 +61,7 @@ import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "./p
 import { useLoeschFrage } from "./loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
+import { NeuigkeitenKnopf } from "@/components/layout/neuigkeiten";
 import { Avatar } from "@/components/ui/avatar";
 import { useBegriffe } from "@/lib/begriffe";
 
@@ -772,6 +773,8 @@ export function MeinKalenderGlas() {
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setEinladen(true)} />
+          {/* Volle Zeile: die Glühbirne nur, solange es Neues gibt. */}
+          <NeuigkeitenKnopf rund nurWennNeu className="lg:hidden" />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
             <GlasKnopf

@@ -66,7 +66,13 @@ export interface SessionProfile {
   protokoll?: boolean;
   /** Was beim Öffnen der App zuerst kommt; leer = Dashboard. */
   startSeite?: "dashboard" | "schichtplan" | "kalender" | null;
+  /** Aufbau der Startseite: bisherige große Kacheln oder die kompakte Fassung. */
+  startAnsicht?: StartAnsicht;
+  /** Wann die Neuigkeiten (Glühbirne) zuletzt geöffnet wurden; leer = nie. */
+  neuigkeitenGesehen?: string | null;
 }
+
+export type StartAnsicht = "klassisch" | "kompakt";
 
 /** Zeile aus `employees` – Personalstammdaten, unabhängig vom Login. */
 export interface EmployeeRecord {

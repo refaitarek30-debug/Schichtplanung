@@ -9,6 +9,8 @@ import { BetreiberLink } from "./betreiber-link";
 import { NotificationBell } from "./notification-bell";
 import { roleLabels } from "@/lib/nav";
 import { signOut } from "@/lib/auth/actions";
+import { NeuigkeitenKnopf } from "./neuigkeiten";
+import { StartAnsichtSchalter } from "./start-ansicht-schalter";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
@@ -73,6 +75,7 @@ export function Topbar() {
             <X className="h-3.5 w-3.5" strokeWidth={2.2} />
           </button>
         ) : null}
+        <NeuigkeitenKnopf />
         <NotificationBell />
 
         <div className="relative" ref={wurzel}>
@@ -102,6 +105,30 @@ export function Topbar() {
 
           {open ? (
             <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-line bg-surface p-2 shadow-pop">
+              {/* Abmelden ganz oben – sofort sichtbar. */}
+              {mode !== "demo" ? (
+                <form
+                  action={signOut}
+                  // Die Abmeldung endet mit einer weichen Umleitung – der
+                  // Arbeitsspeicher des Tabs bleibt dabei bestehen. Deshalb
+                  // hier ausdrücklich alles Zwischengespeicherte verwerfen.
+                  onSubmit={() => {
+                    setAnsicht(null);
+                    leereZwischenspeicher();
+                    forgetIdentity();
+                    vergissAenderungsstand();
+                  }}
+                  className="mb-1 border-b border-line pb-1"
+                >
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-medium text-crit-fg hover:bg-crit-bg"
+                  >
+                    <LogOut className="h-4 w-4" strokeWidth={1.8} />
+                    Abmelden
+                  </button>
+                </form>
+              ) : null}
               <Link
                 href="/profil"
                 onClick={() => setOpen(false)}
@@ -122,6 +149,12 @@ export function Topbar() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted [&_svg]:h-4 [&_svg]:w-4"
               />
+              <div className="mt-1 border-t border-line px-1 pt-2">
+                <p className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+                  Startseite
+                </p>
+                <StartAnsichtSchalter klein />
+              </div>
 
               {mode === "demo" ? (
                 <>
@@ -185,27 +218,6 @@ export function Topbar() {
                     </p>
                   </div>
                 ) : null}
-                <form
-                  action={signOut}
-                  // Die Abmeldung endet mit einer weichen Umleitung – der
-                  // Arbeitsspeicher des Tabs bleibt dabei bestehen. Deshalb
-                  // hier ausdrücklich alles Zwischengespeicherte verwerfen.
-                  onSubmit={() => {
-                    setAnsicht(null);
-                    leereZwischenspeicher();
-                    forgetIdentity();
-                    vergissAenderungsstand();
-                  }}
-                  className="border-t border-line pt-1"
-                >
-                  <button
-                    type="submit"
-                    className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted"
-                  >
-                    <LogOut className="h-4 w-4" strokeWidth={1.8} />
-                    Abmelden
-                  </button>
-                </form>
                 </>
               )}
             </div>

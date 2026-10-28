@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { company as demoCompany, demoAccounts, employees, getShift } from "@/lib/demo-data";
+import { createClient } from "@/lib/supabase/client";
 import type {
   Company,
   Employee,
@@ -9,6 +10,7 @@ import type {
   SessionMode,
   SessionProfile,
   Shift,
+  StartAnsicht,
 } from "@/lib/types";
 
 interface SessionValue {
@@ -37,6 +39,12 @@ interface SessionValue {
    */
   user: Employee;
   shift: Shift | undefined;
+  /** Aufbau der Startseite – umschaltbar im Profil, gilt sofort. */
+  startAnsicht: StartAnsicht;
+  setStartAnsicht: (ansicht: StartAnsicht) => void;
+  /** Wann die Neuigkeiten zuletzt geöffnet wurden (Glühbirne). */
+  neuigkeitenGesehen: string | null;
+  neuigkeitenGelesen: () => void;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -82,6 +90,32 @@ export function SessionProvider({
   const [demoRole, setDemoRole] = useState<Role>("employee");
   const [ansicht, setAnsichtState] = useState<Role | null>(null);
   const echteRolle: Role = mode === "live" && profile ? profile.role : demoRole;
+  const [startAnsicht, setStartAnsichtState] = useState<StartAnsicht>(profile?.startAnsicht ?? "klassisch");
+  const [neuigkeitenGesehen, setNeuigkeitenGesehen] = useState<string | null>(profile?.neuigkeitenGesehen ?? null);
+
+  // Beides gilt sofort; gespeichert wird im Hintergrund. Klappt das nicht,
+  // bleibt es für diesen Besuch trotzdem so – beim nächsten Mal gilt wieder
+  // der gespeicherte Stand.
+  function setStartAnsicht(neu: StartAnsicht) {
+    setStartAnsichtState(neu);
+    if (mode !== "live" || !profile) return;
+    void createClient()
+      .from("profiles")
+      .update({ start_ansicht: neu })
+      .eq("id", profile.id)
+      .then(() => undefined);
+  }
+
+  function neuigkeitenGelesen() {
+    const jetzt = new Date().toISOString();
+    setNeuigkeitenGesehen(jetzt);
+    if (mode !== "live" || !profile) return;
+    void createClient()
+      .from("profiles")
+      .update({ neuigkeiten_gesehen: jetzt })
+      .eq("id", profile.id)
+      .then(() => undefined);
+  }
 
   // Die gewählte Ansicht gilt für diesen Tab, bis man zurückschaltet oder
   // sich abmeldet. Nur eine Bequemlichkeit – ohne Speicher gilt die eigene.
@@ -122,9 +156,13 @@ export function SessionProvider({
       company: mode === "live" && company ? company : demoCompany,
       user: persona,
       shift: getShift(persona.shiftId),
+      startAnsicht,
+      setStartAnsicht,
+      neuigkeitenGesehen,
+      neuigkeitenGelesen,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, profile, company, demoRole, ansicht, echteRolle]);
+  }, [mode, profile, company, demoRole, ansicht, echteRolle, startAnsicht, neuigkeitenGesehen]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

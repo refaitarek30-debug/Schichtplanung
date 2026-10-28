@@ -7,10 +7,12 @@
 import { ergebnis, starteApp, starteDatenbank } from "./helfer.mjs";
 import privat from "./privat.test.mjs";
 import betrieb from "./betrieb.test.mjs";
+import startseite from "./startseite.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
   ["Betrieb", "betrieb", betrieb],
+  ["Startseite und Profil", "betrieb", startseite],
 ];
 
 const nur = process.argv[2];

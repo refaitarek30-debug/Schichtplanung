@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="27. Oktober 2026"
+      updated="28. Oktober 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -113,7 +113,11 @@ export default function DatenschutzPage() {
           nicht in den Schichtplan aufnehmen):
         </Absatz>
         <Liste>
-          <li>Vor- und Nachname, Personalnummer, Rolle in der Anwendung (Mitarbeiter, Schichtleitung, Administration)</li>
+          <li>
+            Vor- und Nachname, Personalnummer, Rolle in der Anwendung (Mitarbeiter, Schichtleitung, Administration).
+            Personalnummer und Abteilung kann die Person auch selbst eintragen; die Administration sieht und ändert
+            sie ebenfalls, jede Änderung wird protokolliert
+          </li>
           <li>Schichtgruppe bzw. Rotationsmuster, Eintritts- und ggf. Austrittsdatum, Kennzeichen „Auszubildende/r“</li>
           <li>
             E-Mail-Adresse – nur, wenn für die Person ein Zugang eingerichtet werden soll
@@ -130,12 +134,18 @@ export default function DatenschutzPage() {
           <li>
             Geburtsdatum im Profil. Es wird für die rechnerische Ermittlung des
             Anspruchs auf Altersfreizeit (Sonderurlaub ab dem Jahr nach dem 55. Geburtstag)
-            verwendet und ist für Schichtleitung und Administration sichtbar
+            verwendet und ist für Schichtleitung und Administration sichtbar. Die Person kann es jederzeit
+            selbst ändern; nach einer eigenen Änderung zählt es erst für den Sonderurlaub, wenn die
+            Administration es bestätigt hat (Bestätigung und Änderung werden protokolliert)
           </li>
           <li>Begründung bei einem Urlaubsantrag (Freitext) und Notizen bei Fehlzeiten (höchstens 200 Zeichen)</li>
           <li>Kommentare im Schichtplan (Freitext, siehe Abschnitt 7)</li>
           <li>Freigaben zur Sichtbarkeit von Abwesenheitsgründen (Abschnitt 5)</li>
-          <li>Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite oder die beim Öffnen gewählte Startseite</li>
+          <li>
+            Darstellungseinstellungen, etwa ausgeblendete Kacheln auf der Startseite, die beim Öffnen gewählte
+            Startseite, deren Aufbau (klassisch oder kompakt) und wann die Neuigkeiten (Glühbirne) zuletzt geöffnet
+            wurden
+          </li>
           <li>
             Persönlicher Kalender: eigene Termine, eigene Farben und eigene Einträge, geteilte Links
             mit eingeladenen Personen, Gruppen und Kalender-Abo (Abschnitt 8)

@@ -21,13 +21,15 @@ function lesbar(err: unknown, ersatz: string): string {
   return bekannt ?? ersatz;
 }
 
-export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
+export function PersonalDetailsForm({ readOnly, istAdmin = false }: { readOnly?: boolean; istAdmin?: boolean }) {
   const [birthDate, setBirthDate] = useState("");
+  /** Zuletzt gespeicherter Stand – „Speichern“ nur, wenn sich etwas geändert hat. */
+  const [gespeichert, setGespeichert] = useState("");
   /**
-   * Schon gespeichert? Dann ist das Feld gesperrt: davon hängen Sonderurlaub
-   * und Altersfreizeit ab, ändern kann es nur noch die Administration.
+   * Von der Administration bestätigt? Das Datum lässt sich jederzeit ändern,
+   * der Sonderurlaub ab 55 zählt aber erst nach der Bestätigung.
    */
-  const [festgelegt, setFestgelegt] = useState(false);
+  const [bestaetigt, setBestaetigt] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -47,14 +49,15 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
 
         const { data, error: loadError } = await supabase
           .from("personal_details")
-          .select("birth_date")
+          .select("birth_date, birth_date_bestaetigt")
           .eq("user_id", user.id)
           .maybeSingle();
 
         if (loadError) throw loadError;
         if (active) {
           setBirthDate(data?.birth_date ?? "");
-          setFestgelegt(Boolean(data?.birth_date));
+          setGespeichert(data?.birth_date ?? "");
+          setBestaetigt(data?.birth_date_bestaetigt !== false);
         }
       } catch (err) {
         if (active) setError(lesbar(err, "Persönliche Angaben konnten nicht geladen werden."));
@@ -88,8 +91,15 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
         .eq("user_id", user.id);
 
       if (saveError) throw saveError;
-      setMessage("Persönliche Angaben gespeichert.");
-      if (birthDate) setFestgelegt(true);
+      setGespeichert(birthDate);
+      // Selbst geändert: unbestätigt, bis die Administration es bestätigt
+      // (bei der Administration selbst gilt es sofort).
+      setBestaetigt(istAdmin || !birthDate);
+      setMessage(
+        istAdmin || !birthDate
+          ? "Persönliche Angaben gespeichert."
+          : "Gespeichert. Die Administration bestätigt das Datum – erst danach zählt es für den Sonderurlaub.",
+      );
     } catch (err) {
       setError(lesbar(err, "Speichern fehlgeschlagen."));
     } finally {
@@ -101,7 +111,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
     <Card>
       <CardHeader
         title="Persönliche Angaben"
-        hint="Freiwillig. Das Geburtsdatum trägst du einmal selbst ein. Ab dem Jahr nach deinem 55. Geburtstag gibt es 4 Tage Sonderurlaub im Jahr."
+        hint="Freiwillig und jederzeit änderbar. Ab dem Jahr nach deinem 55. Geburtstag gibt es 4 Tage Sonderurlaub im Jahr – sobald die Administration das Datum bestätigt hat."
       />
       <CardBody className="space-y-4">
         <div className="max-w-sm">
@@ -113,14 +123,16 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
             type="date"
             value={birthDate}
             onChange={(event) => setBirthDate(event.target.value)}
-            disabled={readOnly || loading || saving || festgelegt}
+            disabled={readOnly || loading || saving}
             max={new Date().toISOString().slice(0, 10)}
             className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-sm outline-none transition focus:border-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
           />
           <p className="mt-1.5 text-[12px] text-ink-faint">
-            {festgelegt
-              ? "Eingetragen. Ändern kann es nur noch die Administration – davon hängen Sonderurlaub und Altersfreizeit ab."
-              : "Keine Pflichtangabe. Bitte genau prüfen: nach dem Speichern kann es nur noch die Administration ändern."}
+            {!gespeichert
+              ? "Keine Pflichtangabe."
+              : bestaetigt
+                ? "Eingetragen und bestätigt."
+                : "Eingetragen – wartet auf Bestätigung durch die Administration. Bis dahin zählt es nicht für den Sonderurlaub."}
           </p>
         </div>
 
@@ -130,7 +142,7 @@ export function PersonalDetailsForm({ readOnly }: { readOnly?: boolean }) {
         <Button
           type="button"
           onClick={() => void save()}
-          disabled={readOnly || loading || saving || festgelegt || !birthDate}
+          disabled={readOnly || loading || saving || birthDate === gespeichert}
         >
           {saving ? "Wird gespeichert …" : "Persönliche Angaben speichern"}
         </Button>

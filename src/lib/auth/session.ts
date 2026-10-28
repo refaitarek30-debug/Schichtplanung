@@ -32,7 +32,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
     .from("profiles")
     .select(
       `id, company_id, employee_id, first_name, last_name, email, role, avatar_url, active,
-       hidden_dashboard_tiles, start_seite,
+       hidden_dashboard_tiles, start_seite, start_ansicht, neuigkeiten_gesehen,
        companies ( id, name, logo_url, active, setup_completed_at, is_demo, demo_expires_at, v_tag_name, v_tage_name, zeitausgleich ),
        employees ( personnel_number, department, shifts ( name ) )`,
     )
@@ -80,6 +80,8 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       hiddenDashboardTiles: data.hidden_dashboard_tiles ?? [],
       protokoll,
       startSeite: istStartSeite(data.start_seite) ? data.start_seite : null,
+      startAnsicht: data.start_ansicht === "kompakt" ? "kompakt" : "klassisch",
+      neuigkeitenGesehen: data.neuigkeiten_gesehen ?? null,
     },
     company: {
       id: companyRow?.id ?? data.company_id,
