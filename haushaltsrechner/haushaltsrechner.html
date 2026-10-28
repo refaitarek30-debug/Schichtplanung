@@ -10,15 +10,18 @@
   <title>Haushaltsrechner</title>
   <style>
 :root {
+  color-scheme: light;
   --bg: #f5f6f8; --card: #fff; --text: #1d2330; --muted: #6a7385; --line: #e1e4ea;
   --accent: #2f6fed; --danger: #c62828; --ok: #1b8a4b;
   --c-fix: #2f6fed; --c-var: #f08a24; --c-misc: #8e5bd6; --c-save: #1b8a4b;
   --radius: 12px;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #14171d; --card: #1e232c; --text: #e8ebf1; --muted: #98a1b3; --line: #2f3643;
-    --accent: #6c9bff; --danger: #ff7b72; --ok: #4cc882; }
+  :root:not([data-theme="light"]) { --bg: #14171d; --card: #1e232c; --text: #e8ebf1; --muted: #98a1b3; --line: #2f3643;
+    --accent: #6c9bff; --danger: #ff7b72; --ok: #4cc882; color-scheme: dark; }
 }
+:root[data-theme="dark"] { --bg: #14171d; --card: #1e232c; --text: #e8ebf1; --muted: #98a1b3; --line: #2f3643;
+    --accent: #6c9bff; --danger: #ff7b72; --ok: #4cc882; color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
@@ -93,6 +96,10 @@ button.small { min-height: 40px; min-width: 40px; }
     padding-bottom: calc(16px + env(safe-area-inset-bottom)); max-height: 92vh; overflow-y: auto; }
   .actions button { flex: 1 1 auto; }
 }
+
+textarea { width: 100%; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 13px/1.4 ui-monospace, Menlo, monospace; }
+.hint { color: var(--muted); font-size: .85rem; margin: 0; }
+#msg-text { margin: 0; white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -152,13 +159,37 @@ button.small { min-height: 40px; min-width: 40px; }
       </label>
       <h3>Backup</h3>
       <div class="actions">
-        <button type="button" id="export-btn" class="ghost">Export (JSON)</button>
-        <button type="button" id="import-btn" class="ghost">Import (JSON)</button>
-        <input type="file" id="import-file" hidden>
+        <button type="button" id="backup-btn" class="ghost">Sichern / Wiederherstellen</button>
       </div>
       <div class="dialog-actions">
         <button type="button" class="ghost" data-close>Abbrechen</button>
         <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="backup-dialog">
+    <form method="dialog" id="backup-form">
+      <h2>Sichern / Wiederherstellen</h2>
+      <p class="hint">Der Text unten enthält alle Daten. Kopiere ihn an einen sicheren Ort (z. B. Notizen). Zum Wiederherstellen fügst du ihn hier ein und tippst auf „Text laden“.</p>
+      <textarea id="backup-text" rows="7" spellcheck="false" aria-label="Backup-Text"></textarea>
+      <div class="actions">
+        <button type="button" id="backup-copy">Kopieren</button>
+        <button type="button" id="backup-load" class="ghost">Text laden</button>
+        <button type="button" id="backup-save" class="ghost">Als Datei sichern</button>
+        <button type="button" id="backup-file" class="ghost">Datei laden</button>
+        <input type="file" id="import-file" hidden>
+      </div>
+      <div class="dialog-actions"><button type="button" class="ghost" data-close>Schließen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="msg-dialog">
+    <form method="dialog" onsubmit="return false">
+      <p id="msg-text"></p>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" id="msg-no">Abbrechen</button>
+        <button type="button" id="msg-yes">OK</button>
       </div>
     </form>
   </dialog>
@@ -263,7 +294,7 @@ const Store = {
   },
   save(data) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); return true; }
-    catch (e) { alert('Speichern im Browser nicht möglich. Bitte Export als Backup nutzen.'); return false; }
+    catch (e) { say('Speichern im Browser nicht möglich. Bitte Backup als Text kopieren.'); return false; }
   },
   // Prüft/normalisiert importierte Daten; null bei ungültiger Struktur
   validate(d) {
@@ -459,28 +490,29 @@ function openItem(item, cat) {
   $('#item-dialog').showModal();
 }
 
-function deleteItem(it) {
-  if (!confirm(`„${it.name}“ löschen?`)) return;
+async function deleteItem(it) {
+  if (!(await ask(`„${it.name}“ löschen?`))) return;
   const m = curMonth();
   m.items = m.items.filter((i) => i.id !== it.id);
   persist(); render();
 }
 
-function copyPrevious() {
+async function copyPrevious() {
   const prevKey = shiftMonth(state.month, -1), prev = state.data.months[prevKey];
-  if (!prev) { alert(`Für ${prevKey} gibt es keine Daten zum Kopieren.`); return; }
+  if (!prev) { say(`Für ${prevKey} gibt es keine Daten zum Kopieren.`); return; }
   const cur = state.data.months[state.month];
   if (cur && (cur.items.length || Calc.income(cur.incomeA) || Calc.income(cur.incomeB)) &&
-      !confirm('Dieser Monat enthält bereits Daten. Mit dem Vormonat überschreiben?')) return;
+      !(await ask('Dieser Monat enthält bereits Daten. Mit dem Vormonat überschreiben?'))) return;
   state.data.months[state.month] = Calc.copyFrom(prev, newId);
   persist(); render();
 }
 
-async function exportData() {
+const backupJson = () => JSON.stringify(state.data, null, 2);
+
+async function saveBackupFile() {
   const name = `haushalt-${new Date().toISOString().slice(0, 10)}.json`;
-  const json = JSON.stringify(state.data, null, 2);
-  const file = new File([json], name, { type: 'application/json' });
-  // Am Handy: Teilen-Menü (Dateien, AirDrop, Mail …); sonst normaler Download
+  const file = new File([backupJson()], name, { type: 'application/json' });
+  // Am Handy: Teilen-Menü; sonst normaler Download
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: 'Haushaltsrechner Backup' }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
@@ -489,15 +521,36 @@ async function exportData() {
   document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
 }
 
-async function importData(file) {
-  try {
-    const parsed = Store.validate(JSON.parse(await file.text()));
-    if (!parsed) throw new Error('Format');
-    if (!confirm(`Import enthält ${Object.keys(parsed.months).length} Monat(e). Alle aktuellen Daten werden ersetzt. Fortfahren?`)) return;
-    state.data = parsed; persist(); render();
-    $('#settings-dialog').close();
-  } catch (e) { alert('Die Datei ist keine gültige Haushaltsrechner-Sicherung.'); }
+async function copyBackup() {
+  const ta = $('#backup-text');
+  try { await navigator.clipboard.writeText(ta.value); say('Backup kopiert.'); }
+  catch (e) { ta.focus(); ta.select(); say('Text ist markiert. Bitte „Kopieren“ im Menü des Handys wählen.'); }
 }
+
+async function importText(text) {
+  let parsed = null;
+  try { parsed = Store.validate(JSON.parse(text)); } catch (e) { /* ungültig */ }
+  if (!parsed) { say('Das ist keine gültige Haushaltsrechner-Sicherung.'); return; }
+  if (!(await ask(`Import enthält ${Object.keys(parsed.months).length} Monat(e). Alle aktuellen Daten werden ersetzt. Fortfahren?`))) return;
+  state.data = parsed; persist(); render();
+  $('#backup-dialog').close(); $('#settings-dialog').close();
+}
+
+// Eigene Bestätigung statt confirm()/alert(), damit es auch in Web-Ansichten funktioniert
+function ask(text, info = false) {
+  return new Promise((resolve) => {
+    const d = $('#msg-dialog');
+    $('#msg-text').textContent = text;
+    $('#msg-no').hidden = info;
+    $('#msg-yes').textContent = info ? 'OK' : 'Ja';
+    const done = (v) => { d.close(); resolve(v); };
+    $('#msg-yes').onclick = () => done(true);
+    $('#msg-no').onclick = () => done(false);
+    d.oncancel = () => resolve(false);
+    d.showModal();
+  });
+}
+const say = (text) => ask(text, true);
 
 /* ===== Events ===== */
 function bind() {
@@ -530,9 +583,12 @@ function bind() {
     s.split = f.split.value;
     persist(); render();
   });
-  $('#export-btn').addEventListener('click', exportData);
-  $('#import-btn').addEventListener('click', () => $('#import-file').click());
-  $('#import-file').addEventListener('change', (e) => { if (e.target.files[0]) importData(e.target.files[0]); e.target.value = ''; });
+  $('#backup-btn').addEventListener('click', () => { $('#backup-text').value = backupJson(); $('#backup-dialog').showModal(); });
+  $('#backup-copy').addEventListener('click', copyBackup);
+  $('#backup-save').addEventListener('click', saveBackupFile);
+  $('#backup-load').addEventListener('click', () => importText($('#backup-text').value));
+  $('#backup-file').addEventListener('click', () => $('#import-file').click());
+  $('#import-file').addEventListener('change', async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importText(await f.text()); });
   document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => b.closest('dialog').close()));
 }
 

@@ -67,13 +67,37 @@
       </label>
       <h3>Backup</h3>
       <div class="actions">
-        <button type="button" id="export-btn" class="ghost">Export (JSON)</button>
-        <button type="button" id="import-btn" class="ghost">Import (JSON)</button>
-        <input type="file" id="import-file" hidden>
+        <button type="button" id="backup-btn" class="ghost">Sichern / Wiederherstellen</button>
       </div>
       <div class="dialog-actions">
         <button type="button" class="ghost" data-close>Abbrechen</button>
         <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="backup-dialog">
+    <form method="dialog" id="backup-form">
+      <h2>Sichern / Wiederherstellen</h2>
+      <p class="hint">Der Text unten enthält alle Daten. Kopiere ihn an einen sicheren Ort (z. B. Notizen). Zum Wiederherstellen fügst du ihn hier ein und tippst auf „Text laden“.</p>
+      <textarea id="backup-text" rows="7" spellcheck="false" aria-label="Backup-Text"></textarea>
+      <div class="actions">
+        <button type="button" id="backup-copy">Kopieren</button>
+        <button type="button" id="backup-load" class="ghost">Text laden</button>
+        <button type="button" id="backup-save" class="ghost">Als Datei sichern</button>
+        <button type="button" id="backup-file" class="ghost">Datei laden</button>
+        <input type="file" id="import-file" hidden>
+      </div>
+      <div class="dialog-actions"><button type="button" class="ghost" data-close>Schließen</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="msg-dialog">
+    <form method="dialog" onsubmit="return false">
+      <p id="msg-text"></p>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" id="msg-no">Abbrechen</button>
+        <button type="button" id="msg-yes">OK</button>
       </div>
     </form>
   </dialog>
