@@ -26,6 +26,9 @@ function kurz(name: string): string {
 
 export const BETRIEB_PREFIX = "betrieb:";
 
+/** Frei ohne eigene Farbe: hellgrau wie im Betriebskalender. */
+const FREI_NEUTRAL = "#E6E8EC";
+
 export function istBetriebsArt(id: string): boolean {
   return id.startsWith(BETRIEB_PREFIX);
 }
@@ -80,8 +83,12 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
       m.set(id, {
         id,
         name: kurz(t.name),
-        kuerzel: t.kuerzel ?? t.name.slice(0, 1),
-        farbe: farbeFuer(schichtSchluessel(t.kuerzel, t.name), farben) ?? "#12A594",
+        kuerzel: t.kuerzel === "FREI" ? "X" : (t.kuerzel ?? t.name.slice(0, 1)),
+        // Freie Tage (Migration 0196) wie im Betriebskalender: neutral, außer man hat sich eine Farbe gesetzt.
+        farbe:
+          t.kuerzel === "FREI"
+            ? (farben.frei ?? FREI_NEUTRAL)
+            : (farbeFuer(schichtSchluessel(t.kuerzel, t.name), farben) ?? "#12A594"),
         art: "arbeit",
         beginn: "",
         ende: "",

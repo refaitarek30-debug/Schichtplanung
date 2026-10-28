@@ -731,52 +731,38 @@ body {
   }
 }
 
-/* Glühbirne „Neuigkeiten“: gelber Schein, solange es Neues gibt – kurz
-   aufleuchtend, danach ruhig. Ohne Bewegung, wenn das System das wünscht. */
-.neuigkeiten-leuchten {
-  background-color: rgba(255, 214, 10, 0.16);
-  box-shadow: 0 0 0 1px rgba(255, 214, 10, 0.5), 0 0 16px rgba(255, 214, 10, 0.5);
-  animation: neuigkeiten-puls 1.6s ease-in-out 2;
-}
-@keyframes neuigkeiten-puls {
-  50% {
-    box-shadow: 0 0 0 1px rgba(255, 214, 10, 0.7), 0 0 26px rgba(255, 214, 10, 0.85);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .neuigkeiten-leuchten {
-    animation: none;
-  }
-}
 
-/* Wechsel Betrieb ↔ Privat (src/lib/bereich.ts): die Seite dreht sich weg,
-   der andere Bereich dreht sich herein. Ohne Bewegung, wenn das System das wünscht. */
-html.bereich-raus,
-html.bereich-rein {
-  overflow: hidden;
+/* Wechsel Betrieb ↔ Privat (src/lib/bereich.ts): Der alte Bildschirm bleibt
+   stehen, bis der neue Bereich fertig geladen ist – dann dreht er sich weg und
+   der neue dreht sich herein. Nur bei diesem Wechsel (Klasse bereich-wechsel),
+   ohne Bewegung, wenn das System das wünscht. */
+html.bereich-wechsel::view-transition {
   background: #0b0e16;
 }
-html.bereich-raus body {
-  animation: bereich-raus 0.3s cubic-bezier(0.55, 0, 0.75, 0.3) forwards;
+html.bereich-wechsel::view-transition-image-pair(root) {
+  perspective: 1400px;
 }
-html.bereich-rein body {
-  animation: bereich-rein 0.42s cubic-bezier(0.2, 0.8, 0.3, 1);
+html.bereich-wechsel::view-transition-old(root) {
+  animation: bereich-raus 0.32s cubic-bezier(0.55, 0, 0.75, 0.3) both;
+}
+html.bereich-wechsel::view-transition-new(root) {
+  animation: bereich-rein 0.42s cubic-bezier(0.2, 0.8, 0.3, 1) 0.3s both;
 }
 @keyframes bereich-raus {
   to {
-    transform: perspective(1400px) rotateY(88deg) scale(0.94);
-    opacity: 0.5;
+    transform: rotateY(88deg) scale(0.94);
+    opacity: 0.4;
   }
 }
 @keyframes bereich-rein {
   from {
-    transform: perspective(1400px) rotateY(-88deg) scale(0.94);
-    opacity: 0.5;
+    transform: rotateY(-88deg) scale(0.94);
+    opacity: 0.4;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  html.bereich-raus body,
-  html.bereich-rein body {
+  html.bereich-wechsel::view-transition-old(root),
+  html.bereich-wechsel::view-transition-new(root) {
     animation: none;
   }
 }

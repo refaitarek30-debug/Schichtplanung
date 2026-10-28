@@ -88,19 +88,23 @@ function Knopf({ inline = false }: { inline?: boolean }) {
   const { items, setItems } = useBenachrichtigungen();
   const [offen, setOffen] = useState(false);
   const ungelesen = (items ?? []).some((n) => !n.readAt);
+  // Glühbirne nur auf der Startseite.
+  const startseite = usePathname() === "/dashboard";
 
   return (
     <>
       {/* Glühbirne links neben dem Profil – gleiche Höhe, gleicher Stil. */}
-      <NeuigkeitenKnopf
-        rund
-        className={cn(
-          "z-20 text-ink",
-          inline
-            ? "absolute right-[3.1rem] top-[-3px]"
-            : "fixed right-[3.6rem] top-[calc(max(0.5rem,env(safe-area-inset-top))+0.1rem)]",
-        )}
-      />
+      {startseite ? (
+        <NeuigkeitenKnopf
+          rund
+          className={cn(
+            "z-20 text-ink",
+            inline
+              ? "absolute right-[3.1rem] top-[-3px]"
+              : "fixed right-[3.6rem] top-[calc(max(0.5rem,env(safe-area-inset-top))+0.1rem)]",
+          )}
+        />
+      ) : null}
       <button
         type="button"
         data-glas-profil

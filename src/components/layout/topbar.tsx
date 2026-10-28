@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown, Cog, Eye, Home, LogOut, UserRound, X } from "lucide-react";
 import { usePrivatWechsel } from "./bereich";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ export function Topbar() {
     useSession();
   const ansichten = roles.filter((r) => r !== echteRolle && roles.indexOf(r) < roles.indexOf(echteRolle));
   const [open, setOpen] = useState(false);
+  const startseite = usePathname() === "/dashboard";
   const wurzel = useRef<HTMLDivElement>(null);
 
   /**
@@ -79,7 +81,8 @@ export function Topbar() {
             <X className="h-3.5 w-3.5" strokeWidth={2.2} />
           </button>
         ) : null}
-        <NeuigkeitenKnopf />
+        {/* Glühbirne nur auf der Startseite. */}
+        {startseite ? <NeuigkeitenKnopf /> : null}
         <NotificationBell />
 
         <div className="relative" ref={wurzel}>

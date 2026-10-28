@@ -102,11 +102,18 @@ export function KpiCard({
         aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`}
         className={cn(
           rahmenKlein,
-          "transition-[filter] hover:brightness-[0.97]",
+          "relative transition-[filter] hover:brightness-[0.97] active:brightness-[0.94]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
         )}
       >
         {klein}
+        {/* Kleiner Pfeil: die Kachel führt weiter (z. B. in den Urlaub). */}
+        <ChevronRight
+          aria-hidden
+          data-kachel-pfeil
+          className="absolute right-1.5 top-2 h-4 w-4 text-ink-faint sm:right-2 sm:top-2.5 lg:static lg:ml-auto lg:h-5 lg:w-5"
+          strokeWidth={2.2}
+        />
       </Link>
     );
   }

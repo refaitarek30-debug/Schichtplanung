@@ -4,7 +4,6 @@ import { IdleLogout } from "@/components/layout/idle-logout";
 import { PrivatProvider } from "@/components/privat/kontext";
 import { PrivatRahmen } from "@/components/privat/rahmen";
 import { FRIST_PRIVAT, fristFuer } from "@/lib/auth/idle";
-import { BereichDrehung } from "@/components/layout/bereich";
 import { getAppSession } from "@/lib/auth/session";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -41,7 +40,6 @@ export default async function PrivatLayout({ children }: { children: ReactNode }
   const betrieb = session?.profile.active ? { firma: session.company.name } : null;
   return (
     <PrivatProvider konto={konto} betrieb={betrieb}>
-      <BereichDrehung />
       <IdleLogout fristMs={session?.profile.active ? fristFuer(session.profile.role, session.profile.id) : FRIST_PRIVAT} />
       <PrivatRahmen>{children}</PrivatRahmen>
     </PrivatProvider>

@@ -54,6 +54,7 @@ import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
+import { meldeBereichBereit } from "@/lib/bereich";
 
 /**
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
@@ -584,6 +585,15 @@ export function PrivatKalender() {
     tagAntippen(iso);
   }
 
+  // Wechsel aus dem Betrieb: erst umschalten, wenn der Kalender dasteht.
+  const geladenGemeldet = useRef(false);
+  const kalenderDa = !!schichtarten && (!laedt || Object.keys(tage).length > 0);
+  useEffect(() => {
+    if (!kalenderDa || geladenGemeldet.current) return;
+    geladenGemeldet.current = true;
+    meldeBereichBereit();
+  }, [kalenderDa]);
+
   // Mit Betriebszugang stehen schon die Betriebsschichten drin – dann keine Einstiegs-Hinweise.
   const leer = !betrieb && schichtarten && !laedt && Object.keys(tage).length === 0;
 
@@ -641,8 +651,8 @@ export function PrivatKalender() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
-          {/* Volle Zeile: die Glühbirne nur, solange es Neues gibt. */}
-          <PrivatNeuigkeiten nurWennNeu />
+          {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
+          <PrivatNeuigkeiten />
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
           <span className="hidden gap-2 sm:flex">

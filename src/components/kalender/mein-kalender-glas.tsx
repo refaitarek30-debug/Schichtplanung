@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { meldeBereichBereit } from "@/lib/bereich";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -61,7 +62,6 @@ import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "./p
 import { useLoeschFrage } from "./loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
-import { NeuigkeitenKnopf } from "@/components/layout/neuigkeiten";
 import { Avatar } from "@/components/ui/avatar";
 import { useBegriffe } from "@/lib/begriffe";
 
@@ -725,6 +725,13 @@ export function MeinKalenderGlas() {
   const sichtbar =
     stand?.schluessel === aktuellerSchluessel ? stand : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
   const zellen = sichtbar?.tage ?? new Map<string, LiveShiftPlanCell>();
+  // Wechsel aus dem Privatbereich: erst umschalten, wenn der Monat dasteht.
+  const geladenGemeldet = useRef(false);
+  useEffect(() => {
+    if (!sichtbar || geladenGemeldet.current) return;
+    geladenGemeldet.current = true;
+    meldeBereichBereit();
+  }, [sichtbar]);
   const istAktuellerMonat = (() => {
     const d = fromISO(heute);
     return d.getFullYear() === monat.jahr && d.getMonth() === monat.monat;
@@ -773,8 +780,6 @@ export function MeinKalenderGlas() {
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setEinladen(true)} />
-          {/* Volle Zeile: die Glühbirne nur, solange es Neues gibt. */}
-          <NeuigkeitenKnopf rund nurWennNeu className="lg:hidden" />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
             <GlasKnopf
