@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
+import { imBetrieb } from "@/lib/bereich";
 
 /**
  * To-dos und Vorlieben im Kalender – Migration 0154. Beides sieht nur die
@@ -32,9 +33,11 @@ export async function fetchTodos(): Promise<Todo[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await createClient().rpc("meine_todos");
   if (error) fehler(error, "Die To-dos konnten nicht geladen werden.");
-  return ((data ?? []) as { id: string; titel: string; datum: string | null; uhrzeit: string | null; erledigt: boolean }[]).map(
-    (z) => ({ id: z.id, titel: z.titel, datum: z.datum, uhrzeit: z.uhrzeit, erledigt: z.erledigt }),
-  );
+  // Beim Beitritt nicht übernommene To-dos bleiben im Privatbereich.
+  const betrieb = imBetrieb();
+  return ((data ?? []) as { id: string; titel: string; datum: string | null; uhrzeit: string | null; erledigt: boolean; nur_privat?: boolean }[])
+    .filter((z) => !(betrieb && z.nur_privat))
+    .map((z) => ({ id: z.id, titel: z.titel, datum: z.datum, uhrzeit: z.uhrzeit, erledigt: z.erledigt }));
 }
 
 export async function todoSpeichern(t: { id: string | null; titel: string; datum: string | null; uhrzeit: string | null }) {

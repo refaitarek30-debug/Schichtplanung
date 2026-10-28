@@ -70,6 +70,10 @@ export interface SessionProfile {
   startAnsicht?: StartAnsicht;
   /** Wann die Neuigkeiten (Glühbirne) zuletzt geöffnet wurden; leer = nie. */
   neuigkeitenGesehen?: string | null;
+  /** Hat zusätzlich einen Privatbereich (gleicher Login, Migration 0194). */
+  hatPrivat?: boolean;
+  /** Nach dem Austritt: Übernahme in den Privatbereich erledigt. */
+  austrittErledigt?: boolean;
 }
 
 export type StartAnsicht = "klassisch" | "kompakt";

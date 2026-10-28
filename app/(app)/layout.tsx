@@ -10,6 +10,7 @@ import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { GlasProfil, GlasTitelAnpassung } from "@/components/layout/glas-profil";
+import { BereichDrehung } from "@/components/layout/bereich";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -35,8 +36,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     redirect("/login");
   }
 
+  // Deaktiviert = Austritt (Migration 0194): Frage „Privat weitermachen?“ –
+  // oder gleich in den Privatbereich, wenn das schon erledigt ist.
   if (!session.profile.active) {
-    redirect("/login?fehler=deaktiviert");
+    redirect(session.profile.austrittErledigt && session.profile.hatPrivat ? "/privat" : "/privat-weiter");
   }
 
   const privacyOnboardingRequired = await isPrivacyOnboardingRequired(session.profile.id);
@@ -48,6 +51,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           nur weil die Abfrage noch nicht beantwortet ist. */}
       {/* Schwebende Glas-Leiste unten und Profil-Knopf – für alle. */}
       <span hidden data-glas-leiste />
+      <BereichDrehung />
       <GlasProfil />
       <GlasTitelAnpassung />
       <IdleLogout fristMs={fristFuer(session.profile.role, session.profile.id)} />

@@ -140,7 +140,7 @@ async function createInviteLink(
   redirectTo: string,
   metadata: Record<string, unknown>,
   admin: ReturnType<typeof createAdminClient>,
-): Promise<{ link: string } | { fehler: string }> {
+): Promise<{ link: string; neu?: boolean } | { fehler: string; vergeben?: boolean }> {
   const konto = await verknuepftesKonto(employeeId, admin);
   if (konto === "fehler") {
     return { fehler: "Der bestehende Zugang ließ sich nicht prüfen. Bitte später erneut versuchen." };
@@ -176,12 +176,15 @@ async function createInviteLink(
   });
   if (!einladung.error && einladung.data?.properties) {
     const link = buildInviteUrl(origin, einladung.data.properties, "invite");
-    if (link) return { link };
+    if (link) return { link, neu: true };
   }
 
   // Die Adresse gehört schon zu einem Konto, aber nicht zu diesem
-  // Mitarbeiter. Kein Passwort-Link – siehe oben.
+  // Mitarbeiter. Kein Passwort-Link – siehe oben. Stattdessen (unten) ein
+  // Beitritts-Link: die Person meldet sich mit ihrem eigenen Konto an und
+  // entscheidet selbst.
   return {
+    vergeben: true,
     fehler:
       `Für ${email} liess sich kein Zugangslink erzeugen. Entweder gehört die Adresse bereits ` +
       `zu einem anderen Konto, oder sie ist falsch geschrieben.`,
@@ -268,11 +271,35 @@ export async function grantAccess(
 
   revalidatePath("/verwaltung");
 
+  // Beitritt mit bestehendem Konto (Migration 0194): Wer schon einen
+  // ShiftNexo-Privatkalender hat, tritt mit Link oder Code bei – der Code
+  // gilt 7 Tage, ein neuer ersetzt den alten.
+  const beitrittsCode = async (): Promise<string | null> => {
+    const { data, error } = await admin.rpc("beitritt_code_anlegen", { p_employee_id: employee.id });
+    return !error && typeof data === "string" ? data : null;
+  };
+
   if ("link" in ergebnis) {
+    const code = ergebnis.neu ? await beitrittsCode() : null;
     return {
       success: `Zugang für ${employee.email} eingerichtet. Diesen Link weitergeben – er gilt 24 Stunden und ist nur für diese Person.`,
       link: ergebnis.link,
+      ...(code ? { code } : {}),
     };
+  }
+
+  if (ergebnis.vergeben) {
+    const code = await beitrittsCode();
+    if (code) {
+      return {
+        success:
+          `Zu ${employee.email} gibt es schon ein ShiftNexo-Konto (z. B. einen Privatkalender). Diesen Link weitergeben: ` +
+          `Die Person meldet sich mit ihrem bestehenden Zugang an und tritt bei. Gilt 7 Tage.`,
+        link: `${origin}/beitreten/${code}`,
+        code,
+        beitritt: true,
+      };
+    }
   }
 
   return { error: ergebnis.fehler };

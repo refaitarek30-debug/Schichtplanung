@@ -202,6 +202,8 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       return aenderung(`hat ${e.betroffen ?? "eine Person"} wieder aktiviert`);
     case "employee.deleted":
       return aenderung("hat eine Person vollständig gelöscht");
+    case "zugang.beitritt":
+      return aenderung("ist mit dem bestehenden ShiftNexo-Konto beigetreten");
     case "role.changed":
       return aenderung(`hat die Rolle${von(e)} geändert`);
     case "personal_details.birth_date":

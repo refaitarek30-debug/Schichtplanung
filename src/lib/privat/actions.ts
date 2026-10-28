@@ -133,8 +133,9 @@ export async function speicherePrivatEmail(_prev: FormState, formData: FormData)
 }
 
 /**
- * Privatkonto samt allen Einträgen endgültig löschen. Nur für Privatkonten –
- * ein Firmenzugang wird hier nie gelöscht.
+ * Privatkonto samt allen Einträgen endgültig löschen. Mit aktivem Zugang zum
+ * Betrieb nur den Privatbereich – der Zugang selbst wird hier nie gelöscht.
+ * Nach dem Austritt (Zugang deaktiviert) geht der ganze Login.
  */
 export async function loeschePrivatkonto(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Gerade nicht möglich." };
@@ -148,10 +149,19 @@ export async function loeschePrivatkonto(_prev: FormState, formData: FormData): 
 
   const admin = createAdminClient();
   const [{ data: profil }, { data: konto }] = await Promise.all([
-    admin.from("profiles").select("id").eq("id", userId).maybeSingle(),
+    admin.from("profiles").select("id, active").eq("id", userId).maybeSingle<{ id: string; active: boolean }>(),
     admin.from("privat_konten").select("user_id").eq("user_id", userId).maybeSingle(),
   ]);
-  if (profil || !konto) return { error: "Dieses Konto kann hier nicht gelöscht werden." };
+  if (!konto) return { error: "Dieses Konto kann hier nicht gelöscht werden." };
+
+  // Gleicher Login noch im Betrieb (Migration 0194): nur den Privatbereich löschen –
+  // der Zugang zum Betrieb gehört dem Betrieb und bleibt.
+  if (profil?.active) {
+    const { error } = await admin.from("privat_konten").delete().eq("user_id", userId);
+    if (error) return { error: "Der Privatbereich konnte nicht gelöscht werden. Bitte versuch es noch einmal." };
+    revalidatePath("/", "layout");
+    redirect("/start");
+  }
 
   const { error } = await admin.auth.admin.deleteUser(userId as string);
   if (error) return { error: "Das Konto konnte nicht gelöscht werden. Bitte versuch es noch einmal." };

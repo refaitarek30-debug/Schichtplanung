@@ -596,6 +596,58 @@ export default function DatenschutzPage() {
         </Absatz>
       </Abschnitt>
 
+      <Abschnitt titel="8b. Ein Konto für Betrieb und Privatbereich">
+        <Absatz>
+          Mitarbeiter können sich mit demselben Login zusätzlich einen persönlichen
+          Privatbereich (Abschnitt 8a) einrichten – freiwillig, mit einem Tipp. Für den
+          Privatbereich ist der Betreiber verantwortlich, nicht der Arbeitgeber.{" "}
+          <strong>Der Arbeitgeber erfährt nicht, ob und wie jemand den Privatbereich nutzt</strong>;
+          es entsteht dafür kein Eintrag im Protokoll des Unternehmens.
+        </Absatz>
+        <Liste>
+          <li>
+            Im Privatbereich erscheinen, solange der Zugang zum Betrieb besteht, die eigenen
+            Schichten aus dem Schichtplan – nur für die Person selbst und nur zum Ansehen.
+            Urlaub, Krankheit und andere Abwesenheiten aus dem Betrieb erscheinen dort nicht.
+            Eingeladene Personen, Gruppen und das Kalender-Abo sehen wie bisher die Schichten aus
+            dem Betrieb, nicht die privaten Einträge
+          </li>
+          <li>
+            Termine und To-dos gehören zum Login und sind in beiden Bereichen dieselben; der
+            Arbeitgeber sieht sie in keinem der beiden Bereiche
+          </li>
+          <li>
+            <strong>Austritt:</strong> Deaktiviert das Unternehmen den Zugang, ist der Betrieb
+            gesperrt. Beim nächsten Anmelden fragt ShiftNexo, ob die Person privat weitermachen
+            möchte. Nur mit „Ja“ werden Termine, To-dos, eigene Einträge und die eigenen Farben in
+            den Privatbereich übernommen; Schichten aus dem Betrieb sowie Krank- und
+            Urlaubsanträge bleiben beim Unternehmen. Löscht das Unternehmen die Person danach
+            endgültig, bleiben Login und Privatbereich bestehen, wenn es einen Privatbereich gibt;
+            die Daten im Unternehmen (Personalstamm, Profil, Geburtsdatum, Einstellungen) werden
+            gelöscht
+          </li>
+          <li>
+            <strong>Beitritt mit bestehendem Konto:</strong> Hat eine Person schon einen
+            ShiftNexo-Kalender, erzeugt das Unternehmen beim Einrichten des Zugangs einen Link bzw.
+            einen Code (7 Tage gültig). Erst nach Anmeldung mit dem eigenen Konto und einer
+            ausdrücklichen Bestätigung wird das Konto dem Unternehmen zugeordnet. Die Person wählt
+            vorher, ob bisherige Termine, To-dos und eigene Schichten im Betriebskalender erscheinen
+            sollen; das Unternehmen sieht diese Inhalte nicht. Im Protokoll des Unternehmens steht
+            nur, dass die Person beigetreten ist
+          </li>
+          <li>
+            Mit Zugang zum Betrieb gilt auch im Privatbereich die kürzere Abmeldefrist der Rolle im
+            Betrieb. Unter <em>Mehr → Privatbereich löschen</em> lässt sich der Privatbereich
+            jederzeit löschen, ohne dass der Zugang zum Betrieb berührt wird
+          </li>
+        </Liste>
+        <Absatz>
+          Rechtsgrundlage ist die Bereitstellung des gewünschten Dienstes (Art. 6 Abs. 1 lit. b
+          DSGVO); die Übernahme beim Austritt und beim Beitritt geschieht nur auf ausdrücklichen
+          Wunsch der Person.
+        </Absatz>
+      </Abschnitt>
+
       <Abschnitt titel="9. Empfänger, Dienstleister und Drittlandbezug">
         <Absatz>
           Für Betrieb und Auslieferung setzt der Betreiber Dienstleister als

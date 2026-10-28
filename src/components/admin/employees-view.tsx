@@ -196,6 +196,8 @@ export function EmployeesView() {
         <InviteLinkCard
           message={access.error ?? access.success ?? ""}
           link={access.link}
+          code={access.code}
+          beitritt={access.beitritt}
           tone={access.error ? "error" : "ok"}
           onClose={() => setAccess(null)}
         />

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Cog, Eye, LogOut, UserRound, X } from "lucide-react";
+import { ChevronDown, Cog, Eye, Home, LogOut, UserRound, X } from "lucide-react";
+import { usePrivatWechsel } from "./bereich";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
@@ -52,6 +53,9 @@ export function Topbar() {
       document.removeEventListener("keydown", beiTaste);
     };
   }, [open]);
+
+  // Ein Login, zwei Bereiche (Migration 0194) – bewusst nur im Menü.
+  const privat = usePrivatWechsel(profile.hatPrivat === true);
 
   return (
     <header data-app-topbar className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6">
@@ -145,6 +149,19 @@ export function Topbar() {
                 <Cog className="h-4 w-4" strokeWidth={1.8} />
                 Einstellungen
               </Link>
+              {mode !== "demo" && !company.isDemo ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    privat.wechseln();
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm text-ink-muted hover:bg-surface-muted"
+                >
+                  <Home className="h-4 w-4" strokeWidth={1.8} />
+                  Zum Privatbereich
+                </button>
+              ) : null}
               <BetreiberLink
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted [&_svg]:h-4 [&_svg]:w-4"
@@ -224,6 +241,7 @@ export function Topbar() {
           ) : null}
         </div>
       </div>
+      {privat.fenster}
     </header>
   );
 }

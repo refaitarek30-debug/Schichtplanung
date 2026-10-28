@@ -19,9 +19,15 @@ export function InviteLinkCard({
   tone = "ok",
   onClose,
   name,
+  code,
+  beitritt = false,
 }: {
   message: string;
   link?: string;
+  /** Beitritts-Code für Personen mit bestehendem ShiftNexo-Konto (Migration 0194). */
+  code?: string;
+  /** Der Link ist ein Beitritts-Link für ein bestehendes Konto. */
+  beitritt?: boolean;
   tone?: "ok" | "error";
   onClose: () => void;
   /** Für die Anrede im vorbereiteten WhatsApp-Text. Optional. */
@@ -35,9 +41,16 @@ export function InviteLinkCard({
   const waText = [
     name ? `Hallo ${name},` : "Hallo,",
     "hier ist dein Zugang zur Schichtplanung.",
-    "Der Link gilt 24 Stunden und ist nur für dich – beim Öffnen vergibst du dein eigenes Passwort.",
+    beitritt
+      ? "Melde dich mit deinem bestehenden ShiftNexo-Zugang an – der Link gilt 7 Tage. Dein Kalender bleibt."
+      : "Der Link gilt 24 Stunden und ist nur für dich – beim Öffnen vergibst du dein eigenes Passwort.",
     link ?? "",
-  ].join("\n\n");
+    !beitritt && code
+      ? `Du hast schon einen ShiftNexo-Privatkalender? Dann im Privatbereich unter „Mehr“ → „Einem Betrieb beitreten“ diesen Code eingeben: ${code}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
 
   async function kopieren() {
@@ -106,13 +119,28 @@ export function InviteLinkCard({
                 </button>
               </div>
             </div>
-            <p className="text-[12px] leading-snug text-ink-muted">
-              Es wird keine Mail verschickt – dieser Link ist der Zugang.
-              Er gilt 24 Stunden und richtet genau diesen einen Zugang ein.
-              Nur an die betreffende Person weitergeben – wer ihn hat, kommt in
-              das Konto. Nach dem Öffnen wird zuerst ein eigenes Passwort
-              gesetzt.
-            </p>
+            {beitritt ? (
+              <p className="text-[12px] leading-snug text-ink-muted">
+                Es wird keine Mail verschickt. Die Person meldet sich mit ihrem
+                bestehenden Zugang an, sieht den Namen des Betriebs und
+                entscheidet, was aus ihrem Kalender mitkommt. Der Link gilt 7 Tage.
+              </p>
+            ) : (
+              <p className="text-[12px] leading-snug text-ink-muted">
+                Es wird keine Mail verschickt – dieser Link ist der Zugang.
+                Er gilt 24 Stunden und richtet genau diesen einen Zugang ein.
+                Nur an die betreffende Person weitergeben – wer ihn hat, kommt in
+                das Konto. Nach dem Öffnen wird zuerst ein eigenes Passwort
+                gesetzt.
+              </p>
+            )}
+            {code && !beitritt ? (
+              <p data-beitritt-code className="rounded-xl bg-surface-sunken px-3 py-2.5 text-[12.5px] leading-snug text-ink-muted">
+                Hat die Person schon einen ShiftNexo-Privatkalender? Dann statt des Links im Privatbereich unter
+                „Mehr“ → „Einem Betrieb beitreten“ diesen Code eingeben:{" "}
+                <b className="tnum font-mono text-[14px] tracking-[0.12em] text-ink">{code}</b> (gilt 7 Tage).
+              </p>
+            ) : null}
           </>
         ) : null}
       </CardBody>

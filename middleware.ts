@@ -43,6 +43,7 @@ const PROTECTED_PREFIXES = [
   "/profil",
   "/hilfe",
   "/privat",
+  "/beitreten",
 ];
 
 const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren", "/privat/registrieren"];

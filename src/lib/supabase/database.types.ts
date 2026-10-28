@@ -111,6 +111,8 @@ export interface ProfileRow {
   start_ansicht: "klassisch" | "kompakt";
   /** Wann die Neuigkeiten zuletzt geöffnet wurden. */
   neuigkeiten_gesehen: string | null;
+  /** Nach dem Austritt: Übernahme in den Privatbereich erledigt (Migration 0194). */
+  austritt_uebernommen_am?: string | null;
   created_at: string;
   updated_at: string;
 }

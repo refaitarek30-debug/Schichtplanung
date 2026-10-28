@@ -25,8 +25,13 @@ export default async function startseite() {
     await birne.click();
     await warte(500);
     pruefe(await seite.getByText("Neu bei ShiftNexo").isVisible(), "Glühbirne öffnet „Neu bei ShiftNexo“");
+    pruefe(
+      (await seite.evaluate(() => document.documentElement.style.overflow)) === "hidden",
+      "Glühbirne: Seite dahinter bewegt sich nicht mit",
+    );
     await seite.keyboard.press("Escape");
     await warte(400);
+    pruefe((await seite.evaluate(() => document.documentElement.style.overflow)) !== "hidden", "Nach dem Schließen: Seite scrollt wieder");
     const nachher = await seite.locator("[data-neuigkeiten]").evaluateAll((l) => l.map((e) => `${e.getAttribute("data-neuigkeiten")}:${e.getBoundingClientRect().width}`));
     pruefe(nachher.every((x) => x.startsWith(":")), `Glühbirne leuchtet danach nicht mehr (${nachher.join(", ")})`);
 
@@ -45,6 +50,10 @@ export default async function startseite() {
     pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]').count()) === 1, "Kompakt: nur noch der kleine Knopf (im Plan)");
     const kleinerKnopf = seite.locator('main a[href="/schichtplan?antrag=1"]');
     pruefe((await kleinerKnopf.innerText()).includes("Urlaub beantragen"), "Kompakt: „Urlaub beantragen“ in der Knopfleiste des Plans");
+    const knopfY = (await kleinerKnopf.boundingBox())?.y ?? -1;
+    const grossY = (await seite.getByRole("button", { name: "Groß" }).first().boundingBox())?.y ?? -2;
+    pruefe(Math.abs(knopfY - grossY) < 4, `Kompakt: „Urlaub beantragen“, Legende und Groß in einer Zeile (${Math.round(knopfY)}/${Math.round(grossY)})`);
+    pruefe(await seite.locator("[data-urlaub-kompakt]").isVisible(), "Kompakt: neue Urlaubskarte");
     const kachelHoehe = (await seite.locator('main a[href="/urlaub"]').first().boundingBox())?.height ?? 999;
     pruefe(kachelHoehe < 110, `Kompakt: Kacheln sind klein (${Math.round(kachelHoehe)} px hoch)`);
     pruefe(await seite.getByText("aus der Betriebsleitung").first().isVisible(), "Kompakt: Mitteilungen stehen weiter darunter");

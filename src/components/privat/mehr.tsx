@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { FileUp, KeyRound, LogOut, Repeat, Trash2, Palmtree, CalendarHeart } from "lucide-react";
+import { Building2, ChevronRight, FileUp, KeyRound, LogOut, Repeat, Trash2, Palmtree, CalendarHeart } from "lucide-react";
+import { wechsleBereich } from "@/lib/bereich";
+import { PrivatNeuigkeiten } from "./neuigkeiten";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
 import { createClient } from "@/lib/supabase/client";
@@ -24,7 +26,7 @@ import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstell
 
 /** Einstellungen, Abmelden, Konto löschen. */
 export function PrivatMehr() {
-  const { konto, schichtarten } = usePrivat();
+  const { konto, betrieb, schichtarten } = usePrivat();
   const router = useRouter();
   const [name, setName] = useState(konto.name);
   const [stunden, setStunden] = useState(konto.wochenstunden === null ? "" : String(konto.wochenstunden));
@@ -51,7 +53,39 @@ export function PrivatMehr() {
 
   return (
     <div className="space-y-4">
-      <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" />
+      <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" rechts={<PrivatNeuigkeiten />} />
+
+      {/* Ein Login, zwei Bereiche (Migration 0194). */}
+      <PrivatKarte titel="Betrieb">
+        {betrieb ? (
+          <button
+            type="button"
+            data-zum-betrieb
+            onClick={() => wechsleBereich("betrieb")}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Building2 className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">Zum Betrieb wechseln</span>
+              <span className="block truncate text-[13px] text-ink-muted">{betrieb.firma}</span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-ink-faint" />
+          </button>
+        ) : (
+          <Link href="/beitreten" className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              <Building2 className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">Einem Betrieb beitreten</span>
+              <span className="block text-[13px] text-ink-muted">Mit dem Code aus deinem Betrieb – dein Kalender bleibt.</span>
+            </span>
+            <ChevronRight className="h-5 w-5 text-ink-faint" />
+          </Link>
+        )}
+      </PrivatKarte>
 
       <PrivatKarte titel="Mitteilungen & Vorschläge">
         <div className="px-4 py-4">
@@ -234,13 +268,23 @@ export function PrivatMehr() {
               onClick={() => setLoeschen(true)}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-crit-fg"
             >
-              <Trash2 className="h-5 w-5" /> Konto löschen
+              <Trash2 className="h-5 w-5" /> {betrieb ? "Privatbereich löschen" : "Konto löschen"}
             </button>
           ) : (
             <form action={loeschAktion} className="space-y-2 px-4 py-4">
               <p className="text-[14px]">
-                Das löscht dein Konto mit allen Schichten, Terminen, Partner-Link und Kalender-Abo – endgültig. Gib zur
-                Bestätigung <b>LÖSCHEN</b> ein.
+                {betrieb ? (
+                  <>
+                    Das löscht deinen Privatbereich mit deinen eigenen Schichten und Einstellungen – endgültig. Dein Zugang
+                    zum Betrieb bleibt, Termine und To-dos auch (sie gehören zu deinem Login). Gib zur Bestätigung{" "}
+                    <b>LÖSCHEN</b> ein.
+                  </>
+                ) : (
+                  <>
+                    Das löscht dein Konto mit allen Schichten, Terminen, Partner-Link und Kalender-Abo – endgültig. Gib zur
+                    Bestätigung <b>LÖSCHEN</b> ein.
+                  </>
+                )}
               </p>
               <input id="privat-loeschen" name="bestaetigung" autoComplete="off" className={feld} />
               {loeschStand.error ? <Alert tone="error">{loeschStand.error}</Alert> : null}

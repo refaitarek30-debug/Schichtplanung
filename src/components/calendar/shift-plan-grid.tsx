@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Info,
   ListOrdered,
   Lock,
   Maximize2,
@@ -1461,22 +1462,29 @@ export function ShiftPlanGrid({
               )}
             </button>
           ) : null}
+          {/* Mit „Urlaub beantragen“ in der Zeile: auf dem Handy nur die Symbole –
+              sonst rutscht „Groß“ allein in eine zweite Zeile. */}
           <button
             type="button"
             onClick={() => setLegendeOffen((v) => !v)}
             aria-pressed={legendeOffen}
-            className={cn(chip, legendeOffen && chipAn)}
+            aria-label="Legende"
+            title="Legende"
+            className={cn(chip, legendeOffen && chipAn, antragLink && "max-sm:w-[34px] max-sm:justify-center max-sm:px-0")}
           >
-            Legende
+            {antragLink ? <Info className="h-4 w-4 sm:hidden" strokeWidth={2.2} /> : null}
+            <span className={cn(antragLink && "max-sm:hidden")}>Legende</span>
           </button>
           <button
             type="button"
             onClick={() => void setzeAnzeige({ planAnsicht: gross ? "kompakt" : "gross" }).catch(() => undefined)}
             aria-pressed={gross}
-            className={cn(chip, gross && chipAn)}
+            aria-label={gross ? "Kompakt" : "Groß"}
+            title={gross ? "Kompakt" : "Groß"}
+            className={cn(chip, gross && chipAn, antragLink && "max-sm:w-[34px] max-sm:justify-center max-sm:px-0")}
           >
             {gross ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={2.2} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={2.2} />}
-            {gross ? "Kompakt" : "Groß"}
+            <span className={cn(antragLink && "max-sm:hidden")}>{gross ? "Kompakt" : "Groß"}</span>
           </button>
           {/* Reihenfolge: selten gebraucht. Die Pfeile erscheinen erst in
               diesem Modus, sonst verstellen sie jede Namensspalte. */}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Lightbulb } from "lucide-react";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
-import { hatNeues, istNeu, neuigkeitDatum, neuigkeitenFuer } from "@/lib/neuigkeiten";
+import { hatNeues, istNeu, neuigkeitDatum, neuigkeitenFuer, type Neuigkeit } from "@/lib/neuigkeiten";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,22 +14,44 @@ import { cn } from "@/lib/utils";
  *
  * `rund` für die Glas-Kopfzeilen (Handy), sonst als Knopf in der Kopfleiste.
  */
-export function NeuigkeitenKnopf({
-  rund = false,
-  nurWennNeu = false,
-  className,
-}: {
+interface KnopfProps {
   rund?: boolean;
   /** Nur zeigen, solange es Neues gibt – für volle Kopfzeilen (Kalender). */
   nurWennNeu?: boolean;
   className?: string;
-}) {
+}
+
+export function NeuigkeitenKnopf(props: KnopfProps) {
   const { role, neuigkeitenGesehen, neuigkeitenGelesen } = useSession();
+  return (
+    <NeuigkeitenBasis
+      {...props}
+      eintraege={neuigkeitenFuer(role)}
+      neu={hatNeues(role, neuigkeitenGesehen)}
+      gesehen={neuigkeitenGesehen}
+      onGelesen={neuigkeitenGelesen}
+    />
+  );
+}
+
+/** Dieselbe Glühbirne im Privatbereich – mit dessen eigenen Einträgen und eigenem „gelesen“. */
+export function NeuigkeitenBasis({
+  rund = false,
+  nurWennNeu = false,
+  className,
+  eintraege,
+  neu,
+  gesehen: neuigkeitenGesehen,
+  onGelesen: neuigkeitenGelesen,
+}: KnopfProps & {
+  eintraege: Neuigkeit[];
+  neu: boolean;
+  gesehen: string | null;
+  onGelesen: () => void;
+}) {
   const [offen, setOffen] = useState(false);
   // Was beim Öffnen neu war, bleibt in der Liste markiert, bis sie zugeht.
   const [gesehenVorher, setGesehenVorher] = useState<string | null>(null);
-  const neu = hatNeues(role, neuigkeitenGesehen);
-  const eintraege = neuigkeitenFuer(role);
   if (eintraege.length === 0) return null;
   if (nurWennNeu && !neu && !offen) return null;
 

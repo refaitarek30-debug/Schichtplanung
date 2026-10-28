@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
+import { imBetrieb } from "@/lib/bereich";
 
 /**
  * Kalender mit Partner – siehe Migrationen 0138 und 0139.
@@ -125,6 +126,7 @@ interface TerminZeile {
   erinnerung?: Erinnerung | null;
   ausfaelle?: string[] | null;
   serie_ab?: string | null;
+  nur_privat?: boolean | null;
   titel: string;
   ganztaegig: boolean;
   beginn: string | null;
@@ -138,7 +140,9 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await createClient().rpc("meine_termine");
   if (error) fehler(error, "Die Termine konnten nicht geladen werden.");
-  return ((data ?? []) as TerminZeile[]).map((z) => ({
+  // Beim Beitritt nicht übernommene Termine bleiben im Privatbereich.
+  const betrieb = imBetrieb();
+  return ((data ?? []) as TerminZeile[]).filter((z) => !(betrieb && z.nur_privat)).map((z) => ({
     id: z.id,
     vonPartner: z.von_partner,
     personId: z.person_id ?? null,

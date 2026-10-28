@@ -151,6 +151,10 @@ http.createServer((req, res) => {
       }
       if (f === "hat_funktion") return send(200, true);
       if (f === "abo_status" || f === "partner_einladung_status") return send(200, []);
+      // ---- Beitritt mit bestehendem Konto (0194) ----
+      if (f === "beitritt_vorschau") return body.p_code === "ABCD2345" ? send(200, [{ firma: "Testbetrieb", name: "Tarek Test", termine: 3, todos: 2, eigene_schichten: 12 }]) : send(400, { code: "P0001", message: "Dieser Code ist ungültig oder abgelaufen. Bitte frag im Betrieb nach einem neuen." });
+      if (f === "beitritt_annehmen") { db.beitritt = body; return send(204); }
+      if (f === "_beitritt") return send(200, db.beitritt ?? null);
       return send(200, null);
     }
     send(404, { message: "unbekannt " + p });

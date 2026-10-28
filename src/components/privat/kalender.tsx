@@ -52,6 +52,8 @@ import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
+import { mitBetrieb, useBetriebsschichten } from "./betrieb";
+import { PrivatNeuigkeiten } from "./neuigkeiten";
 
 /**
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
@@ -103,7 +105,7 @@ const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und 
 
 export function PrivatKalender() {
   const router = useRouter();
-  const { konto, schichtarten, artNach, artenFehler } = usePrivat();
+  const { konto, betrieb, schichtarten, artNach, artenFehler } = usePrivat();
   const heute = heuteInBerlin();
   const [ansicht, setAnsicht] = useState<Ansicht>("monat");
   // Zuletzt gewählte Ansicht – nur auf diesem Gerät gemerkt.
@@ -186,6 +188,14 @@ export function PrivatKalender() {
     const { start, wochen } = monatRaster(d.getFullYear(), d.getMonth());
     return { von: start, bis: addDays(start, wochen * 7 - 1) };
   }, [ansicht, anker]);
+
+  // Mit Betriebszugang (Migration 0194): die eigenen Betriebsschichten, nur zum Ansehen.
+  const betriebSchichten = useBetriebsschichten(konto.userId, !!betrieb, bereich.von, bereich.bis);
+  const anzeigeTage = useMemo(() => mitBetrieb(tage, betriebSchichten), [tage, betriebSchichten]);
+  const anzeigeArtNach = useMemo(
+    () => (betriebSchichten.arten.size ? new Map([...artNach, ...betriebSchichten.arten]) : artNach),
+    [artNach, betriebSchichten.arten],
+  );
 
   const ladeJahre = useCallback(async (jahre: number[], erneut = false) => {
     const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
@@ -574,7 +584,8 @@ export function PrivatKalender() {
     tagAntippen(iso);
   }
 
-  const leer = schichtarten && !laedt && Object.keys(tage).length === 0;
+  // Mit Betriebszugang stehen schon die Betriebsschichten drin – dann keine Einstiegs-Hinweise.
+  const leer = !betrieb && schichtarten && !laedt && Object.keys(tage).length === 0;
 
   // Plan hochladen: Dateien gleich hier wählen, die Import-Seite liest sie danach.
   const hochladeFeld = useRef<HTMLInputElement>(null);
@@ -588,11 +599,11 @@ export function PrivatKalender() {
   const tagesProps = {
     heute,
     baender: (iso: string) =>
-      arten(tage[iso], artNach)
+      arten(anzeigeTage[iso], anzeigeArtNach)
         .filter((a) => a.beginn && a.ende)
         .map((a) => ({ name: a.name, beginn: a.beginn, ende: a.ende, farbe: a.farbe })),
     ganztaegig: (iso: string) => [
-      ...arten(tage[iso], artNach)
+      ...arten(anzeigeTage[iso], anzeigeArtNach)
         .filter((a) => !a.beginn || !a.ende)
         .map((a) => ({ name: a.name, farbe: a.farbe })),
       ...(feiertagVon(iso) ? [{ name: `🎉 ${feiertagVon(iso)}`, farbe: "#FCE7D6" }] : []),
@@ -630,6 +641,8 @@ export function PrivatKalender() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
+          {/* Volle Zeile: die Glühbirne nur, solange es Neues gibt. */}
+          <PrivatNeuigkeiten nurWennNeu />
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
           <span className="hidden gap-2 sm:flex">
@@ -750,8 +763,8 @@ export function PrivatKalender() {
                     jahr={m.getFullYear()}
                     monat={m.getMonth()}
                     heute={heute}
-                    tage={tage}
-                    artNach={artNach}
+                    tage={anzeigeTage}
+                    artNach={anzeigeArtNach}
                     feiertagVon={feiertagVon}
                     termine={sichtbareTermine}
                     andere={andere}
@@ -778,8 +791,8 @@ export function PrivatKalender() {
           <JahresAnsicht
             jahr={ankerD.getFullYear()}
             heute={heute}
-            tage={tage}
-            artNach={artNach}
+            tage={anzeigeTage}
+            artNach={anzeigeArtNach}
             feiertagVon={feiertagVon}
             onMonat={(m) => {
               if (gewischt.current) return;
@@ -827,6 +840,7 @@ export function PrivatKalender() {
           key={tagBlatt}
           iso={tagBlatt}
           eintrag={tage[tagBlatt] ?? LEER}
+          betrieb={betriebSchichten.am(tagBlatt)}
           arten={schichtarten ?? []}
           artNach={artNach}
           feiertag={feiertagVon(tagBlatt)}
@@ -1206,6 +1220,7 @@ function JahresAnsicht({
 function TagBlatt({
   iso,
   eintrag,
+  betrieb = [],
   arten: alleArten,
   artNach,
   feiertag,
@@ -1223,6 +1238,8 @@ function TagBlatt({
 }: {
   iso: string;
   eintrag: TagEintrag;
+  /** Schicht aus dem Betrieb – nur zum Ansehen. */
+  betrieb?: Schichtart[];
   arten: Schichtart[];
   artNach: Map<string, Schichtart>;
   feiertag?: string;
@@ -1281,15 +1298,18 @@ function TagBlatt({
 
   const d = fromISO(iso);
   const zeit = (a: Schichtart) => zeitText(a) || (a.art === "arbeit" ? null : a.art === "frei" ? "frei" : "ganztägig");
-  const nichts = !gesetzt.length && !feiertag && !termine.length && !todos.length && !andere.length;
+  const nichts = !gesetzt.length && !betrieb.length && !feiertag && !termine.length && !todos.length && !andere.length;
   return (
     <Blatt
       wischZu
       titel={`${WT_LANG[wochentag(iso)]}, ${d.getDate()}. ${monthName(d.getMonth())}`}
       unter={
-        feiertag || gesetzt.length ? (
+        feiertag || gesetzt.length || betrieb.length ? (
         <span className="mt-1 flex flex-wrap gap-1.5">
           {feiertag ? <span className="font-medium text-[#e5484d]">{feiertag}</span> : null}
+          {betrieb.map((a) => (
+            <EintragPille key={a.id} name={`🏢 ${a.name}`} zeit="Betrieb · nur ansehen" farbe={a.farbe} />
+          ))}
           {gesetzt.map((a) => (
             <EintragPille
               key={a.id}

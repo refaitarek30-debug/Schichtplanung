@@ -453,7 +453,7 @@ export default function DashboardPage() {
       <Raster an={kompakt}>
       {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
         <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-2">
-          <NextLeaveCard antraege={liveMyRequests} heute={TODAY} />
+          <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
         </Fach>
       ) : null}
 
