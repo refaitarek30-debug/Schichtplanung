@@ -3,9 +3,9 @@ import type { Role } from "@/lib/types";
 /**
  * Neuigkeiten für die Glühbirne oben neben dem Profil.
  *
- * Bei jeder Neuerung kommt hier ein kurzer Eintrag dazu – neueste oben. Die
- * Glühbirne leuchtet, solange es einen Eintrag gibt, der nach dem letzten
- * Öffnen (`profiles.neuigkeiten_gesehen`) erschienen ist.
+ * Bei jeder Neuerung kommt hier ein kurzer Eintrag dazu – neueste oben. Was nach
+ * dem letzten Öffnen (`profiles.neuigkeiten_gesehen`) erschienen ist, steht in
+ * der Liste mit „NEU“ – die Glühbirne selbst leuchtet nicht.
  *
  * `rollen` leer = für alle. Sonst nur für diese Rollen, damit niemand von
  * Funktionen liest, die er gar nicht hat.

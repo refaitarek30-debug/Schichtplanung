@@ -10,7 +10,6 @@ import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { GlasProfil, GlasTitelAnpassung } from "@/components/layout/glas-profil";
-import { BereichDrehung } from "@/components/layout/bereich";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -51,7 +50,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           nur weil die Abfrage noch nicht beantwortet ist. */}
       {/* Schwebende Glas-Leiste unten und Profil-Knopf – für alle. */}
       <span hidden data-glas-leiste />
-      <BereichDrehung />
       <GlasProfil />
       <GlasTitelAnpassung />
       <IdleLogout fristMs={fristFuer(session.profile.role, session.profile.id)} />

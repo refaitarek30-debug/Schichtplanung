@@ -19,12 +19,16 @@ export default async function startseite() {
     await warte(800);
     pruefe((await seite.getByText("Geburtsdatum bestätigen").count()) === 0, "Admin: nach dem Bestätigen verschwunden");
 
-    // Glühbirne leuchtet, öffnen, danach nicht mehr.
+    // Glühbirne: Nachrichtenfeld ohne Leuchten – auch wenn es Neues gibt.
     const birne = seite.locator("[data-neuigkeiten]:visible").first();
-    pruefe((await birne.getAttribute("data-neuigkeiten")) === "neu", "Glühbirne leuchtet (Neues da)");
+    pruefe(
+      (await birne.getAttribute("data-neuigkeiten")) === "" && !(await birne.getAttribute("class")).includes("leuchten"),
+      "Glühbirne leuchtet nicht (auch bei Neuem)",
+    );
     await birne.click();
     await warte(500);
     pruefe(await seite.getByText("Neu bei ShiftNexo").isVisible(), "Glühbirne öffnet „Neu bei ShiftNexo“");
+    pruefe((await seite.getByText("NEU", { exact: true }).count()) > 0, "Neues ist in der Liste markiert");
     pruefe(
       (await seite.evaluate(() => document.documentElement.style.overflow)) === "hidden",
       "Glühbirne: Seite dahinter bewegt sich nicht mit",
@@ -32,13 +36,6 @@ export default async function startseite() {
     await seite.keyboard.press("Escape");
     await warte(400);
     pruefe((await seite.evaluate(() => document.documentElement.style.overflow)) !== "hidden", "Nach dem Schließen: Seite scrollt wieder");
-    const nachher = await seite.locator("[data-neuigkeiten]").evaluateAll((l) => l.map((e) => `${e.getAttribute("data-neuigkeiten")}:${e.getBoundingClientRect().width}`));
-    pruefe(nachher.every((x) => x.startsWith(":")), `Glühbirne leuchtet danach nicht mehr (${nachher.join(", ")})`);
-
-    // Bleibt aus – auch nach dem Neuladen (Konto und Gerät merken es sich).
-    await seite.reload({ waitUntil: "networkidle" });
-    await warte(1200);
-    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Glühbirne leuchtet nach dem Neuladen nicht wieder");
     // Nur auf der Startseite.
     await seite.goto(`${APP}/urlaub`, { waitUntil: "networkidle" });
     await warte(800);
@@ -65,6 +62,12 @@ export default async function startseite() {
     const grossY = (await seite.getByRole("button", { name: "Groß" }).first().boundingBox())?.y ?? -2;
     pruefe(Math.abs(knopfY - grossY) < 4, `Kompakt: „Urlaub beantragen“, Legende und Groß in einer Zeile (${Math.round(knopfY)}/${Math.round(grossY)})`);
     pruefe(await seite.locator("[data-urlaub-kompakt]").isVisible(), "Kompakt: neue Urlaubskarte");
+    pruefe((await seite.locator("main a[href='/urlaub'] [data-kachel-pfeil]").count()) > 0, "Kompakt: Kacheln mit Pfeil zum Antippen");
+    const meinUrlaub = seite.locator("[data-mein-urlaub]");
+    pruefe(await meinUrlaub.isVisible(), "Kompakt: „Mein Urlaub“ unten auf der Startseite");
+    await meinUrlaub.getByRole("button", { name: /Urlaubskonto/ }).click();
+    await warte(500);
+    pruefe(await meinUrlaub.getByText(/Resturlaub|verfügbar|übrig/).first().isVisible(), "Mein Urlaub: Urlaubskonto klappt auf");
     const kachelHoehe = (await seite.locator('main a[href="/urlaub"]').first().boundingBox())?.height ?? 999;
     pruefe(kachelHoehe < 110, `Kompakt: Kacheln sind klein (${Math.round(kachelHoehe)} px hoch)`);
     pruefe(await seite.getByText("aus der Betriebsleitung").first().isVisible(), "Kompakt: Mitteilungen stehen weiter darunter");

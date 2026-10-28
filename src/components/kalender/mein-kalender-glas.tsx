@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { meldeBereichBereit } from "@/lib/bereich";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -724,6 +725,13 @@ export function MeinKalenderGlas() {
   const sichtbar =
     stand?.schluessel === aktuellerSchluessel ? stand : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
   const zellen = sichtbar?.tage ?? new Map<string, LiveShiftPlanCell>();
+  // Wechsel aus dem Privatbereich: erst umschalten, wenn der Monat dasteht.
+  const geladenGemeldet = useRef(false);
+  useEffect(() => {
+    if (!sichtbar || geladenGemeldet.current) return;
+    geladenGemeldet.current = true;
+    meldeBereichBereit();
+  }, [sichtbar]);
   const istAktuellerMonat = (() => {
     const d = fromISO(heute);
     return d.getFullYear() === monat.jahr && d.getMonth() === monat.monat;

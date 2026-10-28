@@ -54,6 +54,7 @@ import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
+import { meldeBereichBereit } from "@/lib/bereich";
 
 /**
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
@@ -583,6 +584,15 @@ export function PrivatKalender() {
     if (pinselAn && strich.geschluckt()) return;
     tagAntippen(iso);
   }
+
+  // Wechsel aus dem Betrieb: erst umschalten, wenn der Kalender dasteht.
+  const geladenGemeldet = useRef(false);
+  const kalenderDa = !!schichtarten && (!laedt || Object.keys(tage).length > 0);
+  useEffect(() => {
+    if (!kalenderDa || geladenGemeldet.current) return;
+    geladenGemeldet.current = true;
+    meldeBereichBereit();
+  }, [kalenderDa]);
 
   // Mit Betriebszugang stehen schon die Betriebsschichten drin – dann keine Einstiegs-Hinweise.
   const leer = !betrieb && schichtarten && !laedt && Object.keys(tage).length === 0;

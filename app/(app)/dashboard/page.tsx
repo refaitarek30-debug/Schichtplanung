@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { NextLeaveCard } from "@/components/dashboard/next-leave";
+import { MeinUrlaub } from "@/components/dashboard/mein-urlaub";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { RequestList } from "@/components/dashboard/request-list";
 import { LiveRequestList } from "@/components/leave/live-request-list";
@@ -504,6 +505,8 @@ export default function DashboardPage() {
         </Fach>
       ) : null}
 
+      {/* „Kompakt“: die eigenen Anträge stehen unten in „Mein Urlaub“. */}
+      {kompakt && role === "employee" && mode === "live" ? null : (
       <Fach an={kompakt} platz="xl:col-start-2">
       {role === "employee" ? (
         <div className="grid gap-4">
@@ -564,6 +567,7 @@ export default function DashboardPage() {
         </>
       )}
       </Fach>
+      )}
       <Fach an={kompakt} platz="xl:col-start-2">
       <Card>
         <CardHeader
@@ -598,6 +602,18 @@ export default function DashboardPage() {
         </CardBody>
       </Card>
       </Fach>
+      {/* „Kompakt“: Mein Urlaub ganz unten – Anträge nach Unterkategorien, Konto zum Aufklappen. */}
+      {kompakt && mode === "live" && profile.employeeId ? (
+        <Fach an={kompakt} platz="xl:col-start-2">
+          <MeinUrlaub
+            balance={liveBalance}
+            requests={liveMyRequests}
+            loading={liveMyRequests === null}
+            onChanged={loadLive}
+            employeeId={profile.employeeId}
+          />
+        </Fach>
+      ) : null}
       </Raster>
     </div>
   );

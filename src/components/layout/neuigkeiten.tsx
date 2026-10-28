@@ -8,13 +8,13 @@ import { hatNeues, istNeu, neuigkeitDatum, neuigkeitenFuer, type Neuigkeit } fro
 import { cn } from "@/lib/utils";
 
 /**
- * Glühbirne – nur auf der Startseite: leuchtet gelb, wenn es seit dem letzten
- * Öffnen etwas Neues gibt. Ein Tipp öffnet die Liste – danach ist sie
- * „gesehen“ und leuchtet nicht mehr, bleibt aber zum Nachlesen da.
+ * Glühbirne – nur auf der Startseite: das Nachrichtenfeld der App. Sie
+ * leuchtet nicht; ein Tipp öffnet die Liste. Was seit dem letzten Öffnen
+ * dazugekommen ist, steht darin mit „NEU“.
  *
  * „Gesehen“ steht im Konto und zusätzlich auf dem Gerät. Es gilt der spätere
- * der beiden Zeitpunkte – so leuchtet sie auch dann nicht wieder auf, wenn
- * die App einen älteren Stand der Seite zeigt.
+ * der beiden Zeitpunkte – so gilt Gelesenes auch dann als gelesen, wenn die
+ * App einen älteren Stand der Seite zeigt.
  *
  * `rund` für die Glas-Kopfzeilen (Handy), sonst als Knopf in der Kopfleiste.
  */
@@ -127,21 +127,17 @@ export function NeuigkeitenBasis({
       <button
         type="button"
         onClick={oeffnen}
-        data-neuigkeiten={neu ? "neu" : ""}
-        aria-label={neu ? "Neuigkeiten – es gibt Neues" : "Neuigkeiten"}
+        // Kein Leuchten mehr – die Glühbirne ist einfach das Nachrichtenfeld der App.
+        data-neuigkeiten=""
+        aria-label="Neuigkeiten"
         title="Neu bei ShiftNexo"
         className={cn(
           "relative flex shrink-0 items-center justify-center rounded-full transition-colors",
           rund ? "glas h-10 w-10" : "h-9 w-9 hover:bg-surface-muted",
-          neu && "neuigkeiten-leuchten",
           className,
         )}
       >
-        <Lightbulb
-          className={cn("h-[19px] w-[19px]", neu ? "text-[#e0a800]" : "text-ink-faint")}
-          fill={neu ? "rgba(255, 214, 10, 0.45)" : "none"}
-          strokeWidth={1.9}
-        />
+        <Lightbulb className="h-[19px] w-[19px] text-ink-muted" strokeWidth={1.9} />
       </button>
       {offen ? (
         <Blatt titel="Neu bei ShiftNexo" onClose={() => setOffen(false)}>

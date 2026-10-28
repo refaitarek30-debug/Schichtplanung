@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { Blatt } from "@/components/privat/blatt";
 import { createClient } from "@/lib/supabase/client";
 import { datenFehlerText } from "@/lib/errors";
-import { dreheHerein, wechsleBereich } from "@/lib/bereich";
+import { wechsleBereich } from "@/lib/bereich";
 import { LEGAL_VERSIONS } from "@/lib/legal/version";
 
 /**
@@ -15,28 +16,22 @@ import { LEGAL_VERSIONS } from "@/lib/legal/version";
  * Hinweis zum Datenschutz.
  */
 
-/** Zweite Hälfte der Drehung – in beiden Bereichen eingebunden. */
-export function BereichDrehung() {
-  useEffect(() => {
-    dreheHerein();
-  }, []);
-  return null;
-}
-
 /**
  * Wechsel in den Privatbereich aus dem Betrieb. Gibt es ihn noch nicht, kommt
  * zuerst das Fenster „Dein Privatbereich“.
  */
 export function usePrivatWechsel(hatPrivat: boolean) {
+  const router = useRouter();
   const [frage, setFrage] = useState(false);
   const fenster = frage ? <PrivatEinrichten onClose={() => setFrage(false)} /> : null;
   return {
-    wechseln: () => (hatPrivat ? wechsleBereich("privat") : setFrage(true)),
+    wechseln: () => (hatPrivat ? wechsleBereich("privat", router) : setFrage(true)),
     fenster,
   };
 }
 
 function PrivatEinrichten({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
 
@@ -49,7 +44,8 @@ function PrivatEinrichten({ onClose }: { onClose: () => void }) {
       setLaeuft(false);
       return;
     }
-    wechsleBereich("privat");
+    onClose();
+    wechsleBereich("privat", router);
   }
 
   return (

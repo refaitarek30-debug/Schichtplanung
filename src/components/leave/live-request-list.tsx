@@ -26,11 +26,12 @@ const ABSCHNITTE: {
   titel: string;
   status: LeaveRequestGroup["status"][];
   rand: string;
+  punkt: string;
 }[] = [
-  { key: "offen", titel: "Offen", status: ["pending"], rand: "border-l-warn-dot" },
-  { key: "genehmigt", titel: "Genehmigt", status: ["approved"], rand: "border-l-ok-dot" },
-  { key: "abgelehnt", titel: "Abgelehnt", status: ["rejected"], rand: "border-l-crit-dot" },
-  { key: "zurueck", titel: "Zurückgezogen", status: ["withdrawn"], rand: "border-l-line" },
+  { key: "offen", titel: "Offen", status: ["pending"], rand: "border-l-warn-dot", punkt: "bg-warn-dot" },
+  { key: "genehmigt", titel: "Genehmigt", status: ["approved"], rand: "border-l-ok-dot", punkt: "bg-ok-dot" },
+  { key: "abgelehnt", titel: "Abgelehnt", status: ["rejected"], rand: "border-l-crit-dot", punkt: "bg-crit-dot" },
+  { key: "zurueck", titel: "Zurückgezogen", status: ["withdrawn"], rand: "border-l-line", punkt: "bg-ink-faint" },
 ];
 
 /**
@@ -53,6 +54,7 @@ export function LiveRequestList({
   onChanged,
   einklappbar = false,
   standardOffen = true,
+  rahmenlos = false,
 }: {
   requests: LiveLeaveRequest[] | null;
   loading: boolean;
@@ -64,6 +66,11 @@ export function LiveRequestList({
    */
   einklappbar?: boolean;
   standardOffen?: boolean;
+  /**
+   * Startseite „Kompakt“ (Mein Urlaub): ohne eigene Karte und Kopf, alle
+   * Unterkategorien zugeklappt, als saubere Zeilen mit Zahl.
+   */
+  rahmenlos?: boolean;
 }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [hinweis, setHinweis] = useState<string | null>(null);
@@ -77,7 +84,7 @@ export function LiveRequestList({
    * Jeder Abschnitt klappt einzeln auf und zu. Offene Anträge stehen
    * aufgeklappt, der Rest ist eingeklappt – so bleibt die Liste kurz.
    */
-  const [aufgeklappt, setAufgeklappt] = useState<Set<string>>(() => new Set(["offen"]));
+  const [aufgeklappt, setAufgeklappt] = useState<Set<string>>(() => new Set(rahmenlos ? [] : ["offen"]));
   function abschnittUmschalten(key: string) {
     setAufgeklappt((bisher) => {
       const neu = new Set(bisher);
@@ -118,9 +125,10 @@ export function LiveRequestList({
     });
   }
 
+  const Rahmen = rahmenlos ? "div" : Card;
   return (
-    <Card>
-      {einklappbar ? (
+    <Rahmen>
+      {rahmenlos ? null : einklappbar ? (
         <button
           type="button"
           onClick={() => setOffen((v) => !v)}
@@ -165,9 +173,11 @@ export function LiveRequestList({
         </div>
       ) : null}
       {einklappbar && !offen ? null : (
-        <CardBody className="space-y-4 px-3 py-3">
+        <CardBody className={rahmenlos ? "space-y-2 p-0" : "space-y-4 px-3 py-3"}>
           {loading ? (
             <RowSkeleton rows={3} />
+          ) : (!gruppen || gruppen.length === 0) && rahmenlos ? (
+            <p className="px-1 py-1 text-[13.5px] text-ink-muted">Noch keine Anträge gestellt.</p>
           ) : !gruppen || gruppen.length === 0 ? (
             <EmptyState
               title="Noch keine Anträge gestellt."
@@ -181,11 +191,25 @@ export function LiveRequestList({
                     type="button"
                     onClick={() => abschnittUmschalten(abschnitt.key)}
                     aria-expanded={aufgeklappt.has(abschnitt.key)}
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint hover:bg-surface-muted"
+                    className={
+                      rahmenlos
+                        ? "flex w-full items-center gap-2.5 rounded-xl bg-ink/[0.04] px-3 py-2.5 text-left text-[14.5px] font-medium hover:bg-ink/[0.07]"
+                        : "flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-faint hover:bg-surface-muted"
+                    }
                   >
+                    {rahmenlos ? (
+                      <>
+                        <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", abschnitt.punkt)} />
+                        <span className="flex-1">{abschnitt.titel}</span>
+                        <span className="tnum rounded-full bg-surface px-2 py-0.5 text-[12.5px] font-semibold text-ink-muted shadow-[0_1px_2px_rgba(0,0,0,0.06)]">
+                          {abschnitt.eintraege.length}
+                        </span>
+                      </>
+                    ) : (
                     <span>
                       {abschnitt.titel} · {abschnitt.eintraege.length}
                     </span>
+                    )}
                     <ChevronDown
                       className={cn(
                         "h-4 w-4 shrink-0 transition-transform",
@@ -311,6 +335,6 @@ export function LiveRequestList({
           )}
         </CardBody>
       )}
-    </Card>
+    </Rahmen>
   );
 }

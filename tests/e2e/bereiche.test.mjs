@@ -25,15 +25,15 @@ export default async function bereiche() {
     pruefe(seite.url().endsWith("/privat"), "Nach dem Einrichten im Privatbereich");
     const frueh = await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).count();
     pruefe(frueh > 5, `Privat: Betriebsschichten stehen im Kalender (${frueh} Tage „Früh“)`);
-    pruefe((await seite.locator('[data-neuigkeiten="neu"]:visible').count()) === 1, "Privat: Glühbirne leuchtet");
-    await seite.locator('[data-neuigkeiten="neu"]:visible').click();
+    pruefe((await seite.locator("[data-neuigkeiten]:visible").count()) === 1, "Privat: Glühbirne auf der Startseite (Kalender)");
+    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Privat: Glühbirne leuchtet nicht");
+    const frei = await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Frei/ }).count();
+    pruefe(frei > 5, `Privat: freie Tage aus dem Betrieb stehen da (${frei} Tage „Frei“)`);
+    await seite.locator("[data-neuigkeiten]:visible").click();
     await warte(500);
     pruefe(await seite.getByText("Einem Betrieb beitreten").first().isVisible(), "Privat: eigene Neuigkeiten in der Liste");
     await seite.keyboard.press("Escape");
     await warte(400);
-    await seite.reload({ waitUntil: "networkidle" });
-    await warte(1500);
-    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Privat: Glühbirne leuchtet nach dem Antippen nicht wieder");
 
     // Tag antippen: die Betriebsschicht steht da, nur zum Ansehen.
     await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).first().click();

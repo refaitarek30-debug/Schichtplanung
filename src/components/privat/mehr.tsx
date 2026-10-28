@@ -60,7 +60,7 @@ export function PrivatMehr() {
           <button
             type="button"
             data-zum-betrieb
-            onClick={() => wechsleBereich("betrieb")}
+            onClick={() => wechsleBereich("betrieb", router)}
             className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
