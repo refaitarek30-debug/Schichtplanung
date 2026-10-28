@@ -1,5 +1,6 @@
 "use client";
 
+import { halteSeiteFest } from "@/lib/seite-fest";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -113,16 +114,7 @@ export function PartnerAnsicht({ token }: { token: string }) {
   }, [laden]);
 
   // Seite fest wie eine App – kein Scrollen dahinter.
-  useEffect(() => {
-    const html = document.documentElement;
-    const vorher = { html: html.style.overflow, body: document.body.style.overflow };
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = vorher.html;
-      document.body.style.overflow = vorher.body;
-    };
-  }, []);
+  useEffect(() => halteSeiteFest(), []);
 
   function springe(schritt: number) {
     setMonat((m) => {

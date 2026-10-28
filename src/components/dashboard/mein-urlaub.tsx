@@ -6,7 +6,6 @@ import { ChevronDown, ChevronRight, Palmtree } from "lucide-react";
 import { LiveBalanceCard } from "@/components/leave/live-balance-card";
 import { LiveRequestList } from "@/components/leave/live-request-list";
 import { fetchAfGenommenJahr, fetchMyAfKonto, fetchMyLeaveKindQuotas } from "@/lib/data/leave";
-import { formatDays } from "@/lib/dates";
 import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota, LiveLeaveRequest } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -61,12 +60,7 @@ export function MeinUrlaub({
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ok-bg text-ok-fg">
           <Palmtree className="h-[18px] w-[18px]" strokeWidth={1.9} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[16px] font-semibold leading-tight">Mein Urlaub</span>
-          <span className="tnum block text-[12.5px] text-ink-muted">
-            {balance ? `${formatDays(balance.remainingDays)} Tage übrig` : "wird geladen …"}
-          </span>
-        </span>
+        <span className="min-w-0 flex-1 text-[16px] font-semibold leading-tight">Mein Urlaub</span>
         <Link
           href="/urlaub"
           className="flex shrink-0 items-center gap-0.5 rounded-full px-2.5 py-1.5 text-[13px] font-semibold text-brand-600 hover:bg-brand-500/10"
@@ -85,10 +79,8 @@ export function MeinUrlaub({
         aria-expanded={kontoOffen}
         className="glas-linie flex w-full items-center gap-2.5 border-t px-4 py-3 text-left text-[14.5px] font-medium hover:bg-ink/[0.03]"
       >
+        {/* Ohne Zahl hier – die steht schon in der Kachel oben. */}
         <span className="flex-1">Urlaubskonto</span>
-        <span className="tnum text-[13px] text-ink-muted">
-          {balance ? `${formatDays(balance.remainingDays)} von ${formatDays(balance.entitlement + balance.carriedOver)}` : ""}
-        </span>
         <ChevronDown className={cn("h-4 w-4 text-ink-faint transition-transform", kontoOffen && "rotate-180")} strokeWidth={2} />
       </button>
       {kontoOffen ? (

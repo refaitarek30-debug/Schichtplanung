@@ -42,6 +42,15 @@ export default async function bereiche() {
     await seite.keyboard.press("Escape");
     await warte(400);
 
+    // Nach dem Wechsel lässt sich jede Seite wieder scrollen (nichts hält sie fest).
+    await seite.getByRole("link", { name: "Schichten" }).click();
+    await seite.waitForURL(/\/privat\/schichten/);
+    await warte(800);
+    pruefe(
+      (await seite.evaluate(() => document.documentElement.style.overflow + document.body.style.overflow)) === "",
+      "Nach dem Wechsel: Seite lässt sich scrollen",
+    );
+
     // Zurück in den Betrieb – über „Mehr“.
     await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
     await warte(600);
