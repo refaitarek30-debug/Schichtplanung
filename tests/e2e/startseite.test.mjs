@@ -25,8 +25,13 @@ export default async function startseite() {
     await birne.click();
     await warte(500);
     pruefe(await seite.getByText("Neu bei ShiftNexo").isVisible(), "Glühbirne öffnet „Neu bei ShiftNexo“");
+    pruefe(
+      (await seite.evaluate(() => document.documentElement.style.overflow)) === "hidden",
+      "Glühbirne: Seite dahinter bewegt sich nicht mit",
+    );
     await seite.keyboard.press("Escape");
     await warte(400);
+    pruefe((await seite.evaluate(() => document.documentElement.style.overflow)) !== "hidden", "Nach dem Schließen: Seite scrollt wieder");
     const nachher = await seite.locator("[data-neuigkeiten]").evaluateAll((l) => l.map((e) => `${e.getAttribute("data-neuigkeiten")}:${e.getBoundingClientRect().width}`));
     pruefe(nachher.every((x) => x.startsWith(":")), `Glühbirne leuchtet danach nicht mehr (${nachher.join(", ")})`);
 

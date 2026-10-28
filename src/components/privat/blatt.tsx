@@ -97,6 +97,31 @@ export function useWischZu(blatt: React.RefObject<HTMLElement | null>, modus: Wi
 }
 
 /**
+ * Solange ein Blatt offen ist, bleibt die Seite dahinter stehen – auch wenn
+ * man im Blatt oder auf dem abgedunkelten Rand wischt. Mehrere Blätter
+ * übereinander zählen mit; zurück kommt der Stand von vorher.
+ */
+let offeneBlaetter = 0;
+let vorher: { html: string; body: string } | null = null;
+function useSeiteFest() {
+  useEffect(() => {
+    const html = document.documentElement;
+    if (offeneBlaetter++ === 0) {
+      vorher = { html: html.style.overflow, body: document.body.style.overflow };
+      html.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      if (--offeneBlaetter === 0 && vorher) {
+        html.style.overflow = vorher.html;
+        document.body.style.overflow = vorher.body;
+        vorher = null;
+      }
+    };
+  }, []);
+}
+
+/**
  * Blatt von unten (Handy) bzw. Fenster in der Mitte (Desktop). An den Body
  * gehängt, damit es über der Leiste unten liegt.
  */
@@ -118,6 +143,7 @@ export function Blatt({
 }) {
   const blatt = useRef<HTMLDivElement>(null);
   useWischZu(blatt, wischZu, onClose);
+  useSeiteFest();
   useEffect(() => {
     const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", taste);
@@ -125,11 +151,11 @@ export function Blatt({
   }, [onClose]);
 
   return createPortal(
-    <div className="privat-schrift fixed inset-0 z-50 flex items-end justify-center px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center">
+    <div className="privat-schrift fixed inset-0 z-50 flex items-end justify-center overscroll-none px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center">
       <button
         type="button"
         aria-label="Schließen"
-        className="absolute inset-0 cursor-default bg-black/20"
+        className="absolute inset-0 cursor-default touch-none bg-black/20"
         onClick={onClose}
       />
       <div

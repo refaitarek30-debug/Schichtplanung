@@ -27,64 +27,31 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
-    zeit: "2026-10-28T09:15:00+01:00",
+    zeit: "2026-10-28T14:00:00+01:00",
     titel: "Dein Privatbereich",
-    text: "Ein eigener Kalender nur für dich – mit demselben Login. Im Kalender oben auf „Privat“ tippen. Deine Betriebsschichten stehen automatisch drin, dein Betrieb sieht nichts davon.",
+    text: "Ein eigener Kalender mit demselben Login – über dein Profil oben rechts. Dein Betrieb sieht davon nichts.",
   },
   {
-    zeit: "2026-10-28T09:15:00+01:00",
-    titel: "Beitritt mit bestehendem Konto",
-    text: "Hat jemand schon einen ShiftNexo-Privatkalender, gibt es beim Einrichten des Zugangs einen Link bzw. Code – die Person behält ihren Kalender.",
-    rollen: ["admin", "shift_leader"],
-  },
-  {
-    zeit: "2026-10-28T09:15:00+01:00",
+    zeit: "2026-10-28T14:00:00+01:00",
     titel: "Deaktivieren beendet den Zugang",
-    text: "Wer deaktiviert wird, kommt nicht mehr in den Betrieb. Beim nächsten Anmelden kann die Person ShiftNexo privat weiter nutzen – ohne Betriebsschichten, Krank- und Urlaubsanträge.",
+    text: "Deaktivierte Personen kommen nicht mehr in den Betrieb.",
     rollen: ["admin"],
   },
   {
-    zeit: "2026-10-28T09:15:00+01:00",
-    titel: "Neu: die Glühbirne",
-    text: "Hier steht ab jetzt, was neu ist bei ShiftNexo. Leuchtet sie gelb, gibt es etwas Neues.",
-    bereich: "privat",
-  },
-  {
-    zeit: "2026-10-28T09:15:00+01:00",
+    zeit: "2026-10-28T14:00:00+01:00",
     titel: "Einem Betrieb beitreten",
-    text: "Arbeitet dein Betrieb mit ShiftNexo? Unter „Mehr“ den Code eingeben – dein Kalender bleibt, und du entscheidest, was mitkommt.",
-    bereich: "privat",
-  },
-  {
-    zeit: "2026-10-28T09:15:00+01:00",
-    titel: "Betriebsschichten im Kalender",
-    text: "Bist du auch im Betrieb bei ShiftNexo, stehen deine Betriebsschichten hier automatisch drin – nur zum Ansehen. Oben wechselst du zwischen Betrieb und Privat.",
+    text: "Code aus deinem Betrieb unter „Mehr“ eingeben – dein Kalender bleibt.",
     bereich: "privat",
   },
   {
     zeit: "2026-10-28T08:00:00+01:00",
     titel: "Startseite „Kompakt“",
-    text: "Kleinere Kacheln, alles auf einen Blick. Umschalten über dein Profil oben rechts – jederzeit wieder zurück.",
-  },
-  {
-    zeit: "2026-10-28T08:00:00+01:00",
-    titel: "Abmelden direkt im Profil",
-    text: "Ein Tipp auf dein Profil oben rechts – „Abmelden“ steht gleich neben deinem Namen.",
-  },
-  {
-    zeit: "2026-10-28T08:00:00+01:00",
-    titel: "Personalnummer und Abteilung selbst eintragen",
-    text: "Unter „Mein Profil“ kannst du beides selbst eintragen oder ändern. Dein Geburtsdatum lässt sich jetzt jederzeit ändern.",
-  },
-  {
-    zeit: "2026-10-27T09:00:00+01:00",
-    titel: "Hinweise zur Arbeitszeit",
-    text: "Hinweise der Schichtleitung erscheinen auf Wunsch erst, wenn du arbeitest – nicht in deiner Freizeit.",
+    text: "Kleinere Kacheln, alles auf einen Blick. Umschalten in deinem Profil.",
   },
   {
     zeit: "2026-10-26T09:00:00+01:00",
-    titel: "Dein Kalender ohne Netz",
-    text: "„Mein Kalender“ geht auch im Funkloch. Neue Termine werden später automatisch hochgeladen.",
+    titel: "Kalender ohne Netz",
+    text: "Neue Termine werden später automatisch hochgeladen.",
   },
 ];
 
