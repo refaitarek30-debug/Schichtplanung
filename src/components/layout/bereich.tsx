@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Building2, Home, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { Blatt } from "@/components/privat/blatt";
 import { createClient } from "@/lib/supabase/client";
 import { datenFehlerText } from "@/lib/errors";
-import { dreheHerein, wechsleBereich, type Bereich } from "@/lib/bereich";
+import { dreheHerein, wechsleBereich } from "@/lib/bereich";
 import { LEGAL_VERSIONS } from "@/lib/legal/version";
-import { cn } from "@/lib/utils";
 
 /**
  * Wechsel Betrieb ↔ Privat (Migration 0194): ein Login, zwei Bereiche.
@@ -22,44 +21,6 @@ export function BereichDrehung() {
     dreheHerein();
   }, []);
   return null;
-}
-
-/** „🏢 Betrieb | 🏠 Privat“ – im Kalender beider Bereiche. */
-export function BereichSchalter({
-  aktiv,
-  onWahl,
-  className,
-}: {
-  aktiv: Bereich;
-  onWahl: (b: Bereich) => void;
-  className?: string;
-}) {
-  const wahl: { wert: Bereich; label: string; icon: typeof Home }[] = [
-    { wert: "betrieb", label: "Betrieb", icon: Building2 },
-    { wert: "privat", label: "Privat", icon: Home },
-  ];
-  return (
-    <div role="radiogroup" aria-label="Bereich" data-bereich-schalter className={cn("glas flex rounded-full p-[3px]", className)}>
-      {wahl.map(({ wert, label, icon: Icon }) => {
-        const an = aktiv === wert;
-        return (
-          <button
-            key={wert}
-            type="button"
-            role="radio"
-            aria-checked={an}
-            onClick={() => !an && onWahl(wert)}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-full py-1.5 text-[13.5px] font-semibold transition-colors",
-              an ? "bg-surface text-ink shadow-[0_1px_6px_rgba(0,0,0,0.12)]" : "text-ink-muted active:bg-ink/[0.06]",
-            )}
-          >
-            <Icon className="h-4 w-4" strokeWidth={2} /> {label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 /**

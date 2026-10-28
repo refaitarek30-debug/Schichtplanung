@@ -62,7 +62,6 @@ import { useLoeschFrage } from "./loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
 import { NeuigkeitenKnopf } from "@/components/layout/neuigkeiten";
-import { BereichSchalter, usePrivatWechsel } from "@/components/layout/bereich";
 import { Avatar } from "@/components/ui/avatar";
 import { useBegriffe } from "@/lib/begriffe";
 
@@ -204,8 +203,6 @@ const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und 
 export function MeinKalenderGlas() {
   const t = useBegriffe();
   const { profile, company } = useSession();
-  // Ein Login, zwei Bereiche (Migration 0194): Wechsel in den Privatbereich.
-  const privatWechsel = usePrivatWechsel(profile.hatPrivat === true);
   const heute = heuteInBerlin();
   // Gesetzliche Feiertage des Betriebs: im Monat nur gefärbt, der Name steht im Tagesblatt.
   const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
@@ -792,12 +789,6 @@ export function MeinKalenderGlas() {
           </span>
         </div>
       </header>
-      {!company.isDemo ? (
-        <div className="px-3.5 pb-2 sm:px-0">
-          <BereichSchalter aktiv="betrieb" onWahl={privatWechsel.wechseln} className="mx-auto max-w-sm" />
-        </div>
-      ) : null}
-      {privatWechsel.fenster}
 
       <OfflinePille wartend={offline.anzahl} />
       {fehler ? (

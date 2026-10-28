@@ -45,6 +45,10 @@ export default async function startseite() {
     pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]').count()) === 1, "Kompakt: nur noch der kleine Knopf (im Plan)");
     const kleinerKnopf = seite.locator('main a[href="/schichtplan?antrag=1"]');
     pruefe((await kleinerKnopf.innerText()).includes("Urlaub beantragen"), "Kompakt: „Urlaub beantragen“ in der Knopfleiste des Plans");
+    const knopfY = (await kleinerKnopf.boundingBox())?.y ?? -1;
+    const grossY = (await seite.getByRole("button", { name: "Groß" }).first().boundingBox())?.y ?? -2;
+    pruefe(Math.abs(knopfY - grossY) < 4, `Kompakt: „Urlaub beantragen“, Legende und Groß in einer Zeile (${Math.round(knopfY)}/${Math.round(grossY)})`);
+    pruefe(await seite.locator("[data-urlaub-kompakt]").isVisible(), "Kompakt: neue Urlaubskarte");
     const kachelHoehe = (await seite.locator('main a[href="/urlaub"]').first().boundingBox())?.height ?? 999;
     pruefe(kachelHoehe < 110, `Kompakt: Kacheln sind klein (${Math.round(kachelHoehe)} px hoch)`);
     pruefe(await seite.getByText("aus der Betriebsleitung").first().isVisible(), "Kompakt: Mitteilungen stehen weiter darunter");

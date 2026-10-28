@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 
 const U = "11111111-2222-4333-8444-555555555555";
 const FIRMA = true;
-const PROFIL = { id: U, company_id: "c0000000-0000-4000-8000-000000000001", employee_id: "e0", first_name: "Tarek", last_name: "Test", email: "t@example.invalid", role: process.env.ROLLE ?? "admin", avatar_url: null, active: true, hidden_dashboard_tiles: [], start_seite: null, start_ansicht: process.env.ANSICHT ?? "klassisch", neuigkeiten_gesehen: null,
+const PROFIL = { id: U, company_id: "c0000000-0000-4000-8000-000000000001", employee_id: "e0", first_name: "Tarek", last_name: "Test", email: "t@example.invalid", role: process.env.ROLLE ?? "admin", avatar_url: null, active: true, hidden_dashboard_tiles: ["zeige:naechsterurlaub"], start_seite: null, start_ansicht: process.env.ANSICHT ?? "klassisch", neuigkeiten_gesehen: null,
   companies: { id: "c0000000-0000-4000-8000-000000000001", name: "Testbetrieb", logo_url: null, active: true, setup_completed_at: "2026-01-01T00:00:00Z", is_demo: false, demo_expires_at: null, v_tag_name: "Zeitausgleichstag", v_tage_name: "Zeitausgleichstage" },
   employees: { personnel_number: "100", department: null, shifts: { name: "Frühschicht" } } };
 const db = {
@@ -189,6 +189,7 @@ http.createServer((req, res) => {
       if (f === "hinweis_zurueckziehen") { const h = HINWEISE.find((x) => x.id === body.p_id); if (h) h.zurueckgezogen_am = new Date().toISOString(); return send(204); }
       if (f === "_letzter") return send(200, db.letzterHinweis ?? null);
       if (f === "hat_funktion") return send(200, true);
+      if (f === "mein_naechster_urlaub") { const h = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" }); return send(200, [{ von: add(h, -3), bis: add(h, 8), tage: 8, kalendertage: 12, arten: ["urlaub"], offen: false }]); }
       // ---- Ein Konto, zwei Bereiche (0194) ----
       if (f === "privatbereich_einrichten") { db.privatAn = true; db.konto.neuigkeiten_gesehen = null; return send(204); }
       if (f === "meine_betriebsschichten") {

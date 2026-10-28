@@ -9,12 +9,13 @@ export default async function bereiche() {
     await warte(1500);
     await seite.getByRole("button", { name: "Überspringen" }).click({ timeout: 1500 }).catch(() => {});
 
-    // Betrieb: Umschalter im Kalender, „Privat“ führt zuerst zum Einrichten.
-    const schalter = seite.locator("[data-bereich-schalter]");
-    pruefe(await schalter.isVisible(), "Betrieb: Umschalter „Betrieb | Privat“ im Kalender");
-    await schalter.getByRole("radio", { name: "Privat" }).click();
+    // Betrieb: kein Umschalter im Kalender – der Wechsel steht im Profil-Fenster.
+    pruefe((await seite.locator("[data-bereich-schalter]").count()) === 0, "Betrieb: kein Umschalter direkt im Kalender");
+    await seite.getByRole("button", { name: /^Profil/ }).first().click();
     await warte(600);
-    pruefe(await seite.getByText("Dein Privatbereich").isVisible(), "Erster Tipp: Fenster „Dein Privatbereich“");
+    await seite.locator("[data-zum-privat]").click();
+    await warte(600);
+    pruefe(await seite.getByText("Dein Privatbereich").isVisible(), "Profil → „Zum Privatbereich wechseln“: Fenster „Dein Privatbereich“");
     pruefe(await seite.getByText("Dein Betrieb sieht davon nichts").isVisible(), "Hinweis zum Datenschutz im Fenster");
     await seite.getByRole("button", { name: "Privatbereich einrichten" }).click();
     await seite.waitForURL(/\/privat$/, { timeout: 15_000 });
@@ -22,11 +23,6 @@ export default async function bereiche() {
 
     // Privat: gleicher Login, Betriebsschichten nur zum Ansehen.
     pruefe(seite.url().endsWith("/privat"), "Nach dem Einrichten im Privatbereich");
-    const privatSchalter = seite.locator("[data-bereich-schalter]");
-    pruefe(
-      (await privatSchalter.getByRole("radio", { name: "Privat" }).getAttribute("aria-checked")) === "true",
-      "Privat: Umschalter steht auf „Privat“",
-    );
     const frueh = await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).count();
     pruefe(frueh > 5, `Privat: Betriebsschichten stehen im Kalender (${frueh} Tage „Früh“)`);
     pruefe((await seite.locator('[data-neuigkeiten="neu"]:visible').count()) === 1, "Privat: Glühbirne leuchtet");
@@ -43,8 +39,10 @@ export default async function bereiche() {
     await seite.keyboard.press("Escape");
     await warte(400);
 
-    // Zurück in den Betrieb.
-    await privatSchalter.getByRole("radio", { name: "Betrieb" }).click();
+    // Zurück in den Betrieb – über „Mehr“.
+    await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
+    await warte(600);
+    await seite.locator("[data-zum-betrieb]").click();
     await seite.waitForURL(/\/meine-schichten/, { timeout: 15_000 });
     pruefe(true, "Zurück in den Betrieb");
 
@@ -58,7 +56,11 @@ export default async function bereiche() {
     await seite.getByRole("button", { name: "Privat weitermachen" }).click();
     await seite.waitForURL(/\/privat$/, { timeout: 15_000 });
     await warte(1500);
-    pruefe((await seite.locator("[data-bereich-schalter]").count()) === 0, "Nach dem Austritt: kein Umschalter mehr");
+    await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
+    await warte(600);
+    pruefe((await seite.locator("[data-zum-betrieb]").count()) === 0, "Nach dem Austritt: kein Wechsel zum Betrieb mehr");
+    await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
+    await warte(1500);
     pruefe((await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).count()) === 0, "Nach dem Austritt: keine Betriebsschichten mehr");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);

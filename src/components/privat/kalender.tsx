@@ -54,8 +54,6 @@ import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
-import { BereichSchalter } from "@/components/layout/bereich";
-import { wechsleBereich } from "@/lib/bereich";
 
 /**
  * Schichtkalender für Privatkonten: Woche, Monat, Jahr. Eintragen per
@@ -658,11 +656,6 @@ export function PrivatKalender() {
           <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} onHochladen={() => hochladeFeld.current?.click()} />
         </div>
       </header>
-      {betrieb ? (
-        <div className="px-3.5 pb-2 sm:px-0">
-          <BereichSchalter aktiv="privat" onWahl={() => wechsleBereich("betrieb")} className="mx-auto max-w-sm" />
-        </div>
-      ) : null}
       <OfflinePille wartend={offline.anzahl} />
 
 
