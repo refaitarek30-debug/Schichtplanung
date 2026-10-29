@@ -7,6 +7,7 @@ import { LiveRequestList } from "@/components/leave/live-request-list";
 import { RequestList } from "@/components/dashboard/request-list";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
+import { UrlaubReiter } from "@/components/layout/urlaub-reiter";
 import { useSession } from "@/context/session";
 import { TODAY, requestsOfEmployee, staffingContext } from "@/lib/demo-data";
 import { leaveBalance } from "@/lib/staffing";
@@ -118,6 +119,7 @@ export default function LeavePage() {
         title="Urlaub"
         description="Dein Urlaubskonto und deine Anträge. Beantragen geht im Schichtplan über „Urlaub beantragen“."
       />
+      <UrlaubReiter />
 
       {error ? <Alert tone="error">{error}</Alert> : null}
 

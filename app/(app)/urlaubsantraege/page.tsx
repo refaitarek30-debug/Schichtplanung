@@ -13,6 +13,7 @@ import {
   staffingTone,
 } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
+import { UrlaubReiter } from "@/components/layout/urlaub-reiter";
 import { ReviewPanel } from "@/components/leave/review-panel";
 import { useSession } from "@/context/session";
 import {
@@ -40,6 +41,7 @@ export default function RequestsPage() {
         title="Urlaubsanträge"
         description="Jeder Antrag wird gegen die Mindestbesetzung der betroffenen Schicht geprüft, bevor du entscheidest."
       />
+      <UrlaubReiter />
       {mode === "live" ? (
         <LiveReviewSection />
       ) : (

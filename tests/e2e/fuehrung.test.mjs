@@ -83,6 +83,24 @@ export default async function fuehrung() {
     await warte(800);
     pruefe((await seite.locator("[data-plan-reiter]").count()) === 1, "Plan: Reiter auch in der Ausbildung");
 
+    // Urlaub: Reiter „Mein Urlaub | Entscheiden“ mit der Zahl offener Anträge
+    await seite.goto(`${APP}/urlaub`, { waitUntil: "networkidle" });
+    await warte(1500);
+    const urlaub = seite.locator("[data-urlaub-reiter]");
+    pruefe(
+      (await urlaub.getByRole("link", { name: /Mein Urlaub/ }).getAttribute("aria-current")) === "page" &&
+        (await urlaub.locator("[data-offen]").getAttribute("data-offen")) === "2",
+      "Urlaub: Reiter Mein Urlaub · Entscheiden mit „2“ offenen Anträgen",
+    );
+    await urlaub.getByRole("link", { name: /Entscheiden/ }).click();
+    await seite.waitForURL(/\/urlaubsantraege$/);
+    await warte(800);
+    pruefe(
+      (await seite.locator("[data-urlaub-reiter]").getByRole("link", { name: /Entscheiden/ }).getAttribute("aria-current")) === "page" &&
+        (await seite.locator("[data-mobile-nav]").getByRole("link", { name: "Urlaub" }).getAttribute("aria-current")) === "page",
+      "Urlaub: „Entscheiden“ öffnet die Anträge, unten leuchtet „Urlaub“",
+    );
+
     // Mitarbeiter: ruhige Liste, Person antippen → Blatt mit Aktionen
     await seite.goto(`${APP}/verwaltung?bereich=mitarbeiter`, { waitUntil: "networkidle" });
     await warte(1500);

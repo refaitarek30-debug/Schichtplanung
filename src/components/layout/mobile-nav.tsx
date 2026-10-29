@@ -46,9 +46,17 @@ function fuehrungsKacheln(role: Role) {
 
 /**
  * Diese Seiten stehen schon woanders: als Kachel oben (AF & V-Tage liegt
- * unter Team) oder als Reiter im Plan (Besetzung, Ausbildung).
+ * unter Team) oder als Reiter im Plan (Besetzung, Ausbildung) bzw. im
+ * Urlaub (Entscheiden = Urlaubsanträge).
  */
-const ANDERS_ERREICHBAR = new Set(["/verwaltung", "/mitteilungen", "/altersfreizeit", "/besetzung", "/ausbildung"]);
+const ANDERS_ERREICHBAR = new Set([
+  "/verwaltung",
+  "/mitteilungen",
+  "/altersfreizeit",
+  "/besetzung",
+  "/ausbildung",
+  "/urlaubsantraege",
+]);
 
 /** Untere Tab-Leiste mit den vier Hauptbereichen plus „Mehr“ für den Rest. */
 export function MobileNav() {
@@ -175,9 +183,11 @@ export function MobileNav() {
         <ul className="mx-auto flex max-w-lg items-stretch">
           {primary.map((item) => {
             const Icon = item.icon;
-            // Besetzung und Ausbildung sind Reiter im Plan – dann leuchtet „Plan“.
+            // Reiter: Besetzung und Ausbildung gehören zum Plan, Entscheiden zum Urlaub.
             const active =
-              pathname === item.href || (item.href === "/schichtplan" && (pathname === "/besetzung" || pathname === "/ausbildung"));
+              pathname === item.href ||
+              (item.href === "/schichtplan" && (pathname === "/besetzung" || pathname === "/ausbildung")) ||
+              (item.href === "/urlaub" && pathname === "/urlaubsantraege");
             return (
               <li key={item.href} className="flex-1">
                 <Link

@@ -57,10 +57,10 @@ export default async function startseite() {
       "Mehr: Verwaltung, Mitteilungen, AF nicht doppelt in der Liste",
     );
     pruefe(
-      (await mehr.locator('ul a[href="/besetzung"], ul a[href="/ausbildung"]').count()) === 0,
-      "Mehr: Besetzung und Ausbildung nicht mehr in der Liste (Reiter im Plan)",
+      (await mehr.locator('ul a[href="/besetzung"], ul a[href="/ausbildung"], ul a[href="/urlaubsantraege"]').count()) === 0,
+      "Mehr: Besetzung, Ausbildung, Urlaubsanträge nicht mehr in der Liste (Reiter in Plan und Urlaub)",
     );
-    pruefe((await mehr.locator('ul a[href="/urlaubsantraege"]').count()) === 1, "Mehr: übrige Bereiche (z. B. Urlaubsanträge) weiter da");
+    pruefe((await mehr.locator('ul a[href="/todos"]').count()) === 1, "Mehr: übrige Bereiche (z. B. To-dos) weiter da");
     await mehr.getByRole("link", { name: /Urlaubssperre/ }).click();
     await seite.waitForURL(/\/mitteilungen\?bereich=sperren/);
     await warte(1200);
