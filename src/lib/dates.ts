@@ -142,6 +142,22 @@ export function heuteInBerlin(): string {
   return TAG_IN_BERLIN.format(new Date());
 }
 
+const MOMENT_IN_BERLIN = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Jetzt in deutscher Zeit als "YYYY-MM-DDTHH:MM" – als Text vergleichbar mit Schichtzeiten. */
+export function jetztInBerlin(): string {
+  const teil = Object.fromEntries(MOMENT_IN_BERLIN.formatToParts(new Date()).map((p) => [p.type, p.value]));
+  return `${teil.year}-${teil.month}-${teil.day}T${teil.hour}:${teil.minute}`;
+}
+
 export function formatZeitpunkt(isoZeitstempel: string): string {
   const zeitpunkt = new Date(isoZeitstempel);
   if (Number.isNaN(zeitpunkt.getTime())) return "";
