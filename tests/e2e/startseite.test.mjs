@@ -43,6 +43,29 @@ export default async function startseite() {
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 
+    // „Mehr“: oben die Kacheln Team, Urlaubssperre, Mitteilungen – darunter der Rest ohne Doppelte.
+    await seite.locator("[data-mobile-nav]").getByRole("button", { name: "Mehr" }).click();
+    await warte(500);
+    const mehr = seite.locator("[data-mehr]");
+    const kacheln = await mehr.locator("[data-mehr-kacheln] a").allInnerTexts();
+    pruefe(
+      kacheln.length === 3 && /^Team/.test(kacheln[0]) && /^Urlaubssperre/.test(kacheln[1]) && /^Mitteilungen/.test(kacheln[2]),
+      `Mehr: Kacheln Team, Urlaubssperre, Mitteilungen (${kacheln.map((k) => k.split("\n")[0]).join(", ")})`,
+    );
+    pruefe(
+      (await mehr.locator('ul a[href="/verwaltung"], ul a[href="/mitteilungen"], ul a[href="/altersfreizeit"]').count()) === 0,
+      "Mehr: Verwaltung, Mitteilungen, AF nicht doppelt in der Liste",
+    );
+    pruefe((await mehr.locator('ul a[href="/besetzung"]').count()) === 1, "Mehr: übrige Bereiche (z. B. Besetzung) weiter da");
+    await mehr.getByRole("link", { name: /Urlaubssperre/ }).click();
+    await seite.waitForURL(/\/mitteilungen\?bereich=sperren/);
+    await warte(1200);
+    const ySperren = (await seite.getByText("Urlaubssperren", { exact: true }).first().boundingBox())?.y ?? 9999;
+    const yHinweis = (await seite.getByText("Hinweis an einzelne Personen").first().boundingBox())?.y ?? -1;
+    pruefe(ySperren < yHinweis, `Urlaubssperre: Sperren stehen ganz oben (${Math.round(ySperren)} < ${Math.round(yHinweis)})`);
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1000);
+
     // Profil-Fenster: Abmelden oben, Umschalter Startseite.
     await seite.locator("[data-glas-profil]").first().click();
     await warte(500);
