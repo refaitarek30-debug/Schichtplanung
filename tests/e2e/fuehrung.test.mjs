@@ -78,6 +78,24 @@ export default async function fuehrung() {
       (await seite.locator("[data-mobile-nav]").getByRole("link", { name: "Plan" }).getAttribute("aria-current")) === "page",
       "Plan: Leiste unten zeigt „Plan“ auch in der Besetzung",
     );
+    // Besetzung: großes Band oben, Soll & Mindest hinter dem Zahnrad
+    const band = seite.locator("[data-band-handy]");
+    pruefe((await band.locator("tbody tr").count()) === 14, "Besetzung: Band zeigt 14 Tage untereinander (Handy)");
+    pruefe(await band.getByText("5/5").first().isVisible(), "Besetzung: Zellen zeigen Anwesend/Soll");
+    pruefe(
+      (await seite.locator("[data-zu-knapp]").getByText(/Nacht .* 2 von 3/).count()) === 1,
+      "Besetzung: zu knappe Schicht steht oben („Nacht … 2 von 3“)",
+    );
+    pruefe((await seite.getByText("Laufende Tage").count()) === 0, "Besetzung: Einstellungen nicht mehr auf der Seite");
+    await seite.locator("[data-besetzung-einstellungen]").click();
+    await warte(800);
+    pruefe(
+      (await seite.locator('[role="dialog"]').getByText("Frühschicht").first().isVisible()) &&
+        (await seite.locator('[role="dialog"]').getByText("Mindest").first().isVisible()),
+      "Besetzung: Zahnrad öffnet Soll & Mindest je Schicht",
+    );
+    await seite.keyboard.press("Escape");
+    await warte(400);
     await seite.locator("[data-plan-reiter]").getByRole("link", { name: "Ausbildung" }).click();
     await seite.waitForURL(/\/ausbildung$/);
     await warte(800);
