@@ -159,6 +159,22 @@ export default async function fuehrung() {
     await warte(500);
     pruefe(await s.locator('[data-person-spalte] [data-person="Mia Wagner"]').isVisible(), "Computer: Person rechts neben der Liste");
     pruefe((await s.locator('[role="dialog"]').count()) === 0, "Computer: kein Blatt");
+
+    // Seitenleiste: wenige Bereiche mit Untertext, „Team“ leuchtet auf der Verwaltung
+    const leiste = await s.locator("aside [data-leiste]").evaluateAll((els) => els.map((e) => e.getAttribute("data-leiste")));
+    pruefe(
+      leiste.join("|") === "Start|Plan|Urlaub|Kalender|Team|Mitteilungen|Auswertung|Einstellungen",
+      `Seitenleiste: Start, Plan, Urlaub, Kalender, Team, Mitteilungen, Auswertung, Einstellungen (${leiste.join(", ")})`,
+    );
+    pruefe(
+      (await s.locator('aside [data-leiste="Team"]').getAttribute("aria-current")) === "page" &&
+        (await s.locator('aside [data-leiste="Plan"]').innerText()).includes("Schichtplan · Besetzung · Ausbildung"),
+      "Seitenleiste: Team aktiv, unter Plan steht, was drinsteckt",
+    );
+    pruefe((await s.locator('aside [data-leiste="Urlaub"]').getByText("2", { exact: true }).count()) === 1, "Seitenleiste: Urlaub zeigt 2 offene Anträge");
+    await s.goto(`${APP}/besetzung`, { waitUntil: "networkidle" });
+    await warte(800);
+    pruefe((await s.locator('aside [data-leiste="Plan"]').getAttribute("aria-current")) === "page", "Seitenleiste: Plan leuchtet auch auf der Besetzung");
   } finally {
     await b.close();
   }

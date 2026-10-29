@@ -186,3 +186,109 @@ export const roleLabels: Record<Role, string> = {
   shift_leader: "Schichtleitung",
   admin: "Administration",
 };
+
+/**
+ * Seitenleiste am Computer: wenige Bereiche, unter jedem steht klein, was
+ * drinsteckt. Die einzelnen Seiten bleiben dieselben – Plan, Urlaub und
+ * Team fassen nur mehrere Seiten zusammen (die Reiter stehen auf den Seiten).
+ * Wer was sieht, bleibt wie bisher: dieselben Rollen wie in `navItems`.
+ */
+export interface LeistenEintrag {
+  href: string;
+  label: string;
+  /** Kleiner Text unter dem Namen – was drinsteckt. */
+  unter: string;
+  icon: LucideIcon;
+  roles: Role[];
+  /** Auf diesen Seiten ist der Eintrag ebenfalls hervorgehoben. */
+  auch?: string[];
+  nurProtokoll?: boolean;
+  neu?: string;
+  todoZahl?: boolean;
+  /** Rote Zahl: offene Urlaubsanträge zum Entscheiden (nur Führung). */
+  offeneAntraege?: boolean;
+}
+
+const FUEHRUNG: Role[] = ["shift_leader", "admin"];
+const ALLE: Role[] = ["employee", "shift_leader", "admin"];
+
+const LEISTE: { label: string | null; eintraege: LeistenEintrag[] }[] = [
+  {
+    label: null,
+    eintraege: [
+      { href: "/dashboard", label: "Start", unter: "Übersicht · Meine Woche", icon: LayoutDashboard, roles: ALLE },
+      {
+        href: "/schichtplan",
+        label: "Plan",
+        unter: "Schichtplan · Besetzung · Ausbildung",
+        icon: CalendarDays,
+        roles: FUEHRUNG,
+        auch: ["/besetzung", "/ausbildung"],
+      },
+      { href: "/schichtplan", label: "Schichtplan", unter: "Alle Schichten · Urlaub beantragen", icon: CalendarDays, roles: ["employee"] },
+      {
+        href: "/urlaub",
+        label: "Urlaub",
+        unter: "Mein Urlaub · Entscheiden",
+        icon: Palmtree,
+        roles: FUEHRUNG,
+        auch: ["/urlaubsantraege"],
+        offeneAntraege: true,
+      },
+      { href: "/urlaub", label: "Urlaub", unter: "Urlaubskonto · Meine Anträge", icon: Palmtree, roles: ["employee"] },
+      {
+        href: "/meine-schichten",
+        label: "Kalender",
+        unter: "Mein Monat · To-dos",
+        icon: CalendarRange,
+        roles: ALLE,
+        auch: ["/todos"],
+        neu: "kalender-partner",
+        todoZahl: true,
+      },
+    ],
+  },
+  {
+    label: "Führung",
+    eintraege: [
+      {
+        href: "/verwaltung",
+        label: "Team",
+        unter: "Mitarbeiter · Gruppen · AF & V-Tage",
+        icon: Users,
+        roles: FUEHRUNG,
+        auch: ["/altersfreizeit"],
+      },
+      {
+        href: "/mitteilungen",
+        label: "Mitteilungen",
+        unter: "An Personen · An alle · Sperren",
+        icon: Megaphone,
+        roles: FUEHRUNG,
+      },
+    ],
+  },
+  {
+    label: "Nur Administration",
+    eintraege: [
+      { href: "/auswertung", label: "Auswertung", unter: "Ausfall · Anwesenheit · Gesundheitsrate", icon: BarChart3, roles: ["admin"] },
+      { href: "/protokoll", label: "Protokoll", unter: "Anmeldungen · Änderungen · Fehler", icon: ScrollText, roles: ["admin"], nurProtokoll: true },
+    ],
+  },
+  {
+    label: null,
+    eintraege: [{ href: "/einstellungen", label: "Einstellungen", unter: "Profil · Darstellung · Datenschutz", icon: Cog, roles: ALLE }],
+  },
+];
+
+export function leisteFuerRolle(role: Role, protokoll = false) {
+  return LEISTE.map((g) => ({
+    label: g.label,
+    eintraege: g.eintraege.filter((e) => e.roles.includes(role) && (!e.nurProtokoll || protokoll)),
+  })).filter((g) => g.eintraege.length > 0);
+}
+
+/** Ist der Eintrag auf dieser Seite hervorgehoben? */
+export function leisteAktiv(e: LeistenEintrag, pathname: string): boolean {
+  return pathname === e.href || (e.auch ?? []).includes(pathname);
+}
