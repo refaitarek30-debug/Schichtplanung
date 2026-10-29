@@ -97,8 +97,13 @@ http.createServer((req, res) => {
       return liste([r("r1", "2026-12-21", "2026-12-24", "pending", 4), r("r2", "2027-01-05", "2027-01-07", "pending", 3), r("r3", "2026-08-03", "2026-08-14", "approved", 10), r("r4", "2026-05-11", "2026-05-12", "approved", 2), r("r5", "2026-07-01", "2026-07-03", "rejected", 3), r("r6", "2026-06-01", "2026-06-02", "withdrawn", 2)]);
     }
     if (p === "/rest/v1/leave_balances_view") return liste([{ year: new Date().getFullYear(), entitlement: 30, carried_over: 3, used_days: 20, planned_days: 2, pending_days: 1, remaining_days: 10, v_entitlement: 6, v_carried_over: 0, v_korrektur: 0, v_used_days: 4, v_pending_days: 0, v_remaining_days: 2, v_fehl_stunden: 0 }]);
-    // Seite Mitteilungen: keine Sperren, keine Mitteilungen.
-    if (p === "/rest/v1/staffing_rules" || p === "/rest/v1/announcements") return liste([]);
+    // Seite Mitteilungen: eine kommende Urlaubssperre, Mitteilungen an alle zum Anlegen.
+    if (p === "/rest/v1/staffing_rules") return liste(url.searchParams.get("key") !== "eq.urlaubssperre" ? [] : [{ id: "sp1", shift_id: null, active: true, value: { start: "2027-11-09", end: "2027-11-20", reason: "Stillstand" } }]);
+    if (p === "/rest/v1/announcements") {
+      if (m === "POST") { const z = Array.isArray(body) ? body[0] : body; db.mitteilungen = [{ id: randomUUID(), title: z.title, body: z.body, level: z.level, active: true, created_at: new Date().toISOString() }, ...(db.mitteilungen ?? [])]; return send(201); }
+      if (m === "PATCH") { const id = (url.searchParams.get("id") ?? "").replace("eq.", ""); db.mitteilungen = (db.mitteilungen ?? []).filter((x) => x.id !== id); return send(204); }
+      return liste(db.mitteilungen ?? []);
+    }
     if (p === "/rest/v1/privacy_settings") return liste([{ accepted_at: "2026-01-01T00:00:00Z", user_id: U }]);
     if (p === "/rest/v1/kalender_farben") return liste([{ schluessel: "schicht:F", farbe: "#E5484D" }, { schluessel: "abw:U", farbe: "#0EA5E9" }]);
     if (p === "/rest/v1/shifts") return liste([
@@ -187,7 +192,8 @@ http.createServer((req, res) => {
       if (f === "hinweis_senden") {
         if (!body.p_text?.trim()) return send(400, { code: "P0001", message: "Bitte einen Text eingeben." });
         const ab = body.p_push === "aus" ? null : body.p_push === "sofort" ? new Date().toISOString() : new Date(Date.now() + 9 * 3600e3).toISOString();
-        for (const id of body.p_empfaenger) { const e = MITARBEITER.find((x) => x.id === id); HINWEISE.unshift({ id: randomUUID(), employee_id: id, empfaenger: e.first_name + " " + e.last_name, text: body.p_text, ziel: body.p_ziel, push: body.p_push, push_ab: ab, zeigen_ab: body.p_push === "schicht" ? ab : null, push_gesendet: false, von_name: "Tarek Test", erstellt_am: new Date().toISOString(), gelesen_am: null, zurueckgezogen_am: null }); }
+        const jetzt = new Date().toISOString();
+        for (const id of body.p_empfaenger) { const e = MITARBEITER.find((x) => x.id === id); HINWEISE.unshift({ id: randomUUID(), employee_id: id, empfaenger: e.first_name + " " + e.last_name, text: body.p_text, ziel: body.p_ziel, push: body.p_push, push_ab: ab, zeigen_ab: body.p_push === "schicht" ? ab : null, push_gesendet: false, von_name: "Tarek Test", erstellt_am: jetzt, gelesen_am: null, zurueckgezogen_am: null }); }
         db.letzterHinweis = body; return send(200, body.p_empfaenger.length);
       }
       if (f === "meine_hinweise") return send(200, HINWEISE.filter((h) => h.employee_id === "e0" && !h.gelesen_am && !h.zurueckgezogen_am && (!h.zeigen_ab || new Date(h.zeigen_ab) <= new Date())).reverse());

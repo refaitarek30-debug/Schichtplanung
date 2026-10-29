@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { Search } from "lucide-react";
-import { Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
+import { ChevronRight, KeyRound, Link2, MessageSquare, Pencil, Search, Trash2 } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Alert } from "@/components/ui/alert";
@@ -25,8 +24,29 @@ import type { FormState } from "@/lib/auth/form-state";
 import { CreateEmployeePanel } from "./create-employee-panel";
 import { EditEmployeePanel } from "./edit-employee-panel";
 import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
+import { Blatt } from "@/components/privat/blatt";
+import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "active" | "inactive";
+
+/** Ab hier (Computer, iPad quer) steht die Person rechts neben der Liste statt als Blatt. */
+const BREIT = "(min-width: 1024px)";
+function useBreit(): boolean {
+  return useSyncExternalStore(
+    (melden) => {
+      const m = window.matchMedia(BREIT);
+      m.addEventListener("change", melden);
+      return () => m.removeEventListener("change", melden);
+    },
+    () => window.matchMedia(BREIT).matches,
+    () => false,
+  );
+}
+
+/** Wie bisher: Schichtgruppe, sonst der Name der festen Schicht (z. B. Tagdienst). */
+function gruppeVon(row: EmployeeRecord): string {
+  return row.rotationTeam ? `Schicht ${row.rotationTeam}` : (row.shiftName ?? "keine Schicht");
+}
 
 export function EmployeesView() {
   const { role, mode, profile } = useSession();
@@ -50,6 +70,9 @@ export function EmployeesView() {
   const [codeFrage, setCodeFrage] = useState<EmployeeRecord | null>(null);
   const [codeErgebnis, setCodeErgebnis] = useState<{ name: string; code?: string; error?: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  /** Die angetippte Person – Blatt (Handy) bzw. rechte Spalte (Computer). */
+  const [offenId, setOffenId] = useState<string | null>(null);
+  const breit = useBreit();
 
   const load = useCallback(async () => {
     setError(null);
@@ -97,8 +120,13 @@ export function EmployeesView() {
         statusFilter === "all" ||
         (statusFilter === "active" ? row.active : !row.active);
       return matchesTerm && matchesShift && matchesStatus;
-    });
+    })
+      // Deaktivierte ans Ende, sonst bleibt die Reihenfolge wie geladen.
+      .sort((a, b) => Number(b.active) - Number(a.active));
   }, [rows, search, shiftFilter, statusFilter]);
+
+  const offen = (rows ?? []).find((r) => r.id === offenId) ?? null;
+  const inaktivZahl = (rows ?? []).filter((r) => !r.active).length;
 
   async function toggle(row: EmployeeRecord) {
     setBusyId(row.id);
@@ -163,6 +191,193 @@ export function EmployeesView() {
       setBusyId(null);
       setConfirmDeleteId(null);
     });
+  }
+
+  /**
+   * Aktion aus der Person heraus. Auf dem Handy schließt das Blatt erst –
+   * Bearbeiten, Code und Link erscheinen oben auf der Seite.
+   */
+  function ausPerson(f: () => void) {
+    if (!breit) setOffenId(null);
+    f();
+  }
+
+  /** Alles zu einer Person: Angaben und die erlaubten Aktionen (dieselben Regeln wie vorher in der Zeile). */
+  function personInhalt(row: EmployeeRecord, kopf: boolean) {
+    const fuehrung = role === "admin" || role === "shift_leader";
+    const darfHinweis = fuehrung && mode === "live" && row.active;
+    // Einladen: Administration immer, Schichtleitung für normale Mitarbeiter.
+    // Die Datenbank-seitige Prüfung steckt in inviteEmployee().
+    const darfLink = mode === "live" && (role === "admin" || (role === "shift_leader" && row.role === "employee"));
+    const aktionen = [
+      fuehrung
+        ? {
+            name: "Bearbeiten",
+            icon: Pencil,
+            disabled: mode === "demo",
+            los: () =>
+              ausPerson(() => {
+                setEditing(row);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }),
+          }
+        : null,
+      darfHinweis
+        ? {
+            name: "Hinweis",
+            icon: MessageSquare,
+            disabled: false,
+            los: () =>
+              ausPerson(() => {
+                setHinweisMeldung(null);
+                setHinweisAn(row.id);
+              }),
+          }
+        : null,
+      darfCode(row)
+        ? {
+            name: "Passwort-Code",
+            icon: KeyRound,
+            disabled: pending && busyId === row.id,
+            los: () =>
+              ausPerson(() => {
+                setCodeErgebnis(null);
+                setCodeFrage(row);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }),
+          }
+        : null,
+      darfLink
+        ? {
+            name: row.hasAccount ? "Zugangslink" : "Einladen",
+            icon: Link2,
+            disabled: !row.email || (pending && busyId === row.id),
+            los: () => ausPerson(() => invite(row)),
+          }
+        : null,
+    ].filter((a) => a !== null);
+
+    return (
+      <div className="space-y-4" data-person={`${row.firstName} ${row.lastName}`}>
+        {kopf ? (
+          <div className="flex items-center gap-3">
+            <Avatar employee={row} className="h-12 w-12 text-[15px]" />
+            <div className="min-w-0">
+              <p className="text-[18px] font-semibold leading-tight">
+                {row.firstName} {row.lastName}
+              </p>
+              <p className="tnum mt-0.5 text-[13px] text-ink-muted">
+                {gruppeVon(row)} · {row.personnelNumber ? `Personalnr. ${row.personnelNumber}` : "ohne Personalnummer"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="tnum -mt-1 text-[13px] text-ink-muted">
+            {gruppeVon(row)} · {row.personnelNumber ? `Personalnr. ${row.personnelNumber}` : "ohne Personalnummer"}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-1.5">
+          <Badge tone={row.role === "employee" ? "neutral" : "info"}>{roleLabels[row.role]}</Badge>
+          <Badge tone={row.active ? "ok" : "critical"}>{row.active ? "Aktiv" : "Deaktiviert"}</Badge>
+          {mode === "live" ? (
+            <Badge tone={row.hasAccount ? "ok" : "neutral"}>{row.hasAccount ? "Hat Zugang" : "Ohne Zugang"}</Badge>
+          ) : null}
+        </div>
+
+        {aktionen.length ? (
+          <div className={cn("grid gap-2", breit ? "grid-cols-2" : "grid-cols-4")}>
+            {aktionen.map((a) => {
+              const Icon = a.icon;
+              return (
+                <button
+                  key={a.name}
+                  type="button"
+                  onClick={a.los}
+                  disabled={a.disabled}
+                  className="flex min-h-[74px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-surface-muted px-1 py-2.5 text-center text-[12px] font-semibold leading-tight hover:bg-surface-sunken disabled:opacity-50"
+                >
+                  <Icon className="h-5 w-5 text-brand-600" strokeWidth={1.9} />
+                  {pending && busyId === row.id && a.name !== "Bearbeiten" && a.name !== "Hinweis" ? "…" : a.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <dl className="divide-y divide-line rounded-2xl border border-line text-[14px]">
+          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+            <dt>E-Mail</dt>
+            <dd className="min-w-0 truncate text-ink-muted">{row.email ?? "keine"}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+            <dt>Abteilung</dt>
+            <dd className="min-w-0 truncate text-ink-muted">{row.department ?? "keine"}</dd>
+          </div>
+          {row.qualifications.length > 0 ? (
+            <div className="flex items-start justify-between gap-3 px-3.5 py-2.5">
+              <dt>Qualifikationen</dt>
+              <dd className="flex flex-wrap justify-end gap-1">
+                {row.qualifications.map((q, i) => (
+                  <span key={q} className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11.5px] text-ink-muted">
+                    {row.qualificationLabels[i] ?? q}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+
+        {!row.active ? (
+          <p className="rounded-2xl bg-crit-bg px-3.5 py-2.5 text-[13.5px] leading-snug text-crit-fg">
+            Deaktiviert – kein Zugang mehr zur App.
+          </p>
+        ) : null}
+
+        {/* Aktivieren/Deaktivieren und Löschen nur Administration – getrennt und
+            farbig, damit man es nicht aus Versehen drückt. */}
+        {role === "admin" ? (
+          <div className="space-y-2">
+            <Button
+              variant={row.active ? "danger" : "primary"}
+              className="w-full justify-center py-2.5"
+              disabled={mode === "demo" || busyId === row.id}
+              onClick={() => toggle(row)}
+            >
+              {busyId === row.id ? "…" : row.active ? "Deaktivieren" : "Aktivieren"}
+            </Button>
+            {/* Endgültig löschen erst nach dem Deaktivieren – dann aber
+                vollständig: Stammdaten, Profil, Zugang, alle Einträge. */}
+            {row.active ? null : confirmDeleteId === row.id ? (
+              <div className="space-y-2 rounded-2xl border border-crit-bg bg-crit-bg/40 p-3">
+                <p className="text-[13px] leading-snug text-crit-fg">
+                  {row.firstName} {row.lastName} wird mit Zugang, Profil und allen Einträgen endgültig gelöscht. Das
+                  lässt sich nicht rückgängig machen – wird die Person wieder gebraucht, muss sie neu angelegt werden.
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button variant="danger" disabled={busyId === row.id} onClick={() => remove(row)}>
+                    Endgültig löschen
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(row.id)}
+                disabled={mode === "demo"}
+                className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13.5px] font-semibold text-crit-fg hover:bg-crit-bg disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Endgültig löschen …
+              </button>
+            )}
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -276,232 +491,179 @@ export function EmployeesView() {
         />
       ) : null}
 
-      <Card>
-        <CardHeader
-          title="Übersicht"
-          hint={rows ? `${visible.length} von ${rows.length} Personen` : "wird geladen …"}
-        />
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
+        <Card>
+          <CardHeader
+            title="Übersicht"
+            hint={rows ? `${visible.length} von ${rows.length} Personen` : "wird geladen …"}
+          />
 
-        <div className="flex flex-col gap-2 border-b border-line px-5 py-3 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, Personalnummer oder Abteilung"
-              className="pl-9"
-              aria-label="Mitarbeiter suchen"
-            />
-          </div>
-          <select
-            value={shiftFilter}
-            onChange={(e) => setShiftFilter(e.target.value)}
-            aria-label="Nach Schicht filtern"
-            className="rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
-          >
-            <option value="all">Alle Schichten</option>
-            {shiftNames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            aria-label="Nach Status filtern"
-            className="rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
-          >
-            <option value="all">Alle</option>
-            <option value="active">Aktiv</option>
-            <option value="inactive">Deaktiviert</option>
-          </select>
-        </div>
-
-        <CardBody className="px-0 py-0">
-          {rows === null ? (
-            <RowSkeleton rows={6} />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              title={
-                rows.length === 0
-                  ? "Noch keine Mitarbeiter vorhanden."
-                  : "Keine Treffer für diese Filter."
-              }
-              description={
-                rows.length === 0
-                  ? "Sobald die Administration Mitarbeiter anlegt, erscheinen sie hier."
-                  : "Suche zurücksetzen oder einen anderen Filter wählen."
-              }
-            />
-          ) : (
-            <ul className="divide-y divide-line">
-              {visible.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-surface-muted"
+          <div className="space-y-2.5 border-b border-line px-4 py-3 sm:px-5">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name, Personalnummer oder Abteilung"
+                className="pl-9"
+                aria-label="Mitarbeiter suchen"
+              />
+            </div>
+            {/* Filter als Knöpfe statt zweier Auswahllisten. */}
+            <div role="group" aria-label="Filter" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+              <FilterKnopf
+                an={shiftFilter === "all" && statusFilter === "all"}
+                onClick={() => {
+                  setShiftFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Alle {rows ? rows.length : ""}
+              </FilterKnopf>
+              {shiftNames.map((name) => (
+                <FilterKnopf
+                  key={name}
+                  an={shiftFilter === name}
+                  onClick={() => setShiftFilter(shiftFilter === name ? "all" : name)}
                 >
-                  <Avatar employee={row} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">
-                      {row.firstName} {row.lastName}
-                    </p>
-                    <p className="tnum truncate text-[12px] text-ink-muted">
-                      {row.personnelNumber ?? "ohne Nummer"} ·{" "}
-                      {row.department ?? "keine Abteilung"} ·{" "}
-                      {row.rotationTeam
-                        ? `Schicht ${row.rotationTeam}`
-                        : (row.shiftName ?? "keine Schicht")}
-                    </p>
-                    {row.qualifications.length > 0 ? (
-                      <p className="mt-1 flex flex-wrap gap-1">
-                        {row.qualifications.map((q, i) => (
-                          <span
-                            key={q}
-                            className="rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] text-ink-muted"
-                          >
-                            {row.qualificationLabels[i] ?? q}
-                          </span>
-                        ))}
-                      </p>
-                    ) : null}
-                  </div>
-                  <Badge tone={row.role === "employee" ? "neutral" : "info"}>
-                    {roleLabels[row.role]}
-                  </Badge>
-                  <Badge tone={row.active ? "ok" : "critical"}>
-                    {row.active ? "Aktiv" : "Deaktiviert"}
-                  </Badge>
-                  {mode === "live" ? (
-                    <Badge tone={row.hasAccount ? "ok" : "neutral"}>
-                      {row.hasAccount ? "Hat Zugang" : "Ohne Zugang"}
-                    </Badge>
-                  ) : null}
-                  {role === "admin" || role === "shift_leader" ? (
-                    <Button
-                      variant="secondary"
-                      disabled={mode === "demo"}
-                      onClick={() => setEditing(row)}
-                    >
-                      Bearbeiten
-                    </Button>
-                  ) : null}
-                  {(role === "admin" || role === "shift_leader") && mode === "live" && row.active ? (
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setHinweisMeldung(null);
-                        setHinweisAn(row.id);
-                      }}
-                      title="Kurzen Hinweis schicken – erscheint beim nächsten Öffnen der App"
-                    >
-                      Hinweis
-                    </Button>
-                  ) : null}
-                  {/* Einladen: Administration immer, Schichtleitung für
-                      normale Mitarbeiter. Die Datenbank-seitige Prüfung
-                      steckt in inviteEmployee(). */}
-                  {role === "shift_leader" && mode === "live" && row.role === "employee" ? (
-                    <Button
-                      variant="secondary"
-                      disabled={!row.email || (pending && busyId === row.id)}
-                      onClick={() => invite(row)}
-                    >
-                      {pending && busyId === row.id
-                        ? "…"
-                        : row.hasAccount
-                          ? "Neuer Zugangslink"
-                          : "Einladen"}
-                    </Button>
-                  ) : null}
-                  {darfCode(row) ? (
-                    <Button
-                      variant="secondary"
-                      disabled={pending && busyId === row.id}
-                      onClick={() => {
-                        setCodeErgebnis(null);
-                        setCodeFrage(row);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                      title="Code erzeugen, mit dem die Person ein neues Passwort setzt"
-                    >
-                      {pending && busyId === row.id ? "…" : "Passwort-Code"}
-                    </Button>
-                  ) : null}
-                  {role === "admin" ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {mode === "live" ? (
-                        <Button
-                          variant="secondary"
-                          disabled={!row.email || (pending && busyId === row.id)}
-                          onClick={() => invite(row)}
-                          title={
-                            row.email
-                              ? row.hasAccount
-                                ? "Neuen Link zum Passwort-Setzen erzeugen"
-                                : "Zugang einrichten und Link erzeugen"
-                              : "Keine E-Mail-Adresse hinterlegt"
-                          }
-                        >
-                          {pending && busyId === row.id
-                            ? "…"
-                            : row.hasAccount
-                              ? "Neuer Zugangslink"
-                              : "Einladen"}
-                        </Button>
-                      ) : null}
-                      <Button
-                        variant="secondary"
-                        disabled={mode === "demo" || busyId === row.id}
-                        onClick={() => toggle(row)}
-                      >
-                        {busyId === row.id
-                          ? "…"
-                          : row.active
-                            ? "Deaktivieren"
-                            : "Aktivieren"}
-                      </Button>
-                      {/* Endgültig löschen erst nach dem Deaktivieren – dann aber
-                          vollständig: Stammdaten, Profil, Zugang, alle Einträge. */}
-                      {row.active ? null : confirmDeleteId === row.id ? (
-                        <div className="flex basis-full flex-col gap-2 rounded-xl border border-crit-bg bg-crit-bg/40 p-3 sm:basis-auto">
-                          <p className="text-[13px] leading-snug text-crit-fg">
-                            {row.firstName} {row.lastName} wird mit Zugang, Profil und allen
-                            Einträgen endgültig gelöscht. Das lässt sich nicht rückgängig machen –
-                            wird die Person wieder gebraucht, muss sie neu angelegt werden.
-                          </p>
-                          <div className="flex items-center gap-1.5">
-                            <Button
-                              variant="danger"
-                              disabled={busyId === row.id}
-                              onClick={() => remove(row)}
-                            >
-                              Endgültig löschen
-                            </Button>
-                            <Button variant="ghost" onClick={() => setConfirmDeleteId(null)}>
-                              Abbrechen
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmDeleteId(row.id)}
-                          disabled={mode === "demo"}
-                          className="rounded-lg p-2 text-ink-faint hover:bg-crit-bg hover:text-crit-fg disabled:opacity-50"
-                          aria-label={`${row.firstName} ${row.lastName} endgültig löschen`}
-                          title="Endgültig löschen – mit Zugang und allen Einträgen"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  ) : null}
-                </li>
+                  {name.replace(/^Schicht /, "")}
+                </FilterKnopf>
               ))}
-            </ul>
+              {inaktivZahl > 0 ? (
+                <FilterKnopf
+                  an={statusFilter === "inactive"}
+                  rot
+                  onClick={() => setStatusFilter(statusFilter === "inactive" ? "all" : "inactive")}
+                >
+                  Deaktiviert {inaktivZahl}
+                </FilterKnopf>
+              ) : null}
+            </div>
+          </div>
+
+          <CardBody className="px-0 py-0">
+            {rows === null ? (
+              <RowSkeleton rows={6} />
+            ) : visible.length === 0 ? (
+              <EmptyState
+                title={
+                  rows.length === 0
+                    ? "Noch keine Mitarbeiter vorhanden."
+                    : "Keine Treffer für diese Filter."
+                }
+                description={
+                  rows.length === 0
+                    ? "Sobald die Administration Mitarbeiter anlegt, erscheinen sie hier."
+                    : "Suche zurücksetzen oder einen anderen Filter wählen."
+                }
+              />
+            ) : (
+              <>
+                <ul className="divide-y divide-line" data-mitarbeiter-liste>
+                  {visible.map((row) => (
+                    <li key={row.id}>
+                      {/* Keine Knöpfe mehr in der Zeile – antippen öffnet die Person. */}
+                      <button
+                        type="button"
+                        onClick={() => setOffenId(row.id)}
+                        aria-current={offen?.id === row.id ? "true" : undefined}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-muted sm:px-5",
+                          offen?.id === row.id && "lg:bg-brand-50",
+                          !row.active && "opacity-60",
+                        )}
+                      >
+                        <Avatar employee={row} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-semibold leading-snug">
+                            {row.firstName} {row.lastName}
+                          </span>
+                          <span className="tnum mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-muted">
+                            <StandPunkt row={row} live={mode === "live"} />
+                            <span className="truncate">
+                              {gruppeVon(row)} · {row.personnelNumber ?? "ohne Nr."}
+                            </span>
+                          </span>
+                        </span>
+                        {row.role !== "employee" ? <Badge tone="info">{roleLabels[row.role]}</Badge> : null}
+                        <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 border-t border-line px-4 py-2.5 text-[12px] text-ink-muted">
+                  {mode === "live" ? (
+                    <>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ok-dot" />hat Zugang</span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ink-faint/50" />kein Zugang</span>
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-ok-dot" />aktiv</span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-crit-dot" />deaktiviert</span>
+                </p>
+              </>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Computer: die gewählte Person rechts daneben. */}
+        <aside className="hidden lg:sticky lg:top-4 lg:block" data-person-spalte>
+          {offen && breit ? (
+            <Card>
+              <CardBody>{personInhalt(offen, true)}</CardBody>
+            </Card>
+          ) : (
+            <Card>
+              <CardBody>
+                <p className="py-8 text-center text-[13.5px] text-ink-muted">
+                  Person in der Liste anklicken – hier stehen dann alle Angaben und Aktionen.
+                </p>
+              </CardBody>
+            </Card>
           )}
-        </CardBody>
-      </Card>
+        </aside>
+      </div>
+
+      {/* Handy und iPad hochkant: die Person als Blatt von unten. */}
+      {offen && !breit ? (
+        <Blatt titel={`${offen.firstName} ${offen.lastName}`} onClose={() => setOffenId(null)}>
+          {personInhalt(offen, false)}
+        </Blatt>
+      ) : null}
     </div>
   );
+}
+
+function FilterKnopf({
+  an,
+  rot,
+  onClick,
+  children,
+}: {
+  an: boolean;
+  rot?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={an}
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold",
+        an ? "border-ink bg-ink text-surface" : rot ? "border-line bg-surface text-crit-fg" : "border-line bg-surface text-ink-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Grün = hat Zugang, grau = kein Zugang, rot = deaktiviert. */
+function StandPunkt({ row, live }: { row: EmployeeRecord; live: boolean }) {
+  const farbe = !row.active ? "bg-crit-dot" : !live || row.hasAccount ? "bg-ok-dot" : "bg-ink-faint/50";
+  const text = !row.active ? "deaktiviert" : !live ? "aktiv" : row.hasAccount ? "hat Zugang" : "kein Zugang";
+  return <span className={cn("h-2 w-2 shrink-0 rounded-full", farbe)} title={text} aria-label={text} />;
 }

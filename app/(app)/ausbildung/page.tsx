@@ -9,6 +9,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { PlanReiter } from "@/components/layout/plan-reiter";
 import { useSession } from "@/context/session";
 import { DataError as EmployeeError, fetchEmployees } from "@/lib/data/employees";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
@@ -180,6 +181,7 @@ export default function AusbildungPage() {
           </div>
         }
       />
+      <PlanReiter />
 
       {meldung.error ? <Alert tone="error">{meldung.error}</Alert> : null}
       {meldung.success ? <Alert tone="success">{meldung.success}</Alert> : null}

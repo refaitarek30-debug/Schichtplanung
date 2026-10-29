@@ -4,25 +4,17 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
-import { AnnouncementsCard } from "@/components/settings/announcements-card";
-import { LeaveBlocksCard } from "@/components/leave/leave-blocks-card";
-import { HinweiseCard } from "@/components/hinweise/hinweise-card";
+import { MitteilungenZentrale } from "@/components/mitteilungen/mitteilungen-zentrale";
 import { useSession } from "@/context/session";
 
 /**
- * Mitteilungen und Urlaubssperren – beides geht an die ganze Belegschaft
- * und beides steht auf jedem Dashboard.
+ * Mitteilungen – Hinweise an einzelne Personen, Mitteilungen an alle und
+ * Urlaubssperren in einer Liste. Beides geht an die Belegschaft und gehört
+ * ins Tagesgeschäft, nicht zu den Einstellungen, die man einmal setzt.
  *
- * Vorher lagen die Karten unter Verwaltung → Regeln, zwischen
- * Planungsregeln und Feiertagseinstellungen. Das ist der falsche Ort: die
- * Regeln stellt man einmal beim Einrichten ein, eine Mitteilung schreibt
- * man mitten im Tagesgeschäft. Deshalb ein eigener Punkt unter Führung,
- * zwei Klicks näher.
- *
- * Schreiben darf beides die Schichtleitung mit – Urlaubssperren bleiben
- * der Administration vorbehalten, wie vorher auch. Die Absicherung liegt
- * in den Server-Aktionen und in Row Level Security, nicht in diesen
- * Schaltern.
+ * Schreiben darf die Schichtleitung mit – Urlaubssperren bleiben der
+ * Administration vorbehalten, wie vorher auch. Die Absicherung liegt in den
+ * Server-Aktionen und in Row Level Security, nicht in diesen Schaltern.
  */
 export default function MitteilungenPage() {
   return (
@@ -33,26 +25,16 @@ export default function MitteilungenPage() {
 }
 
 function MitteilungenInhalt() {
-  const { mode, role } = useSession();
-  // Aus „Mehr“ → Urlaubssperre: die Sperren stehen dann ganz oben.
-  const sperrenZuerst = useSearchParams().get("bereich") === "sperren";
-  const sperren = <LeaveBlocksCard canManage={role === "admin"} />;
+  const { mode } = useSession();
+  // Aus „Mehr“ → Urlaubssperre: gleich nur die Sperren.
+  const nurSperren = useSearchParams().get("bereich") === "sperren";
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        eyebrow="Führung"
-        title="Mitteilungen"
-        description="Hinweise an einzelne Personen, Mitteilungen an alle und gesperrte Urlaubszeiträume."
-      />
+      <PageHeader eyebrow="Führung" title="Mitteilungen" />
 
       {mode === "live" ? (
-        <>
-          {sperrenZuerst ? sperren : null}
-          {role !== "employee" ? <HinweiseCard /> : null}
-          <AnnouncementsCard canManage={role !== "employee"} />
-          {sperrenZuerst ? null : sperren}
-        </>
+        <MitteilungenZentrale startFilter={nurSperren ? "sperren" : "alle"} />
       ) : (
         <Alert tone="info">
           Mitteilungen und Urlaubssperren gibt es nur im Live-Modus – im Demo-Modus stehen

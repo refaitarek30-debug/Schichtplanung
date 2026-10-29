@@ -56,13 +56,19 @@ export default async function startseite() {
       (await mehr.locator('ul a[href="/verwaltung"], ul a[href="/mitteilungen"], ul a[href="/altersfreizeit"]').count()) === 0,
       "Mehr: Verwaltung, Mitteilungen, AF nicht doppelt in der Liste",
     );
-    pruefe((await mehr.locator('ul a[href="/besetzung"]').count()) === 1, "Mehr: übrige Bereiche (z. B. Besetzung) weiter da");
+    pruefe(
+      (await mehr.locator('ul a[href="/besetzung"], ul a[href="/ausbildung"]').count()) === 0,
+      "Mehr: Besetzung und Ausbildung nicht mehr in der Liste (Reiter im Plan)",
+    );
+    pruefe((await mehr.locator('ul a[href="/urlaubsantraege"]').count()) === 1, "Mehr: übrige Bereiche (z. B. Urlaubsanträge) weiter da");
     await mehr.getByRole("link", { name: /Urlaubssperre/ }).click();
     await seite.waitForURL(/\/mitteilungen\?bereich=sperren/);
     await warte(1200);
-    const ySperren = (await seite.getByText("Urlaubssperren", { exact: true }).first().boundingBox())?.y ?? 9999;
-    const yHinweis = (await seite.getByText("Hinweis an einzelne Personen").first().boundingBox())?.y ?? -1;
-    pruefe(ySperren < yHinweis, `Urlaubssperre: Sperren stehen ganz oben (${Math.round(ySperren)} < ${Math.round(yHinweis)})`);
+    pruefe(
+      (await seite.getByRole("button", { name: "Sperren", pressed: true }).count()) === 1 &&
+        (await seite.locator("[data-eintrag]").count()) === (await seite.locator('[data-eintrag="sperre"]').count()),
+      "Urlaubssperre: Mitteilungen zeigt gleich nur die Sperren",
+    );
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 

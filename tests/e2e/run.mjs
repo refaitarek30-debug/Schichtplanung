@@ -10,6 +10,7 @@ import betrieb from "./betrieb.test.mjs";
 import startseite from "./startseite.test.mjs";
 import bereiche from "./bereiche.test.mjs";
 import beitritt from "./beitritt.test.mjs";
+import fuehrung from "./fuehrung.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -17,6 +18,7 @@ const ABLAEUFE = [
   ["Startseite und Profil", "betrieb", startseite],
   ["Betrieb und Privat", "betrieb", bereiche],
   ["Beitritt", "privat", beitritt],
+  ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
 ];
 
 const nur = process.argv[2];
