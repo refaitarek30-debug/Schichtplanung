@@ -44,8 +44,11 @@ function fuehrungsKacheln(role: Role) {
   ];
 }
 
-/** Diese Seiten stehen schon als Kachel oben (AF & V-Tage liegt unter Team). */
-const IN_KACHELN = new Set(["/verwaltung", "/mitteilungen", "/altersfreizeit"]);
+/**
+ * Diese Seiten stehen schon woanders: als Kachel oben (AF & V-Tage liegt
+ * unter Team) oder als Reiter im Plan (Besetzung, Ausbildung).
+ */
+const ANDERS_ERREICHBAR = new Set(["/verwaltung", "/mitteilungen", "/altersfreizeit", "/besetzung", "/ausbildung"]);
 
 /** Untere Tab-Leiste mit den vier Hauptbereichen plus „Mehr“ für den Rest. */
 export function MobileNav() {
@@ -58,7 +61,7 @@ export function MobileNav() {
   const fuehrung = role === "shift_leader" || role === "admin";
   const kacheln = fuehrung ? fuehrungsKacheln(role) : [];
   const groups = navForRole(role, profile.protokoll === true)
-    .map((g) => ({ ...g, items: fuehrung ? g.items.filter((i) => !IN_KACHELN.has(i.href)) : g.items }))
+    .map((g) => ({ ...g, items: fuehrung ? g.items.filter((i) => !ANDERS_ERREICHBAR.has(i.href)) : g.items }))
     .filter((g) => g.items.length > 0);
 
   return (
@@ -172,7 +175,9 @@ export function MobileNav() {
         <ul className="mx-auto flex max-w-lg items-stretch">
           {primary.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href;
+            // Besetzung und Ausbildung sind Reiter im Plan – dann leuchtet „Plan“.
+            const active =
+              pathname === item.href || (item.href === "/schichtplan" && (pathname === "/besetzung" || pathname === "/ausbildung"));
             return (
               <li key={item.href} className="flex-1">
                 <Link

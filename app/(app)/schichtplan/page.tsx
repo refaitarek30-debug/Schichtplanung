@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
+import { PlanReiter } from "@/components/layout/plan-reiter";
 import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { ShiftPlanExport } from "@/components/calendar/shift-plan-export";
 import { PlanEintragForm } from "@/components/leave/plan-eintrag-form";
@@ -42,6 +43,8 @@ export default function ShiftPlanPage() {
       {/* Kein langer Text über dem Plan: der Platz gehört der Tabelle. Die
           Anleitung steht im Menü „Mehr“ (⋯) der Bedienleiste. */}
       <PageHeader eyebrow="Übersicht" title="Schichtplan" />
+      {/* Nur der Wegweiser Schichtplan · Besetzung · Ausbildung – am Plan ändert sich nichts. */}
+      <PlanReiter />
 
       {mode === "demo" ? (
         <Alert tone="warning">

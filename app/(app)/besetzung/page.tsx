@@ -7,6 +7,7 @@ import { CoverageGaps } from "@/components/staffing/coverage-gaps";
 import { ShiftStaffingCards } from "@/components/staffing/shift-staffing-cards";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
+import { PlanReiter } from "@/components/layout/plan-reiter";
 import { useSession } from "@/context/session";
 import { TODAY } from "@/lib/demo-data";
 import { addDays } from "@/lib/dates";
@@ -23,6 +24,7 @@ export default function StaffingPage() {
         title="Besetzung"
         description="Alle Schichten der nächsten zwei Wochen im Überblick."
       />
+      <PlanReiter />
       {mode === "live" ? <LiveStaffingSection /> : <DemoStaffingSection />}
     </div>
   );

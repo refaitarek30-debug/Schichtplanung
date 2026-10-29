@@ -58,6 +58,31 @@ export default async function fuehrung() {
       "Filter „An alle“ zeigt nur Mitteilungen an alle",
     );
 
+    // Plan: drei Reiter über Schichtplan, Besetzung und Ausbildung
+    await seite.goto(`${APP}/schichtplan`, { waitUntil: "networkidle" });
+    await warte(1500);
+    const reiter = seite.locator("[data-plan-reiter]");
+    pruefe(
+      (await reiter.getByRole("link").allInnerTexts()).join("|") === "Schichtplan|Besetzung|Ausbildung" &&
+        (await reiter.getByRole("link", { name: "Schichtplan" }).getAttribute("aria-current")) === "page",
+      "Plan: Reiter Schichtplan · Besetzung · Ausbildung, Schichtplan aktiv",
+    );
+    await reiter.getByRole("link", { name: "Besetzung" }).click();
+    await seite.waitForURL(/\/besetzung$/);
+    await warte(800);
+    pruefe(
+      (await seite.locator("[data-plan-reiter]").getByRole("link", { name: "Besetzung" }).getAttribute("aria-current")) === "page",
+      "Plan: Reiter „Besetzung“ öffnet die Besetzung",
+    );
+    pruefe(
+      (await seite.locator("[data-mobile-nav]").getByRole("link", { name: "Plan" }).getAttribute("aria-current")) === "page",
+      "Plan: Leiste unten zeigt „Plan“ auch in der Besetzung",
+    );
+    await seite.locator("[data-plan-reiter]").getByRole("link", { name: "Ausbildung" }).click();
+    await seite.waitForURL(/\/ausbildung$/);
+    await warte(800);
+    pruefe((await seite.locator("[data-plan-reiter]").count()) === 1, "Plan: Reiter auch in der Ausbildung");
+
     // Mitarbeiter: ruhige Liste, Person antippen → Blatt mit Aktionen
     await seite.goto(`${APP}/verwaltung?bereich=mitarbeiter`, { waitUntil: "networkidle" });
     await warte(1500);
