@@ -6,16 +6,20 @@ import { usePathname } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "@/context/session";
 import { TodoZahlMarke } from "@/components/kalender/todo-zaehler";
-import { navForRole } from "@/lib/nav";
+import { leisteAktiv, leisteFuerRolle } from "@/lib/nav";
 import { cn } from "@/lib/utils";
 import { NeuMarke } from "./neu-marke";
+import { useOffeneEntscheidungen } from "./urlaub-reiter";
 import { useBegriffe } from "@/lib/begriffe";
 
 export function Sidebar() {
   const t = useBegriffe();
   const pathname = usePathname();
   const { role, company, mode, profile } = useSession();
-  const groups = navForRole(role, profile.protokoll === true);
+  // Wenige Bereiche, unter jedem klein, was drinsteckt (Plan, Urlaub und
+  // Team fassen mehrere Seiten zusammen – die Reiter stehen dort oben).
+  const groups = leisteFuerRolle(role, profile.protokoll === true);
+  const offen = useOffeneEntscheidungen();
   /**
    * Eingeklappt bleiben nur die Symbole – der Schichtplan bekommt die
    * Breite. Die Wahl gilt pro Gerät und bleibt beim nächsten Besuch.
@@ -68,38 +72,62 @@ export function Sidebar() {
       </Link>
 
       <nav className={cn("flex-1 overflow-y-auto py-4", eingeklappt ? "px-2" : "px-3")}>
-        {groups.map((group) => (
-          <div key={group.label} className="mb-5 last:mb-0">
+        {groups.map((group, i) => (
+          <div key={group.label ?? `g${i}`} className="mb-5 last:mb-0">
             {eingeklappt ? (
-              <div className="mx-2 mb-2 border-t border-line" aria-hidden />
-            ) : (
+              i > 0 ? <div className="mx-2 mb-2 border-t border-line" aria-hidden /> : null
+            ) : group.label ? (
               <p className="px-2.5 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
                 {group.label}
               </p>
-            )}
+            ) : i > 0 ? (
+              <div className="mx-2.5 mb-3 border-t border-line" aria-hidden />
+            ) : null}
             <ul className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = pathname === item.href;
+              {group.eintraege.map((item) => {
+                const active = leisteAktiv(item, pathname);
                 const Icon = item.icon;
+                const zahl = item.offeneAntraege ? offen : 0;
                 return (
-                  <li key={item.href}>
+                  <li key={`${item.href}-${item.label}`}>
                     <Link
                       href={item.href}
                       aria-current={active ? "page" : undefined}
                       title={eingeklappt ? t(item.label) : undefined}
                       aria-label={eingeklappt ? t(item.label) : undefined}
+                      data-leiste={item.label}
                       className={cn(
-                        "relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm transition-colors",
-                        eingeklappt && "justify-center",
+                        "relative flex gap-2.5 rounded-xl px-2.5 py-2 transition-colors",
+                        eingeklappt ? "items-center justify-center" : "items-start",
                         active
-                          ? "bg-brand-50 font-medium text-brand-700"
+                          ? "bg-brand-50 text-brand-700"
                           : "text-ink-muted hover:bg-surface-muted hover:text-ink",
                       )}
                     >
-                      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
-                      {eingeklappt ? null : t(item.label)}
-                      {item.neu && !eingeklappt ? <NeuMarke name={item.neu} /> : null}
-                      {item.todoZahl ? <TodoZahlMarke pfad={pathname} className={eingeklappt ? "absolute -right-0.5 -top-0.5 scale-75" : "ml-auto"} /> : null}
+                      <Icon className={cn("h-[18px] w-[18px] shrink-0", !eingeklappt && "mt-0.5")} strokeWidth={1.8} />
+                      {eingeklappt ? null : (
+                        <span className="min-w-0 flex-1">
+                          <span className={cn("flex items-center gap-1.5 text-sm", active ? "font-semibold" : "font-medium text-ink")}>
+                            {t(item.label)}
+                            {item.neu ? <NeuMarke name={item.neu} /> : null}
+                          </span>
+                          <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-faint">{t(item.unter)}</span>
+                        </span>
+                      )}
+                      {zahl > 0 ? (
+                        <span
+                          className={cn(
+                            "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-crit-dot px-1.5 text-[11px] font-bold text-white",
+                            eingeklappt ? "absolute -right-0.5 -top-0.5 scale-90" : "mt-0.5",
+                          )}
+                          aria-label={`${zahl} offene Anträge`}
+                        >
+                          {zahl}
+                        </span>
+                      ) : null}
+                      {item.todoZahl ? (
+                        <TodoZahlMarke pfad={pathname} className={eingeklappt ? "absolute -right-0.5 -top-0.5 scale-75" : "mt-0.5"} />
+                      ) : null}
                     </Link>
                   </li>
                 );

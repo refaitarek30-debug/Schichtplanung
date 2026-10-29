@@ -228,6 +228,19 @@ http.createServer((req, res) => {
           tage: Array.from({ length: body.p_days }, (_, d) => { const t = add(body.p_from, d); const c = folge[(d + (i % 3) * 3) % 10]; const abw = i === 2 && d > 3 && d < 8 ? "U" : i === 4 && d === 6 ? "u" : i === 5 && d === 9 ? "K" : null; return [t, c ? name[c] : null, c, abw]; }) })));
       }
       if (f === "blocked_days" || f === "school_holidays_for_range") return send(200, []);
+      // Besetzung: 14 Tage, drei Schichten; am zweiten Tag ist die Nacht zu knapp.
+      if (f === "staffing_range") {
+        const zeilen = [];
+        for (let i = 0; i < body.p_days; i++) {
+          const date = add(body.p_from, i);
+          for (const [shift_id, shift_name, target, minimum] of [["s1", "Frühschicht", 5, 3], ["s2", "Spätschicht", 5, 3], ["s3", "Nachtschicht", 4, 3]]) {
+            const present = shift_id === "s3" && i === 1 ? 2 : target;
+            zeilen.push({ shift_id, shift_name, date, target, minimum, planned: present, absent: 0, present, status: present < minimum ? "critical" : present < target ? "warn" : "ok" });
+          }
+        }
+        return send(200, zeilen);
+      }
+      if (f === "shift_staffing_overview") return send(200, [["s1", "Frühschicht", "F", 5, 3], ["s2", "Spätschicht", "S", 5, 3], ["s3", "Nachtschicht", "N", 4, 3]].map(([shift_id, shift_name, short_name, target, minimum]) => ({ shift_id, shift_name, short_name, target, minimum, zugeordnet: target, laeuft_heute: true })));
       // Entscheiden darf die Führung über alle im Testbetrieb.
       if (f === "entscheidbare_mitarbeiter") return send(200, MITARBEITER.map((e) => ({ employee_id: e.id })));
       if (f === "abo_status" || f === "partner_einladung_status") return send(200, []);

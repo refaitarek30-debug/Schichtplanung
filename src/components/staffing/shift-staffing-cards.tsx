@@ -14,7 +14,14 @@ import { saveShiftStaffing } from "@/lib/auth/shift-actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { cn } from "@/lib/utils";
 
-export function ShiftStaffingCards({ canEdit }: { canEdit: boolean }) {
+export function ShiftStaffingCards({
+  canEdit,
+  einspaltig,
+}: {
+  canEdit: boolean;
+  /** Im schmalen Fenster untereinander statt zwei nebeneinander. */
+  einspaltig?: boolean;
+}) {
   const [rows, setRows] = useState<LiveShiftStaffing[] | null>(null);
   const [details, setDetails] = useState<ShiftDetail[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +55,7 @@ export function ShiftStaffingCards({ canEdit }: { canEdit: boolean }) {
   if (rows === null) return <p className="text-sm text-ink-muted">wird geladen …</p>;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className={cn("grid gap-4", !einspaltig && "sm:grid-cols-2")}>
       {rows.map((row) => {
         const detail = details.find((d) => d.id === row.shiftId);
         return (

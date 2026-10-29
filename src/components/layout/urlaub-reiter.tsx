@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
  * Entscheiden darf nur die Führung – alle anderen haben nur „Mein Urlaub“,
  * dann braucht es auch keine Reiter.
  */
-export function UrlaubReiter() {
-  const pathname = usePathname();
+/** Offene Anträge, über die ich entscheiden darf – 0 für alle außer der Führung. */
+export function useOffeneEntscheidungen(): number {
   const { role, mode } = useSession();
   const fuehrung = role === "admin" || role === "shift_leader";
   const [zahl, setZahl] = useState(0);
@@ -36,7 +36,14 @@ export function UrlaubReiter() {
   // Neuer Antrag oder eine Entscheidung: Zahl auffrischen.
   useAktualisierung(["antraege"], laden);
 
-  if (!fuehrung) return null;
+  return fuehrung ? zahl : 0;
+}
+
+export function UrlaubReiter() {
+  const pathname = usePathname();
+  const { role } = useSession();
+  const zahl = useOffeneEntscheidungen();
+  if (role !== "admin" && role !== "shift_leader") return null;
 
   const reiter = [
     { href: "/urlaub", label: "Mein Urlaub", zahl: 0 },

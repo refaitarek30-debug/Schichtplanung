@@ -78,6 +78,24 @@ export default async function fuehrung() {
       (await seite.locator("[data-mobile-nav]").getByRole("link", { name: "Plan" }).getAttribute("aria-current")) === "page",
       "Plan: Leiste unten zeigt „Plan“ auch in der Besetzung",
     );
+    // Besetzung: großes Band oben, Soll & Mindest hinter dem Zahnrad
+    const band = seite.locator("[data-band-handy]");
+    pruefe((await band.locator("tbody tr").count()) === 14, "Besetzung: Band zeigt 14 Tage untereinander (Handy)");
+    pruefe(await band.getByText("5/5").first().isVisible(), "Besetzung: Zellen zeigen Anwesend/Soll");
+    pruefe(
+      (await seite.locator("[data-zu-knapp]").getByText(/Nacht .* 2 von 3/).count()) === 1,
+      "Besetzung: zu knappe Schicht steht oben („Nacht … 2 von 3“)",
+    );
+    pruefe((await seite.getByText("Laufende Tage").count()) === 0, "Besetzung: Einstellungen nicht mehr auf der Seite");
+    await seite.locator("[data-besetzung-einstellungen]").click();
+    await warte(800);
+    pruefe(
+      (await seite.locator('[role="dialog"]').getByText("Frühschicht").first().isVisible()) &&
+        (await seite.locator('[role="dialog"]').getByText("Mindest").first().isVisible()),
+      "Besetzung: Zahnrad öffnet Soll & Mindest je Schicht",
+    );
+    await seite.keyboard.press("Escape");
+    await warte(400);
     await seite.locator("[data-plan-reiter]").getByRole("link", { name: "Ausbildung" }).click();
     await seite.waitForURL(/\/ausbildung$/);
     await warte(800);
@@ -141,6 +159,22 @@ export default async function fuehrung() {
     await warte(500);
     pruefe(await s.locator('[data-person-spalte] [data-person="Mia Wagner"]').isVisible(), "Computer: Person rechts neben der Liste");
     pruefe((await s.locator('[role="dialog"]').count()) === 0, "Computer: kein Blatt");
+
+    // Seitenleiste: wenige Bereiche mit Untertext, „Team“ leuchtet auf der Verwaltung
+    const leiste = await s.locator("aside [data-leiste]").evaluateAll((els) => els.map((e) => e.getAttribute("data-leiste")));
+    pruefe(
+      leiste.join("|") === "Start|Plan|Urlaub|Kalender|Team|Mitteilungen|Auswertung|Einstellungen",
+      `Seitenleiste: Start, Plan, Urlaub, Kalender, Team, Mitteilungen, Auswertung, Einstellungen (${leiste.join(", ")})`,
+    );
+    pruefe(
+      (await s.locator('aside [data-leiste="Team"]').getAttribute("aria-current")) === "page" &&
+        (await s.locator('aside [data-leiste="Plan"]').innerText()).includes("Schichtplan · Besetzung · Ausbildung"),
+      "Seitenleiste: Team aktiv, unter Plan steht, was drinsteckt",
+    );
+    pruefe((await s.locator('aside [data-leiste="Urlaub"]').getByText("2", { exact: true }).count()) === 1, "Seitenleiste: Urlaub zeigt 2 offene Anträge");
+    await s.goto(`${APP}/besetzung`, { waitUntil: "networkidle" });
+    await warte(800);
+    pruefe((await s.locator('aside [data-leiste="Plan"]').getAttribute("aria-current")) === "page", "Seitenleiste: Plan leuchtet auch auf der Besetzung");
   } finally {
     await b.close();
   }
