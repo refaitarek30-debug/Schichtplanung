@@ -113,6 +113,23 @@ export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
   return (antraege.data ?? []).filter((r) => ids.has(r.employee_id)).map(mapRequest);
 }
 
+/**
+ * Wie viele offene Anträge warten auf eine Entscheidung von mir? Dieselbe
+ * Regel wie die Liste oben (entscheidbare_mitarbeiter), nur ohne die Daten.
+ */
+export async function fetchOffeneEntscheidungen(): Promise<number> {
+  if (!isSupabaseConfigured) return 0;
+  const supabase = createClient();
+  const [offen, erlaubt] = await Promise.all([
+    supabase.from("leave_requests").select("employee_id").eq("status", "pending").returns<{ employee_id: string }[]>(),
+    supabase.rpc("entscheidbare_mitarbeiter"),
+  ]);
+  if (offen.error) throw new DataError(dataErrorMessage(offen.error) ?? "Unbekannter Fehler");
+  if (erlaubt.error) throw new DataError(dataErrorMessage(erlaubt.error) ?? "Unbekannter Fehler");
+  const ids = new Set(((erlaubt.data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
+  return (offen.data ?? []).filter((r) => ids.has(r.employee_id)).length;
+}
+
 /** Urlaubskonto des angemeldeten Benutzers für ein Jahr (Standard: laufendes Jahr). */
 export async function fetchMyLeaveBalance(
   year = new Date().getFullYear(),

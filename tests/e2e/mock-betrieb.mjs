@@ -94,7 +94,7 @@ http.createServer((req, res) => {
     }
     if (p === "/rest/v1/leave_requests" && m === "GET") {
       const r = (id, von, bis, status, tage) => ({ id, company_id: "c0000000-0000-4000-8000-000000000001", employee_id: "e0", start_date: von, end_date: bis, half_day: false, half_day_period: null, requested_days: tage, reason: null, status, rejection_reason: status === "rejected" ? "Besetzung zu knapp" : null, reviewed_by: null, reviewed_at: status === "pending" ? null : "2026-10-01T10:00:00Z", created_at: "2026-09-20T10:00:00Z", updated_at: "2026-09-20T10:00:00Z", kind: "urlaub", request_group_id: null, withdrawn_at: status === "withdrawn" ? "2026-10-02T10:00:00Z" : null, withdrawn_by: null, withdrawal_reason: null, employees: { first_name: "Tarek", last_name: "Test", shift_id: "s1", shifts: { name: "Frühschicht" } } });
-      return liste([r("r1", "2026-12-21", "2026-12-24", "pending", 4), r("r2", "2027-01-05", "2027-01-07", "pending", 3), r("r3", "2026-08-03", "2026-08-14", "approved", 10), r("r4", "2026-05-11", "2026-05-12", "approved", 2), r("r5", "2026-07-01", "2026-07-03", "rejected", 3), r("r6", "2026-06-01", "2026-06-02", "withdrawn", 2)]);
+      return liste(filter(q.filter(([k, v]) => k === "status" && v === "eq.pending"), [r("r1", "2026-12-21", "2026-12-24", "pending", 4), r("r2", "2027-01-05", "2027-01-07", "pending", 3), r("r3", "2026-08-03", "2026-08-14", "approved", 10), r("r4", "2026-05-11", "2026-05-12", "approved", 2), r("r5", "2026-07-01", "2026-07-03", "rejected", 3), r("r6", "2026-06-01", "2026-06-02", "withdrawn", 2)]));
     }
     if (p === "/rest/v1/leave_balances_view") return liste([{ year: new Date().getFullYear(), entitlement: 30, carried_over: 3, used_days: 20, planned_days: 2, pending_days: 1, remaining_days: 10, v_entitlement: 6, v_carried_over: 0, v_korrektur: 0, v_used_days: 4, v_pending_days: 0, v_remaining_days: 2, v_fehl_stunden: 0 }]);
     // Seite Mitteilungen: eine kommende Urlaubssperre, Mitteilungen an alle zum Anlegen.
@@ -228,6 +228,8 @@ http.createServer((req, res) => {
           tage: Array.from({ length: body.p_days }, (_, d) => { const t = add(body.p_from, d); const c = folge[(d + (i % 3) * 3) % 10]; const abw = i === 2 && d > 3 && d < 8 ? "U" : i === 4 && d === 6 ? "u" : i === 5 && d === 9 ? "K" : null; return [t, c ? name[c] : null, c, abw]; }) })));
       }
       if (f === "blocked_days" || f === "school_holidays_for_range") return send(200, []);
+      // Entscheiden darf die Führung über alle im Testbetrieb.
+      if (f === "entscheidbare_mitarbeiter") return send(200, MITARBEITER.map((e) => ({ employee_id: e.id })));
       if (f === "abo_status" || f === "partner_einladung_status") return send(200, []);
       return send(200, null);
     }
