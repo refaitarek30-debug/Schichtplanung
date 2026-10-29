@@ -1,5 +1,7 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { AnnouncementsCard } from "@/components/settings/announcements-card";
@@ -23,7 +25,18 @@ import { useSession } from "@/context/session";
  * Schaltern.
  */
 export default function MitteilungenPage() {
+  return (
+    <Suspense fallback={null}>
+      <MitteilungenInhalt />
+    </Suspense>
+  );
+}
+
+function MitteilungenInhalt() {
   const { mode, role } = useSession();
+  // Aus „Mehr“ → Urlaubssperre: die Sperren stehen dann ganz oben.
+  const sperrenZuerst = useSearchParams().get("bereich") === "sperren";
+  const sperren = <LeaveBlocksCard canManage={role === "admin"} />;
 
   return (
     <div className="space-y-5">
@@ -35,9 +48,10 @@ export default function MitteilungenPage() {
 
       {mode === "live" ? (
         <>
+          {sperrenZuerst ? sperren : null}
           {role !== "employee" ? <HinweiseCard /> : null}
           <AnnouncementsCard canManage={role !== "employee"} />
-          <LeaveBlocksCard canManage={role === "admin"} />
+          {sperrenZuerst ? null : sperren}
         </>
       ) : (
         <Alert tone="info">
