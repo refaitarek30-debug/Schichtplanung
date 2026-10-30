@@ -4,7 +4,6 @@
 -- Die Rolle bleibt "Schichtleitung" (profiles.role / employees.role ändern
 -- sich nicht). Dazu kommen drei einzeln schaltbare Rechte:
 --   urlaub_alle            Urlaub, V-Tage usw. aller Gruppen entscheiden
---                          (nie Anträge der Administration)
 --   entscheidungen_aendern Genehmigt <-> Abgelehnt drehen
 --   mitarbeiter_verwalten  Personen anlegen, deaktivieren/aktivieren,
 --                          endgültig löschen (nur normale Mitarbeiter)
@@ -263,8 +262,8 @@ create trigger rollen_protokoll
 
 -- 6. Urlaub aller Gruppen --------------------------------------------------------
 -- Eine Stelle entscheidet, wessen Anträge jemand entscheiden darf – elf
--- Funktionen verlassen sich darauf. Neu: mit "urlaub_alle" alle Gruppen,
--- aber nie Anträge der Administration. Sonst unverändert.
+-- Funktionen verlassen sich darauf. Neu: mit "urlaub_alle" alle Gruppen.
+-- Sonst unverändert.
 
 create or replace function public.darf_urlaub_entscheiden(p_employee_id uuid)
 returns boolean
@@ -294,8 +293,8 @@ begin
   if ich.id = ziel.id then
     return true;
   end if;
-  -- Zusatzrecht: alle Gruppen, aber nicht die Administration.
-  if ziel.role is distinct from 'admin' and hat_zusatzrecht('urlaub_alle') then
+  -- Zusatzrecht: alle Gruppen.
+  if hat_zusatzrecht('urlaub_alle') then
     return true;
   end if;
   if ich.rotation_team is not null then
@@ -306,7 +305,7 @@ end;
 $function$;
 
 -- Wer erfährt von einem Rücknahme-Antrag usw.? Mit "urlaub_alle" auch die
--- Schichtleitung anderer Gruppen (wieder nicht bei Anträgen der Administration).
+-- Schichtleitung anderer Gruppen.
 create or replace function public.zustaendige_fuehrung(p_employee_id uuid)
 returns table(employee_id uuid)
 language sql
@@ -326,8 +325,7 @@ as $function$
        or (p.role = 'shift_leader'
            and (ziel.rotation_team is null or pe.rotation_team is null
                 or pe.rotation_team = ziel.rotation_team
-                or (ziel.role is distinct from 'admin'
-                    and public.zusatzrecht_von(p.employee_id, 'urlaub_alle'))))
+                or public.zusatzrecht_von(p.employee_id, 'urlaub_alle')))
      );
 $function$;
 
@@ -344,15 +342,11 @@ declare
   zeitraum text;
   tage text;
   per_mail boolean;
-  ziel_ist_admin boolean;
 begin
   zeitraum := case
     when p_von = p_bis then to_char(p_von, 'DD.MM.YYYY')
     else to_char(p_von, 'DD.MM.YYYY') || ' bis ' || to_char(p_bis, 'DD.MM.YYYY')
   end;
-
-  select coalesce(e.role = 'admin', false) into ziel_ist_admin
-    from employees e where e.id = p_employee_id;
 
   insert into notifications (company_id, employee_id, type, title, body, related_entity, related_id)
   select
@@ -414,8 +408,7 @@ begin
       p.role = 'admin'
       or (p.role = 'shift_leader'
           and (p_gruppe is null or pe.rotation_team is null or pe.rotation_team = p_gruppe
-               or (not coalesce(ziel_ist_admin, false)
-                   and public.zusatzrecht_von(p.employee_id, 'urlaub_alle'))))
+               or public.zusatzrecht_von(p.employee_id, 'urlaub_alle')))
     );
 end;
 $function$;
