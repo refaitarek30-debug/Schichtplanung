@@ -11,6 +11,7 @@ import startseite from "./startseite.test.mjs";
 import bereiche from "./bereiche.test.mjs";
 import beitritt from "./beitritt.test.mjs";
 import fuehrung from "./fuehrung.test.mjs";
+import aussetzer from "./aussetzer.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -19,6 +20,7 @@ const ABLAEUFE = [
   ["Betrieb und Privat", "betrieb", bereiche],
   ["Beitritt", "privat", beitritt],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
+  ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
 ];
 
 const nur = process.argv[2];
