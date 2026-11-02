@@ -241,6 +241,11 @@ http.createServer((req, res) => {
         return send(200, zeilen);
       }
       if (f === "shift_staffing_overview") return send(200, [["s1", "Frühschicht", "F", 5, 3], ["s2", "Spätschicht", "S", 5, 3], ["s3", "Nachtschicht", "N", 4, 3]].map(([shift_id, shift_name, short_name, target, minimum]) => ({ shift_id, shift_name, short_name, target, minimum, zugeordnet: target, laeuft_heute: true })));
+      // Vorschläge aus der Besetzung: eine Person passt, eine nicht (mit Grund).
+      if (f === "replacement_candidates") {
+        const zeile = (employee_id, name, auswaehlbar, grund) => ({ employee_id, name, rotation_team: null, eigene_schicht: false, hat_qualifikation: true, beschaeftigt: true, frei: auswaehlbar, ohne_ueberschneidung: true, ruhezeit_stunden: auswaehlbar ? 16 : null, ruhezeit_ok: true, dauer_stunden: 8, dauer_ok: true, auswaehlbar, grund });
+        return send(200, [zeile("e1", "Louis Becker", true, "frei"), zeile("e2", "Mia Wagner", false, "hat an dem Tag Urlaub")]);
+      }
       // Entscheiden darf die Führung über alle im Testbetrieb.
       if (f === "entscheidbare_mitarbeiter") return send(200, MITARBEITER.map((e) => ({ employee_id: e.id })));
       if (f === "abo_status" || f === "partner_einladung_status") return send(200, []);

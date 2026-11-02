@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { CoverageStrip } from "@/components/dashboard/coverage-strip";
-import { LiveCoverageStrip } from "@/components/dashboard/live-coverage-strip";
-import { CoverageGaps } from "@/components/staffing/coverage-gaps";
+import { LiveCoverageStrip, type SchichtZeiten } from "@/components/dashboard/live-coverage-strip";
+import { ReplacementDialog } from "@/components/staffing/replacement-dialog";
 import { ShiftStaffingCards } from "@/components/staffing/shift-staffing-cards";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
@@ -14,6 +14,7 @@ import { useSession } from "@/context/session";
 import { TODAY } from "@/lib/demo-data";
 import { addDays } from "@/lib/dates";
 import { DataError, fetchStaffingRange } from "@/lib/data/staffing";
+import { fetchShiftDetails } from "@/lib/data/shifts";
 import type { LiveStaffingSnapshot } from "@/lib/types";
 
 export default function StaffingPage() {
@@ -57,12 +58,25 @@ function LiveStaffingSection({
 }) {
   const { company, role } = useSession();
   const [range, setRange] = useState<LiveStaffingSnapshot[] | null>(null);
+  const [zeiten, setZeiten] = useState<SchichtZeiten | undefined>(undefined);
+  /** Angetippte Schicht an einem Tag → Vorschläge, wer einspringen kann. */
+  const [gewaehlt, setGewaehlt] = useState<LiveStaffingSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      setRange(await fetchStaffingRange(company.id, TODAY, 14));
+      const [band, details] = await Promise.all([
+        fetchStaffingRange(company.id, TODAY, 14),
+        // Nur für Reihenfolge und „schon vorbei“ – ohne Zeiten bleibt das Band wie bisher.
+        fetchShiftDetails().catch(() => []),
+      ]);
+      setZeiten(
+        details.length
+          ? Object.fromEntries(details.map((d) => [d.id, { start: d.startTime, end: d.endTime }]))
+          : undefined,
+      );
+      setRange(band);
     } catch (caught) {
       setRange([]);
       setError(
@@ -85,12 +99,33 @@ function LiveStaffingSection({
         dates={strip14}
         snapshots={range ? range.filter((s) => strip14.includes(s.date)) : null}
         loading={range === null}
+        zeiten={zeiten}
+        onWaehle={setGewaehlt}
       />
 
-      {/* Der Streifen oben zählt Köpfe. Diese Karte prüft, ob jede
-          benötigte Funktion tatsächlich besetzt ist – eine Schicht kann
-          vollzählig sein und trotzdem niemanden mit B-Schein haben. */}
-      <CoverageGaps />
+      {/* Vorschläge: wer an diesem Tag in diese Schicht einspringen kann –
+          mit Grund für alle, die nicht in Frage kommen. Anfragen und
+          Einplanen wie bisher in der Ersatzsuche. */}
+      {gewaehlt ? (
+        <ReplacementDialog
+          date={gewaehlt.date}
+          shiftId={gewaehlt.shiftId}
+          shiftName={gewaehlt.shiftName ?? ""}
+          qualificationId={null}
+          qualificationLabel={null}
+          ueberschrift={
+            gewaehlt.status === "critical"
+              ? "Besetzung nicht ausreichend"
+              : gewaehlt.present < gewaehlt.target
+                ? "Unter Soll"
+                : "Mitarbeiter vorschlagen"
+          }
+          onClose={() => {
+            setGewaehlt(null);
+            void load();
+          }}
+        />
+      ) : null}
 
       {/* Soll und Mindest je Schicht. Sie steuern jede Warnung auf dieser
           Seite und jede Urlaubsentscheidung. Die Schichtleitung darf sie

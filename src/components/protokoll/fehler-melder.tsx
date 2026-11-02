@@ -2,6 +2,11 @@
 
 import { useEffect } from "react";
 import { melde } from "@/lib/protokoll-melden";
+import {
+  darfNachAnmeldungNeuLaden,
+  holeUnlesbareAnmeldung,
+  istKeineAntwort,
+} from "@/lib/anmelde-aussetzer";
 
 /**
  * Meldet eine angezeigte Fehlermeldung einmal ins Protokoll. Steht in
@@ -31,17 +36,42 @@ function belanglos(nachricht: string): boolean {
  */
 export function AbsturzMelder() {
   useEffect(() => {
+    // Die Anmeldung bekam keine lesbare Antwort und die Zielseite wurde
+    // direkt geladen: einmal festhalten, dass es das gab und es geklappt hat.
+    if (holeUnlesbareAnmeldung()) {
+      void melde(
+        "fehler.absturz",
+        "Anmeldung: Der Server antwortete nicht lesbar. Die Zielseite wurde direkt geladen, die Anmeldung stand.",
+      );
+    }
+
+    /**
+     * Meldet den Fehler. Direkt nach der Anmeldung (Aussetzer des Servers)
+     * lädt die Seite danach einmal neu, damit niemand davon etwas merkt –
+     * die Meldung geht vorher raus.
+     */
+    const melden = (nachricht: string) => {
+      if (istKeineAntwort(nachricht) && darfNachAnmeldungNeuLaden()) {
+        const warte = new Promise<void>((fertig) => window.setTimeout(fertig, 1500));
+        void Promise.race([
+          melde("fehler.absturz", `${nachricht} Direkt nach der Anmeldung – Seite einmal automatisch neu geladen.`),
+          warte,
+        ]).then(() => window.location.reload());
+        return;
+      }
+      void melde("fehler.absturz", nachricht);
+    };
     const beiFehler = (ereignis: ErrorEvent) => {
       const nachricht = ereignis.message || String(ereignis.error ?? "");
       if (!nachricht || belanglos(nachricht)) return;
-      void melde("fehler.absturz", nachricht);
+      melden(nachricht);
     };
     const beiAblehnung = (ereignis: PromiseRejectionEvent) => {
       const grund = ereignis.reason;
       const nachricht =
         grund instanceof Error ? `${grund.name}: ${grund.message}` : String(grund ?? "");
       if (!nachricht || belanglos(nachricht)) return;
-      void melde("fehler.absturz", nachricht);
+      melden(nachricht);
     };
     window.addEventListener("error", beiFehler);
     window.addEventListener("unhandledrejection", beiAblehnung);

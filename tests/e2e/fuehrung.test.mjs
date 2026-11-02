@@ -87,6 +87,44 @@ export default async function fuehrung() {
       "Besetzung: zu knappe Schicht steht oben („Nacht … 2 von 3“)",
     );
     pruefe((await seite.getByText("Laufende Tage").count()) === 0, "Besetzung: Einstellungen nicht mehr auf der Seite");
+    pruefe((await seite.getByText("Funktionen und Ersatz").count()) === 0, "Besetzung: unterer Bereich „Funktionen und Ersatz“ ist weg");
+    const kopf = (await band.locator("thead th").allInnerTexts()).map((t) => t.trim());
+    pruefe(kopf.join("|").toLowerCase() === "tag|früh|spät|nacht", `Besetzung: Spalten Früh, Spät, Nacht (${kopf.join(", ")})`);
+    // Was heute schon vorbei ist, hängt von der Uhrzeit ab (deutsche Zeit): Früh 6–14, Spät 14–22, Nacht bis morgen 6 Uhr.
+    const stunde = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "numeric", hourCycle: "h23" }).formatToParts(new Date()).find((t) => t.type === "hour").value);
+    const heute = band.locator("tbody tr").first().locator("td");
+    const erwartet = [stunde >= 14, stunde >= 22, false];
+    const ist = [];
+    for (let i = 0; i < 3; i++) ist.push((await heute.nth(i).locator("[data-vorbei]").count()) === 1 && (await heute.nth(i).locator("button").count()) === 0);
+    pruefe(ist.join() === erwartet.join(), `Besetzung: heute vorbei = nicht wählbar (${stunde} Uhr: ${ist.join(", ")})`);
+    pruefe(
+      (await band.locator("tbody tr").nth(1).locator("button[data-zelle]").count()) === 3,
+      "Besetzung: morgen sind alle drei Schichten wählbar",
+    );
+    await heute.nth(2).locator("button").click();
+    await warte(800);
+    const vorschlag = seite.locator('[role="dialog"][aria-label="Ersatz suchen"]');
+    pruefe(
+      (await vorschlag.getByText("Mitarbeiter vorschlagen").isVisible()) && (await vorschlag.getByText(/Nachtschicht/).first().isVisible()),
+      "Besetzung: Zelle öffnet die Vorschläge für die Nachtschicht",
+    );
+    pruefe(
+      (await vorschlag.getByText("Louis Becker").isVisible()) &&
+        (await vorschlag.getByRole("button", { name: "Anfragen" }).count()) === 1 &&
+        (await vorschlag.getByText("hat an dem Tag Urlaub").isVisible()),
+      "Vorschläge: geeignete Person mit „Anfragen“, die andere mit Grund",
+    );
+    await seite.keyboard.press("Escape");
+    await warte(400);
+    pruefe((await vorschlag.count()) === 0, "Vorschläge: Escape schließt");
+    await seite.locator("[data-zu-knapp] button").filter({ hasText: /Nacht/ }).click();
+    await warte(800);
+    pruefe(
+      await vorschlag.getByText("Besetzung nicht ausreichend").isVisible(),
+      "Besetzung: zu knappe Schicht oben antippen öffnet ebenfalls die Vorschläge",
+    );
+    await seite.keyboard.press("Escape");
+    await warte(400);
     await seite.locator("[data-besetzung-einstellungen]").click();
     await warte(800);
     pruefe(

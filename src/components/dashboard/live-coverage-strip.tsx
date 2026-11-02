@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { WEEKDAY_SHORT, formatDEShort, fromISO } from "@/lib/dates";
+import { WEEKDAY_SHORT, addDays, formatDEShort, fromISO, jetztInBerlin } from "@/lib/dates";
 import type { LiveStaffingSnapshot, StaffingStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -28,42 +29,76 @@ function wert(s: LiveStaffingSnapshot): string {
   return s.target > 0 ? `${s.present}/${s.target}` : String(s.present);
 }
 
+/** Beginn und Ende einer Schicht ("HH:MM"), je Schicht-ID. */
+export type SchichtZeiten = Record<string, { start: string; end: string }>;
+
 /**
  * Besetzungsband: wer ist da, gemessen am Soll – die nächsten 14 Tage.
  * Handy: ein Tag je Zeile, die Schichten als Spalten. Computer: die
  * Schichten als Zeilen, die Tage nebeneinander. Oben stehen die Tage, an
  * denen eine Schicht unter die Mindestbesetzung fällt.
+ *
+ * Mit `zeiten` stehen die Schichten in der Reihenfolge des Tages (Früh,
+ * Spät, Nacht), und eine Schicht, die schon vorbei ist, lässt sich nicht
+ * mehr wählen. Alle anderen öffnen über `onWaehle` die Vorschläge.
  */
 export function LiveCoverageStrip({
   dates,
   snapshots,
   loading,
+  zeiten,
+  onWaehle,
 }: {
   dates: string[];
   snapshots: LiveStaffingSnapshot[] | null;
   loading: boolean;
+  zeiten?: SchichtZeiten;
+  onWaehle?: (s: LiveStaffingSnapshot) => void;
 }) {
-  const shiftNames = [...new Set((snapshots ?? []).map((s) => s.shiftName ?? ""))].filter(Boolean);
+  const jetzt = useJetzt();
+  const beginn = (s: LiveStaffingSnapshot) => zeiten?.[s.shiftId]?.start ?? "99:99";
+  const ersteJeName = new Map<string, LiveStaffingSnapshot>();
+  for (const s of snapshots ?? []) if (s.shiftName && !ersteJeName.has(s.shiftName)) ersteJeName.set(s.shiftName, s);
+  const shiftNames = [...ersteJeName.values()]
+    .sort((a, b) => beginn(a).localeCompare(beginn(b)))
+    .map((s) => s.shiftName!);
   const finde = (name: string, iso: string) =>
     (snapshots ?? []).find((s) => s.shiftName === name && s.date === iso);
+  /** Schicht schon zu Ende (deutsche Zeit) – eine Nachtschicht endet am Folgetag. */
+  const vorbei = (s: LiveStaffingSnapshot) => {
+    const z = zeiten?.[s.shiftId];
+    if (!z) return false;
+    const endTag = z.end <= z.start ? addDays(s.date, 1) : s.date;
+    return `${endTag}T${z.end}` <= jetzt;
+  };
   const knapp = dates
     .flatMap((iso) => shiftNames.map((name) => finde(name, iso)))
-    .filter((s): s is LiveStaffingSnapshot => !!s && s.status === "critical");
+    .filter((s): s is LiveStaffingSnapshot => !!s && s.status === "critical" && !vorbei(s));
 
   return (
     <Card data-besetzungsband>
-      <CardHeader title="Besetzung · nächste 14 Tage" hint="Anwesend / Soll – rot heißt unter Mindestbesetzung." />
+      <CardHeader
+        title="Besetzung · nächste 14 Tage"
+        hint={
+          onWaehle
+            ? "Anwesend / Soll – rot heißt unter Mindestbesetzung. Schicht antippen für Vorschläge."
+            : "Anwesend / Soll – rot heißt unter Mindestbesetzung."
+        }
+      />
 
       {!loading && knapp.length > 0 ? (
         <div className="flex flex-wrap gap-2 border-b border-line px-4 py-3 sm:px-5" data-zu-knapp>
           {knapp.slice(0, 4).map((s) => (
-            <span
+            <button
+              type="button"
               key={`${s.shiftId}-${s.date}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-crit-bg px-3 py-1.5 text-[13px] font-semibold text-crit-fg"
+              onClick={onWaehle ? () => onWaehle(s) : undefined}
+              disabled={!onWaehle}
+              className="inline-flex items-center gap-1.5 rounded-full bg-crit-bg px-3 py-1.5 text-[13px] font-semibold text-crit-fg enabled:hover:ring-1 enabled:hover:ring-crit-dot/40"
             >
               <AlertTriangle className="h-3.5 w-3.5" />
               {kurz(s.shiftName ?? "")} {wochentag(s.date)} {formatDEShort(s.date)} – {s.present} von {s.minimum}
-            </span>
+            </button>
           ))}
           {knapp.length > 4 ? (
             <span className="inline-flex items-center rounded-full bg-surface-muted px-3 py-1.5 text-[13px] font-semibold text-ink-muted">
@@ -105,7 +140,7 @@ export function LiveCoverageStrip({
                       const s = finde(name, iso);
                       return (
                         <td key={name} className="border-t border-line px-1 py-2 text-center">
-                          <Zelle s={s} name={name} iso={iso} />
+                          <Zelle s={s} name={name} iso={iso} vorbei={!!s && vorbei(s)} onWaehle={onWaehle} />
                         </td>
                       );
                     })}
@@ -136,11 +171,14 @@ export function LiveCoverageStrip({
                       <th className="sticky left-0 z-10 whitespace-nowrap bg-surface px-5 py-1.5 text-left">
                         <span className="block text-[14px] font-semibold">{kurz(name)}</span>
                       </th>
-                      {dates.map((iso, i) => (
-                        <td key={iso} className={cn("px-1 py-1.5 text-center", i === 0 && "bg-brand-50/60")}>
-                          <Zelle s={finde(name, iso)} name={name} iso={iso} breit />
-                        </td>
-                      ))}
+                      {dates.map((iso, i) => {
+                        const s = finde(name, iso);
+                        return (
+                          <td key={iso} className={cn("px-1 py-1.5 text-center", i === 0 && "bg-brand-50/60")}>
+                            <Zelle s={s} name={name} iso={iso} breit vorbei={!!s && vorbei(s)} onWaehle={onWaehle} />
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
@@ -153,12 +191,37 @@ export function LiveCoverageStrip({
         <Legend className="bg-ok-dot" label="ausreichend besetzt" />
         <Legend className="bg-warn-dot" label="knapp" />
         <Legend className="bg-crit-dot" label="unter Mindestbesetzung" />
+        {zeiten ? <Legend className="bg-ink-faint/40" label="schon vorbei" /> : null}
       </div>
     </Card>
   );
 }
 
-function Zelle({ s, name, iso, breit }: { s?: LiveStaffingSnapshot; name: string; iso: string; breit?: boolean }) {
+/** Uhrzeit in deutscher Zeit, jede Minute neu – damit eine Schicht von selbst „vorbei“ wird. */
+function useJetzt(): string {
+  const [jetzt, setJetzt] = useState(jetztInBerlin);
+  useEffect(() => {
+    const id = window.setInterval(() => setJetzt(jetztInBerlin()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return jetzt;
+}
+
+function Zelle({
+  s,
+  name,
+  iso,
+  breit,
+  vorbei,
+  onWaehle,
+}: {
+  s?: LiveStaffingSnapshot;
+  name: string;
+  iso: string;
+  breit?: boolean;
+  vorbei?: boolean;
+  onWaehle?: (s: LiveStaffingSnapshot) => void;
+}) {
   const groesse = breit ? "h-11 min-w-[3.25rem]" : "h-10 min-w-[3.5rem]";
   if (!s) {
     return (
@@ -167,17 +230,31 @@ function Zelle({ s, name, iso, breit }: { s?: LiveStaffingSnapshot; name: string
       </span>
     );
   }
+  const klasse = "tnum mx-auto flex items-center justify-center rounded-xl px-1.5 text-[14.5px] font-bold leading-none";
+  const titel = `${name} am ${formatDEShort(iso)}: ${s.present} anwesend, Soll ${s.target}, Mindest ${s.minimum}`;
+  // Schon vorbei: nur noch zum Nachsehen, grau und nicht wählbar.
+  if (vorbei || !onWaehle) {
+    return (
+      <span
+        className={cn(klasse, groesse, vorbei ? "bg-surface-muted text-ink-faint" : cellTone[s.status])}
+        title={vorbei ? `${titel} – schon vorbei` : titel}
+        data-vorbei={vorbei ? "" : undefined}
+      >
+        {wert(s)}
+      </span>
+    );
+  }
   return (
-    <span
-      className={cn(
-        "tnum mx-auto flex items-center justify-center rounded-xl px-1.5 text-[14.5px] font-bold leading-none",
-        groesse,
-        cellTone[s.status],
-      )}
-      title={`${name} am ${formatDEShort(iso)}: ${s.present} anwesend, Soll ${s.target}, Mindest ${s.minimum}`}
+    <button
+      type="button"
+      onClick={() => onWaehle(s)}
+      className={cn(klasse, groesse, cellTone[s.status], "hover:brightness-110 active:scale-95")}
+      title={`${titel} – Vorschläge ansehen`}
+      aria-label={`${name} am ${formatDEShort(iso)}, ${s.present} von ${s.target} – Vorschläge ansehen`}
+      data-zelle
     >
       {wert(s)}
-    </span>
+    </button>
   );
 }
 

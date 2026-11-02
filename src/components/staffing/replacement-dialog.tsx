@@ -36,6 +36,7 @@ export function ReplacementDialog({
   qualificationLabel,
   absentEmployeeId,
   absentName,
+  ueberschrift = "Besetzung nicht ausreichend",
   onClose,
 }: {
   date: string;
@@ -45,6 +46,8 @@ export function ReplacementDialog({
   qualificationLabel: string | null;
   absentEmployeeId?: string | null;
   absentName?: string | null;
+  /** Kleine Zeile über dem Titel – aus der Besetzung auch für voll besetzte Schichten. */
+  ueberschrift?: string;
   onClose: () => void;
 }) {
   const [kandidaten, setKandidaten] = useState<CandidateRecord[] | null>(null);
@@ -127,8 +130,13 @@ export function ReplacementDialog({
       >
         <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-crit-fg">
-              Besetzung nicht ausreichend
+            <p
+              className={cn(
+                "text-[12px] font-semibold uppercase tracking-[0.1em]",
+                ueberschrift === "Mitarbeiter vorschlagen" ? "text-brand-600" : "text-crit-fg",
+              )}
+            >
+              {ueberschrift}
             </p>
             <h2 className="mt-1 text-base font-semibold">
               {qualificationLabel ?? "Besetzung"} · {shiftName}

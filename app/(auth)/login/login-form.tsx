@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,38 @@ import type { FormState } from "@/lib/auth/form-state";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
+import {
+  holeUnlesbareAnmeldung,
+  istKeineAntwort,
+  merkeAnmeldung,
+  merkeUnlesbareAnmeldung,
+} from "@/lib/anmelde-aussetzer";
+import { safeInternalPath } from "@/lib/security/safe-path";
 
 const initialState: FormState = {};
 
+/**
+ * Meldet an. Antwortet der Server dabei nicht lesbar (Aussetzer der
+ * Plattform), kann die Anmeldung trotzdem schon durch sein. Deshalb wird sie
+ * NICHT noch einmal abgeschickt – das wären zwei Anmeldungen –, sondern die
+ * Zielseite direkt geladen. Steht die Sitzung, ist man drin; wenn nicht,
+ * landet man wieder hier und bekommt einen Hinweis.
+ */
+async function anmelden(vorher: FormState, formData: FormData): Promise<FormState> {
+  merkeAnmeldung();
+  try {
+    return await signIn(vorher, formData);
+  } catch (fehler) {
+    if (!istKeineAntwort(fehler)) throw fehler;
+    merkeUnlesbareAnmeldung();
+    window.location.assign(safeInternalPath(String(formData.get("weiter") ?? ""), "/start"));
+    return {};
+  }
+}
+
 export function LoginForm({ next, disabled }: { next: string; disabled?: boolean }) {
-  const [state, formAction] = useActionState(signIn, initialState);
+  const [state, formAction] = useActionState(anmelden, initialState);
+  const [ohneAntwort, setOhneAntwort] = useState(false);
 
   // Wer auf der Anmeldeseite steht, ist abgemeldet – egal auf welchem Weg.
   // Nichts vom vorigen Benutzer soll im Tab übrig bleiben.
@@ -24,6 +51,12 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
     leereZwischenspeicher();
     forgetIdentity();
     vergissAenderungsstand();
+    // Kam man gerade nach einem unlesbaren Server-Aussetzer hierher, hat die
+    // Anmeldung nicht geklappt.
+    if (holeUnlesbareAnmeldung()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOhneAntwort(true);
+    }
   }, []);
 
   return (
@@ -54,6 +87,11 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
         />
       </Field>
 
+      {ohneAntwort && !state.error ? (
+        <Alert tone="warning">
+          Der Server hat gerade nicht richtig geantwortet. Bitte noch einmal anmelden.
+        </Alert>
+      ) : null}
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 
       <SubmitButton disabled={disabled} />
