@@ -9,11 +9,19 @@ etwas im Protokoll. Diese Seite sagt, wo, und was man danach tut.
 - **Auf welcher Seite**, mit welchem Gerät?
 - Der genaue Text der Meldung, am besten als Bild.
 
-**Zeitzone beachten:** Das Protokoll in der App zeigt deutsche Zeit. Die
-Supabase-Protokolle (Logs) zeigen **UTC**, im Winter also eine Stunde früher
-(6:41 Uhr in Deutschland = 5:41 UTC), im Sommer zwei Stunden früher.
+**Zeitzone beachten:** Das Protokoll in der App zeigt die Uhrzeit des
+**Geräts**, auf dem man es öffnet – wer im Ausland nachsieht, sieht andere
+Uhrzeiten als die Kollegen im Werk. Die Datenbank rechnet in UTC, im Winter
+also eine Stunde früher als in Deutschland (6:41 Uhr in Deutschland = 5:41 UTC),
+im Sommer zwei Stunden früher. Immer erst auf deutsche Zeit umrechnen.
 
 ## 2. Das Protokoll der App (zuerst hier schauen)
+
+**Automatische Einträge:** Manche Zeilen entstehen, ohne dass jemand etwas
+ändert – etwa „hat das Konto 2027 geändert: V-Tage Vorjahr 0,7 → 0“ kurz nach
+dem Öffnen der Urlaubsseite. Die App rechnet den Übertrag ins nächste Jahr neu,
+solange das Vorjahr läuft, und schreibt dabei die Person ein, die gerade die Seite
+geöffnet hat. Die Person hat nichts eingegeben (Beispiel 4.11.2026).
 
 Die App schreibt Fehler selbst mit: Menü → Protokoll (nur Administration),
 Kategorie **Fehler**. Dort steht Person, Uhrzeit, Seite und der Text.
