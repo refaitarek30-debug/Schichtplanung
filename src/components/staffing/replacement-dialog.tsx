@@ -5,6 +5,7 @@ import { Check, Send, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { WischLeiste } from "@/components/ui/wisch-leiste";
 import {
   DataError,
   fetchCandidates,
@@ -121,7 +122,8 @@ export function ReplacementDialog({
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
-      <div
+      <WischLeiste
+        onClose={onClose}
         role="dialog"
         aria-modal="true"
         aria-label="Ersatz suchen"
@@ -250,7 +252,7 @@ export function ReplacementDialog({
             </>
           )}
         </div>
-      </div>
+      </WischLeiste>
     </div>
   );
 }

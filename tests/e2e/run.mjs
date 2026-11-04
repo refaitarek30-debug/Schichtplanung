@@ -12,6 +12,7 @@ import bereiche from "./bereiche.test.mjs";
 import beitritt from "./beitritt.test.mjs";
 import fuehrung from "./fuehrung.test.mjs";
 import aussetzer from "./aussetzer.test.mjs";
+import wischen from "./wischen.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -21,6 +22,7 @@ const ABLAEUFE = [
   ["Beitritt", "privat", beitritt],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
+  ["Schichtplan: Fenster wegwischen", "betrieb", wischen],
 ];
 
 const nur = process.argv[2];

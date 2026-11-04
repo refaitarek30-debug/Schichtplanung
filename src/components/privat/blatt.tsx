@@ -27,9 +27,11 @@ export function useWischZu(blatt: React.RefObject<HTMLElement | null>, modus: Wi
     let s: { x: number; y: number; scroller: HTMLElement | null; ziehen: boolean; dy: number; v: number; letztY: number; letztT: number } | null = null;
 
     const scrollerVon = (ziel: EventTarget | null): HTMLElement | null => {
-      for (let n = ziel as HTMLElement | null; n && n !== el; n = n.parentElement) {
+      // Auch das Feld selbst kann der Scroller sein (Leisten mit max-height).
+      for (let n = ziel as HTMLElement | null; n; n = n.parentElement) {
         const o = getComputedStyle(n).overflowY;
         if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight + 1) return n;
+        if (n === el) break;
       }
       return null;
     };
@@ -40,6 +42,8 @@ export function useWischZu(blatt: React.RefObject<HTMLElement | null>, modus: Wi
 
     const start = (e: TouchEvent) => {
       if (e.touches.length !== 1) return;
+      // In Eingabefeldern wird getippt und markiert – dort nie ziehen.
+      if ((e.target as Element | null)?.closest?.("textarea, input, select")) return;
       // Formulare: nur am Griff und an der Titelzeile ziehen – nie mitten in Eingaben.
       if (nurKopf && !(e.target as Element | null)?.closest?.("[data-wisch-kopf]")) return;
       const t = e.touches[0]!;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { BellRing, Check, Clock, Send, X } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { WischLeiste } from "@/components/ui/wisch-leiste";
 import { Input } from "@/components/ui/input";
 import { fetchEmployees } from "@/lib/data/employees";
 import {
@@ -125,7 +126,8 @@ export function HinweisSenden({
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
-      <div
+      <WischLeiste
+        onClose={onClose}
         role="dialog"
         aria-modal="true"
         aria-label="Hinweis senden"
@@ -342,7 +344,7 @@ export function HinweisSenden({
             Abbrechen
           </Button>
         </div>
-      </div>
+      </WischLeiste>
     </div>
   );
 }
