@@ -108,8 +108,15 @@ export async function starteApp() {
   return p;
 }
 
-/** Browser wie ein iPhone, angemeldet. */
-export async function neuerBrowser() {
+/** Der einmalige Hinweis zur Kompakten Startseite ist „schon gesehen“ – damit er keinen Test stört. */
+export const HINWEIS_GESEHEN = () => {
+  try {
+    localStorage.setItem("schichtplan.neu-gesehen.kompakt-startseite", "1");
+  } catch {}
+};
+
+/** Browser wie ein iPhone, angemeldet. Mit `{ hinweis: true }` darf der Kompakt-Hinweis erscheinen. */
+export async function neuerBrowser({ hinweis = false } = {}) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
     ...devices["iPhone 13"],
@@ -120,6 +127,7 @@ export async function neuerBrowser() {
     serviceWorkers: "allow",
   });
   await ctx.addCookies([SITZUNG_COOKIE]);
+  if (!hinweis) await ctx.addInitScript(HINWEIS_GESEHEN);
   const seite = await ctx.newPage();
   const seitenFehler = [];
   seite.on("pageerror", (e) => seitenFehler.push(e.message));

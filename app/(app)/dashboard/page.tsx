@@ -28,6 +28,8 @@ import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
 import { TileSettings, kachelSichtbar, type TileOption } from "@/components/dashboard/tile-settings";
+import { KompaktHinweis } from "@/components/dashboard/kompakt-hinweis";
+import { StartAnsichtSchalter } from "@/components/layout/start-ansicht-schalter";
 import { ProfilInline, useGlasModus } from "@/components/layout/glas-profil";
 import { setzeKachelAuswahl } from "@/lib/kachel-auswahl";
 import { fetchLeaveBlocks } from "@/lib/data/staffing-rules";
@@ -323,8 +325,11 @@ export default function DashboardPage() {
   }, [mode, liveAnnouncements, liveBlocks, shiftNames]);
 
   return (
-    <div className="space-y-6">
+    // Einheitliche Abstände: „Kompakt“ hat überall 16 px zwischen den Blöcken
+    // (dasselbe Maß wie im Raster darunter), „Klassisch“ wie bisher 24 px.
+    <div className={cn(kompakt ? "space-y-4" : "space-y-6")}>
       <SetupBanner />
+      {mode === "live" ? <KompaktHinweis /> : null}
 
       {/* Ganz oben, weil eine Ersatzanfrage schnell beantwortet werden
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
@@ -333,10 +338,12 @@ export default function DashboardPage() {
       <GeburtsdatenOffen />
 
       <header className="dash-kopf relative flex items-start justify-between gap-3">
-        <div>
+        <div className="flex min-w-0 flex-col items-start gap-2">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">
             {gruss}, {profile.firstName} 👋
           </h1>
+          {/* Kleiner Umschalter: jederzeit zwischen den zwei Aufbauten wechseln. */}
+          {mode === "live" ? <StartAnsichtSchalter winzig /> : null}
         </div>
         {mode === "live" && !glas ? (
           <TileSettings

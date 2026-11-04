@@ -1,6 +1,6 @@
 // Führung: Mitteilungen in einer Liste („Neue Mitteilung“ → An wen?) und die aufgeräumte Mitarbeiterliste.
 import { chromium } from "playwright";
-import { APP, DB, SITZUNG_COOKIE, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
+import { APP, DB, HINWEIS_GESEHEN, SITZUNG_COOKIE, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 export default async function fuehrung() {
   const { browser, seite, seitenFehler } = await neuerBrowser();
@@ -189,6 +189,7 @@ export default async function fuehrung() {
   try {
     const ctx = await b.newContext({ viewport: { width: 1360, height: 900 }, locale: "de-DE", timezoneId: "Europe/Berlin", bypassCSP: true });
     await ctx.addCookies([SITZUNG_COOKIE]);
+    await ctx.addInitScript(HINWEIS_GESEHEN);
     const s = await ctx.newPage();
     await s.goto(`${APP}/verwaltung?bereich=mitarbeiter`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1500);
