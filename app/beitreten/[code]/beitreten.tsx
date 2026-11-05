@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Check } from "lucide-react";
 import { betriebBeitreten } from "@/lib/auth/bereich-actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { vergissGemerkteKalender } from "@/lib/zwischenspeicher";
 import { cn } from "@/lib/utils";
 
 export interface BeitrittVorschau {
@@ -34,7 +35,7 @@ export function Beitreten({ code, vorschau }: { code: string; vorschau: Beitritt
 
   return (
     <main className="privat flex min-h-dvh items-center justify-center px-3 py-10">
-      <form action={aktion} className="glas w-full max-w-md rounded-[28px] p-6">
+      <form action={aktion} onSubmit={() => vergissGemerkteKalender()} className="glas w-full max-w-md rounded-[28px] p-6">
         <input type="hidden" name="code" value={code} />
         <div className="text-[34px]" aria-hidden>
           🗓️

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { melde } from "@/lib/protokoll-melden";
+import { darfWegenNeuerVersionNeuLaden, istFehlendeDatei } from "@/lib/neue-version";
 import {
   darfNachAnmeldungNeuLaden,
   holeUnlesbareAnmeldung,
@@ -51,6 +52,15 @@ export function AbsturzMelder() {
      * die Meldung geht vorher raus.
      */
     const melden = (nachricht: string) => {
+      // Gemerkte Seite aus einer älteren Version: einmal neu laden (siehe neue-version.ts).
+      if (istFehlendeDatei(nachricht) && darfWegenNeuerVersionNeuLaden()) {
+        const warte = new Promise<void>((fertig) => window.setTimeout(fertig, 1500));
+        void Promise.race([
+          melde("fehler.absturz", `${nachricht} Programmdatei fehlt (neue Version) – Seite einmal automatisch neu geladen.`),
+          warte,
+        ]).then(() => window.location.reload());
+        return;
+      }
       if (istKeineAntwort(nachricht) && darfNachAnmeldungNeuLaden()) {
         const warte = new Promise<void>((fertig) => window.setTimeout(fertig, 1500));
         void Promise.race([

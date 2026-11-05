@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 import { privatWeitermachen } from "@/lib/auth/bereich-actions";
-import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
+import { leereZwischenspeicher, vergissGemerkteKalender } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
 
 const MIT = ["Termine", "To-dos", "Eigene Einträge", "Deine Farben"];
@@ -68,6 +68,7 @@ export function PrivatWeiter({ firma, hatPrivat }: { firma: string | null; hatPr
           onClick={() =>
             starte(async () => {
               setFehler(null);
+              vergissGemerkteKalender();
               const r = await privatWeitermachen();
               if (r?.error) setFehler(r.error);
             })

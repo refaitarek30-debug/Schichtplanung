@@ -49,6 +49,23 @@ order by created_at desc;
 | `Failed to find Server Action …` | Die Seite war noch offen, als eine neue Version live ging. | Seite neu laden. Kein Fehler im Code. |
 | `Script error.`, `ResizeObserver loop …`, `AbortError` | Browser-Eigenheiten. Werden schon nicht mitgeschrieben. | – |
 
+## Mein Kalender: „zeigt einen alten Stand“
+
+Mein Kalender (Betrieb: `/meine-schichten`, Privat: `/privat`) öffnet **sofort**
+aus dem Gerätespeicher und frischt sich im Hintergrund auf (`public/sw.js`).
+Kurz nach dem Öffnen kann deshalb noch der letzte Stand stehen, bis die
+frischen Daten da sind. Zum Prüfen:
+
+- Kam die Seite vom Gerät? In den Entwicklerwerkzeugen steht bei der
+  Seitenanfrage im Antwortkopf `Server-Timing: sn-kalender`.
+- Alles Gemerkte verschwindet beim Abmelden, auf der Anmeldeseite und sobald
+  die Auffrischung merkt, dass die Sitzung weg ist; spätestens nach 14 Tagen.
+- Zurücksetzen auf einem Gerät: Abmelden, oder in den Browser-Einstellungen
+  die Website-Daten von shiftnexo.de löschen.
+- Nach einer neuen Version der App kann die gemerkte Seite einmal eine Datei
+  nachladen wollen, die es nicht mehr gibt. Die App lädt dann selbst einmal neu
+  und schreibt „Programmdatei fehlt (neue Version)“ ins Protokoll.
+
 ## 4. Supabase (Datenbank, Anmeldung)
 
 Supabase → Projekt → **Logs**. Dort nach Zeit (UTC!) filtern:
