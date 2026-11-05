@@ -1,6 +1,6 @@
 // Startseite Klassisch/Kompakt, Profil-Fenster, Glühbirne, Stammdaten, Geburtsdatum bestätigen.
 import { chromium } from "playwright";
-import { APP, SITZUNG_COOKIE, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
+import { APP, HINWEIS_GESEHEN, SITZUNG_COOKIE, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 export default async function startseite() {
   const { browser, seite, seitenFehler } = await neuerBrowser();
@@ -78,7 +78,7 @@ export default async function startseite() {
     const abmelden = seite.getByRole("button", { name: "Abmelden" });
     const box = await abmelden.boundingBox();
     pruefe(!!box && box.y < 400, `Profil: „Abmelden“ gleich oben sichtbar (y=${box ? Math.round(box.y) : "?"})`);
-    await seite.getByRole("radio", { name: "Kompakt" }).click();
+    await seite.locator('[role="dialog"]').getByRole("radio", { name: "Kompakt" }).click();
     await warte(300);
     await seite.keyboard.press("Escape");
     await warte(800);
@@ -127,6 +127,7 @@ export default async function startseite() {
   try {
     const kontext = await pc.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE", timezoneId: "Europe/Berlin", bypassCSP: true });
     await kontext.addCookies([SITZUNG_COOKIE]);
+    await kontext.addInitScript(HINWEIS_GESEHEN);
     const s = await kontext.newPage();
     await s.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 60_000 });
     await warte(1500);

@@ -20,6 +20,18 @@ const CACHE = "schichtplan-v1";
 const KALENDER_CACHE = "schichtplan-kalender-v1";
 const KALENDER_SEITEN = ["/privat", "/meine-schichten"];
 const KALENDER_MAX_ALTER_MS = 14 * 24 * 60 * 60 * 1000;
+/**
+ * Schnell öffnen: Ist der eigene Kalender auf dem Gerät gemerkt, erscheint er
+ * sofort (auch mit Netz) und wird im Hintergrund aufgefrischt – die Daten darin
+ * laden danach ebenfalls nach. Dazu merkt sich der Worker, ob die Startadresse
+ * (/start, das Symbol auf dem Home-Bildschirm) bei dieser Person im Kalender
+ * landet. Verliert die Person die Sitzung, merkt der Worker das bei der
+ * Auffrischung (Weiterleitung zur Anmeldung): Dann ist alles Gemerkte weg und
+ * das offene Fenster geht zur Anmeldung. Ob etwas aus dem Gerätespeicher kam,
+ * steht im Antwortkopf „Server-Timing: sn-kalender“.
+ */
+const START_PFAD = "/start";
+const START_MARKE = "/__start-ziel";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
 
@@ -77,7 +89,7 @@ self.addEventListener("fetch", (event) => {
   // Seitenaufrufe: immer aus dem Netz. Nur wenn das scheitert, die
   // Offline-Seite – kein Zwischenspeichern echter Inhalte.
   if (request.mode === "navigate") {
-    event.respondWith(navigieren(request, url));
+    event.respondWith(navigieren(event, request, url));
   }
 });
 
@@ -96,30 +108,132 @@ async function gemerkteKalenderSeite(pfad) {
   return hit;
 }
 
-async function navigieren(request, url) {
+/** Die gemerkte Seite ausliefern – mit Hinweis im Antwortkopf, dass sie vom Gerät kommt. */
+function ausDemGeraet(hit) {
+  const kopf = new Headers(hit.headers);
+  kopf.set("Server-Timing", 'sn-kalender;desc="aus dem Gerätespeicher"');
+  return new Response(hit.body, { status: hit.status, statusText: hit.statusText, headers: kopf });
+}
+
+const istHtml = (antwort) => (antwort.headers.get("content-type") || "").includes("text/html");
+
+/** Genau diese eine Kalender-Seite merken (eine andere gemerkte geht weg). */
+async function merkeKalenderSeite(pfad, antwort) {
+  const kopie = antwort.clone();
+  const blob = await kopie.blob();
+  const kopf = new Headers(kopie.headers);
+  kopf.set("x-gemerkt-am", String(Date.now()));
+  const cache = await caches.open(KALENDER_CACHE);
+  for (const anderer of KALENDER_SEITEN) if (anderer !== pfad) await cache.delete(anderer);
+  await cache.put(pfad, new Response(blob, { status: 200, headers: kopf }));
+}
+
+/** Wohin führt die Startadresse bei dieser Person? Nur ein Kalender zählt (sonst: nichts merken). */
+async function merkeStartZiel(pfad) {
+  const cache = await caches.open(KALENDER_CACHE);
+  if (!pfad) {
+    await cache.delete(START_MARKE);
+    return;
+  }
+  await cache.put(
+    START_MARKE,
+    new Response(pfad, { status: 200, headers: { "Content-Type": "text/plain", "x-gemerkt-am": String(Date.now()) } }),
+  );
+}
+
+async function gemerktesStartZiel() {
+  const cache = await caches.open(KALENDER_CACHE);
+  const hit = await cache.match(START_MARKE);
+  if (!hit) return null;
+  const gemerkt = Number(hit.headers.get("x-gemerkt-am") || 0);
+  if (!gemerkt || Date.now() - gemerkt > KALENDER_MAX_ALTER_MS) {
+    await cache.delete(START_MARKE);
+    return null;
+  }
+  const pfad = await hit.text();
+  return KALENDER_SEITEN.includes(pfad) ? pfad : null;
+}
+
+/** Eine Seite mit Weiterleitungen frisch vom Server holen (Hintergrund). */
+const holeSeite = (pfad) =>
+  fetch(pfad, { redirect: "follow", credentials: "same-origin", headers: { Accept: "text/html" } });
+
+/**
+ * Keine Sitzung mehr (die Auffrischung landete bei der Anmeldung): alles
+ * Gemerkte vom Gerät löschen und das offene Kalender-Fenster zur Anmeldung
+ * schicken – nichts Persönliches soll ohne Anmeldung stehen bleiben.
+ */
+async function sitzungVerloren(zielUrl) {
+  await caches.delete(KALENDER_CACHE);
+  const fenster = await self.clients.matchAll({ type: "window" });
+  for (const f of fenster) {
+    const pfad = ohneSchraegstrich(new URL(f.url).pathname);
+    if (KALENDER_SEITEN.includes(pfad)) f.navigate(zielUrl).catch(() => undefined);
+  }
+}
+
+/** Gemerkte Kalender-Seite im Hintergrund auffrischen. Ohne Netz: nichts tun. */
+async function auffrischen(pfad) {
+  let antwort;
+  try {
+    antwort = await holeSeite(pfad);
+  } catch {
+    return;
+  }
+  const ende = ohneSchraegstrich(new URL(antwort.url).pathname);
+  if (ende.startsWith("/login")) return sitzungVerloren(antwort.url);
+  if (!antwort.ok || ende !== pfad || !istHtml(antwort)) return;
+  await merkeKalenderSeite(pfad, antwort);
+}
+
+/** Startadresse im Hintergrund nachverfolgen: führt sie in den Kalender, wird beides gemerkt. */
+async function auffrischenStart() {
+  let antwort;
+  try {
+    antwort = await holeSeite(START_PFAD);
+  } catch {
+    return;
+  }
+  const ende = ohneSchraegstrich(new URL(antwort.url).pathname);
+  if (ende.startsWith("/login")) return sitzungVerloren(antwort.url);
+  if (!antwort.ok) return;
+  if (KALENDER_SEITEN.includes(ende) && istHtml(antwort)) {
+    await merkeKalenderSeite(ende, antwort);
+    await merkeStartZiel(ende);
+  } else {
+    await merkeStartZiel(null);
+  }
+}
+
+async function navigieren(event, request, url) {
   const pfad = ohneSchraegstrich(url.pathname);
+  const ohneAnhang = url.search === "";
+
+  // Der eigene Kalender: gemerkte Seite sofort, nebenher frisch holen.
+  if (ohneAnhang && KALENDER_SEITEN.includes(pfad)) {
+    const seite = await gemerkteKalenderSeite(pfad).catch(() => null);
+    if (seite) {
+      event.waitUntil(auffrischen(pfad));
+      return ausDemGeraet(seite);
+    }
+  }
+
+  // Startadresse: landet diese Person im Kalender, gleich dorthin (die Seite selbst kommt dann vom Gerät).
+  if (ohneAnhang && pfad === START_PFAD) {
+    const ziel = await gemerktesStartZiel().catch(() => null);
+    if (ziel && (await gemerkteKalenderSeite(ziel).catch(() => null))) {
+      event.waitUntil(auffrischenStart());
+      return Response.redirect(new URL(ziel, self.location.origin).href, 302);
+    }
+    // Noch nichts gemerkt: normal weiter, und nebenher herausfinden, wohin es führt.
+    event.waitUntil(auffrischenStart());
+  }
+
   try {
     const antwort = await fetch(request);
     // Nur den eigenen Kalender merken: eine echte Seite (kein Umleiten, kein Fehler).
-    if (
-      KALENDER_SEITEN.includes(pfad) &&
-      antwort.ok &&
-      !antwort.redirected &&
-      (antwort.headers.get("content-type") || "").includes("text/html")
-    ) {
-      const kopie = antwort.clone();
-      kopie
-        .blob()
-        .then((blob) => {
-          const kopf = new Headers(kopie.headers);
-          kopf.set("x-gemerkt-am", String(Date.now()));
-          return caches.open(KALENDER_CACHE).then(async (cache) => {
-            // Immer nur eine Kalender-Seite liegen lassen – die zuletzt geöffnete.
-            for (const anderer of KALENDER_SEITEN) if (anderer !== pfad) await cache.delete(anderer);
-            await cache.put(pfad, new Response(blob, { status: 200, headers: kopf }));
-          });
-        })
-        .catch(() => undefined);
+    if (KALENDER_SEITEN.includes(pfad) && antwort.ok && !antwort.redirected && istHtml(antwort)) {
+      event.waitUntil(merkeKalenderSeite(pfad, antwort).catch(() => undefined));
     }
     return antwort;
   } catch {
@@ -129,7 +243,7 @@ async function navigieren(request, url) {
       if (!seite) continue;
       // Genau die Kalender-Seite: gleich ausliefern. Jede andere Adresse: dorthin umleiten,
       // damit Adresse und Inhalt zusammenpassen.
-      if (kandidat === pfad) return seite;
+      if (kandidat === pfad) return ausDemGeraet(seite);
       return new Response(
         `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kalender</title><script>location.replace(${JSON.stringify(kandidat)})</script>`,
         { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
@@ -143,6 +257,10 @@ async function navigieren(request, url) {
 self.addEventListener("message", (event) => {
   if (event.data === "leere-kalender") {
     event.waitUntil(caches.delete(KALENDER_CACHE));
+  }
+  // Die Startseite wurde geändert (oder Betrieb/Privat gewechselt): das gemerkte Ziel gilt nicht mehr.
+  if (event.data === "vergiss-start") {
+    event.waitUntil(merkeStartZiel(null));
   }
 });
 

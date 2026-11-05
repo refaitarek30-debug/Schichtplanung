@@ -67,3 +67,30 @@ export function leereZwischenspeicher(): void {
     // ohne Service Worker gibt es auch nichts zu löschen
   }
 }
+
+function anWorker(nachricht: string): void {
+  try {
+    if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.controller?.postMessage(nachricht);
+    }
+  } catch {
+    // ohne Service Worker gibt es nichts zu vergessen
+  }
+}
+
+/**
+ * Die Startadresse führt künftig woanders hin (Startseite geändert): den
+ * gemerkten Weg zum Kalender vergessen (public/sw.js). Beim nächsten Start
+ * wird er neu herausgefunden.
+ */
+export function vergissStartZiel(): void {
+  anWorker("vergiss-start");
+}
+
+/**
+ * Betrieb und Privatbereich wechseln die Rollen (Austritt, Beitritt): die
+ * gemerkte Kalender-Seite und der Weg dorthin gelten nicht mehr.
+ */
+export function vergissGemerkteKalender(): void {
+  anWorker("leere-kalender");
+}

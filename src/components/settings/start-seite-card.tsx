@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Gruppe, WahlZeile } from "./gruppe";
 import { createClient } from "@/lib/supabase/client";
+import { vergissStartZiel } from "@/lib/zwischenspeicher";
 import { START_COOKIE, START_COOKIE_MAX_AGE, STARTSEITEN, startCookieWert, type StartSeite } from "@/lib/start-seite";
 import { useSession } from "@/context/session";
 import { SchichtleitungHinweis } from "@/components/ui/schichtleitung-hinweis";
@@ -35,6 +36,7 @@ export function StartSeiteCard() {
       }
       // Merkzettel für den nächsten Start gleich anpassen (siehe middleware.ts).
       document.cookie = `${START_COOKIE}=${encodeURIComponent(startCookieWert(profile.id, neu))}; path=/; max-age=${START_COOKIE_MAX_AGE}; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
+      vergissStartZiel();
       setGespeichert(true);
       router.refresh();
     });

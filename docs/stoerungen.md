@@ -9,11 +9,19 @@ etwas im Protokoll. Diese Seite sagt, wo, und was man danach tut.
 - **Auf welcher Seite**, mit welchem Gerät?
 - Der genaue Text der Meldung, am besten als Bild.
 
-**Zeitzone beachten:** Das Protokoll in der App zeigt deutsche Zeit. Die
-Supabase-Protokolle (Logs) zeigen **UTC**, im Winter also eine Stunde früher
-(6:41 Uhr in Deutschland = 5:41 UTC), im Sommer zwei Stunden früher.
+**Zeitzone beachten:** Das Protokoll in der App zeigt die Uhrzeit des
+**Geräts**, auf dem man es öffnet – wer im Ausland nachsieht, sieht andere
+Uhrzeiten als die Kollegen im Werk. Die Datenbank rechnet in UTC, im Winter
+also eine Stunde früher als in Deutschland (6:41 Uhr in Deutschland = 5:41 UTC),
+im Sommer zwei Stunden früher. Immer erst auf deutsche Zeit umrechnen.
 
 ## 2. Das Protokoll der App (zuerst hier schauen)
+
+**Automatische Einträge:** Manche Zeilen entstehen, ohne dass jemand etwas
+ändert – etwa „hat das Konto 2027 geändert: V-Tage Vorjahr 0,7 → 0“ kurz nach
+dem Öffnen der Urlaubsseite. Die App rechnet den Übertrag ins nächste Jahr neu,
+solange das Vorjahr läuft, und schreibt dabei die Person ein, die gerade die Seite
+geöffnet hat. Die Person hat nichts eingegeben (Beispiel 4.11.2026).
 
 Die App schreibt Fehler selbst mit: Menü → Protokoll (nur Administration),
 Kategorie **Fehler**. Dort steht Person, Uhrzeit, Seite und der Text.
@@ -40,6 +48,23 @@ order by created_at desc;
 | `Anmeldung: Der Server antwortete nicht lesbar …` | Beim Anmelden kam keine lesbare Antwort. Die App hat die Zielseite direkt geladen (die Anmeldung wird nie doppelt abgeschickt). | Wie oben. Steht die Person danach angemeldet da, ist alles gut. |
 | `Failed to find Server Action …` | Die Seite war noch offen, als eine neue Version live ging. | Seite neu laden. Kein Fehler im Code. |
 | `Script error.`, `ResizeObserver loop …`, `AbortError` | Browser-Eigenheiten. Werden schon nicht mitgeschrieben. | – |
+
+## Mein Kalender: „zeigt einen alten Stand“
+
+Mein Kalender (Betrieb: `/meine-schichten`, Privat: `/privat`) öffnet **sofort**
+aus dem Gerätespeicher und frischt sich im Hintergrund auf (`public/sw.js`).
+Kurz nach dem Öffnen kann deshalb noch der letzte Stand stehen, bis die
+frischen Daten da sind. Zum Prüfen:
+
+- Kam die Seite vom Gerät? In den Entwicklerwerkzeugen steht bei der
+  Seitenanfrage im Antwortkopf `Server-Timing: sn-kalender`.
+- Alles Gemerkte verschwindet beim Abmelden, auf der Anmeldeseite und sobald
+  die Auffrischung merkt, dass die Sitzung weg ist; spätestens nach 14 Tagen.
+- Zurücksetzen auf einem Gerät: Abmelden, oder in den Browser-Einstellungen
+  die Website-Daten von shiftnexo.de löschen.
+- Nach einer neuen Version der App kann die gemerkte Seite einmal eine Datei
+  nachladen wollen, die es nicht mehr gibt. Die App lädt dann selbst einmal neu
+  und schreibt „Programmdatei fehlt (neue Version)“ ins Protokoll.
 
 ## 4. Supabase (Datenbank, Anmeldung)
 

@@ -46,6 +46,7 @@ import { PlanLeaveRequest } from "./plan-leave-request";
 import { useSession } from "@/context/session";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
+import { WischLeiste } from "@/components/ui/wisch-leiste";
 import { fetchPlanKommentare, type PlanKommentar } from "@/lib/data/plan-comments";
 import { addPlanKommentar, deletePlanKommentar } from "@/lib/auth/comment-actions";
 import { nachSchichtfolge, schichtFarbe } from "@/lib/shift-style";
@@ -1634,7 +1635,8 @@ export function ShiftPlanGrid({
           Feld beim Antippen über den Plan, und alles darunter sprang nach
           unten – die angetippte Zelle war danach woanders. */}
       {selected && canEdit ? (
-        <div
+        <WischLeiste
+          onClose={() => setSelected(null)}
           role="dialog"
           aria-label="Tag bearbeiten"
           data-ueber-leiste
@@ -1781,13 +1783,14 @@ export function ShiftPlanGrid({
               Abbrechen
             </Button>
           </div>
-        </div>
+        </WischLeiste>
       ) : null}
 
       {/* Kommentare zu einer Zelle: lesen, schreiben, löschen. Als Leiste
           unten wie die Bearbeitung – so springt oben nichts. */}
       {kommentarZelle ? (
-        <div
+        <WischLeiste
+          onClose={() => setKommentarZelle(null)}
           role="dialog"
           aria-label="Kommentare"
           data-ueber-leiste
@@ -1857,7 +1860,7 @@ export function ShiftPlanGrid({
               Schließen
             </Button>
           </div>
-        </div>
+        </WischLeiste>
       ) : null}
 
       {/* Kommentar beim Überfahren mit der Maus. Fest positioniert, damit

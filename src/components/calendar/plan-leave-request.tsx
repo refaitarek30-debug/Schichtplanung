@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { WischLeiste } from "@/components/ui/wisch-leiste";
 import { formatDE, formatDays } from "@/lib/dates";
 import {
   fetchAutoPreview,
@@ -175,7 +176,7 @@ export function PlanLeaveRequest({
   // genau die Zeile verdecken, in der man als Nächstes tippen will.
   if (!fertig) {
     return (
-      <div role="dialog" aria-label="Urlaub beantragen" data-ueber-leiste className={leiste}>
+      <WischLeiste onClose={onClose} role="dialog" aria-label="Urlaub beantragen" data-ueber-leiste className={leiste}>
         <p className="tnum text-[14px] font-semibold">Beginn: {formatDE(von)}</p>
         <KontoUebersicht konto={konto} kontingente={kontingente} />
         <p className="mt-0.5 text-[12px] text-ink-muted">
@@ -189,7 +190,7 @@ export function PlanLeaveRequest({
             Abbrechen
           </Button>
         </div>
-      </div>
+      </WischLeiste>
     );
   }
 
@@ -198,7 +199,8 @@ export function PlanLeaveRequest({
     // Feld oben über der Tabelle, wäre es auf dem Handy außer Sicht, sobald
     // man zur eigenen Zeile gescrollt hat – und für den zweiten Tipp müsste
     // man wieder zurück.
-    <div
+    <WischLeiste
+      onClose={onClose}
       role="dialog"
       aria-label="Urlaub beantragen"
       data-ueber-leiste
@@ -318,7 +320,7 @@ export function PlanLeaveRequest({
           Abbrechen
         </Button>
       </div>
-    </div>
+    </WischLeiste>
   );
 }
 
