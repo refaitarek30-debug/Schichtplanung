@@ -128,30 +128,48 @@ async function merkeKalenderSeite(pfad, antwort) {
   await cache.put(pfad, new Response(blob, { status: 200, headers: kopf }));
 }
 
-/** Wohin führt die Startadresse bei dieser Person? Nur ein Kalender zählt (sonst: nichts merken). */
+/**
+ * Wohin führt die Startadresse bei dieser Person? Gemerkt wird der Kalender –
+ * oder „kein Kalender“ (KEIN_KALENDER), damit der Worker nicht bei jedem Öffnen
+ * die Startseite ein zweites Mal im Hintergrund lädt. `vergessen` löscht die
+ * Marke ganz (Startseite geändert, Betrieb/Privat gewechselt).
+ */
+const KEIN_KALENDER = "-";
+/** Nach so langer Zeit wird die Startadresse einmal neu nachverfolgt. */
+const START_NEU_PRUEFEN_MS = 24 * 60 * 60 * 1000;
+
 async function merkeStartZiel(pfad) {
   const cache = await caches.open(KALENDER_CACHE);
-  if (!pfad) {
-    await cache.delete(START_MARKE);
-    return;
-  }
   await cache.put(
     START_MARKE,
-    new Response(pfad, { status: 200, headers: { "Content-Type": "text/plain", "x-gemerkt-am": String(Date.now()) } }),
+    new Response(pfad || KEIN_KALENDER, {
+      status: 200,
+      headers: { "Content-Type": "text/plain", "x-gemerkt-am": String(Date.now()) },
+    }),
   );
 }
 
+async function vergissStartZiel() {
+  const cache = await caches.open(KALENDER_CACHE);
+  await cache.delete(START_MARKE);
+}
+
+/**
+ * { ziel, neuPruefen }: ziel = gemerkter Kalender oder null; neuPruefen = die
+ * Marke fehlt oder ist älter als einen Tag (dann einmal im Hintergrund nachsehen).
+ */
 async function gemerktesStartZiel() {
   const cache = await caches.open(KALENDER_CACHE);
   const hit = await cache.match(START_MARKE);
-  if (!hit) return null;
+  if (!hit) return { ziel: null, neuPruefen: true };
   const gemerkt = Number(hit.headers.get("x-gemerkt-am") || 0);
-  if (!gemerkt || Date.now() - gemerkt > KALENDER_MAX_ALTER_MS) {
+  const alter = Date.now() - gemerkt;
+  if (!gemerkt || alter > KALENDER_MAX_ALTER_MS) {
     await cache.delete(START_MARKE);
-    return null;
+    return { ziel: null, neuPruefen: true };
   }
   const pfad = await hit.text();
-  return KALENDER_SEITEN.includes(pfad) ? pfad : null;
+  return { ziel: KALENDER_SEITEN.includes(pfad) ? pfad : null, neuPruefen: alter > START_NEU_PRUEFEN_MS };
 }
 
 /** Eine Seite mit Weiterleitungen frisch vom Server holen (Hintergrund). */
@@ -218,15 +236,15 @@ async function navigieren(event, request, url) {
     }
   }
 
-  // Startadresse: landet diese Person im Kalender, gleich dorthin (die Seite selbst kommt dann vom Gerät).
+  // Startadresse: landet diese Person im Kalender, gleich dorthin (die Seite selbst kommt dann vom Gerät
+  // und frischt sich dort selbst auf). Im Hintergrund nachgesehen wird nur, wenn noch nichts gemerkt
+  // ist oder die Marke älter als einen Tag ist – sonst würde jede Öffnung den Server doppelt belasten.
   if (ohneAnhang && pfad === START_PFAD) {
-    const ziel = await gemerktesStartZiel().catch(() => null);
+    const { ziel, neuPruefen } = await gemerktesStartZiel().catch(() => ({ ziel: null, neuPruefen: false }));
+    if (neuPruefen) event.waitUntil(auffrischenStart());
     if (ziel && (await gemerkteKalenderSeite(ziel).catch(() => null))) {
-      event.waitUntil(auffrischenStart());
       return Response.redirect(new URL(ziel, self.location.origin).href, 302);
     }
-    // Noch nichts gemerkt: normal weiter, und nebenher herausfinden, wohin es führt.
-    event.waitUntil(auffrischenStart());
   }
 
   try {
@@ -260,7 +278,7 @@ self.addEventListener("message", (event) => {
   }
   // Die Startseite wurde geändert (oder Betrieb/Privat gewechselt): das gemerkte Ziel gilt nicht mehr.
   if (event.data === "vergiss-start") {
-    event.waitUntil(merkeStartZiel(null));
+    event.waitUntil(vergissStartZiel());
   }
 });
 
