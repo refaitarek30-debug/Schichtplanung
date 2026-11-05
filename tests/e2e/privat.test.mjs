@@ -34,6 +34,26 @@ export default async function privat({ app }) {
     const gemerkt = await seite.evaluate(async () => !!(await (await caches.open("schichtplan-kalender-v1")).match("/privat")));
     pruefe(gemerkt, "Kalender ist für offline gemerkt");
 
+    // Mit Netz: der Privatkalender kommt sofort vom Gerät und frischt sich nebenher auf (public/sw.js).
+    await seite.reload({ waitUntil: "networkidle" });
+    pruefe(
+      (await seite.evaluate(() => performance.getEntriesByType("navigation")[0].serverTiming.map((t) => t.name))).includes("sn-kalender"),
+      "Privatkalender öffnet sofort aus dem Gerätespeicher – auch mit Netz",
+    );
+    await warte(1500);
+    pruefe((await seite.getByText(/^(Früh|Spät|Nacht)$/).count()) > 10, "… und zeigt die Schichten");
+
+    // Start vom Home-Bildschirm (/start): Privatleute landen nach dem ersten Mal gleich im gemerkten Kalender.
+    await ctx.addCookies([{ name: "sp_start", value: encodeURIComponent(`${NUTZER}|privat`), url: APP }]);
+    await seite.goto(`${APP}/start`, { waitUntil: "networkidle" });
+    await warte(3000);
+    await seite.goto(`${APP}/start`, { waitUntil: "networkidle" });
+    pruefe(
+      /\/privat$/.test(seite.url()) &&
+        (await seite.evaluate(() => performance.getEntriesByType("navigation")[0].serverTiming.map((t) => t.name))).includes("sn-kalender"),
+      `Start vom Home-Bildschirm: sofort im Privatkalender (${seite.url()})`,
+    );
+
     // Ohne Netz: Server wirklich aus (der Offline-Schalter des Browsers gilt nicht für den Service Worker).
     app.stopp();
     await warte(1500);
