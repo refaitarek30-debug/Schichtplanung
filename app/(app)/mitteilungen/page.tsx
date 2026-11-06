@@ -12,9 +12,10 @@ import { useSession } from "@/context/session";
  * Urlaubssperren in einer Liste. Beides geht an die Belegschaft und gehört
  * ins Tagesgeschäft, nicht zu den Einstellungen, die man einmal setzt.
  *
- * Schreiben darf die Schichtleitung mit – Urlaubssperren bleiben der
- * Administration vorbehalten, wie vorher auch. Die Absicherung liegt in den
- * Server-Aktionen und in Row Level Security, nicht in diesen Schaltern.
+ * Schreiben darf die Schichtleitung mit – auch Urlaubssperren anlegen und
+ * entfernen (andere Betriebsregeln bleiben der Administration). Die
+ * Absicherung liegt in den Server-Aktionen und in Row Level Security, nicht
+ * in diesen Schaltern.
  */
 export default function MitteilungenPage() {
   return (

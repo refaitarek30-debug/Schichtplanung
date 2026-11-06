@@ -15,6 +15,7 @@ import aussetzer from "./aussetzer.test.mjs";
 import wischen from "./wischen.test.mjs";
 import kompakt from "./kompakt.test.mjs";
 import schnell from "./schnell.test.mjs";
+import sperren from "./sperren.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -27,6 +28,7 @@ const ABLAEUFE = [
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],
   ["Kompakte Startseite: Hinweis, Umschalter, Abstände", "betrieb", kompakt],
   ["Mein Kalender öffnet sofort", "betrieb", schnell],
+  ["Urlaubssperren durch die Schichtleitung", "betrieb", sperren],
 ];
 
 const nur = process.argv[2];
