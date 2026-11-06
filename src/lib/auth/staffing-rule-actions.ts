@@ -10,7 +10,14 @@ const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
 };
 
-/** Legt eine Urlaubssperre an. Nur Admin – RLS auf `staffing_rules` erzwingt das. */
+/** Administration und Schichtleitung dürfen Urlaubssperren pflegen – nur diese, keine anderen Regeln. */
+const SPERRE_ROLLEN = ["admin", "shift_leader"];
+
+/**
+ * Legt eine Urlaubssperre an. Administration und Schichtleitung – RLS auf
+ * `staffing_rules` erzwingt das (Schichtleitung nur für key = 'urlaubssperre',
+ * Migration 0197).
+ */
 export async function createLeaveBlock(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
@@ -35,7 +42,7 @@ export async function createLeaveBlock(_prev: FormState, formData: FormData): Pr
     .maybeSingle();
 
   if (!profile) return { error: "Dein Profil konnte nicht geladen werden." };
-  if (profile.role !== "admin") return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  if (!SPERRE_ROLLEN.includes(profile.role)) return { error: "Du hast keine Berechtigung für diesen Bereich." };
 
   const { error } = await supabase.from("staffing_rules").insert({
     company_id: profile.company_id,
@@ -50,17 +57,32 @@ export async function createLeaveBlock(_prev: FormState, formData: FormData): Pr
   }
 
   revalidatePath("/verwaltung");
+  revalidatePath("/mitteilungen");
   return { success: "Urlaubssperre angelegt." };
 }
 
+/**
+ * Entfernt eine Urlaubssperre. Nur Zeilen mit key = 'urlaubssperre' – über
+ * diesen Weg lässt sich keine andere Betriebsregel löschen. Ohne Recht (RLS)
+ * trifft das Löschen keine Zeile; das melden wir, statt „entfernt“ zu sagen.
+ */
 export async function deleteLeaveBlock(id: string): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   const supabase = await createClient();
-  const { error } = await supabase.from("staffing_rules").delete().eq("id", id);
+  const { data, error } = await supabase
+    .from("staffing_rules")
+    .delete()
+    .eq("id", id)
+    .eq("key", "urlaubssperre")
+    .select("id");
   if (error) {
     return { error: dataErrorMessage(error) ?? "Die Urlaubssperre konnte nicht entfernt werden." };
   }
+  if ((data ?? []).length === 0) {
+    return { error: "Die Urlaubssperre konnte nicht entfernt werden (keine Berechtigung oder schon entfernt)." };
+  }
   revalidatePath("/verwaltung");
+  revalidatePath("/mitteilungen");
   return { success: "Urlaubssperre entfernt." };
 }
 

@@ -98,7 +98,25 @@ http.createServer((req, res) => {
     }
     if (p === "/rest/v1/leave_balances_view") return liste([{ year: new Date().getFullYear(), entitlement: 30, carried_over: 3, used_days: 20, planned_days: 2, pending_days: 1, remaining_days: 10, v_entitlement: 6, v_carried_over: 0, v_korrektur: 0, v_used_days: 4, v_pending_days: 0, v_remaining_days: 2, v_fehl_stunden: 0 }]);
     // Seite Mitteilungen: eine kommende Urlaubssperre, Mitteilungen an alle zum Anlegen.
-    if (p === "/rest/v1/staffing_rules") return liste(url.searchParams.get("key") !== "eq.urlaubssperre" ? [] : [{ id: "sp1", shift_id: null, active: true, value: { start: "2027-11-09", end: "2027-11-20", reason: "Stillstand" } }]);
+    // Nur für Tests: Rolle der angemeldeten Person umstellen (Administration ↔ Schichtleitung).
+    if (p === "/__test/rolle" && m === "POST") { PROFIL.role = body.rolle; return send(204); }
+    // Urlaubssperren wie in der Datenbank: lesen alle; anlegen und entfernen Administration und
+    // Schichtleitung, die Schichtleitung nur key = 'urlaubssperre' (Policies, Migration 0197).
+    if (p === "/rest/v1/staffing_rules") {
+      db.sperren ??= [{ id: "sp1", key: "urlaubssperre", shift_id: null, active: true, value: { start: "2027-11-09", end: "2027-11-20", reason: "Stillstand" } }];
+      const darf = (key) => PROFIL.role === "admin" || (PROFIL.role === "shift_leader" && key === "urlaubssperre");
+      if (m === "POST") {
+        const z = Array.isArray(body) ? body[0] : body;
+        if (!darf(z.key)) return send(403, { code: "42501", message: 'new row violates row-level security policy for table "staffing_rules"' });
+        db.sperren.push({ id: randomUUID(), shift_id: null, active: true, ...z }); return send(201);
+      }
+      if (m === "DELETE") {
+        const weg = filter(q, db.sperren).filter((z) => darf(z.key));
+        db.sperren = db.sperren.filter((z) => !weg.includes(z));
+        return send(200, weg.map((z) => ({ id: z.id })));
+      }
+      return liste(filter(q, db.sperren));
+    }
     if (p === "/rest/v1/announcements") {
       if (m === "POST") { const z = Array.isArray(body) ? body[0] : body; db.mitteilungen = [{ id: randomUUID(), title: z.title, body: z.body, level: z.level, active: true, created_at: new Date().toISOString() }, ...(db.mitteilungen ?? [])]; return send(201); }
       if (m === "PATCH") { const id = (url.searchParams.get("id") ?? "").replace("eq.", ""); db.mitteilungen = (db.mitteilungen ?? []).filter((x) => x.id !== id); return send(204); }

@@ -322,8 +322,9 @@ Nutzen die schon in Phase 2 angelegte `staffing_rules`-Tabelle
 (`leave_requests_check_block`) prüft bei jedem Insert/Update von
 Start-/Enddatum gegen `leave_block_for_range()` und lehnt den Antrag mit dem
 hinterlegten Grund ab – serverseitig, nicht nur im Formular. Verwaltung unter
-„Regeln" → „Urlaubssperren" (nur Admin legt an/entfernt, alle im Unternehmen
-sehen die Liste).
+„Mitteilungen" → „Sperren" (Administration und Schichtleitung legen an und
+entfernen – die Schichtleitung nur Urlaubssperren, keine anderen Regeln,
+Migration 0197; alle im Unternehmen sehen die Liste).
 
 ### Was neu dazugekommen ist
 

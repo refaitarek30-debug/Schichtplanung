@@ -45,8 +45,8 @@ import { cn } from "@/lib/utils";
  * Geschrieben wird über einen Knopf, der zuerst fragt „An wen?“.
  *
  * Wer was darf, prüfen weiter die Server-Aktionen und die Datenbank:
- * Hinweise und Mitteilungen an alle die Führung, Urlaubssperren nur die
- * Administration. Die Knöpfe hier blenden nur aus.
+ * Hinweise, Mitteilungen an alle und Urlaubssperren die Führung
+ * (Administration und Schichtleitung). Die Knöpfe hier blenden nur aus.
  */
 
 export type Filter = "alle" | "personen" | "an_alle" | "sperren";
@@ -92,7 +92,6 @@ const TON: Record<"ok" | "warn" | "info" | "aus", string> = {
 export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: Filter }) {
   const { role } = useSession();
   const fuehrung = role === "admin" || role === "shift_leader";
-  const admin = role === "admin";
 
   const [mitteilungen, setMitteilungen] = useState<LiveAnnouncement[] | null>(null);
   const [hinweise, setHinweise] = useState<GesendeterHinweis[] | null>(null);
@@ -271,7 +270,7 @@ export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: F
                   unter={s.reason}
                   stand={<Marke ton={stand.ton}>{stand.text}</Marke>}
                   aktion={
-                    admin ? (
+                    fuehrung ? (
                       <Aktion onClick={() => entferneSperre(s.id)} disabled={beschaeftigt === s.id}>
                         Entfernen
                       </Aktion>
@@ -357,7 +356,7 @@ export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: F
               text="Steht auf jeder Startseite, bis du es entfernst"
               onClick={() => setNeu("an_alle")}
             />
-            {admin ? (
+            {fuehrung ? (
               <Wahl
                 art="sperre"
                 titel="Urlaubssperre"
@@ -377,7 +376,7 @@ export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: F
       ) : null}
 
       {neu === "an_alle" ? <AnAlleBlatt onClose={() => setNeu(null)} onFertig={fertig} /> : null}
-      {neu === "sperre" && admin ? (
+      {neu === "sperre" && fuehrung ? (
         <SperreBlatt schichten={schichten} onClose={() => setNeu(null)} onFertig={fertig} />
       ) : null}
     </div>

@@ -50,6 +50,24 @@ export default async function schnell() {
     pruefe(!(await imCache(seite, "/__start-ziel")), "Startseite geändert: gemerkter Weg ist weg");
     pruefe(await imCache(seite, "/meine-schichten"), "… die gemerkte Kalender-Seite bleibt");
 
+    // 3b) Startseite ist NICHT der Kalender: einmal nachsehen, dann nicht bei jedem Öffnen erneut
+    //     (sonst lädt der Server die Startseite jedes Mal doppelt).
+    await ctx.addCookies([{ name: "sp_start", value: encodeURIComponent(`${NUTZER}|dashboard`), url: APP }]);
+    await seite.goto(`${APP}/start`, { waitUntil: "networkidle" });
+    await warte(3000);
+    const marke = await seite.evaluate(
+      async ([c, p]) => (await (await caches.open(c)).match(p))?.text() ?? null,
+      [CACHE, "/__start-ziel"],
+    );
+    pruefe(marke === "-", `Startadresse führt nicht in den Kalender – so gemerkt (${marke})`);
+    const ersteMarke = await gemerktAm(seite, "/__start-ziel");
+    await seite.goto(`${APP}/start`, { waitUntil: "networkidle" });
+    pruefe(/\/dashboard$/.test(seite.url()), `Startadresse landet auf der Startseite (${seite.url()})`);
+    await warte(2000);
+    pruefe((await gemerktAm(seite, "/__start-ziel")) === ersteMarke, "beim zweiten Öffnen kein zweites Laden im Hintergrund");
+    await seite.evaluate(() => navigator.serviceWorker.controller?.postMessage("vergiss-start"));
+    await warte(500);
+
     // 4) Sitzung weg: die Auffrischung merkt es, alles Gemerkte verschwindet, das Fenster geht zur Anmeldung.
     await ctx.clearCookies();
     await seite.goto(`${APP}/meine-schichten`, { waitUntil: "commit" }).catch(() => {});
