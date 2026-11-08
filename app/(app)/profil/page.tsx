@@ -9,6 +9,7 @@ import { roleLabels } from "@/lib/nav";
 import { ProfileForm } from "./profile-form";
 import { PersonalDetailsForm } from "./personal-details-form";
 import { StammdatenForm } from "./stammdaten-form";
+import { PasswortAendernForm } from "./passwort-aendern-form";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
@@ -44,6 +45,9 @@ export default function ProfilePage() {
             />
           </div>
         ) : null}
+        <div className="lg:col-start-1">
+          <PasswortAendernForm readOnly={mode === "demo"} />
+        </div>
         <div className="lg:col-span-2">
           <a
             href="/profil/datenschutz"

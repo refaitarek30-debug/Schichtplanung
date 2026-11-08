@@ -16,6 +16,7 @@ import wischen from "./wischen.test.mjs";
 import kompakt from "./kompakt.test.mjs";
 import schnell from "./schnell.test.mjs";
 import sperren from "./sperren.test.mjs";
+import passwort from "./passwort.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -29,6 +30,7 @@ const ABLAEUFE = [
   ["Kompakte Startseite: Hinweis, Umschalter, Abstände", "betrieb", kompakt],
   ["Mein Kalender öffnet sofort", "betrieb", schnell],
   ["Urlaubssperren durch die Schichtleitung", "betrieb", sperren],
+  ["Passwort ändern im Profil", "betrieb", passwort],
 ];
 
 const nur = process.argv[2];

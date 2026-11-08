@@ -79,7 +79,18 @@ http.createServer((req, res) => {
     const send = (code, obj) => { res.writeHead(code, { "content-type": "application/json", ...kors }); res.end(obj === undefined ? "" : JSON.stringify(obj)); };
     const liste = (zeilen) => objekt ? (zeilen.length === 1 ? send(200, zeilen[0]) : send(406, { code: "PGRST116", message: "0 rows" })) : send(200, zeilen);
     const p = url.pathname;
-    if (p.startsWith("/auth/v1/user")) return send(200, { id: U, aud: "authenticated", email: "t@example.invalid" });
+    // Nur für Tests: welches Passwort zuletzt über „Passwort ändern“ gesetzt wurde.
+    if (p === "/__test/passwort") return send(200, { passwort: db.passwortGesetzt ?? null, mitAltem: db.passwortMitAltem ?? null });
+    // Anmeldung mit Passwort (für die Prüfung des aktuellen Passworts): nur „altes-passwort“ ist richtig.
+    if (p === "/auth/v1/token" && url.searchParams.get("grant_type") === "password") {
+      return body?.password === "altes-passwort"
+        ? send(200, { access_token: "t", token_type: "bearer", expires_in: 3600, refresh_token: "r", user: { id: U, aud: "authenticated", email: "t@example.invalid" } })
+        : send(400, { code: "invalid_credentials", error_code: "invalid_credentials", error: "invalid_grant", error_description: "Invalid login credentials", msg: "Invalid login credentials" });
+    }
+    if (p.startsWith("/auth/v1/user")) {
+      if (m === "PUT") { db.passwortGesetzt = body?.password; db.passwortMitAltem = body?.current_password; }
+      return send(200, { id: U, aud: "authenticated", email: "t@example.invalid" });
+    }
     if (p.startsWith("/auth/v1/logout")) return send(204);
     if (p === "/rest/v1/profiles" && m === "PATCH") { for (const k of ["start_ansicht", "neuigkeiten_gesehen"]) if (k in body) PROFIL[k] = body[k]; return send(204); }
     if (p === "/rest/v1/personal_details") {
