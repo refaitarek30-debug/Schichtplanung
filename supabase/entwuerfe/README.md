@@ -9,4 +9,4 @@ in `supabase/migrations/` verschoben und angewendet.
 
 | Datei | Inhalt |
 |---|---|
-| `0198_rollen_zusatzrechte.sql` | Zusatzrollen (z. B. Tagschichtmeister) mit drei Rechten, „Entscheidung ändern“, „aktiv“ nur noch mit Recht |
+| `0199_rollen_zusatzrechte.sql` | Zusatzrollen (z. B. Tagschichtmeister) mit drei Rechten, „Entscheidung ändern“, „aktiv“ nur noch mit Recht |

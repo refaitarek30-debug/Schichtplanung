@@ -48,7 +48,8 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
   // Der ganze Zeitraum entsteht in einem Aufruf und in einer Transaktion.
   // Tage, an denen die Person ohnehin frei hat, überspringt die Datenbank –
   // eine Krankmeldung an einem Freitag aus dem Rotationsmuster ändert
-  // nichts und würde die Besetzungsrechnung nur verwirren.
+  // nichts und würde die Besetzungsrechnung nur verwirren. Ausnahme
+  // Schulung: sie zählt auch an freien Tagen (Migration 0198).
   const { data, error } = await supabase.rpc("create_absence_range", {
     p_employee_id: employeeId,
     p_from: from,
@@ -71,7 +72,7 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
     success:
       tage === 1
         ? `${art} für einen Tag erfasst.`
-        : `${art} für ${tage} Arbeitstage erfasst.`,
+        : `${art} für ${tage} ${type === "schulung" ? "Tage" : "Arbeitstage"} erfasst.`,
   };
 }
 
