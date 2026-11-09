@@ -646,6 +646,7 @@ export function WenSeheIch({
     [onOffen],
   );
   const [zu, setZu] = useState<Record<string, boolean>>({});
+  const [darstellung, setDarstellung] = useState(false);
   /** Bei wem gerade die Farbwahl offen ist. */
   const [farbWahl, setFarbWahl] = useState<string | null>(null);
   const blatt = useRef<HTMLDivElement>(null);
@@ -693,7 +694,6 @@ export function WenSeheIch({
     },
   };
 
-  const abschnitt = "px-1 pb-1.5 pt-3 text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-faint";
 
   return (
     <>
@@ -747,36 +747,34 @@ export function WenSeheIch({
                 data-wen-sehe-ich
                 {...ziehen}
                 onPointerCancel={ziehen.onPointerUp}
-                className="glas absolute bottom-[max(0.6rem,env(safe-area-inset-bottom))] right-2 top-[max(0.6rem,env(safe-area-inset-top))] flex w-[min(24rem,calc(100vw-1rem))] touch-pan-y flex-col overflow-hidden rounded-[28px] shadow-[0_18px_50px_rgba(31,41,77,0.25)] transition-transform duration-200 [animation:wen-rein_.26s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]"
+                className="glas-dicht absolute right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.4rem)] flex max-h-[max(34dvh,14rem)] w-[min(24rem,calc(100vw-1rem))] touch-pan-y flex-col overflow-hidden rounded-[24px] shadow-[0_18px_50px_rgba(31,41,77,0.25)] transition-transform duration-200 [animation:wen-rein_.26s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]"
               >
-                <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
-                  <span className="text-[19px] font-bold tracking-[-0.01em]">Wen sehe ich?</span>
+                <div className="flex items-center gap-2 border-b border-line px-3 py-2">
+                  <span className="min-w-0 flex-1 truncate text-[16px] font-bold">Wen sehe ich?</span>
+                  {alle.length ? (
+                    <>
+                      <button type="button" onClick={andere.alleAn} className="h-8 shrink-0 rounded-full bg-ink/[0.07] px-3 text-[12.5px] font-semibold">
+                        Alle
+                      </button>
+                      <button type="button" onClick={andere.nurIch} className="h-8 shrink-0 rounded-full bg-ink/[0.07] px-3 text-[12.5px] font-semibold">
+                        Nur ich
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setOffen(false)}
                     aria-label="Schließen"
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
                   >
-                    <X className="h-[18px] w-[18px]" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
-                  {alle.length ? (
-                    <div className="grid grid-cols-2 gap-1 rounded-[14px] bg-ink/[0.06] p-[3px]">
-                      <button type="button" onClick={andere.alleAn} className="h-9 rounded-[11px] bg-surface text-[13.5px] font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.1)]">
-                        Alle einblenden
-                      </button>
-                      <button type="button" onClick={andere.nurIch} className="h-9 rounded-[11px] text-[13.5px] font-semibold text-ink-muted">
-                        Nur ich
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <p className={abschnitt}>Ich</p>
-                  <div className="flex items-center gap-2.5 rounded-[16px] bg-ink/[0.04] px-2.5 py-2">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-surface">Ich</span>
-                    <span className="min-w-0 flex-1 text-[15px] font-semibold">Meine Termine</span>
+                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2 py-2">
+                  <div className="flex items-center gap-2 rounded-[16px] bg-ink/[0.04] px-2 py-1.5">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink text-[10.5px] font-bold text-surface">Ich</span>
+                    <span className="min-w-0 flex-1 text-[14.5px] font-semibold">Meine Termine</span>
                     <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
                       Termine
                     </Pille>
@@ -784,7 +782,6 @@ export function WenSeheIch({
 
                   {alle.length ? (
                     <>
-                      <p className={abschnitt}>Andere · {sichtbar.length} von {alle.length} sichtbar</p>
                       <div className="space-y-1">
                       {andere.zweige.map((z) => {
                         const keys = z.knoten.map((k) => k.key);
@@ -797,7 +794,7 @@ export function WenSeheIch({
                         const aufgeklappt = !zu[z.key];
                         return (
                           <div key={z.key} className="rounded-[16px] bg-ink/[0.04]">
-                            <div className="flex items-center gap-2 px-2 py-2">
+                            <div className="flex items-center gap-2 px-2 py-1.5">
                               {einzeln ? (
                                 <PersonAvatar name={z.knoten[0].name} farbe={z.knoten[0].farbe} klein />
                               ) : (
@@ -888,7 +885,16 @@ export function WenSeheIch({
                       })}
                       </div>
 
-                      <p className={abschnitt}>Darstellung der anderen</p>
+                      <button
+                        type="button"
+                        aria-expanded={darstellung}
+                        onClick={() => setDarstellung((d) => !d)}
+                        className="flex w-full items-center justify-between rounded-[14px] px-2 py-2 text-[13px] font-semibold text-ink-muted"
+                      >
+                        Darstellung der anderen
+                        <ChevronRight className={cn("h-4 w-4 transition-transform", darstellung && "rotate-90")} />
+                      </button>
+                      {darstellung ? (
                       <div className="space-y-2 rounded-[16px] bg-ink/[0.04] px-3 py-2.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[14px] font-medium">Größe</span>
@@ -915,27 +921,27 @@ export function WenSeheIch({
                         </div>
                         <p className="text-[11.5px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
                       </div>
+                      ) : null}
                     </>
                   ) : (
-                    <p className="px-1 pt-4 text-[14px] leading-snug text-ink-muted">
+                    <p className="px-2 py-2 text-[13.5px] leading-snug text-ink-muted">
                       Noch niemand verbunden. Lade Partner, Familie oder Freunde ein – dann siehst du hier, wessen Schichten und
                       Termine im Kalender stehen.
                     </p>
                   )}
                 </div>
 
-                <div className="border-t border-line px-3 pb-3 pt-2.5">
+                <div className="border-t border-line px-2 py-1.5">
                   <button
                     type="button"
                     onClick={() => {
                       setOffen(false);
                       onVerwalten();
                     }}
-                    className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-brand-600 text-[14.5px] font-semibold text-white"
+                    className="flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] text-[13.5px] font-semibold text-brand-600"
                   >
                     <UserPlus className="h-4 w-4" /> Personen einladen oder verwalten
                   </button>
-                  <p className="pt-2 text-center text-[11.5px] leading-snug text-ink-muted">Gilt nur für deine Ansicht – niemand merkt etwas.</p>
                 </div>
               </div>
             </div>,
