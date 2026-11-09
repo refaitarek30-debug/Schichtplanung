@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { CalendarHeart, Layers, BarChart3, Palmtree, Upload, Wallet } from "lucide-react";
+import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Upload, Wallet } from "lucide-react";
+import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
 import type { Reiter } from "@/lib/privat/reiter";
@@ -15,161 +16,232 @@ import { PrivatKopf } from "./rahmen";
 import { PrivatSchichten } from "./schichten";
 import { PrivatUrlaub, leseUrlaubEinst } from "./urlaub";
 
-
 const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 const euroGanz = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
 /**
- * Schichten: sechs Kacheln mit den wichtigsten Zahlen. Eine Kachel antippen
- * öffnet darunter den Bereich (Übersicht, Meine Schichten, Geld, Urlaub, Gemeinsam
- * frei); „Plan hochladen“ führt zur Import-Seite.
+ * Schichten: oben die Stunden des Monats groß, darunter eine ruhige Liste
+ * (Übersicht, Geld, Urlaub, Gemeinsam frei · Meine Schichten, Plan hochladen).
+ * Ein Eintrag öffnet den Bereich auf eigener Seite (`?reiter=…`), „Zurück“
+ * führt wieder zur Liste – auch mit der Zurück-Geste des Handys.
  */
-export function PrivatSchichtenSeite({ start = "uebersicht" }: { start?: Reiter }) {
-  const { konto, schichtarten } = usePrivat();
-  const [reiter, setReiter] = useState<Reiter>(start);
-  const heute = heuteInBerlin();
-  const jahr = Number(heute.slice(0, 4));
-  const monat = Number(heute.slice(5, 7)) - 1;
-  const { einst } = useGehalt(konto.userId);
+export function PrivatSchichtenSeite({ start = null }: { start?: Reiter | null }) {
+  const reiter = start;
+  useEffect(() => {
+    nachOben("auto");
+  }, [reiter]);
+  if (reiter) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href="/privat/schichten"
+          className="-ml-1 inline-flex h-9 items-center gap-0.5 rounded-full pr-3 text-[15px] font-semibold text-brand-600"
+          data-zurueck-schichten
+        >
+          <ChevronLeft className="h-5 w-5" /> Schichten
+        </Link>
+        <div data-bereich={reiter}>
+          {reiter === "uebersicht" ? (
+            <PrivatAuswertung eingebettet />
+          ) : reiter === "liste" ? (
+            <PrivatSchichten eingebettet />
+          ) : reiter === "geld" ? (
+            <PrivatGeld />
+          ) : reiter === "urlaub" ? (
+            <PrivatUrlaub eingebettet />
+          ) : (
+            <PrivatGemeinsam eingebettet />
+          )}
+        </div>
+      </div>
+    );
+  }
+  return <Startliste />;
+}
 
-  // Zahlen für die Kacheln: der laufende Monat.
-  const vonMonat = toISO(new Date(jahr, monat, 1));
-  const bisMonat = toISO(new Date(jahr, monat + 1, 0));
-  const { tage, zeiten, feiertage } = useMonatsDaten(vonMonat, bisMonat, reiter);
+function Startliste() {
+  const { konto, schichtarten } = usePrivat();
+  const heute = heuteInBerlin();
+  const [monat, setMonat] = useState(() => new Date(Number(heute.slice(0, 4)), Number(heute.slice(5, 7)) - 1, 1));
+  const { einst } = useGehalt(konto.userId);
+  const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
+  const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
+  const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
+
   const re = useMemo(() => {
     if (!tage || !schichtarten) return null;
-    return rechne({
-      tage,
-      von: vonMonat,
-      bis: bisMonat,
-      arten: schichtarten,
-      feiertage,
-      wochenstunden: konto.wochenstunden,
-      einst,
-      zeiten,
-    });
-  }, [tage, zeiten, schichtarten, feiertage, konto.wochenstunden, einst, vonMonat, bisMonat]);
-  const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
-  const geldUnter =
-    mitGeld.length > 1
-      ? `${mitGeld.length} Jobs, ${monthName(monat)}`
-      : mitGeld[0]?.job.art === "minijob"
-        ? `${mitGeld[0].job.name}, ausgezahlt`
-        : mitGeld[0]
-          ? `${mitGeld[0].job.name}, brutto`
-          : "je Job";
+    return rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten });
+  }, [tage, zeiten, schichtarten, feiertage, konto.wochenstunden, einst, von, bis]);
 
-  // Übrige Urlaubstage (stehen nur auf diesem Gerät) – neu lesen, wenn man den Bereich wechselt.
+  // Anzahl der Arbeitsschichten im Monat.
+  const anzahl = useMemo(() => {
+    if (!tage || !schichtarten) return null;
+    const arbeit = new Set(schichtarten.filter((a) => a.art === "arbeit").map((a) => a.id));
+    let n = 0;
+    for (const e of Object.values(tage)) for (const id of [e.schicht, e.zusatz, e.dritte]) if (id && arbeit.has(id)) n += 1;
+    return n;
+  }, [tage, schichtarten]);
+
+  // Übrige Urlaubstage stehen nur auf diesem Gerät.
   const [urlaubTage, setUrlaubTage] = useState<number | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrlaubTage(leseUrlaubEinst(konto.userId).tage);
-  }, [konto.userId, reiter]);
+  }, [konto.userId]);
 
-  const kacheln: { id: Reiter | "hochladen"; name: string; icon: ReactNode; wert: string; sub: string; farbe: string }[] = [
-    {
-      id: "uebersicht",
-      name: "Übersicht",
-      icon: <BarChart3 className="h-[19px] w-[19px]" />,
-      wert: re ? `${std(re.ist)} Std` : "…",
-      sub: re && re.differenz !== null ? `${re.differenz > 0.05 ? "+" : ""}${std(Math.abs(re.differenz) < 0.05 ? 0 : re.differenz)} Überstd.` : "Schichten zählen",
-      farbe: "bg-brand-500/15 text-brand-600",
-    },
-    {
-      id: "liste",
-      name: "Meine Schichten",
-      icon: <Layers className="h-[19px] w-[19px]" />,
-      wert: schichtarten ? `${schichtarten.length} Schichten` : "…",
-      sub: "bearbeiten",
-      farbe: "bg-brand-500/15 text-brand-600",
-    },
-    {
-      id: "geld",
-      name: "Geld",
-      icon: <Wallet className="h-[19px] w-[19px]" />,
-      wert: re?.summe != null ? `ca. ${euroGanz(re.summe)}` : "Einrichten",
-      sub: geldUnter,
-      farbe: "bg-ok-bg text-ok-fg",
-    },
-    {
-      id: "urlaub",
-      name: "Urlaub",
-      icon: <Palmtree className="h-[19px] w-[19px]" />,
-      wert: urlaubTage !== null ? `${urlaubTage} Tage` : "…",
-      sub: "übrig · Brückentage",
-      farbe: "bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]",
-    },
-    {
-      id: "gemeinsam",
-      name: "Gemeinsam",
-      icon: <CalendarHeart className="h-[19px] w-[19px]" />,
-      wert: "Wann frei?",
-      sub: "ihr beide",
-      farbe: "bg-[rgb(214_64_159/0.15)] text-[rgb(184_50_137)]",
-    },
-    {
-      id: "hochladen",
-      name: "Plan hochladen",
-      icon: <Upload className="h-[19px] w-[19px]" />,
-      wert: "Screenshot",
-      sub: "oder .ics",
-      farbe: "bg-warn-bg text-warn-fg",
-    },
-  ];
+  const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
+  const geldUnter =
+    mitGeld.length > 1
+      ? `${mitGeld.length} Jobs zusammen`
+      : mitGeld[0]
+        ? `${mitGeld[0].job.name}, ${mitGeld[0].job.art === "minijob" ? "ausgezahlt" : "brutto"}`
+        : "Lohn je Job einrichten";
 
-  const inhalt =
-    reiter === "uebersicht" ? (
-      <PrivatAuswertung eingebettet />
-    ) : reiter === "liste" ? (
-      <PrivatSchichten eingebettet />
-    ) : reiter === "geld" ? (
-      <PrivatGeld />
-    ) : reiter === "urlaub" ? (
-      <PrivatUrlaub eingebettet />
-    ) : (
-      <PrivatGemeinsam eingebettet />
-    );
+  const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + s, 1));
+  const monatKurz = `${monthName(monat.getMonth()).slice(0, 3)} ${monat.getFullYear()}`;
+
+  const soll = re?.soll ?? null;
+  const diff = re?.differenz ?? null;
+  const ist = re?.ist ?? 0;
+  const anteilIst = soll && soll > 0 ? Math.min(100, (Math.min(ist, soll) / Math.max(ist, soll)) * 100) : 100;
 
   return (
     <div className="space-y-4">
-      <PrivatKopf titel="Schichten" unter={`${monthName(monat)} ${jahr}`} />
-      <div role="tablist" aria-label="Bereiche" className="grid grid-cols-3 gap-2">
-        {kacheln.map((k) => {
-          const inner = (
-            <>
-              <span className={cn("flex h-[34px] w-[34px] items-center justify-center rounded-[12px]", k.farbe)}>{k.icon}</span>
-              <span className="mt-2 block min-w-0">
-                <span className="block truncate text-[12.5px] font-semibold text-ink-muted">{k.name}</span>
-                <span className="block text-[16px] font-bold leading-tight tracking-[-0.01em]">{k.wert}</span>
-                <span className="block text-[12px] leading-tight text-ink-muted">{k.sub}</span>
-              </span>
-            </>
-          );
-          const klasse = "glas flex min-w-0 flex-col rounded-[20px] p-3 text-left transition-shadow";
-          if (k.id === "hochladen")
-            return (
-              <Link key={k.id} href="/privat/import" className={klasse}>
-                {inner}
-              </Link>
-            );
-          const aktiv = reiter === k.id;
-          return (
-            <button
-              key={k.id}
-              type="button"
-              role="tab"
-              aria-selected={aktiv}
-              onClick={() => setReiter(k.id as Reiter)}
-              className={cn(klasse, aktiv && "ring-[2.5px] ring-brand-500 shadow-[0_10px_24px_rgba(47,91,234,0.25)]")}
-            >
-              {inner}
+      <PrivatKopf
+        titel="Schichten"
+        rechts={
+          <div className="glas flex items-center rounded-full p-1" role="group" aria-label="Monat">
+            <button type="button" aria-label="Vorheriger Monat" onClick={() => springe(-1)} className="grid h-8 w-8 place-items-center rounded-full text-ink-muted">
+              <ChevronLeft className="h-4 w-4" />
             </button>
-          );
-        })}
-      </div>
-      <div role="tabpanel" key={reiter}>
-        {inhalt}
-      </div>
+            <span className="tnum min-w-[4.8rem] text-center text-[14px] font-semibold" data-monat>
+              {monatKurz}
+            </span>
+            <button type="button" aria-label="Nächster Monat" onClick={() => springe(1)} className="grid h-8 w-8 place-items-center rounded-full text-ink-muted">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        }
+      />
+
+      <section className="glas space-y-3 rounded-[24px] px-4 pb-4 pt-3.5" data-stunden-karte>
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">Gearbeitet</div>
+            <div className="tnum mt-0.5 text-[36px] font-bold leading-none tracking-[-0.02em]">
+              {re ? std(ist) : "…"} <span className="text-[17px] font-semibold text-ink-muted">Std</span>
+            </div>
+          </div>
+          <div className="text-right">
+            {diff !== null ? (
+              <div className={cn("tnum text-[16px] font-bold", diff > 0.05 ? "text-warn-fg" : "text-ink-muted")}>
+                {diff > 0.05 ? "+" : ""}
+                {std(Math.abs(diff) < 0.05 ? 0 : diff)} Std
+              </div>
+            ) : null}
+            <div className="tnum text-[12.5px] text-ink-muted">
+              {soll !== null ? `Soll ${std(soll)}` : anzahl !== null ? `${anzahl} Schichten` : ""}
+            </div>
+          </div>
+        </div>
+        {soll !== null ? (
+          <div className="flex h-2 overflow-hidden rounded-full bg-ink/[0.08]" aria-hidden>
+            <span className="h-full bg-brand-500" style={{ width: `${diff !== null && diff > 0 ? anteilIst : Math.min(100, (ist / soll) * 100)}%` }} />
+            {diff !== null && diff > 0.05 ? <span className="h-full bg-warn-dot" style={{ width: `${100 - anteilIst}%` }} /> : null}
+          </div>
+        ) : (
+          <p className="text-[12.5px] text-ink-muted">
+            Wochenstunden unter{" "}
+            <Link href="/privat/mehr" className="font-semibold text-brand-600">
+              Mehr
+            </Link>{" "}
+            eintragen, dann siehst du hier deine Überstunden.
+          </p>
+        )}
+      </section>
+
+      <Gruppe>
+        <Eintrag
+          href="/privat/schichten?reiter=uebersicht"
+          icon={<BarChart3 className="h-[18px] w-[18px]" />}
+          farbe="bg-brand-500/15 text-brand-600"
+          name="Übersicht"
+          unter={anzahl !== null ? `${anzahl} Schichten im ${monthName(monat.getMonth())}` : "Schichten zählen"}
+        />
+        <Eintrag
+          href="/privat/schichten?reiter=geld"
+          icon={<Wallet className="h-[18px] w-[18px]" />}
+          farbe="bg-ok-bg text-ok-fg"
+          name="Geld"
+          unter={geldUnter}
+          wert={re?.summe != null ? euroGanz(re.summe) : undefined}
+        />
+        <Eintrag
+          href="/privat/schichten?reiter=urlaub"
+          icon={<Palmtree className="h-[18px] w-[18px]" />}
+          farbe="bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]"
+          name="Urlaub"
+          unter="übrig · Brückentage"
+          wert={urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
+        />
+        <Eintrag
+          href="/privat/schichten?reiter=gemeinsam"
+          icon={<CalendarHeart className="h-[18px] w-[18px]" />}
+          farbe="bg-[rgb(214_64_159/0.15)] text-[rgb(184_50_137)]"
+          name="Gemeinsam frei"
+          unter="Wann habt ihr beide frei?"
+        />
+      </Gruppe>
+
+      <Gruppe>
+        <Eintrag
+          href="/privat/schichten?reiter=liste"
+          icon={<Layers className="h-[18px] w-[18px]" />}
+          farbe="bg-ink/[0.07] text-ink-muted"
+          name="Meine Schichten"
+          unter={schichtarten ? `${schichtarten.length} Schichten · Farben, Zeiten` : "anlegen und bearbeiten"}
+        />
+        <Eintrag
+          href="/privat/import"
+          icon={<Upload className="h-[18px] w-[18px]" />}
+          farbe="bg-warn-bg text-warn-fg"
+          name="Plan hochladen"
+          unter="Screenshot oder .ics-Datei"
+        />
+      </Gruppe>
     </div>
   );
 }
+
+function Gruppe({ children }: { children: ReactNode }) {
+  return <nav className="glas divide-y divide-line overflow-hidden rounded-[22px]">{children}</nav>;
+}
+
+function Eintrag({
+  href,
+  icon,
+  farbe,
+  name,
+  unter,
+  wert,
+}: {
+  href: string;
+  icon: ReactNode;
+  farbe: string;
+  name: string;
+  unter: string;
+  wert?: string;
+}) {
+  return (
+    <Link href={href} className="flex items-center gap-3 px-4 py-3 active:bg-ink/[0.04]" data-eintrag={name}>
+      <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-[11px]", farbe)}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-semibold leading-tight">{name}</span>
+        <span className="block truncate text-[12.5px] text-ink-muted">{unter}</span>
+      </span>
+      {wert ? <span className="tnum shrink-0 text-[15px] font-semibold">{wert}</span> : null}
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+    </Link>
+  );
+}
+

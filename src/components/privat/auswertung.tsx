@@ -92,6 +92,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
   }
 
   const titelZeitraum = zeitraum === "jahr" ? String(d.getFullYear()) : `${monthName(d.getMonth())} ${d.getFullYear()}`;
+  const unterZeitraum = bisHeute && bis < bisVoll ? `${titelZeitraum} · bis ${formatDE(bis < von ? von : bis)}` : titelZeitraum;
 
   return (
     <div className="space-y-4">
@@ -99,11 +100,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
         <AbschnittKopf
           icon={<BarChart3 className="h-[18px] w-[18px]" />}
           titel="Übersicht"
-          unter={
-            <span className="tnum">
-              {formatDE(von)} – {formatDE(bis < von ? von : bis)}
-            </span>
-          }
+          unter={<span className="tnum">{unterZeitraum}</span>}
           rechts={
             <>
               <RundKnopf label="Vorher" onClick={() => springe(-1)}>
@@ -118,11 +115,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
       ) : (
         <PrivatKopf
           titel={titel}
-          unter={
-            <span className="tnum">
-              {formatDE(von)} – {formatDE(bis < von ? von : bis)}
-            </span>
-          }
+          unter={<span className="tnum">{unterZeitraum}</span>}
           rechts={
             <>
               <RundKnopf label="Vorher" onClick={() => springe(-1)}>
@@ -161,22 +154,12 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
           nur bis heute
         </label>
       </div>
-      <p className="text-[15px] font-semibold">{titelZeitraum}</p>
 
       {fehler ? <Alert tone="error">{fehler}</Alert> : null}
 
       <div aria-busy={!werte} className="space-y-4">
-        <PrivatKarte titel="Schichten zählen">
-          <Liste
-            zeilen={(werte?.zeilen ?? []).map((z) => ({ art: z.art, wert: zahl(z.anzahl) }))}
-            gesamt={werte ? zahl(werte.gesamtAnzahl) : "…"}
-          />
-        </PrivatKarte>
-        <PrivatKarte titel="Stunden pro Schicht">
-          <Liste
-            zeilen={(werte?.zeilen ?? []).map((z) => ({ art: z.art, wert: `${zahl(z.stunden)} h` }))}
-            gesamt={werte ? `${zahl(werte.gesamtStunden)} h` : "…"}
-          />
+        <PrivatKarte titel="Schichten">
+          <SchichtListe zeilen={werte?.zeilen ?? null} stunden={werte?.gesamtStunden ?? 0} />
         </PrivatKarte>
         {rechnung ? <UeberstundenKarte re={rechnung} /> : null}
       </div>
@@ -184,33 +167,41 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
   );
 }
 
-function Liste({ zeilen, gesamt }: { zeilen: { art: { id: string; name: string; kuerzel: string; farbe: string }; wert: string }[]; gesamt: string }) {
+/** Eine Liste: je Schicht Anzahl und Stunden, mit einem schmalen Balken für den Anteil. */
+function SchichtListe({
+  zeilen,
+  stunden,
+}: {
+  zeilen: { art: { id: string; name: string; kuerzel: string; farbe: string }; anzahl: number; stunden: number }[] | null;
+  stunden: number;
+}) {
+  if (!zeilen) return <p className="px-4 py-4 text-[14px] text-ink-muted">Wird geladen …</p>;
+  const belegt = zeilen.filter((z) => z.anzahl > 0).sort((a, b) => b.anzahl - a.anzahl);
+  if (!belegt.length) return <p className="px-4 py-4 text-[14px] text-ink-muted">In diesem Zeitraum ist nichts eingetragen.</p>;
+  const max = Math.max(...belegt.map((z) => z.anzahl));
   return (
-    <dl className="divide-y divide-line">
-      {zeilen.map((z) => (
-        <div key={z.art.id} className="flex items-center justify-between gap-3 px-4 py-3">
-          <dt className="flex min-w-0 items-center gap-3">
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold"
-              style={farbStil(z.art.farbe)}
-            >
-              {z.art.kuerzel}
-            </span>
-            <span className="truncate text-[16px]">{z.art.name}</span>
-          </dt>
-          <dd className="tnum text-[16px]">{z.wert}</dd>
+    <dl className="divide-y divide-line" data-schicht-liste>
+      {belegt.map((z) => (
+        <div key={z.art.id} className="px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <dt className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-bold" style={farbStil(z.art.farbe)}>
+                {z.art.kuerzel}
+              </span>
+              <span className="truncate text-[16px]">{z.art.name}</span>
+            </dt>
+            <dd className="tnum w-10 shrink-0 text-right text-[14px] text-ink-muted">{zahl(z.anzahl)}×</dd>
+            <dd className="tnum w-16 shrink-0 text-right text-[16px] font-semibold">{zahl(z.stunden)} h</dd>
+          </div>
+          <div className="ml-11 mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink/[0.06]" aria-hidden>
+            <span className="block h-full rounded-full" style={{ width: `${(z.anzahl / max) * 100}%`, backgroundColor: z.art.farbe }} />
+          </div>
         </div>
       ))}
-      <Zeile name="Gesamt" wert={gesamt} fett />
+      <div className="flex items-center justify-between gap-3 px-4 py-3 font-semibold">
+        <dt className="text-[16px]">Gesamt</dt>
+        <dd className="tnum text-[16px]">{zahl(stunden)} h</dd>
+      </div>
     </dl>
-  );
-}
-
-function Zeile({ name, wert, fett }: { name: string; wert: string; fett?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <dt className={cn("text-[16px]", fett && "font-semibold")}>{name}</dt>
-      <dd className={cn("tnum text-[16px]", fett && "font-semibold")}>{wert}</dd>
-    </div>
   );
 }
