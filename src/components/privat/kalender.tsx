@@ -28,7 +28,6 @@ import { KalenderTeilen } from "@/components/kalender/teilen";
 import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
 import { PinselKnopf, PinselLeiste, useMonatKarussell, usePinselStrich } from "@/components/kalender/pinsel";
 import { useLoeschFrage } from "@/components/kalender/loesch-frage";
-import { TodoZaehler, offeneBisHeute } from "@/components/kalender/todo-zaehler";
 import {
   fetchMeineTermine,
   speichereTermin,
@@ -473,12 +472,10 @@ export function PrivatKalender() {
 
   /**
    * Pinsel: ein Strich über einen oder mehrere Tage. Je Tag gilt:
-   *  - leer → die Schicht
-   *  - eine andere Schicht → kommt dazu (z. B. Spät + Tanke)
-   *  - zwei oder mehr ohne sie → sie ersetzt die erste
+   *  - weniger als drei Schichten ohne sie → sie kommt dazu (bis zu drei)
+   *  - drei Schichten ohne sie → sie ersetzt die erste
    *  - sie steht schon mit anderen → nur noch sie
    *  - sie steht allein → Tag leer
-   * So wird z. B. Spät + Tanke mit Früh: Früh + Tanke → Früh → leer.
    * „Leeren“ fragt vorher nach.
    */
   function pinselStrich(liste: string[]) {
@@ -693,7 +690,6 @@ export function PrivatKalender() {
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
           <PrivatNeuigkeiten />
-          <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} offen={wenOffen} onOffen={setWenOffen} />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
@@ -1560,7 +1556,7 @@ function AndereUhrzeit({
 /** Pinsel-Regel für einen Tag (siehe pinselStrich). */
 export function pinselNaechste(ids: string[], x: string): string[] {
   if (!ids.length) return [x];
-  if (!ids.includes(x)) return ids.length === 1 ? [ids[0]!, x] : [x, ...ids.slice(1)].slice(0, MAX_JE_TAG);
+  if (!ids.includes(x)) return ids.length < MAX_JE_TAG ? [...ids, x] : [x, ...ids.slice(1)];
   if (ids.length > 1) return [x];
   return [];
 }
