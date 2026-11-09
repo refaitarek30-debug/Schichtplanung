@@ -26,6 +26,7 @@ import { EditEmployeePanel } from "./edit-employee-panel";
 import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
 import { Blatt } from "@/components/privat/blatt";
 import { cn } from "@/lib/utils";
+import { nachOben } from "@/lib/app-scroller";
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -156,7 +157,7 @@ export function EmployeesView() {
       setAccess(result);
       setBusyId(null);
       if (result.success) void load();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      nachOben();
     });
   }
 
@@ -168,7 +169,7 @@ export function EmployeesView() {
       setCodeErgebnis({ name: `${row.firstName} ${row.lastName}`, ...result });
       setCodeFrage(null);
       setBusyId(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      nachOben();
     });
   }
 
@@ -218,7 +219,7 @@ export function EmployeesView() {
             los: () =>
               ausPerson(() => {
                 setEditing(row);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                nachOben();
               }),
           }
         : null,
@@ -243,7 +244,7 @@ export function EmployeesView() {
               ausPerson(() => {
                 setCodeErgebnis(null);
                 setCodeFrage(row);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                nachOben();
               }),
           }
         : null,

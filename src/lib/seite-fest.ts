@@ -13,6 +13,21 @@ function anwenden() {
   const wert = halter > 0 ? "hidden" : "";
   document.documentElement.style.overflow = wert;
   document.body.style.overflow = wert;
+  // Auf dem Handy scrollt nur der Inhaltsbereich (app-scroller.ts) – ihn mit
+  // festhalten. `hidden` behält die Scrollposition. Am Computer scrollt er
+  // nicht (overflow: visible) und bleibt unberührt.
+  document.querySelectorAll<HTMLElement>("[data-app-scroller]").forEach((el) => {
+    if (halter > 0) {
+      const y = getComputedStyle(el).overflowY;
+      if (y === "auto" || y === "scroll") {
+        el.style.overflowY = "hidden";
+        el.dataset.festgehalten = "1";
+      }
+    } else if (el.dataset.festgehalten) {
+      el.style.overflowY = "";
+      delete el.dataset.festgehalten;
+    }
+  });
 }
 
 /** Festhalten; die Rückgabe lässt wieder los (genau einmal). */

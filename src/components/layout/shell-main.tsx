@@ -1,7 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { appScroller } from "@/lib/app-scroller";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,6 +18,11 @@ const BREITE_SEITEN = ["/schichtplan"];
 export function ShellMain({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const breit = BREITE_SEITEN.some((pfad) => pathname === pfad || pathname.startsWith(`${pfad}/`));
+  // Neue Seite beginnt oben. Next.js setzt beim Wechsel nur die ganze Seite
+  // nach oben – auf dem Handy scrollt aber der Inhaltsbereich (app-scroller.ts).
+  useEffect(() => {
+    appScroller()?.scrollTo({ top: 0 });
+  }, [pathname]);
   return (
     <main
       className={cn(
