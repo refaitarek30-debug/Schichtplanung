@@ -1,26 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Check, ChevronLeft, ChevronRight, Plus, Settings2, Wallet } from "lucide-react";
 import { monthName, toISO } from "@/lib/dates";
-import { ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
+import { ladeFeiertage, ladeTage, ladeTagZeiten, type Schichtart, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
 import {
   rechne,
   GEHALT_STANDARD,
+  JOB_STANDARD,
   ladeGehaltEinstellungen,
+  minijobGrenze,
   speichereGehaltEinstellungen,
   zahlAusText,
   type GehaltEinstellungen,
+  type Job,
+  type JobArt,
+  type JobRechnung,
   type Rechnung,
 } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
+import { Blatt } from "./blatt";
 import { usePrivat } from "./kontext";
 import { AbschnittKopf, PrivatKarte, RundKnopf } from "./rahmen";
 
 /**
- * Überstunden und Brutto-Schätzung (nur für dich). Stundenlohn und Zuschläge
- * stehen nur in diesem Browser, nie auf dem Server.
+ * Geld je Job: Jede Arbeitsschicht gehört zu einem Job (z. B. Tankstelle als
+ * Minijob, Ausbildung ohne Geld). Je Job ein eigener Lohn, eigene Zuschläge,
+ * Netto (Minijob) oder Brutto-Schätzung. Beim ersten Mal führt ein kurzer
+ * Assistent durch die Einrichtung. Jobs, Lohn und Zuschläge stehen nur in
+ * diesem Browser, nie auf dem Server.
  */
 
 const GEHALT_EREIGNIS = "sp-gehalt-geaendert";
@@ -157,7 +166,10 @@ function Zahlenfeld({
   onWert: (n: number | null) => void;
   kommastellen?: number;
 }) {
-  const alsText = (n: number | null) => (n === null ? "" : n.toLocaleString("de-DE", { maximumFractionDigits: kommastellen }));
+  const alsText = (n: number | null) =>
+    n === null
+      ? ""
+      : n.toLocaleString("de-DE", { maximumFractionDigits: kommastellen, minimumFractionDigits: einheit === "€" && !Number.isInteger(n) ? 2 : 0 });
   const [text, setText] = useState(alsText(wert));
   const [fokus, setFokus] = useState(false);
   // Wert von außen (z. B. beim Laden) nur übernehmen, solange nicht getippt wird.
@@ -191,173 +203,644 @@ function Zahlenfeld({
   );
 }
 
-/** Brutto-Schätzung mit Schalter „Ich arbeite in Schicht“. */
-export function GehaltKarte({
-  re,
-  einst,
-  setze,
-}: {
-  re: Rechnung;
-  einst: GehaltEinstellungen;
-  setze: (teil: Partial<GehaltEinstellungen>) => void;
-}) {
-  const zeilen: { text: string; detail: string; betrag: number }[] = [];
-  if (re.geld) {
-    zeilen.push({ text: "Grundlohn", detail: `${std(re.ist)} Std × ${euro(einst.stundenlohn ?? 0)}`, betrag: re.geld.grundlohn });
-    if (einst.schicht) {
-      if (re.zuschlag.nacht > 0)
-        zeilen.push({ text: `Nachtzuschlag ${std(einst.nacht)} %`, detail: `${std(re.zuschlag.nacht)} Std`, betrag: re.geld.nacht });
-      if (re.zuschlag.sonntag > 0)
-        zeilen.push({ text: `Sonntagszuschlag ${std(einst.sonntag)} %`, detail: `${std(re.zuschlag.sonntag)} Std`, betrag: re.geld.sonntag });
-      if (re.zuschlag.feiertag > 0)
-        zeilen.push({ text: `Feiertagszuschlag ${std(einst.feiertag)} %`, detail: `${std(re.zuschlag.feiertag)} Std`, betrag: re.geld.feiertag });
-    }
-    if (re.differenz !== null && re.differenz > 0.05)
-      zeilen.push({ text: `Überstundenzuschlag ${std(einst.ueber)} %`, detail: `${std(re.differenz)} Std`, betrag: re.geld.ueber });
+
+const ART_TEXT: Record<JobArt, { name: string; kurz: string; unter: string }> = {
+  minijob: { name: "Minijob", kurz: "Minijob · netto", unter: "Ausgezahlt wird, was du verdienst – ohne Abzüge." },
+  brutto: { name: "Normaler Job", kurz: "Brutto-Schätzung", unter: "Mit Steuern und Abgaben – ShiftNexo schätzt brutto." },
+  ohne: { name: "Ohne Geld", kurz: "nur Stunden", unter: "Z. B. Ausbildung mit festem Betrag: nur Stunden zählen." },
+};
+
+/** Arbeitsschichten, die zu diesem Job gehören (ohne Zuordnung: zum Hauptjob). */
+function schichtenVon(job: Job, einst: GehaltEinstellungen, arten: readonly Schichtart[]): Schichtart[] {
+  return arten.filter(
+    (a) => a.art === "arbeit" && (einst.zuordnung[a.id] === job.id || (!einst.zuordnung[a.id] && einst.hauptjob === job.id)),
+  );
+}
+
+const jobFarbe = (job: Job, einst: GehaltEinstellungen, arten: readonly Schichtart[]) =>
+  schichtenVon(job, einst, arten)[0]?.farbe ?? "rgb(var(--c-brand-500))";
+
+/** Wahl aus zwei oder drei Möglichkeiten (z. B. Minijob / Normal / Ohne Geld). */
+function Wahl<T extends string>({ wert, optionen, onWahl, label }: { wert: T; optionen: { id: T; name: string }[]; onWahl: (w: T) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid gap-1 rounded-[14px] bg-ink/[0.07] p-1" style={{ gridTemplateColumns: `repeat(${optionen.length}, minmax(0, 1fr))` }}>
+      {optionen.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={wert === o.id}
+          onClick={() => onWahl(o.id)}
+          className={cn(
+            "rounded-[11px] px-2 py-2 text-[13.5px] font-semibold transition-colors",
+            wert === o.id ? "bg-surface text-ink shadow-[0_1px_3px_rgba(0,0,0,0.12)]" : "text-ink-muted",
+          )}
+        >
+          {o.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const ART_OPTIONEN: { id: JobArt; name: string }[] = [
+  { id: "minijob", name: "Minijob" },
+  { id: "brutto", name: "Normal" },
+  { id: "ohne", name: "Ohne Geld" },
+];
+
+/** Band 0–24 Uhr: welche Stunden der Schicht normal sind und welche Nachtzuschlag bekommen. */
+function UhrBand({ schicht, job }: { schicht: Schichtart; job: Pick<Job, "nacht" | "nachtVon" | "nachtBis"> }) {
+  const b = /^(\d{2}):(\d{2})$/.exec(schicht.beginn);
+  const e = /^(\d{2}):(\d{2})$/.exec(schicht.ende);
+  if (!b || !e) return null;
+  const von = Number(b[1]) + Number(b[2]) / 60;
+  let bis = Number(e[1]) + Number(e[2]) / 60;
+  if (bis <= von) bis += 24;
+  const nv = job.nachtVon % 24;
+  const nb = job.nachtBis % 24;
+  const istNacht = (h: number) => job.nacht > 0 && nv !== nb && (nv > nb ? h >= nv || h < nb : h >= nv && h < nb);
+  const stunden = Array.from({ length: 24 }, (_, h) => h);
+  const inSchicht = (h: number) => (h >= von && h < bis) || (h + 24 >= von && h + 24 < bis);
+  let normal = 0;
+  let nacht = 0;
+  for (let m = von * 60; m < bis * 60; m++) {
+    if (istNacht(Math.floor(m / 60) % 24)) nacht += 1;
+    else normal += 1;
   }
   return (
-    <PrivatKarte titel="Gehalt (Schätzung)">
-      <div className="space-y-3 px-4 pb-4 pt-3">
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Geschätzt brutto</div>
-            <div className="tnum mt-0.5 text-[30px] font-bold leading-none tracking-[-0.02em]">
-              {re.geld ? euro(re.geld.summe) : "–"}
-            </div>
-          </div>
-          <label className="flex flex-col items-end gap-1 text-[12px] font-semibold text-ink-muted" htmlFor="gehalt-lohn">
-            Stundenlohn
-            <Zahlenfeld
-              id="gehalt-lohn"
-              wert={einst.stundenlohn}
-              min={0}
-              max={1000}
-              einheit="€"
-              breite="w-[92px]"
-              platzhalter="z. B. 18,00"
-              onWert={(n) => setze({ stundenlohn: n !== null && n > 0 ? n : null })}
-            />
-          </label>
+    <div className="space-y-1.5" data-uhr-band>
+      <div className="grid grid-cols-[repeat(24,minmax(0,1fr))] gap-[2px]" aria-hidden>
+        {stunden.map((h) => (
+          <span
+            key={h}
+            className={cn("h-4 rounded-[3px]", !inSchicht(h) ? "bg-ink/[0.07]" : istNacht(h) ? "bg-warn-dot" : "bg-brand-500/45")}
+          />
+        ))}
+      </div>
+      <div className="tnum flex justify-between text-[10.5px] text-ink-faint" aria-hidden>
+        <span>0</span>
+        <span>6</span>
+        <span>12</span>
+        <span>18</span>
+        <span>24</span>
+      </div>
+      <p className="text-[12.5px] text-ink-muted">
+        {schicht.name} {schicht.beginn}–{schicht.ende}: {std(normal / 60)} Std normal
+        {nacht > 0 ? `, ${std(nacht / 60)} Std mit ${std(job.nacht)} % Nachtzuschlag` : ", kein Nachtzuschlag"}.
+      </p>
+    </div>
+  );
+}
+
+/** Eine Karte je Job: was im Monat herauskommt, aufgeschlüsselt. */
+function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: string; onEinstellungen: () => void }) {
+  const { job, geld } = jr;
+  const zeilen: { text: string; detail: string; betrag: number }[] = [];
+  if (geld && job.stundenlohn !== null) {
+    zeilen.push({ text: "Grundlohn", detail: `${std(jr.stunden)} Std × ${euro(job.stundenlohn)}`, betrag: geld.grundlohn });
+    if (jr.zuschlag.nacht > 0 && job.nacht > 0)
+      zeilen.push({
+        text: `Nachtzuschlag ${std(job.nacht)} %`,
+        detail: `${std(jr.zuschlag.nacht)} Std zwischen ${job.nachtVon} und ${job.nachtBis} Uhr`,
+        betrag: geld.nacht,
+      });
+    if (jr.zuschlag.sonntag > 0 && job.sonntag > 0)
+      zeilen.push({ text: `Sonntagszuschlag ${std(job.sonntag)} %`, detail: `${std(jr.zuschlag.sonntag)} Std`, betrag: geld.sonntag });
+    if (jr.zuschlag.feiertag > 0 && job.feiertag > 0)
+      zeilen.push({ text: `Feiertagszuschlag ${std(job.feiertag)} %`, detail: `${std(jr.zuschlag.feiertag)} Std`, betrag: geld.feiertag });
+    if (geld.ueber > 0) zeilen.push({ text: `Überstundenzuschlag ${std(job.ueber)} %`, detail: "Stunden über Soll", betrag: geld.ueber });
+  }
+  const anteil = jr.minijob ? Math.min(100, (jr.minijob.zaehlt / jr.minijob.grenze) * 100) : 0;
+  const ueberGrenze = jr.minijob ? jr.minijob.zaehlt > jr.minijob.grenze : false;
+  return (
+    <section className="glas overflow-hidden rounded-[22px]" data-job-karte={job.name}>
+      <div className="space-y-3 px-4 pb-4 pt-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: farbe }} aria-hidden />
+          <h3 className="min-w-0 flex-1 truncate text-[17px] font-bold">{job.name}</h3>
+          <span
+            className={cn(
+              "shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold",
+              job.art === "minijob" ? "bg-ok-bg text-ok-fg" : job.art === "brutto" ? "bg-brand-500/12 text-brand-600" : "bg-ink/[0.07] text-ink-muted",
+            )}
+          >
+            {ART_TEXT[job.art].kurz}
+          </span>
         </div>
+
+        {job.art === "ohne" ? (
+          <p className="text-[14px] text-ink-muted">
+            {jr.schichten} Schichten · {std(jr.stunden)} Std{jr.istHaupt ? " · zählt für deine Überstunden" : ""}
+          </p>
+        ) : geld ? (
+          <>
+            <div>
+              <div className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">
+                {job.art === "minijob" ? "Wird ausgezahlt" : "Geschätzt brutto"}
+              </div>
+              <div className="tnum mt-0.5 text-[30px] font-bold leading-none tracking-[-0.02em]" data-job-betrag>
+                {euro(geld.summe)}
+              </div>
+              <div className="mt-1 text-[12.5px] text-ink-muted">
+                {jr.schichten} Schichten · {std(jr.stunden)} Std
+              </div>
+            </div>
+            <dl className="divide-y divide-line">
+              {zeilen.map((z) => (
+                <div key={z.text} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <dt className="text-[14px] font-semibold">{z.text}</dt>
+                    <dd className="text-[12.5px] text-ink-muted">{z.detail}</dd>
+                  </div>
+                  <span className="tnum shrink-0 text-[14.5px] font-semibold">{euro(z.betrag)}</span>
+                </div>
+              ))}
+            </dl>
+            {jr.minijob ? (
+              <div className="space-y-1.5" data-minijob-grenze>
+                <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                  <span className="text-ink-muted">Minijob-Grenze</span>
+                  <span className={cn("tnum font-semibold", ueberGrenze && "text-crit-fg")}>
+                    {euro(jr.minijob.zaehlt)} von {euro(jr.minijob.grenze)}
+                  </span>
+                </div>
+                <div className="h-2.5 overflow-hidden rounded-full bg-ink/[0.08]" aria-hidden>
+                  <span
+                    className={cn("block h-full rounded-full", ueberGrenze ? "bg-crit-dot" : anteil > 90 ? "bg-warn-dot" : "bg-ok-dot")}
+                    style={{ width: `${anteil}%` }}
+                  />
+                </div>
+                <p className="text-[11.5px] leading-snug text-ink-faint">
+                  {ueberGrenze
+                    ? "Über der Grenze – sprich mit deinem Arbeitgeber, sonst ist es kein Minijob mehr."
+                    : "Zuschläge für Nacht, Sonntag und Feiertag zählen in der Regel nicht zur Grenze."}
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <p className="text-[14px] text-ink-muted">Trag den Stundenlohn ein, dann rechnet ShiftNexo diesen Job aus.</p>
+        )}
+
+        <button
+          type="button"
+          onClick={onEinstellungen}
+          className="flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] bg-ink/[0.06] text-[14px] font-semibold"
+        >
+          <Settings2 className="h-4 w-4" /> Lohn, Zuschläge, Schichten
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Feld mit Beschriftung links und Eingabe rechts. */
+function FeldZeile({ id, name, hinweis, children, aus = false }: { id?: string; name: string; hinweis?: ReactNode; children: ReactNode; aus?: boolean }) {
+  return (
+    <div className={cn("flex items-center justify-between gap-3 py-2.5", aus && "opacity-45")}>
+      <label htmlFor={id} className="min-w-0">
+        <span className="block text-[15px] font-semibold">{name}</span>
+        {hinweis ? <span className="block text-[12.5px] leading-snug text-ink-muted">{hinweis}</span> : null}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+/** Nachtzuschlag: Prozent und Zeitraum. */
+function NachtFelder({ job, aendere, praefix }: { job: Job; aendere: (t: Partial<Job>) => void; praefix: string }) {
+  return (
+    <>
+      <FeldZeile id={`${praefix}-nacht`} name="Nachtzuschlag" hinweis="0 = keiner">
+        <Zahlenfeld id={`${praefix}-nacht`} wert={job.nacht} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ nacht: n })} />
+      </FeldZeile>
+      <FeldZeile name="Nachtzeit" hinweis="volle Stunden, z. B. 23 bis 24 oder 20 bis 6" aus={job.nacht === 0}>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <Zahlenfeld id={`${praefix}-nacht-von`} wert={job.nachtVon} min={0} max={24} einheit="–" breite="w-[56px]" kommastellen={0} onWert={(n) => n !== null && aendere({ nachtVon: Math.round(n) })} />
+          <Zahlenfeld id={`${praefix}-nacht-bis`} wert={job.nachtBis} min={0} max={24} einheit="Uhr" breite="w-[56px]" kommastellen={0} onWert={(n) => n !== null && aendere({ nachtBis: Math.round(n) })} />
+        </span>
+      </FeldZeile>
+    </>
+  );
+}
+
+/** Schichten ankreuzen, die zu diesem Job gehören. */
+function SchichtWahl({
+  job,
+  einst,
+  arten,
+  gewaehlt,
+  onTipp,
+}: {
+  job: Job;
+  einst: GehaltEinstellungen;
+  arten: readonly Schichtart[];
+  gewaehlt: ReadonlySet<string>;
+  onTipp: (id: string) => void;
+}) {
+  const arbeit = arten.filter((a) => a.art === "arbeit");
+  if (!arbeit.length) {
+    return (
+      <p className="py-2 text-[13.5px] text-ink-muted">
+        Du hast noch keine Arbeitsschicht. Leg sie unter{" "}
+        <Link href="/privat/schichten?reiter=liste" className="font-semibold text-brand-600">
+          Meine Schichten
+        </Link>{" "}
+        an.
+      </p>
+    );
+  }
+  return (
+    <ul className="divide-y divide-line" data-schicht-wahl>
+      {arbeit.map((a) => {
+        const an = gewaehlt.has(a.id);
+        const anderer = einst.jobs.find((j) => j.id === einst.zuordnung[a.id] && j.id !== job.id);
+        return (
+          <li key={a.id}>
+            <button type="button" role="checkbox" aria-checked={an} onClick={() => onTipp(a.id)} className="flex w-full items-center gap-3 py-2.5 text-left">
+              <span
+                className={cn(
+                  "grid h-6 w-6 shrink-0 place-items-center rounded-[8px] border-2",
+                  an ? "border-brand-500 bg-brand-500 text-white" : "border-ink/15",
+                )}
+              >
+                {an ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
+              </span>
+              <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: a.farbe }} aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-semibold">{a.name}</span>
+                <span className="block text-[12.5px] text-ink-muted">
+                  {a.beginn && a.ende ? `${a.beginn}–${a.ende} · ` : ""}
+                  {std(a.stunden)} Std{!an && anderer ? ` · gehört zu ${anderer.name}` : ""}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Einstellungen eines Jobs – jede Änderung gilt sofort. */
+function JobBlatt({
+  job,
+  einst,
+  arten,
+  setze,
+  onClose,
+}: {
+  job: Job;
+  einst: GehaltEinstellungen;
+  arten: readonly Schichtart[];
+  setze: (teil: Partial<GehaltEinstellungen>) => void;
+  onClose: () => void;
+}) {
+  const [loeschen, setLoeschen] = useState(false);
+  const aendere = (t: Partial<Job>) => setze({ jobs: einst.jobs.map((j) => (j.id === job.id ? { ...j, ...t } : j)) });
+  const istHaupt = einst.hauptjob === job.id;
+  const gewaehlt = new Set(schichtenVon(job, einst, arten).map((a) => a.id));
+  const tipp = (id: string) => {
+    const z = { ...einst.zuordnung };
+    if (gewaehlt.has(id)) {
+      // Abwählen: beim Hauptjob ausdrücklich „keinem Job“ geht nicht – dann nur die Zuordnung lösen.
+      delete z[id];
+      if (istHaupt) {
+        const anderer = einst.jobs.find((j) => j.id !== job.id);
+        if (anderer) z[id] = anderer.id;
+      }
+    } else z[id] = job.id;
+    setze({ zuordnung: z });
+  };
+  const beispiel = arten.find((a) => gewaehlt.has(a.id) && a.beginn && a.ende);
+  const jahr = new Date().getFullYear();
+  return (
+    <Blatt titel={job.name} unter={ART_TEXT[job.art].unter} onClose={onClose} wischZu="kopf">
+      <div className="space-y-4 pb-2" data-job-blatt>
+        <div className="space-y-1">
+          <label htmlFor="job-name" className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">
+            Name
+          </label>
+          <input
+            id="job-name"
+            defaultValue={job.name}
+            maxLength={40}
+            onBlur={(e) => e.target.value.trim() && aendere({ name: e.target.value.trim() })}
+            className="h-11 w-full rounded-[12px] border-2 border-ink/10 bg-surface px-3 text-[16px] font-semibold outline-none focus:border-brand-500"
+          />
+        </div>
+        <Wahl label="Art des Jobs" wert={job.art} optionen={ART_OPTIONEN} onWahl={(art) => aendere({ art })} />
+
+        {job.art !== "ohne" ? (
+          <div className="divide-y divide-line">
+            <FeldZeile id="job-lohn" name="Stundenlohn" hinweis={job.art === "minijob" ? "so wie er ausgezahlt wird" : "brutto"}>
+              <Zahlenfeld
+                id="job-lohn"
+                wert={job.stundenlohn}
+                min={0}
+                max={1000}
+                einheit="€"
+                breite="w-[92px]"
+                platzhalter="z. B. 13,90"
+                onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
+              />
+            </FeldZeile>
+            <NachtFelder job={job} aendere={aendere} praefix="job" />
+            <FeldZeile id="job-sonntag" name="Sonntagszuschlag" hinweis="0 = keiner">
+              <Zahlenfeld id="job-sonntag" wert={job.sonntag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ sonntag: n })} />
+            </FeldZeile>
+            <FeldZeile id="job-feiertag" name="Feiertagszuschlag" hinweis="0 = keiner">
+              <Zahlenfeld id="job-feiertag" wert={job.feiertag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ feiertag: n })} />
+            </FeldZeile>
+            {job.art === "minijob" ? (
+              <FeldZeile id="job-grenze" name="Minijob-Grenze im Monat" hinweis={`leer = gesetzlich (${jahr}: ${minijobGrenze(jahr)} €)`}>
+                <Zahlenfeld
+                  id="job-grenze"
+                  wert={job.grenze}
+                  min={0}
+                  max={10000}
+                  einheit="€"
+                  breite="w-[92px]"
+                  platzhalter={String(minijobGrenze(jahr))}
+                  onWert={(n) => aendere({ grenze: n !== null && n > 0 ? n : null })}
+                />
+              </FeldZeile>
+            ) : null}
+          </div>
+        ) : null}
+
+        {beispiel && job.art !== "ohne" ? <UhrBand schicht={beispiel} job={job} /> : null}
 
         <div className="flex items-center justify-between gap-3 rounded-[16px] bg-brand-500/10 px-3.5 py-3">
           <div className="min-w-0">
-            <div id="gehalt-schicht" className="text-[15px] font-semibold">
-              Ich arbeite in Schicht
+            <div id="job-haupt" className="text-[15px] font-semibold">
+              Hauptjob
             </div>
-            <div className="text-[12.5px] leading-snug text-ink-muted">Dann zählen Zuschläge für Nacht, Sonntag und Feiertag.</div>
+            <div className="text-[12.5px] leading-snug text-ink-muted">
+              Deine Wochenstunden und Überstunden gelten hier. Schichten ohne Job zählen auch dazu.
+            </div>
           </div>
-          <Schalter an={einst.schicht} onChange={(an) => setze({ schicht: an })} labelId="gehalt-schicht" />
+          <Schalter an={istHaupt} onChange={(an) => setze({ hauptjob: an ? job.id : null })} labelId="job-haupt" />
+        </div>
+        {istHaupt && job.art !== "ohne" ? (
+          <FeldZeile id="job-ueber" name="Überstundenzuschlag" hinweis="auf Stunden über deinem Soll">
+            <Zahlenfeld id="job-ueber" wert={job.ueber} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ ueber: n })} />
+          </FeldZeile>
+        ) : null}
+
+        <div>
+          <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Schichten von {job.name}</p>
+          <SchichtWahl job={job} einst={einst} arten={arten} gewaehlt={gewaehlt} onTipp={tipp} />
         </div>
 
-        {re.geld ? (
-          <dl className="divide-y divide-line">
-            {zeilen.map((z) => (
-              <div key={z.text} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
-                  <dt className="text-[14.5px] font-semibold">{z.text}</dt>
-                  <dd className="text-[12.5px] text-ink-muted">{z.detail}</dd>
-                </div>
-                <span className="tnum shrink-0 text-[15px] font-semibold">{euro(z.betrag)}</span>
-              </div>
-            ))}
-            <div className="flex items-center justify-between gap-3 border-t-2 border-ink pt-3">
-              <dt className="text-[15px] font-bold">Summe</dt>
-              <dd className="tnum text-[18px] font-bold">{euro(re.geld.summe)}</dd>
+        {loeschen ? (
+          <div className="space-y-2 rounded-[16px] bg-crit-bg px-3.5 py-3">
+            <p className="text-[14px] font-semibold text-crit-fg">{job.name} löschen?</p>
+            <p className="text-[13px] text-ink-muted">Die Schichten bleiben im Kalender, sie zählen dann nur nicht mehr für diesen Job.</p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setLoeschen(false)} className="h-10 flex-1 rounded-[12px] bg-surface text-[14px] font-semibold">
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const z = Object.fromEntries(Object.entries(einst.zuordnung).filter(([, j]) => j !== job.id));
+                  setze({ jobs: einst.jobs.filter((j) => j.id !== job.id), zuordnung: z, hauptjob: istHaupt ? null : einst.hauptjob });
+                  onClose();
+                }}
+                className="h-10 flex-1 rounded-[12px] bg-crit-dot text-[14px] font-semibold text-white"
+              >
+                Löschen
+              </button>
             </div>
-          </dl>
+          </div>
         ) : (
-          <p className="text-[13.5px] leading-snug text-ink-muted">Trag deinen Stundenlohn (brutto) ein, dann rechnet ShiftNexo deinen Monat aus.</p>
+          <button type="button" onClick={() => setLoeschen(true)} className="text-[13.5px] font-semibold text-crit-fg">
+            Job löschen
+          </button>
         )}
-        <p className="text-[12px] leading-snug text-ink-faint">
-          Eine Schätzung vor Steuern und Abgaben, keine Lohnabrechnung. Stundenlohn und Sätze bleiben nur in diesem Browser, sie
-          werden nicht an ShiftNexo gesendet. Pausen werden anteilig abgezogen, wenn die Schicht kürzer eingetragen ist als ihre Uhrzeiten.
-        </p>
       </div>
-    </PrivatKarte>
+    </Blatt>
   );
 }
 
-/** Zuschläge in Prozent – so ändern, wie sie im Tarif- oder Arbeitsvertrag stehen. */
-export function ZuschlagKarte({ einst, setze }: { einst: GehaltEinstellungen; setze: (teil: Partial<GehaltEinstellungen>) => void }) {
-  const saetze = [
-    { id: "nacht", name: "Nachtarbeit", hinweis: `${einst.nachtVon} bis ${einst.nachtBis} Uhr`, nurSchicht: true },
-    { id: "sonntag", name: "Sonntag", hinweis: "0 bis 24 Uhr", nurSchicht: true },
-    { id: "feiertag", name: "Feiertag", hinweis: "nach deinem Bundesland", nurSchicht: true },
-    { id: "ueber", name: "Überstunden", hinweis: "Stunden über Soll", nurSchicht: false },
-  ] as const;
-  return (
-    <PrivatKarte titel="Zuschläge in Prozent">
-      <div className="px-4 pb-4 pt-3">
-        <p className="mb-1 text-[13px] leading-snug text-ink-muted">Trag die Sätze aus deinem Tarifvertrag oder Arbeitsvertrag ein.</p>
-        <ul className="divide-y divide-line">
-          {saetze.map((s) => {
-            const aus = s.nurSchicht && !einst.schicht;
-            return (
-              <li key={s.id} className={cn("flex items-center justify-between gap-3 py-2.5", aus && "opacity-45")}>
-                <label htmlFor={`satz-${s.id}`} className="min-w-0">
-                  <span className="block text-[15px] font-semibold">{s.name}</span>
-                  <span className="block text-[12.5px] text-ink-muted">{aus ? "nur im Schichtbetrieb" : s.hinweis}</span>
-                </label>
-                <Zahlenfeld
-                  id={`satz-${s.id}`}
-                  wert={einst[s.id]}
-                  min={0}
-                  max={500}
-                  einheit="%"
-                  onWert={(n) => n !== null && setze({ [s.id]: n })}
-                />
-              </li>
-            );
-          })}
-        </ul>
-        {einst.schicht ? (
-          <div className="mt-1 flex items-center justify-between gap-3 border-t border-line py-2.5">
-            <span className="min-w-0">
-              <span className="block text-[15px] font-semibold">Nachtzeit (von – bis)</span>
-              <span className="block text-[12.5px] text-ink-muted">volle Stunden, z. B. 20 – 6 oder 22 – 6</span>
-            </span>
-            <span className="flex shrink-0 items-center gap-1.5">
-              <Zahlenfeld id="nacht-von" wert={einst.nachtVon} min={0} max={23} einheit="–" breite="w-[56px]" kommastellen={0} onWert={(n) => n !== null && setze({ nachtVon: Math.round(n) })} />
-              <Zahlenfeld id="nacht-bis" wert={einst.nachtBis} min={0} max={23} einheit="Uhr" breite="w-[56px]" kommastellen={0} onWert={(n) => n !== null && setze({ nachtBis: Math.round(n) })} />
-            </span>
+/**
+ * Assistent für einen neuen Job: Name und Art, Stundenlohn, Schichten,
+ * Zuschläge – eine Frage pro Schritt.
+ */
+function Assistent({
+  einst,
+  arten,
+  onFertig,
+  onAbbrechen,
+}: {
+  einst: GehaltEinstellungen;
+  arten: readonly Schichtart[];
+  onFertig: (job: Job, schichten: string[], haupt: boolean) => void;
+  onAbbrechen?: () => void;
+}) {
+  const [schritt, setSchritt] = useState(0);
+  const [job, setJob] = useState<Job>(() => ({
+    id: `job-${Date.now().toString(36)}`,
+    name: "",
+    art: "minijob",
+    ...JOB_STANDARD,
+    nacht: 0,
+    sonntag: 0,
+    feiertag: 0,
+    nachtVon: 23,
+    nachtBis: 6,
+  }));
+  const [haupt, setHaupt] = useState(einst.hauptjob === null);
+  const [gewaehlt, setGewaehlt] = useState<Set<string>>(new Set());
+  const aendere = (t: Partial<Job>) => setJob((j) => ({ ...j, ...t }));
+  const ohneGeld = job.art === "ohne";
+  // „Ohne Geld“ überspringt Lohn und Zuschläge.
+  const schritte = ohneGeld ? ["art", "schichten"] : ["art", "lohn", "schichten", "zuschlag"];
+  const aktuell = schritte[Math.min(schritt, schritte.length - 1)]!;
+  const letzter = schritt >= schritte.length - 1;
+  const name = job.name.trim() || "dein Job";
+  const kannWeiter = aktuell !== "art" || job.name.trim().length > 0;
+  const beispiel = arten.find((a) => gewaehlt.has(a.id) && a.beginn && a.ende);
+
+  function weiter() {
+    if (!kannWeiter) return;
+    if (letzter) onFertig({ ...job, name: job.name.trim() }, [...gewaehlt], haupt && job.art !== "minijob");
+    else setSchritt((s) => s + 1);
+  }
+
+  let frage: string;
+  let unter: string;
+  let inhalt: ReactNode;
+  if (aktuell === "art") {
+    frage = "Für welchen Job willst du dein Geld sehen?";
+    unter = "Hast du zwei Jobs, legst du danach den zweiten an.";
+    inhalt = (
+      <div className="space-y-3">
+        <input
+          aria-label="Name des Jobs"
+          autoFocus
+          value={job.name}
+          maxLength={40}
+          placeholder="z. B. Tankstelle"
+          onChange={(e) => aendere({ name: e.target.value })}
+          onKeyDown={(e) => e.key === "Enter" && weiter()}
+          className="h-12 w-full rounded-[14px] border-2 border-ink/10 bg-surface px-3.5 text-[17px] font-semibold outline-none focus:border-brand-500"
+        />
+        <div className="space-y-2" role="radiogroup" aria-label="Art des Jobs">
+          {ART_OPTIONEN.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={job.art === o.id}
+              onClick={() => aendere({ art: o.id })}
+              className={cn(
+                "flex w-full items-start gap-3 rounded-[16px] border-2 px-3.5 py-3 text-left",
+                job.art === o.id ? "border-brand-500 bg-brand-500/[0.07]" : "border-ink/10",
+              )}
+            >
+              <span className={cn("mt-0.5 h-5 w-5 shrink-0 rounded-full border-2", job.art === o.id ? "border-[6px] border-brand-500" : "border-ink/20")} />
+              <span>
+                <span className="block text-[15px] font-semibold">{ART_TEXT[o.id].name}</span>
+                <span className="block text-[13px] leading-snug text-ink-muted">{ART_TEXT[o.id].unter}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+        {job.art !== "minijob" ? (
+          <div className="flex items-center justify-between gap-3 rounded-[16px] bg-brand-500/10 px-3.5 py-3">
+            <div className="min-w-0">
+              <div id="assistent-haupt" className="text-[15px] font-semibold">
+                Das ist mein Hauptjob
+              </div>
+              <div className="text-[12.5px] leading-snug text-ink-muted">Wochenstunden und Überstunden gelten hier.</div>
+            </div>
+            <Schalter an={haupt} onChange={setHaupt} labelId="assistent-haupt" />
           </div>
         ) : null}
-        <p className="mt-2 text-[12px] leading-snug text-ink-faint">
-          Fällt eine Stunde auf einen Sonntag und einen Feiertag, zählt der höhere Satz; der Nachtzuschlag kommt dazu. Arbeitest du nicht
-          in Schicht, schalte oben „Ich arbeite in Schicht“ aus – dann bleibt nur der Überstundenzuschlag.
+      </div>
+    );
+  } else if (aktuell === "lohn") {
+    frage = `Wie viel bekommst du bei ${name} pro Stunde?`;
+    unter = job.art === "minijob" ? "Beim Minijob: so viel, wie ausgezahlt wird." : "Brutto, so wie er im Vertrag steht.";
+    inhalt = (
+      <div className="flex justify-center py-2">
+        <Zahlenfeld
+          id="assistent-lohn"
+          wert={job.stundenlohn}
+          min={0}
+          max={1000}
+          einheit="€"
+          breite="w-[130px]"
+          platzhalter="13,90"
+          onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
+        />
+      </div>
+    );
+  } else if (aktuell === "schichten") {
+    frage = `Welche Schichten gehören zu ${name}?`;
+    unter = `Nur diese zählen für ${name}.`;
+    inhalt = (
+      <SchichtWahl
+        job={job}
+        einst={einst}
+        arten={arten}
+        gewaehlt={gewaehlt}
+        onTipp={(id) =>
+          setGewaehlt((g) => {
+            const n = new Set(g);
+            if (n.has(id)) n.delete(id);
+            else n.add(id);
+            return n;
+          })
+        }
+      />
+    );
+  } else {
+    frage = "Bekommst du Zuschläge?";
+    unter = "Zum Beispiel 25 % für die Stunde von 23 bis 24 Uhr. 0 = keiner.";
+    inhalt = (
+      <div className="space-y-3">
+        <div className="divide-y divide-line">
+          <NachtFelder job={job} aendere={aendere} praefix="assistent" />
+          <FeldZeile id="assistent-sonntag" name="Sonntagszuschlag">
+            <Zahlenfeld id="assistent-sonntag" wert={job.sonntag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ sonntag: n })} />
+          </FeldZeile>
+          <FeldZeile id="assistent-feiertag" name="Feiertagszuschlag">
+            <Zahlenfeld id="assistent-feiertag" wert={job.feiertag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ feiertag: n })} />
+          </FeldZeile>
+        </div>
+        {beispiel ? <UhrBand schicht={beispiel} job={job} /> : null}
+      </div>
+    );
+  }
+
+  return (
+    <PrivatKarte>
+      <div className="space-y-4 px-4 pb-4 pt-4" data-assistent={aktuell}>
+        <div className="flex justify-center gap-1.5" aria-hidden>
+          {schritte.map((s, i) => (
+            <span key={s} className={cn("h-1.5 w-7 rounded-full", i <= schritt ? "bg-brand-500" : "bg-ink/10")} />
+          ))}
+        </div>
+        <p className="text-center text-[12.5px] text-ink-muted">
+          Schritt {Math.min(schritt, schritte.length - 1) + 1} von {schritte.length}
         </p>
+        <div className="space-y-1">
+          <h3 className="text-[21px] font-bold leading-tight tracking-[-0.02em]">{frage}</h3>
+          <p className="text-[13.5px] text-ink-muted">{unter}</p>
+        </div>
+        {inhalt}
         <button
           type="button"
-          onClick={() => setze({ ...GEHALT_STANDARD, stundenlohn: einst.stundenlohn, schicht: einst.schicht })}
-          className="mt-2 text-[13px] font-semibold text-brand-600"
+          disabled={!kannWeiter}
+          onClick={weiter}
+          className="h-12 w-full rounded-[14px] bg-brand-600 text-[15.5px] font-semibold text-white disabled:opacity-40"
         >
-          Sätze zurücksetzen
+          {letzter ? "Fertig" : "Weiter"}
         </button>
+        {schritt > 0 ? (
+          <button type="button" onClick={() => setSchritt((s) => s - 1)} className="block w-full text-center text-[14px] font-semibold text-ink-muted">
+            Zurück
+          </button>
+        ) : onAbbrechen ? (
+          <button type="button" onClick={onAbbrechen} className="block w-full text-center text-[14px] font-semibold text-ink-muted">
+            Abbrechen
+          </button>
+        ) : null}
       </div>
     </PrivatKarte>
   );
 }
 
-/** Der Monat mit Gehalt und Zuschlägen – für den Bereich „Geld“ unter den Kacheln. */
-export function PrivatGeld() {
-  const { konto, schichtarten } = usePrivat();
-  const { einst, setze } = useGehalt(konto.userId);
-  const [monat, setMonat] = useState(() => {
-    const h = new Date();
-    return new Date(h.getFullYear(), h.getMonth(), 1);
-  });
-  const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
-  const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
-  const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
-  const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
+/** Ergebnis des Assistenten in die Einstellungen schreiben. */
+function jobAnlegen(einst: GehaltEinstellungen, job: Job, schichten: string[], haupt: boolean): Partial<GehaltEinstellungen> {
+  const zuordnung = { ...einst.zuordnung };
+  for (const id of schichten) zuordnung[id] = job.id;
+  return {
+    jobs: [...einst.jobs, job],
+    zuordnung,
+    hauptjob: haupt ? job.id : einst.hauptjob,
+    eingerichtet: true,
+  };
+}
 
+/** Tage, Tages-Uhrzeiten und Feiertage eines Monats – für Geld und die Kachel. */
+export function useMonatsDaten(von: string, bis: string, neuLaden: unknown = null) {
+  const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
+  const [zeiten, setZeiten] = useState<Record<string, TagZeit>>({});
+  const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
     let aus = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTage(null);
-    void ladeFeiertage(monat.getFullYear())
+    void ladeFeiertage(Number(von.slice(0, 4)))
       .then((f) => !aus && setFeiertage(new Set(f.map((h) => h.tag))))
+      .catch(() => undefined);
+    void ladeTagZeiten(von, bis)
+      .then((z) => !aus && setZeiten(z))
       .catch(() => undefined);
     void ladeTage(von, bis)
       .then((t) => !aus && setTage(t))
@@ -365,10 +848,37 @@ export function PrivatGeld() {
     return () => {
       aus = true;
     };
-  }, [von, bis, monat]);
+  }, [von, bis, neuLaden]);
+  return { tage, zeiten, feiertage };
+}
 
-  const re = tage && schichtarten ? rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst }) : null;
+/** Der Monat mit Geld je Job – für den Bereich „Geld“ unter den Kacheln. */
+export function PrivatGeld() {
+  const { konto, schichtarten } = usePrivat();
+  const { einst, setze } = useGehalt(konto.userId);
+  const [monat, setMonat] = useState(() => {
+    const h = new Date();
+    return new Date(h.getFullYear(), h.getMonth(), 1);
+  });
+  const [offen, setOffen] = useState<string | null>(null);
+  const [neuerJob, setNeuerJob] = useState(false);
+  const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
+  const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
+  const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
+  const arten = schichtarten ?? [];
+
+  const re =
+    tage && schichtarten ? rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten }) : null;
   const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + s, 1));
+  const fertig = useCallback(
+    (job: Job, schichten: string[], haupt: boolean) => {
+      setze(jobAnlegen(einst, job, schichten, haupt));
+      setNeuerJob(false);
+    },
+    [einst, setze],
+  );
+  const offenerJob = einst.jobs.find((j) => j.id === offen) ?? null;
+  const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
 
   return (
     <div className="space-y-4">
@@ -387,14 +897,36 @@ export function PrivatGeld() {
           </>
         }
       />
-      {re ? (
-        <>
-          <GehaltKarte re={re} einst={einst} setze={setze} />
-          <ZuschlagKarte einst={einst} setze={setze} />
-        </>
-      ) : (
+      {einst.jobs.length === 0 || neuerJob ? (
+        <Assistent key={einst.jobs.length} einst={einst} arten={arten} onFertig={fertig} onAbbrechen={einst.jobs.length ? () => setNeuerJob(false) : undefined} />
+      ) : !re ? (
         <p className="px-1 text-[14px] text-ink-muted">Wird berechnet …</p>
+      ) : (
+        <>
+          {mitGeld.length > 1 && re.summe !== null ? (
+            <div className="flex items-center justify-between gap-3 px-1" data-geld-summe>
+              <span className="text-[14px] text-ink-muted">Alle Jobs zusammen</span>
+              <span className="tnum text-[17px] font-bold">{euro(re.summe)}</span>
+            </div>
+          ) : null}
+          {re.jobs.map((jr) => (
+            <JobKarte key={jr.job.id} jr={jr} farbe={jobFarbe(jr.job, einst, arten)} onEinstellungen={() => setOffen(jr.job.id)} />
+          ))}
+          <button
+            type="button"
+            onClick={() => setNeuerJob(true)}
+            className="flex h-12 w-full items-center justify-center gap-1.5 rounded-[16px] bg-brand-500/10 text-[15px] font-semibold text-brand-600"
+          >
+            <Plus className="h-4 w-4" /> Job hinzufügen
+          </button>
+          <p className="px-1 text-[12px] leading-snug text-ink-faint">
+            Minijob: Betrag, wie er ausgezahlt wird. Normaler Job: Schätzung vor Steuern und Abgaben, keine Lohnabrechnung. Andere
+            Uhrzeit an einem Tag? Tag im Kalender antippen. Jobs, Lohn und Sätze bleiben nur in diesem Browser.
+          </p>
+        </>
       )}
+      {offenerJob ? <JobBlatt job={offenerJob} einst={einst} arten={arten} setze={setze} onClose={() => setOffen(null)} /> : null}
     </div>
   );
 }
+

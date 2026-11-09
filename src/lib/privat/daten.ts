@@ -199,6 +199,56 @@ export async function leereTage(tage: string[]): Promise<void> {
   if (error) fehler(error, "Das konnte nicht gespeichert werden.");
 }
 
+/**
+ * Andere Uhrzeit an einem einzelnen Tag (Migration 0202), z. B. die
+ * Spätschicht heute 17:00–23:30 statt 18:00–24:00. Schlüssel `tag|schichtartId`.
+ * Gilt nur, solange genau diese Schicht an dem Tag eingetragen ist.
+ */
+export interface TagZeit {
+  beginn: string;
+  ende: string;
+}
+
+export const tagZeitSchluessel = (tag: string, schichtartId: string) => `${tag}|${schichtartId}`;
+
+export async function ladeTagZeiten(von: string, bis: string): Promise<Record<string, TagZeit>> {
+  const { data, error } = await createClient()
+    .from("privat_tag_zeiten")
+    .select("tag, schichtart_id, beginn, ende")
+    .gte("tag", von)
+    .lte("tag", bis)
+    .limit(2000);
+  // Ohne die Tabelle (oder offline) gelten einfach die Zeiten der Schicht.
+  if (error) return {};
+  const aus: Record<string, TagZeit> = {};
+  for (const z of (data ?? []) as { tag: string; schichtart_id: string; beginn: string; ende: string }[]) {
+    const b = zeit(z.beginn);
+    const e = zeit(z.ende);
+    if (b && e) aus[tagZeitSchluessel(z.tag, z.schichtart_id)] = { beginn: b, ende: e };
+  }
+  return aus;
+}
+
+/** Andere Uhrzeit an einem Tag setzen; null = wieder wie bei der Schicht. */
+export async function setzeTagZeit(tag: string, schichtartId: string, z: TagZeit | null): Promise<void> {
+  const supabase = createClient();
+  if (z === null) {
+    const { error } = await supabase.from("privat_tag_zeiten").delete().eq("tag", tag).eq("schichtart_id", schichtartId);
+    if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+    return;
+  }
+  if (!/^\d{2}:\d{2}$/.test(z.beginn) || !/^\d{2}:\d{2}$/.test(z.ende) || z.beginn === z.ende) {
+    throw new PrivatFehler("Bitte Beginn und Ende eintragen.");
+  }
+  const { data: anspruch } = await supabase.auth.getClaims();
+  const userId = anspruch?.claims?.sub;
+  if (!userId) throw new PrivatFehler("Deine Sitzung ist abgelaufen.");
+  const { error } = await supabase
+    .from("privat_tag_zeiten")
+    .upsert({ user_id: userId, tag, schichtart_id: schichtartId, beginn: z.beginn, ende: z.ende }, { onConflict: "user_id,tag,schichtart_id" });
+  if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
 /** Abwesenheiten (Urlaub, Krank) kommen als Zusatz auf eine Schicht. */
 export const istAbwesenheit = (a: Pick<Schichtart, "art"> | undefined) => a?.art === "urlaub" || a?.art === "krank";
 

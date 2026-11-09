@@ -4,10 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { farbStil, idsVon, istAbwesenheit, ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
-import { GEHALT_STANDARD, rechne } from "@/lib/privat/gehalt";
+import { farbStil, idsVon, istAbwesenheit, ladeFeiertage, ladeTage, ladeTagZeiten, tagZeitSchluessel, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
+import { rechne, schichtAmTag } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
-import { UeberstundenKarte } from "./gehalt";
+import { UeberstundenKarte, useGehalt } from "./gehalt";
 import { usePrivat } from "./kontext";
 import { AbschnittKopf, PrivatKarte, PrivatKopf, RundKnopf } from "./rahmen";
 
@@ -29,6 +29,8 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
   const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
   const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
   const [fehler, setFehler] = useState<string | null>(null);
+  const [zeiten, setZeiten] = useState<Record<string, TagZeit>>({});
+  const { einst } = useGehalt(konto.userId);
 
   const d = fromISO(anker);
   const von = zeitraum === "jahr" ? `${d.getFullYear()}-01-01` : toISO(new Date(d.getFullYear(), d.getMonth(), 1));
@@ -43,6 +45,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
     Promise.all(jahre.map((j) => ladeFeiertage(j)))
       .then((l) => !aus && setFeiertage(new Set(l.flat().map((h) => h.tag))))
       .catch(() => undefined);
+    void ladeTagZeiten(von, bisVoll).then((z) => !aus && setZeiten(z));
     ladeTage(von, bisVoll)
       .then((t) => !aus && setTage(t))
       .catch((e: unknown) => !aus && setFehler(e instanceof Error ? e.message : "Konnte nicht geladen werden."));
@@ -63,7 +66,11 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
       // Stunden: Ist an dem Tag Urlaub oder Krank eingetragen, zählen dessen
       // Stunden – die Schicht darunter nicht noch einmal.
       const abw = ids.filter((id) => istAbwesenheit(nach.get(id)));
-      for (const id of abw.length ? abw : ids) stunden.set(id, (stunden.get(id) ?? 0) + (nach.get(id)?.stunden ?? 0));
+      for (const id of abw.length ? abw : ids) {
+        const a = nach.get(id);
+        const h = a ? schichtAmTag(a, zeiten[tagZeitSchluessel(tag, id)]).stunden : 0;
+        stunden.set(id, (stunden.get(id) ?? 0) + h);
+      }
     }
     const zeilen = schichtarten.map((a) => ({ art: a, anzahl: anzahl.get(a.id) ?? 0, stunden: stunden.get(a.id) ?? 0 }));
     const gesamtAnzahl = zeilen.reduce((s, z) => s + z.anzahl, 0);
@@ -73,7 +80,7 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
 
   const rechnung =
     tage && schichtarten
-      ? rechne({ tage, von, bis: bis < von ? von : bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst: GEHALT_STANDARD })
+      ? rechne({ tage, von, bis: bis < von ? von : bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten })
       : null;
 
   function springe(s: number) {
