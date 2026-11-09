@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react";
 import { useTodoZahl } from "@/components/kalender/todo-zaehler";
 import { LeisteHalten } from "@/components/layout/leiste-halten";
+import { AustrittHinweis } from "./austritt-hinweis";
 import { appScroller } from "@/lib/app-scroller";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,9 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
         {children}
       </main>
       <LeisteHalten />
+      <Suspense fallback={null}>
+        <AustrittHinweis />
+      </Suspense>
       {/* Schwebende Leiste im Glas-Stil – fest am unteren Rand. */}
       <nav
         aria-label="Bereiche"

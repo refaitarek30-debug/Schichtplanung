@@ -42,18 +42,23 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
 
   if (error || !data) return null;
 
-  // Nur für die Administration nachfragen – alle anderen haben ohnehin
-  // keinen Zugang. Geht die Frage schief, bleibt der Menüpunkt weg; die
-  // Anmeldung selbst hängt nicht daran.
+  // Protokoll: Die Führung sieht die Änderungen, die freigeschaltete
+  // Administration alles (protokoll_umfang, Migration 0200). Geht die Frage
+  // schief, bleibt der Menüpunkt weg; die Anmeldung selbst hängt nicht daran.
   let protokoll = false;
+  let protokollVoll = false;
+  const fuehrung = data.role === "admin" || data.role === "shift_leader";
   const [, privat] = await Promise.all([
-    data.role === "admin"
-      ? Promise.resolve(supabase.rpc("darf_protokoll"))
-          .then(({ data: darf }) => {
-            protokoll = darf === true;
+    fuehrung
+      ? Promise.resolve(supabase.rpc("protokoll_umfang"))
+          .then(({ data: umfang, error: umfangFehler }) => {
+            if (umfangFehler) throw umfangFehler;
+            protokoll = umfang === "voll" || umfang === "aenderungen";
+            protokollVoll = umfang === "voll";
           })
           .catch(() => {
             protokoll = false;
+            protokollVoll = false;
           })
       : null,
     // Zusätzlich ein Privatbereich mit demselben Login (Migration 0194)?
@@ -86,6 +91,7 @@ export const getAppSession = cache(async (): Promise<AppSession | null> => {
       shiftName: shiftRow?.name ?? null,
       hiddenDashboardTiles: data.hidden_dashboard_tiles ?? [],
       protokoll,
+      protokollVoll,
       startSeite: istStartSeite(data.start_seite) ? data.start_seite : null,
       startAnsicht: data.start_ansicht === "kompakt" ? "kompakt" : "klassisch",
       neuigkeitenGesehen: data.neuigkeiten_gesehen ?? null,

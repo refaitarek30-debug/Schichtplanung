@@ -37,7 +37,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="28. Oktober 2026"
+      updated="9. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -212,8 +212,11 @@ export default function DatenschutzPage() {
             wird nicht protokolliert, welche Seiten jemand aufruft oder worauf geklickt wird
           </li>
           <li>
-            Einsehen kann das Protokoll nur eine vom Unternehmen ausdrücklich dafür
-            freigeschaltete Person der Administration, nicht jede Administration
+            Das Änderungsprotokoll (wer hat was geändert) sehen die Schichtleitung und die
+            Administration des Unternehmens. Das Anmeldeprotokoll (Anmeldungen, fehlgeschlagene
+            Anmeldungen) und die Fehlermeldungen sieht nur eine vom Unternehmen ausdrücklich dafür
+            freigeschaltete Person der Administration, nicht jede Administration und nicht die
+            Schichtleitung
           </li>
           <li>
             Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Im
@@ -618,10 +621,13 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <strong>Austritt:</strong> Deaktiviert das Unternehmen den Zugang, ist der Betrieb
-            gesperrt. Beim nächsten Anmelden fragt ShiftNexo, ob die Person privat weitermachen
-            möchte. Nur mit „Ja“ werden Termine, To-dos, eigene Einträge und die eigenen Farben in
-            den Privatbereich übernommen; Schichten aus dem Betrieb sowie Krank- und
-            Urlaubsanträge bleiben beim Unternehmen. Löscht das Unternehmen die Person danach
+            gesperrt. Ist ein Austrittsdatum (letzter Arbeitstag) hinterlegt, endet der Zugang zum
+            Betrieb am Tag danach automatisch (Stichtag in deutscher Zeit); im Protokoll des
+            Unternehmens steht dazu ein Eintrag. Beim nächsten Anmelden richtet ShiftNexo den
+            Privatbereich ein und übernimmt Termine, To-dos, eigene Einträge und die eigenen Farben;
+            Schichten aus dem Betrieb sowie Krank- und Urlaubsanträge bleiben beim Unternehmen. Ein
+            Hinweis zeigt der Person einmal, was übernommen wurde und wie sie den Privatbereich
+            jederzeit löschen kann. Löscht das Unternehmen die Person danach
             endgültig, bleiben Login und Privatbereich bestehen, wenn es einen Privatbereich gibt;
             die Daten im Unternehmen (Personalstamm, Profil, Geburtsdatum, Einstellungen) werden
             gelöscht
@@ -643,8 +649,10 @@ export default function DatenschutzPage() {
         </Liste>
         <Absatz>
           Rechtsgrundlage ist die Bereitstellung des gewünschten Dienstes (Art. 6 Abs. 1 lit. b
-          DSGVO); die Übernahme beim Austritt und beim Beitritt geschieht nur auf ausdrücklichen
-          Wunsch der Person.
+          DSGVO). Die Übernahme beim Beitritt geschieht nur auf ausdrücklichen Wunsch der Person.
+          Beim Austritt werden die eigenen Einträge übernommen, damit sie der Person nicht verloren
+          gehen (berechtigtes Interesse, Art. 6 Abs. 1 lit. f DSGVO); die Person kann den
+          Privatbereich jederzeit löschen (Art. 17 DSGVO).
         </Absatz>
       </Abschnitt>
 

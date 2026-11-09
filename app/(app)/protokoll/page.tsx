@@ -15,6 +15,7 @@ import {
   type ProtokollZahlen,
 } from "@/lib/data/protokoll";
 import { beschreibe, type ProtokollKategorie } from "@/lib/protokoll-text";
+import { useSession } from "@/context/session";
 import { cn } from "@/lib/utils";
 
 const SEITE = 150;
@@ -182,6 +183,11 @@ export default function ProtokollPage() {
     return gruppen;
   }, [eintraege, suche]);
 
+  // Volles Protokoll nur für die freigeschaltete Administration; die übrige
+  // Führung sieht die Änderungen. Die Datenbank liefert ohnehin nur das.
+  const { profile } = useSession();
+  const voll = profile.protokollVoll === true;
+  const arten = voll ? ARTEN : ARTEN.filter((a) => a.wert === null || a.wert === "aenderung");
   const umschalten = (neu: ProtokollArt | null) => {
     setEintraege(null);
     setArt((bisher) => (bisher === neu ? null : neu));
@@ -192,7 +198,11 @@ export default function ProtokollPage() {
       <PageHeader
         eyebrow="Verwaltung"
         title="Protokoll"
-        description="Wer sich wann angemeldet hat, wer was geändert hat und wo jemandem eine Fehlermeldung angezeigt wurde. Nur für dich sichtbar."
+        description={
+          voll
+            ? "Wer sich wann angemeldet hat, wer was geändert hat und wo jemandem eine Fehlermeldung angezeigt wurde."
+            : "Wer was geändert hat – Plan, Urlaub, Anträge und Stammdaten. Anmeldungen sieht nur die dafür freigeschaltete Administration."
+        }
         action={
           <button
             type="button"
@@ -208,6 +218,7 @@ export default function ProtokollPage() {
         }
       />
 
+      {voll ? (
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <Kachel
           icon={LogIn}
@@ -247,10 +258,11 @@ export default function ProtokollPage() {
           }}
         />
       </div>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Art">
-          {ARTEN.map((a) => (
+          {arten.map((a) => (
             <button
               key={a.label}
               type="button"

@@ -64,6 +64,12 @@ export interface SessionProfile {
    * siehe `protokoll_zugang` in der Datenbank.
    */
   protokoll?: boolean;
+  /**
+   * Volles Protokoll (auch Anmeldungen und Fehler) – nur die freigeschaltete
+   * Administration. Alle anderen der Führung sehen nur die Änderungen
+   * (`protokoll_umfang()`, Migration 0200).
+   */
+  protokollVoll?: boolean;
   /** Was beim Öffnen der App zuerst kommt; leer = Dashboard. */
   startSeite?: "dashboard" | "schichtplan" | "kalender" | null;
   /** Aufbau der Startseite: bisherige große Kacheln oder die kompakte Fassung. */

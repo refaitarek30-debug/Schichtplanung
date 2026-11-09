@@ -89,7 +89,14 @@ const TON: Record<"ok" | "warn" | "info" | "aus", string> = {
   aus: "bg-surface-sunken text-ink-muted",
 };
 
-export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: Filter }) {
+export function MitteilungenZentrale({
+  startFilter = "alle",
+  startNeu = null,
+}: {
+  startFilter?: Filter;
+  /** Gleich ein Fenster öffnen: „An wen?“ oder direkt die Urlaubssperre (aus „Mehr“). */
+  startNeu?: null | "frage" | "sperre";
+}) {
   const { role } = useSession();
   const fuehrung = role === "admin" || role === "shift_leader";
 
@@ -101,6 +108,12 @@ export function MitteilungenZentrale({ startFilter = "alle" }: { startFilter?: F
   const [meldung, setMeldung] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>(startFilter);
   const [neu, setNeu] = useState<null | "frage" | "personen" | "an_alle" | "sperre">(null);
+  // Aus „Mehr“: das Fenster gleich öffnen – erst im Browser, Fenster gibt es
+  // beim Rendern auf dem Server nicht.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (fuehrung && startNeu) setNeu(startNeu);
+  }, [fuehrung, startNeu]);
   const [offen, setOffen] = useState<string | null>(null);
   const [beschaeftigt, setBeschaeftigt] = useState<string | null>(null);
   const [, starte] = useTransition();

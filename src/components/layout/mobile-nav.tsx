@@ -17,7 +17,7 @@ import { useBegriffe } from "@/lib/begriffe";
  * Tagesgeschäfts. Nur Wege zu bestehenden Seiten: was jemand dort darf,
  * entscheiden weiter die Seiten selbst und die Datenbank.
  */
-function fuehrungsKacheln(role: Role) {
+function fuehrungsKacheln() {
   return [
     {
       href: "/verwaltung",
@@ -27,15 +27,16 @@ function fuehrungsKacheln(role: Role) {
       farbe: "bg-brand-50 text-brand-700",
     },
     {
-      href: "/mitteilungen?bereich=sperren",
+      // Öffnet gleich das Fenster zum Anlegen (Administration und Schichtleitung).
+      href: "/mitteilungen?bereich=sperren&neu=sperre",
       titel: "Urlaubssperre",
-      // Sperren anlegen darf nur die Administration (wie bisher).
-      text: role === "admin" ? "Zeiträume sperren" : "Gesperrte Zeiten ansehen",
+      text: "Zeitraum sperren",
       icon: CalendarOff,
       farbe: "bg-crit-bg text-crit-fg",
     },
     {
-      href: "/mitteilungen",
+      // Öffnet gleich „An wen?“ – die Liste steht dahinter.
+      href: "/mitteilungen?neu=1",
       titel: "Mitteilungen",
       text: "An eine Person oder an alle",
       icon: Megaphone,
@@ -67,7 +68,7 @@ export function MobileNav() {
 
   const primary = navItems.filter((i) => i.primary && i.roles.includes(role));
   const fuehrung = role === "shift_leader" || role === "admin";
-  const kacheln = fuehrung ? fuehrungsKacheln(role) : [];
+  const kacheln = fuehrung ? fuehrungsKacheln() : [];
   const groups = navForRole(role, profile.protokoll === true)
     .map((g) => ({ ...g, items: fuehrung ? g.items.filter((i) => !ANDERS_ERREICHBAR.has(i.href)) : g.items }))
     .filter((g) => g.items.length > 0);

@@ -1,5 +1,5 @@
 // Ein Konto, zwei Bereiche (Migration 0194): Wechsel Betrieb ↔ Privat, Betriebsschichten
-// im Privatbereich, Glühbirne im Privatbereich, Austritt mit „Privat weitermachen?“.
+// im Privatbereich, Glühbirne im Privatbereich, Austritt direkt in den Privatbereich.
 import { APP, DB, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 export default async function bereiche() {
@@ -58,16 +58,22 @@ export default async function bereiche() {
     await seite.waitForURL(/\/meine-schichten/, { timeout: 15_000 });
     pruefe(true, "Zurück in den Betrieb");
 
-    // Austritt: Zugang deaktiviert → beim nächsten Öffnen die Frage.
+    // Austritt: Zugang beendet → beim nächsten Öffnen ohne Frage in den Privatbereich, mit einem Hinweis.
     await fetch(`${DB}/rest/v1/rpc/_austritt`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
-    await warte(800);
-    pruefe(seite.url().includes("/privat-weiter"), `Austritt: Frage „Privat weitermachen?“ (${seite.url()})`);
-    pruefe(await seite.getByText("Kommt mit").isVisible(), "Austritt: zeigt, was mitkommt");
-    pruefe(await seite.getByText("Krank- und Urlaubsanträge").isVisible(), "Austritt: Krank- und Urlaubsanträge bleiben im Betrieb");
-    await seite.getByRole("button", { name: "Privat weitermachen" }).click();
-    await seite.waitForURL(/\/privat$/, { timeout: 15_000 });
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "commit" });
+    await seite.waitForURL(/\/privat\?ausgetreten=1/, { timeout: 20_000 });
+    pruefe(true, "Austritt: ohne Frage direkt in den Privatbereich");
     await warte(1500);
+    const hinweis = seite.locator("[data-austritt-hinweis]");
+    pruefe(await hinweis.isVisible(), "Austritt: einmal ein Hinweis „Zugang beendet“");
+    pruefe(
+      (await hinweis.getByText(/Krank- und Urlaubsanträge bleiben beim Betrieb/).isVisible()) &&
+        (await hinweis.getByRole("link", { name: "Datenschutzerklärung" }).isVisible()),
+      "Austritt: Hinweis nennt, was beim Betrieb bleibt, und die Datenschutzerklärung",
+    );
+    await hinweis.getByRole("button", { name: "Verstanden" }).click();
+    await seite.waitForURL(/\/privat$/, { timeout: 10_000 });
+    pruefe((await seite.locator("[data-austritt-hinweis]").count()) === 0, "Austritt: „Verstanden“ schließt den Hinweis");
     await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
     await warte(600);
     pruefe((await seite.locator("[data-zum-betrieb]").count()) === 0, "Nach dem Austritt: kein Wechsel zum Betrieb mehr");

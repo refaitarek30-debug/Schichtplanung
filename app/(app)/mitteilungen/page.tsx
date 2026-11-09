@@ -27,15 +27,19 @@ export default function MitteilungenPage() {
 
 function MitteilungenInhalt() {
   const { mode } = useSession();
-  // Aus „Mehr“ → Urlaubssperre: gleich nur die Sperren.
-  const nurSperren = useSearchParams().get("bereich") === "sperren";
+  // Aus „Mehr“ → Urlaubssperre: gleich nur die Sperren und das Fenster zum
+  // Anlegen. „Mitteilungen“: gleich die Frage „An wen?“.
+  const params = useSearchParams();
+  const nurSperren = params.get("bereich") === "sperren";
+  const neu = params.get("neu");
+  const startNeu = neu === "sperre" ? "sperre" : neu === "1" ? "frage" : null;
 
   return (
     <div className="space-y-5">
       <PageHeader eyebrow="Führung" title="Mitteilungen" />
 
       {mode === "live" ? (
-        <MitteilungenZentrale startFilter={nurSperren ? "sperren" : "alle"} />
+        <MitteilungenZentrale startFilter={nurSperren ? "sperren" : "alle"} startNeu={startNeu} />
       ) : (
         <Alert tone="info">
           Mitteilungen und Urlaubssperren gibt es nur im Live-Modus – im Demo-Modus stehen
