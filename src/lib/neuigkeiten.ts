@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-09T20:30:00+01:00",
+    titel: "Geld je Job",
+    text: "Zwei Jobs? Unter Schichten → Geld bekommt jeder Job seinen eigenen Lohn – Minijob netto mit Grenze, Zuschläge mit eigener Uhrzeit (z. B. 25 % von 23 bis 24 Uhr).",
+    bereich: "privat",
+  },
+  {
+    zeit: "2026-11-09T20:30:00+01:00",
+    titel: "Andere Uhrzeit an einem Tag",
+    text: "Tag antippen → „Andere Zeit“, z. B. heute 17:00–23:30. Stunden und Geld rechnen damit.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-10-28T14:00:00+01:00",
     titel: "Dein Privatbereich",
     text: "Ein eigener Kalender mit demselben Login – über dein Profil oben rechts. Dein Betrieb sieht davon nichts.",

@@ -4,13 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CalendarHeart, Layers, BarChart3, Palmtree, Upload, Wallet } from "lucide-react";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
-import { ladeFeiertage, ladeTage, type TagEintrag } from "@/lib/privat/daten";
 import { rechne } from "@/lib/privat/gehalt";
 import type { Reiter } from "@/lib/privat/reiter";
 import { cn } from "@/lib/utils";
 import { PrivatAuswertung } from "./auswertung";
 import { PrivatGemeinsam } from "./gemeinsam";
-import { PrivatGeld, useGehalt } from "./gehalt";
+import { PrivatGeld, useGehalt, useMonatsDaten } from "./gehalt";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 import { PrivatSchichten } from "./schichten";
@@ -34,34 +33,31 @@ export function PrivatSchichtenSeite({ start = "uebersicht" }: { start?: Reiter 
   const { einst } = useGehalt(konto.userId);
 
   // Zahlen für die Kacheln: der laufende Monat.
-  const [tage, setTage] = useState<Record<string, TagEintrag> | null>(null);
-  const [feiertage, setFeiertage] = useState<ReadonlySet<string>>(new Set());
-  useEffect(() => {
-    let aus = false;
-    const von = toISO(new Date(jahr, monat, 1));
-    const bis = toISO(new Date(jahr, monat + 1, 0));
-    void ladeFeiertage(jahr)
-      .then((f) => !aus && setFeiertage(new Set(f.map((h) => h.tag))))
-      .catch(() => undefined);
-    void ladeTage(von, bis)
-      .then((t) => !aus && setTage(t))
-      .catch(() => undefined);
-    return () => {
-      aus = true;
-    };
-  }, [jahr, monat, reiter]);
+  const vonMonat = toISO(new Date(jahr, monat, 1));
+  const bisMonat = toISO(new Date(jahr, monat + 1, 0));
+  const { tage, zeiten, feiertage } = useMonatsDaten(vonMonat, bisMonat, reiter);
   const re = useMemo(() => {
     if (!tage || !schichtarten) return null;
     return rechne({
       tage,
-      von: toISO(new Date(jahr, monat, 1)),
-      bis: toISO(new Date(jahr, monat + 1, 0)),
+      von: vonMonat,
+      bis: bisMonat,
       arten: schichtarten,
       feiertage,
       wochenstunden: konto.wochenstunden,
       einst,
+      zeiten,
     });
-  }, [tage, schichtarten, feiertage, konto.wochenstunden, einst, jahr, monat]);
+  }, [tage, zeiten, schichtarten, feiertage, konto.wochenstunden, einst, vonMonat, bisMonat]);
+  const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
+  const geldUnter =
+    mitGeld.length > 1
+      ? `${mitGeld.length} Jobs, ${monthName(monat)}`
+      : mitGeld[0]?.job.art === "minijob"
+        ? `${mitGeld[0].job.name}, ausgezahlt`
+        : mitGeld[0]
+          ? `${mitGeld[0].job.name}, brutto`
+          : "je Job";
 
   // Übrige Urlaubstage (stehen nur auf diesem Gerät) – neu lesen, wenn man den Bereich wechselt.
   const [urlaubTage, setUrlaubTage] = useState<number | null>(null);
@@ -91,8 +87,8 @@ export function PrivatSchichtenSeite({ start = "uebersicht" }: { start?: Reiter 
       id: "geld",
       name: "Geld",
       icon: <Wallet className="h-[19px] w-[19px]" />,
-      wert: re?.geld ? `ca. ${euroGanz(re.geld.summe)}` : "Lohn eintragen",
-      sub: re?.geld ? `brutto, ${monthName(monat)}` : "Brutto schätzen",
+      wert: re?.summe != null ? `ca. ${euroGanz(re.summe)}` : "Einrichten",
+      sub: geldUnter,
       farbe: "bg-ok-bg text-ok-fg",
     },
     {

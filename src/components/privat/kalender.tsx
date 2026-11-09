@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Repeat, Upload, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Pencil, Repeat, Upload, X } from "lucide-react";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
 import { istOffline } from "@/lib/netz";
 import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
@@ -41,11 +41,16 @@ import {
   idsVon,
   ladeFeiertage,
   ladeTage,
+  ladeTagZeiten,
   leereTage,
+  setzeTagZeit,
   speichereTage,
+  tagZeitSchluessel,
   type Schichtart,
   type TagEintrag,
+  type TagZeit,
 } from "@/lib/privat/daten";
+import { schichtAmTag } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
@@ -1267,7 +1272,18 @@ function TagBlatt({
   onClose: () => void;
 }) {
   const ids = idsVon(eintrag);
-  const gesetzt = ids.map((id) => artNach.get(id)).filter((a): a is Schichtart => !!a);
+  const [tagZeiten, setTagZeiten] = useState<Record<string, TagZeit>>({});
+  useEffect(() => {
+    let aus = false;
+    void ladeTagZeiten(iso, iso).then((z) => !aus && setTagZeiten(z));
+    return () => {
+      aus = true;
+    };
+  }, [iso]);
+  const gesetzt = ids
+    .map((id) => artNach.get(id))
+    .filter((a): a is Schichtart => !!a)
+    .map((a) => schichtAmTag(a, tagZeiten[tagZeitSchluessel(iso, a.id)]));
   const [aendern, setAendern] = useState(false);
   const [nachricht, setNachricht] = useState(
     gesetzt.length ? "Tippen = dazu · nochmal tippen = weg" : "Was steht an diesem Tag an?",
@@ -1336,6 +1352,19 @@ function TagBlatt({
     >
       {loesch.fenster}
       {nichts ? <p className="px-1 py-2 text-[14.5px] text-ink-muted">An diesem Tag ist nichts geplant.</p> : null}
+      <AndereUhrzeit
+        iso={iso}
+        schichten={ids.map((id) => artNach.get(id)).filter((a): a is Schichtart => !!a && a.art === "arbeit")}
+        zeiten={tagZeiten}
+        onGeaendert={(id, z) =>
+          setTagZeiten((alt) => {
+            const neu = { ...alt };
+            if (z) neu[tagZeitSchluessel(iso, id)] = z;
+            else delete neu[tagZeitSchluessel(iso, id)];
+            return neu;
+          })
+        }
+      />
       <AmTag
         termine={termine}
         todos={todos}
@@ -1372,5 +1401,123 @@ function TagBlatt({
         <Pencil className="h-4 w-4" /> {aendern ? "Fertig" : "Schicht ändern"}
       </button>
     </Blatt>
+  );
+}
+
+/**
+ * Andere Uhrzeit nur an diesem Tag (z. B. Spätschicht heute 17:00–23:30).
+ * Stunden, Zuschläge und Geld rechnen dann mit dieser Zeit.
+ */
+function AndereUhrzeit({
+  iso,
+  schichten,
+  zeiten,
+  onGeaendert,
+}: {
+  iso: string;
+  schichten: Schichtart[];
+  zeiten: Record<string, TagZeit>;
+  onGeaendert: (schichtartId: string, z: TagZeit | null) => void;
+}) {
+  const [offen, setOffen] = useState<string | null>(null);
+  const [beginn, setBeginn] = useState("");
+  const [ende, setEnde] = useState("");
+  const [fehler, setFehler] = useState<string | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
+  if (!schichten.length) return null;
+
+  async function speichern(id: string, z: TagZeit | null) {
+    setLaeuft(true);
+    setFehler(null);
+    try {
+      await setzeTagZeit(iso, id, z);
+      onGeaendert(id, z);
+      setOffen(null);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+    } finally {
+      setLaeuft(false);
+    }
+  }
+
+  return (
+    <ul className="mb-2 space-y-1.5" data-andere-uhrzeit>
+      {schichten.map((a) => {
+        const z = zeiten[tagZeitSchluessel(iso, a.id)];
+        const geplant = zeitText(a);
+        const jetzt = z ? `${z.beginn}–${z.ende}` : geplant;
+        return (
+          <li key={a.id} className="rounded-[14px] bg-ink/[0.05] px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 shrink-0 text-ink-faint" />
+              <span className="min-w-0 flex-1 text-[13.5px]">
+                <b className="font-semibold">{a.name}</b> <span className="tnum">{jetzt || "ohne Uhrzeit"}</span>
+                {z ? <span className="text-ink-muted"> · heute anders{geplant ? ` (sonst ${geplant})` : ""}</span> : null}
+              </span>
+              {offen === a.id ? null : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOffen(a.id);
+                    setBeginn(z?.beginn ?? a.beginn ?? "");
+                    setEnde(z?.ende ?? a.ende ?? "");
+                    setFehler(null);
+                  }}
+                  className="shrink-0 text-[13px] font-semibold text-brand-600"
+                >
+                  {z ? "Ändern" : "Andere Zeit"}
+                </button>
+              )}
+            </div>
+            {offen === a.id ? (
+              <div className="mt-2 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="time"
+                    aria-label="Beginn"
+                    value={beginn}
+                    onChange={(e) => setBeginn(e.target.value)}
+                    className="tnum h-10 min-w-0 flex-1 rounded-[10px] border-2 border-ink/10 bg-surface px-2 text-[15px] font-semibold"
+                  />
+                  <span className="text-ink-muted">–</span>
+                  <input
+                    type="time"
+                    aria-label="Ende"
+                    value={ende}
+                    onChange={(e) => setEnde(e.target.value)}
+                    className="tnum h-10 min-w-0 flex-1 rounded-[10px] border-2 border-ink/10 bg-surface px-2 text-[15px] font-semibold"
+                  />
+                </div>
+                {fehler ? <p className="text-[12.5px] text-crit-fg">{fehler}</p> : null}
+                <div className="flex gap-2">
+                  {z ? (
+                    <button
+                      type="button"
+                      disabled={laeuft}
+                      onClick={() => void speichern(a.id, null)}
+                      className="h-9 flex-1 rounded-[10px] bg-surface text-[13px] font-semibold"
+                    >
+                      Wie geplant
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setOffen(null)} className="h-9 flex-1 rounded-[10px] bg-surface text-[13px] font-semibold">
+                      Abbrechen
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={laeuft}
+                    onClick={() => void speichern(a.id, { beginn: beginn.slice(0, 5), ende: ende.slice(0, 5) })}
+                    className="h-9 flex-1 rounded-[10px] bg-brand-600 text-[13px] font-semibold text-white disabled:opacity-50"
+                  >
+                    Speichern
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

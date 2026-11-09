@@ -87,6 +87,12 @@ http.createServer((req, res) => {
       if (m === "POST") { for (const r of body) db.tage.set(`${r.tag}|${r.ebene}`, r.schichtart_id); return send(201); }
       if (m === "DELETE") { for (const z of filter(q, zeilen())) db.tage.delete(`${z.tag}|${z.ebene}`); return send(204); }
     }
+    if (p === "/rest/v1/privat_tag_zeiten") {
+      db.zeiten ??= [];
+      if (m === "GET") return liste(filter(q, db.zeiten));
+      if (m === "POST") { for (const r of Array.isArray(body) ? body : [body]) { db.zeiten = db.zeiten.filter((z) => !(z.tag === r.tag && z.schichtart_id === r.schichtart_id)); db.zeiten.push({ ...r, beginn: `${r.beginn}:00`, ende: `${r.ende}:00` }); } return send(201); }
+      if (m === "DELETE") { const weg = filter(q, db.zeiten); db.zeiten = db.zeiten.filter((z) => !weg.includes(z)); return send(204); }
+    }
     if (p.startsWith("/rest/v1/rpc/")) {
       const f = p.slice(13);
       if (f === "privat_rotation_anwenden") {

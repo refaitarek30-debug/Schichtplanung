@@ -19,6 +19,7 @@ import sperren from "./sperren.test.mjs";
 import passwort from "./passwort.test.mjs";
 import leiste from "./leiste.test.mjs";
 import rahmen from "./rahmen.test.mjs";
+import geld from "./geld.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -26,6 +27,7 @@ const ABLAEUFE = [
   ["Startseite und Profil", "betrieb", startseite],
   ["Betrieb und Privat", "betrieb", bereiche],
   ["Beitritt", "privat", beitritt],
+  ["Privat: Geld je Job und andere Uhrzeit", "privat", geld],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],

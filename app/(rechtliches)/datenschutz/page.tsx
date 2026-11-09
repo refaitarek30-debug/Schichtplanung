@@ -580,7 +580,8 @@ export default function DatenschutzPage() {
           </li>
           <li>
             die eigenen Schichtarten (Name, Kürzel, Farbe, Uhrzeit, Stunden) und die eingetragenen
-            Tage, Bundesland für die Feiertage, optional die Wochenstunden für die Auswertung
+            Tage, auf Wunsch mit einer anderen Uhrzeit an einzelnen Tagen, Bundesland für die
+            Feiertage, optional die Wochenstunden für die Auswertung
           </li>
           <li>
             optional Termine, geteilte Links, Gruppen und Kalender-Abo wie in Abschnitt 8
@@ -811,7 +812,8 @@ export default function DatenschutzPage() {
             <code className={kode}>sp_gehalt:…</code> und <code className={kode}>sp_urlaub:…</code>{" "}
             (lokaler Speicher, bis zum Löschen der Browserdaten; mit der Benutzer-Kennung, nur für
             diese Person gültig) – bei Privatkonten die freiwillig eingetragenen Angaben für die
-            Gehalts-Schätzung (Stundenlohn, Zuschläge in Prozent, ob in Schicht gearbeitet wird)
+            Gehalts-Rechnung je Job (Name des Jobs, Art wie Minijob, Stundenlohn, Zuschläge in
+            Prozent mit Uhrzeit, Minijob-Grenze, welche Schichten zu welchem Job gehören)
             und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
             läuft nur im Browser; diese Angaben werden weder an einen Server gesendet noch im Konto
             gespeichert. Wer ein Gerät mit anderen teilt, kann sie in den Browserdaten löschen.
