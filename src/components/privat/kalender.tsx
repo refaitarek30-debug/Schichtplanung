@@ -476,24 +476,16 @@ export function PrivatKalender() {
    *  - drei Schichten ohne sie → sie ersetzt die erste
    *  - sie steht schon mit anderen → nur noch sie
    *  - sie steht allein → Tag leer
-   * „Leeren“ fragt vorher nach.
+   * „Leeren“ löscht sofort (mit „Rückgängig“).
    */
   function pinselStrich(liste: string[]) {
     if (!pinselAn || !pinsel) return;
     if (pinsel === "leer") {
+      // Sofort weg – oben steht „Rückgängig“.
       const voll = liste.filter((t) => tage[t]);
       if (!voll.length) return;
-      loesch.frage({
-        titel: voll.length === 1 ? "Schicht löschen?" : `${voll.length} Tage leeren?`,
-        text:
-          voll.length === 1
-            ? `Der Eintrag am ${formatDE(voll[0]!)} wird gelöscht.`
-            : "Die Schichten an diesen Tagen werden gelöscht.",
-        onJa: () => {
-          merke(voll, "{n} geleert");
-          void leeren(voll);
-        },
-      });
+      merke(voll, "{n} geleert");
+      void leeren(voll);
       return;
     }
     const name = artNach.get(pinsel)?.name ?? "neu";

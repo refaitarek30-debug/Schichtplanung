@@ -304,6 +304,21 @@ export function TerminBlatt({
     }
   }
 
+  /** Geburtstag an/aus: jährlich, ganztägig, morgens erinnern – ohne die Torte von Hand. */
+  const ohneTorte = (t: string) => t.replace(/^\s*🎂\s*/, "");
+  function setzeGeburtstag(an: boolean) {
+    if (an) {
+      setTitel(`🎂 ${ohneTorte(titel)}`);
+      setWdh("jaehrlich");
+      setGanz(true);
+      setBisDatum(tag);
+      setErinnerung((alt) => alt ?? "tag8");
+    } else {
+      setTitel(ohneTorte(titel));
+      setWdh("nie");
+    }
+  }
+
   async function vorlagenSpeichern(liste: Vorlage[]) {
     setVorlagenFehler(null);
     try {
@@ -532,14 +547,36 @@ export function TerminBlatt({
             <input
               ref={titelFeld}
               id={`${id}-titel`}
-              value={titel}
-              onChange={(e) => setTitel(e.target.value)}
-              placeholder={geburt ? "Name" : "Ohne Titel"}
+              value={geburt ? ohneTorte(titel) : titel}
+              onChange={(e) => setTitel(geburt ? `🎂 ${ohneTorte(e.target.value)}` : e.target.value)}
+              placeholder={geburt ? "Wessen Geburtstag?" : "Ohne Titel"}
               maxLength={80}
               autoComplete="off"
               className={eingabe}
             />
           </label>
+          <div className={zeile}>
+            <span id={`${id}-geburt`}>🎂 Geburtstag</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={geburt}
+              aria-labelledby={`${id}-geburt`}
+              data-geburtstag-schalter
+              onClick={() => setzeGeburtstag(!geburt)}
+              className={cn(
+                "relative h-8 w-[52px] shrink-0 rounded-full transition-colors",
+                geburt ? "bg-brand-500" : glas ? "bg-ink/[0.12]" : "bg-surface-sunken ring-1 ring-inset ring-line",
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform motion-reduce:transition-none",
+                  geburt ? "left-1 translate-x-5" : "left-1",
+                )}
+              />
+            </button>
+          </div>
           {geburt ? (
             <>
               <label className={zeile}>
@@ -558,9 +595,9 @@ export function TerminBlatt({
               </label>
               <p className="pb-2 pt-1.5 text-[12.5px] text-ink-muted">
                 {titel.replace("🎂", "").trim() === ""
-                  ? "Wessen Geburtstag? Schreib den Namen hinter die Torte."
+                  ? "Wessen Geburtstag? Trag oben den Namen ein – er kommt dann jedes Jahr."
                   : alterVorschau && alterVorschau >= 1
-                    ? `Im Kalender steht dann „${titel.trim()} wird ${alterVorschau}“ – und jedes Jahr ein Jahr mehr.`
+                    ? `Im Kalender steht dann „${ohneTorte(titel).trim()} wird ${alterVorschau}“ – und jedes Jahr ein Jahr mehr.`
                     : "Mit dem Geburtsjahr zeigt der Kalender auch das Alter."}
               </p>
             </>

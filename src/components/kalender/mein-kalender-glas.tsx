@@ -671,19 +671,11 @@ export function MeinKalenderGlas() {
   function pinselStrich(liste: string[]) {
     if (!pinselAn || !pinsel) return;
     if (pinsel === "leer") {
+      // Sofort weg – oben steht „Rückgängig“.
       const voll = liste.filter((t) => eigene[t]);
       if (!voll.length) return;
-      loesch.frage({
-        titel: voll.length === 1 ? "Eintrag löschen?" : `${voll.length} Tage leeren?`,
-        text:
-          voll.length === 1
-            ? `Dein Eintrag am ${formatDE(voll[0]!)} wird gelöscht. Der Schichtplan bleibt.`
-            : "Deine Einträge an diesen Tagen werden gelöscht. Der Schichtplan bleibt.",
-        onJa: () => {
-          merke(voll, "{n} geleert");
-          void eigenSetzen(voll, null);
-        },
-      });
+      merke(voll, "{n} geleert");
+      void eigenSetzen(voll, null);
       return;
     }
     if (!artNach.has(pinsel)) return;

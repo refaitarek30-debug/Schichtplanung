@@ -67,6 +67,20 @@ export default async function privatNeu() {
     await warte(300);
     pruefe((await seite.locator("[data-wen-sehe-ich]").count()) === 0, "Escape schließt „Wen sehe ich?“");
 
+    // Geburtstag ohne Torte: Schalter im Termin-Fenster, Geburtsjahr freiwillig.
+    await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
+    await warte(1000);
+    await seite.locator(`[data-iso="${jetzt.iso.slice(0, 8)}15"]`).first().click();
+    await warte(600);
+    await seite.getByRole("button", { name: /Neuer Termin/ }).first().click();
+    await warte(600);
+    await seite.locator("[data-geburtstag-schalter]").click();
+    await warte(200);
+    pruefe((await seite.getByText("Geburtsjahr").count()) >= 1 && (await seite.getByText("jedes Jahr").count()) >= 1, "Geburtstag-Schalter: jährlich, Geburtsjahr freiwillig");
+    pruefe((await seite.getByPlaceholder("Wessen Geburtstag?").inputValue()) === "", "Geburtstag: Name ohne Torte im Feld");
+    await seite.keyboard.press("Escape");
+    await warte(300);
+
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
   } finally {
