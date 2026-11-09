@@ -584,6 +584,14 @@ export default function DatenschutzPage() {
             Feiertage, optional die Wochenstunden für die Auswertung
           </li>
           <li>
+            optional Lohnabrechnungen (Foto oder PDF) mit Monat und frei gewählter Bezeichnung des
+            Jobs – nur nach ausdrücklicher Einwilligung. Sie liegen in einem privaten Speicher
+            (Supabase Storage, EU), auf den nur die Person selbst zugreifen kann; geteilte Personen,
+            Gruppen und ein Betrieb sehen sie nicht. Fotos werden vor dem Hochladen im Browser
+            verkleinert. Gelöscht werden sie mit dem Eintrag oder dem Konto (aus dem Speicher
+            spätestens wenige Minuten danach)
+          </li>
+          <li>
             optional Termine, geteilte Links, Gruppen und Kalender-Abo wie in Abschnitt 8
             beschrieben. Ein Eintrag „Krank“ ist eine freiwillige eigene Angabe; eingeladene
             Personen und Gruppen sehen ihn nur als „Urlaub“ bzw. frei, das Kalender-Abo als
@@ -594,7 +602,10 @@ export default function DatenschutzPage() {
           Rechtsgrundlage ist die Bereitstellung des gewünschten Dienstes (Art. 6 Abs. 1 lit. b
           DSGVO), für eigene Angaben zu Krankheit die ausdrückliche Einwilligung durch das
           Eintragen selbst (Art. 9 Abs. 2 lit. a DSGVO), jederzeit widerrufbar durch Löschen des
-          Eintrags. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
+          Eintrags. Für Lohnabrechnungen, die Angaben zur Religion (Kirchensteuer) oder Gesundheit
+          enthalten können, gilt die vor dem ersten Hochladen erteilte ausdrückliche Einwilligung
+          (Art. 6 Abs. 1 lit. a, Art. 9 Abs. 2 lit. a DSGVO); widerrufen durch Löschen der
+          Lohnabrechnungen. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
           das Konto lässt sich unter <em>Mehr → Konto löschen</em> jederzeit selbst endgültig
           löschen. Es gibt keine Werbung, kein Tracking und keine Weitergabe.
         </Absatz>

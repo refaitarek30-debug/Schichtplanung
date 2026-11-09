@@ -61,7 +61,7 @@ function filter(q, zeilen) {
 http.createServer((req, res) => {
   let b = ""; req.on("data", (c) => (b += c)); req.on("end", () => {
     const url = new URL(req.url, "http://x"); const q = [...url.searchParams.entries()];
-    const body = b ? JSON.parse(b) : null; const m = req.method;
+    let body = null; try { body = b ? JSON.parse(b) : null; } catch { body = null; } const m = req.method;
     const objekt = (req.headers.accept ?? "").includes("vnd.pgrst.object");
     const kors = { "access-control-allow-origin": req.headers.origin ?? "*", "access-control-allow-credentials": "true", "access-control-allow-headers": req.headers["access-control-request-headers"] ?? "*", "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS" };
     if (req.method === "OPTIONS") { res.writeHead(204, kors); return res.end(); }
@@ -87,6 +87,19 @@ http.createServer((req, res) => {
       if (m === "POST") { for (const r of body) db.tage.set(`${r.tag}|${r.ebene}`, r.schichtart_id); return send(201); }
       if (m === "DELETE") { for (const z of filter(q, zeilen())) db.tage.delete(`${z.tag}|${z.ebene}`); return send(204); }
     }
+    if (p === "/rest/v1/privat_lohnzettel") {
+      db.lohn ??= [];
+      if (m === "GET") return liste(filter(q, db.lohn).sort((a, b) => b.monat.localeCompare(a.monat)));
+      if (m === "POST") { const r = { id: randomUUID(), erstellt_am: new Date().toISOString(), ...(Array.isArray(body) ? body[0] : body) }; db.lohn.push(r); return objekt ? send(201, r) : send(201, [r]); }
+      if (m === "DELETE") { const weg = filter(q, db.lohn); db.lohn = db.lohn.filter((z) => !weg.includes(z)); return send(204); }
+    }
+    if (p.startsWith("/storage/v1/object/sign/lohnzettel/")) return send(200, { signedURL: `/object/sign/lohnzettel/${p.slice(35)}?token=t` });
+    if (p.startsWith("/storage/v1/object/sign/")) { res.writeHead(200, { "content-type": "image/png", ...kors }); return res.end(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64")); }
+    if (p.startsWith("/storage/v1/object/lohnzettel")) {
+      db.dateien ??= new Set();
+      if (m === "POST") { db.dateien.add(p.slice(30)); return send(200, { Key: p.slice(19) }); }
+      if (m === "DELETE") { for (const x of body?.prefixes ?? []) db.dateien.delete(x); return send(200, []); }
+    }
     if (p === "/rest/v1/privat_tag_zeiten") {
       db.zeiten ??= [];
       if (m === "GET") return liste(filter(q, db.zeiten));
@@ -105,6 +118,7 @@ http.createServer((req, res) => {
         return send(200, n);
       }
       if (f === "privat_feiertage") return send(200, feiertage(body.p_jahr));
+      if (f === "lohnzettel_einwilligung") { db.konto.lohnzettel_einwilligung = body.p_an ? new Date().toISOString() : null; return send(204); }
       if (f === "meine_termine") return send(200, db.termine);
       if (f === "termin_ausnahme") { const t = db.termine.find((x) => x.id === body.p_id); if (!t) return send(400, { message: "weg" }); if (body.p_ab) { if (body.p_datum <= t.datum) { db.termine = db.termine.filter((x) => x.id !== t.id); return send(200, true); } t.serie_ab = body.p_datum; } else { (t.ausfaelle ??= []).push(body.p_datum); } return send(200, false); }
       if (f === "termin_loeschen") { db.termine = db.termine.filter((t) => t.id !== body.p_id); return send(204); }

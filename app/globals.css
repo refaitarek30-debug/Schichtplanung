@@ -470,6 +470,16 @@ body {
   border: 1px solid var(--glas-rand);
   box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
 }
+/*
+ * Wie .glas, aber ohne Unschärfe: für Listen, deren Text sich nach dem Laden
+ * ändert. Safari zeichnet geänderten Text unter backdrop-filter sonst nicht
+ * sauber neu (alter Text bleibt sichtbar).
+ */
+.glas.glas-ruhig {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(var(--c-surface) / 0.82);
+}
 /* Wie .glas-dicht, aber ohne Durchblick – für Leisten, die etwas darunter zudecken. */
 .glas-voll {
   background-color: rgb(var(--c-surface));
@@ -720,6 +730,23 @@ body {
 }
 
 /* Pinsel-Leiste im Kalender: kommt von unten herein. */
+/* „Wen sehe ich?“ kommt vom rechten Rand herein. */
+@keyframes wen-rein {
+  from {
+    transform: translateX(105%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes wen-dimm {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes pinsel-hoch {
   from {
     transform: translateY(18px);

@@ -1,18 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { CalendarHeart, ChevronRight, Link2, Smartphone, Users } from "lucide-react";
-import { GruppenListe, KalenderTeilen, PERSON_FARBEN, PersonenListe } from "@/components/kalender/teilen";
-import { VerbindungenListe } from "@/components/kalender/verbinden";
+import { ChevronRight, Link2, QrCode, UserPlus } from "lucide-react";
+import { GruppenListe, KalenderTeilen, PERSON_FARBEN, PersonAvatar, personFarbe } from "@/components/kalender/teilen";
 import { fetchVerbindungen, type Verbindung } from "@/lib/data/verbindungen";
 import { fetchGruppen, type Gruppe } from "@/lib/data/gruppen";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
-import { fetchEinladungen, fetchPersonen, type Person } from "@/lib/data/partner";
+import { PERSON_ARTEN, fetchEinladungen, fetchPersonen, type Person } from "@/lib/data/partner";
+import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 
-/** Personen einladen (Partner, Familie, Freunde) und Kalender-Abo fürs Handy. */
+/**
+ * Teilen: oben einladen (Link oder Code), darunter eine Liste „Deine Leute“
+ * (verbundene Konten und eingeladene Personen), Gruppen und Kalender-Abo.
+ */
 export function PrivatTeilen() {
   const { konto } = usePrivat();
   const [personen, setPersonen] = useState<Person[] | null>(null);
@@ -49,51 +51,135 @@ export function PrivatTeilen() {
     void laden();
   }, [laden]);
 
+  const anzahl = (personen?.length ?? 0) + (verbindungen?.length ?? 0);
+  const artName = (art: string) => PERSON_ARTEN.find((a) => a.art === art)?.text ?? art;
+
   return (
-    <div className="space-y-4">
-      <PrivatKopf titel="Teilen" unter="Wer deinen Kalender sehen darf." />
+    <div className="space-y-5">
+      <PrivatKopf titel="Teilen" unter="Wer deinen Kalender sieht" />
 
-      <Link href="/privat/schichten?reiter=gemeinsam" className="glas flex items-center gap-3 rounded-[20px] px-4 py-3.5">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-bg text-ok-fg">
-          <CalendarHeart className="h-5 w-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold">Gemeinsam frei</span>
-          <span className="block text-[13px] text-ink-muted">Wann habt ihr beide frei? Monat, Jahr und ganze Wochenenden</span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-ink-faint" />
-      </Link>
+      {/* Einladen: ein klarer Weg, dazu die Codes für Leute mit eigenem Kalender. */}
+      <section className="glas space-y-3 rounded-[24px] p-4" data-teilen-einladen>
+        <div className="flex items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-500/12 text-brand-600">
+            <UserPlus className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-[17px] font-bold leading-tight">Partner, Familie, Freunde</h2>
+            <p className="mt-0.5 text-[13.5px] leading-snug text-ink-muted">Sie sehen deine Schichten – Krank und Urlaub nur als „frei“.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOffen("neu")}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-brand-600 text-[15.5px] font-semibold text-white"
+        >
+          <UserPlus className="h-[18px] w-[18px]" /> Person einladen
+        </button>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setOffen("code")}
+            className="flex h-11 items-center justify-center gap-1.5 rounded-[14px] bg-ink/[0.06] text-[14px] font-semibold"
+          >
+            <QrCode className="h-4 w-4" /> Mein Code
+          </button>
+          <button
+            type="button"
+            onClick={() => setOffen("codeEingeben")}
+            className="flex h-11 items-center justify-center gap-1.5 rounded-[14px] bg-ink/[0.06] text-[14px] font-semibold"
+          >
+            <Link2 className="h-4 w-4" /> Code eingeben
+          </button>
+        </div>
+        <p className="text-[12px] leading-snug text-ink-faint">Hat die Person schon ShiftNexo? Dann verbindet ihr euch per Code.</p>
+      </section>
 
-      <div className="flex items-center gap-2 pt-1 text-[13px] font-semibold text-ink-muted">
-        <Users className="h-4 w-4" /> Partner, Familie, Freunde
-      </div>
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[13px] text-crit-fg">{fehler}</p> : null}
-      <PersonenListe personen={personen} einladungen={einladungen} onNeu={() => setOffen("neu")} onPerson={(id) => setOffen({ person: id })} />
 
-      <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
-        <Link2 className="h-4 w-4" /> Mit eigenem Konto verbunden
-      </div>
-      <VerbindungenListe
-        verbindungen={verbindungen}
-        farbe={(v) => PERSON_FARBEN[((personen?.length ?? 0) + (verbindungen?.indexOf(v) ?? 0)) % PERSON_FARBEN.length]}
-        onVerbindung={(id) => setOffen({ verbindung: id })}
-        onCodeZeigen={() => setOffen("code")}
-        onCodeEingeben={() => setOffen("codeEingeben")}
-      />
+      <section className="space-y-2">
+        <h2 className="px-1 text-[13px] font-semibold uppercase tracking-[0.05em] text-ink-muted">
+          Deine Leute{anzahl ? ` · ${anzahl}` : ""}
+        </h2>
+        {personen === null || verbindungen === null ? (
+          <div className="glas h-16 animate-pulse rounded-[22px]" />
+        ) : anzahl === 0 ? (
+          <p className="glas rounded-[22px] px-4 py-5 text-center text-[14px] leading-snug text-ink-muted">
+            Noch niemand. Lade jemanden ein – dann seht ihr, wann der andere arbeitet.
+          </p>
+        ) : (
+          <ul className="glas divide-y divide-line overflow-hidden rounded-[22px]" data-deine-leute>
+            {verbindungen.map((v, i) => (
+              <Zeile
+                key={v.id}
+                onClick={() => setOffen({ verbindung: v.id })}
+                name={v.name || "Ohne Namen"}
+                farbe={PERSON_FARBEN[(personen.length + i) % PERSON_FARBEN.length]!}
+                unter={`${artName(v.art)} · eigener Kalender`}
+                marke={{ text: "verbunden", gut: true }}
+              />
+            ))}
+            {personen.map((p) => (
+              <Zeile
+                key={p.id}
+                onClick={() => setOffen({ person: p.id })}
+                name={p.name}
+                farbe={personFarbe(personen, p.id)}
+                unter={`${artName(p.art)} · ${
+                  einladungen[p.id] ? "Einladung offen" : !p.linkAktiv ? "Link beendet" : p.darfEintragen ? "darf eintragen" : "sieht mit"
+                }`}
+                marke={einladungen[p.id] ? { text: "wartet", gut: false } : null}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
-        <Users className="h-4 w-4" /> Gruppen
-      </div>
-      <GruppenListe gruppen={gruppen} onNeu={() => setOffen("gruppeNeu")} onGruppe={(id) => setOffen({ gruppe: id })} />
+      <section className="space-y-2">
+        <h2 className="px-1 text-[13px] font-semibold uppercase tracking-[0.05em] text-ink-muted">Gruppen</h2>
+        <GruppenListe gruppen={gruppen} onNeu={() => setOffen("gruppeNeu")} onGruppe={(id) => setOffen({ gruppe: id })} />
+      </section>
 
-      <div className="flex items-center gap-2 pt-3 text-[13px] font-semibold text-ink-muted">
-        <Smartphone className="h-4 w-4" /> Im Kalender deines Handys
-      </div>
-      <KalenderAboCard />
+      <section className="space-y-2">
+        <h2 className="px-1 text-[13px] font-semibold uppercase tracking-[0.05em] text-ink-muted">Im Kalender deines Handys</h2>
+        <KalenderAboCard />
+      </section>
 
       {offen ? (
         <KalenderTeilen vorname={vorname} start={offen} onGeaendert={() => void laden()} onClose={() => setOffen(null)} />
       ) : null}
     </div>
+  );
+}
+
+function Zeile({
+  name,
+  farbe,
+  unter,
+  marke,
+  onClick,
+}: {
+  name: string;
+  farbe: string;
+  unter: string;
+  marke: { text: string; gut: boolean } | null;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-ink/[0.04]">
+        <PersonAvatar name={name} farbe={farbe} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold">{name}</span>
+          <span className="block truncate text-[12.5px] text-ink-muted">{unter}</span>
+        </span>
+        {marke ? (
+          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold", marke.gut ? "bg-ok-bg text-ok-fg" : "bg-warn-bg text-warn-fg")}>
+            {marke.text}
+          </span>
+        ) : null}
+        <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+      </button>
+    </li>
   );
 }

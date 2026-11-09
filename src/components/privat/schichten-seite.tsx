@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Upload, Wallet } from "lucide-react";
+import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, FileText, Layers, Palmtree, Upload, Wallet } from "lucide-react";
 import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { PrivatAuswertung } from "./auswertung";
 import { PrivatGemeinsam } from "./gemeinsam";
 import { PrivatGeld, useGehalt, useMonatsDaten } from "./gehalt";
+import { PrivatLohnzettel } from "./lohnzettel";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 import { PrivatSchichten } from "./schichten";
@@ -47,6 +48,8 @@ export function PrivatSchichtenSeite({ start = null }: { start?: Reiter | null }
             <PrivatSchichten eingebettet />
           ) : reiter === "geld" ? (
             <PrivatGeld />
+          ) : reiter === "lohn" ? (
+            <PrivatLohnzettel />
           ) : reiter === "urlaub" ? (
             <PrivatUrlaub eingebettet />
           ) : (
@@ -96,6 +99,9 @@ function Startliste() {
       : mitGeld[0]
         ? `${mitGeld[0].job.name}, ${mitGeld[0].job.art === "minijob" ? "ausgezahlt" : "brutto"}`
         : "Lohn je Job einrichten";
+  // Erst Text zeigen, wenn alles geladen ist: Safari malt sich ändernden Text
+  // unter Glasflächen sonst übereinander (alter Text bleibt stehen).
+  const bereit = re !== null;
 
   const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + s, 1));
   const monatKurz = `${monthName(monat.getMonth()).slice(0, 3)} ${monat.getFullYear()}`;
@@ -124,7 +130,7 @@ function Startliste() {
         }
       />
 
-      <section className="glas space-y-3 rounded-[24px] px-4 pb-4 pt-3.5" data-stunden-karte>
+      <section className="glas glas-ruhig space-y-3 rounded-[24px] px-4 pb-4 pt-3.5" data-stunden-karte>
         <div className="flex items-end justify-between gap-3">
           <div>
             <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">Gearbeitet</div>
@@ -166,15 +172,22 @@ function Startliste() {
           icon={<BarChart3 className="h-[18px] w-[18px]" />}
           farbe="bg-brand-500/15 text-brand-600"
           name="Übersicht"
-          unter={anzahl !== null ? `${anzahl} Schichten im ${monthName(monat.getMonth())}` : "Schichten zählen"}
+          unter={bereit && anzahl !== null ? `${anzahl} Schichten im ${monthName(monat.getMonth())}` : ""}
         />
         <Eintrag
           href="/privat/schichten?reiter=geld"
           icon={<Wallet className="h-[18px] w-[18px]" />}
           farbe="bg-ok-bg text-ok-fg"
           name="Geld"
-          unter={geldUnter}
+          unter={bereit ? geldUnter : ""}
           wert={re?.summe != null ? euroGanz(re.summe) : undefined}
+        />
+        <Eintrag
+          href="/privat/schichten?reiter=lohn"
+          icon={<FileText className="h-[18px] w-[18px]" />}
+          farbe="bg-ink/[0.07] text-ink"
+          name="Lohnabrechnungen"
+          unter="Foto oder PDF – nur für dich"
         />
         <Eintrag
           href="/privat/schichten?reiter=urlaub"
@@ -182,7 +195,7 @@ function Startliste() {
           farbe="bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]"
           name="Urlaubsplaner"
           unter="Brückentage · Urlaubstage im Jahr"
-          wert={urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
+          wert={bereit && urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
         />
         <Eintrag
           href="/privat/schichten?reiter=gemeinsam"
@@ -199,7 +212,7 @@ function Startliste() {
           icon={<Layers className="h-[18px] w-[18px]" />}
           farbe="bg-ink/[0.07] text-ink-muted"
           name="Meine Schichten"
-          unter={schichtarten ? `${schichtarten.length} Schichten · Farben, Zeiten` : "anlegen und bearbeiten"}
+          unter={bereit && schichtarten ? `${schichtarten.length} Schichten · Farben, Zeiten` : ""}
         />
         <Eintrag
           href="/privat/import"
@@ -214,7 +227,7 @@ function Startliste() {
 }
 
 function Gruppe({ children }: { children: ReactNode }) {
-  return <nav className="glas divide-y divide-line overflow-hidden rounded-[22px]">{children}</nav>;
+  return <nav className="glas glas-ruhig divide-y divide-line overflow-hidden rounded-[22px]">{children}</nav>;
 }
 
 function Eintrag({
@@ -237,7 +250,7 @@ function Eintrag({
       <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-[11px]", farbe)}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] font-semibold leading-tight">{name}</span>
-        <span className="block truncate text-[12.5px] text-ink-muted">{unter}</span>
+        <span className="block min-h-[1.1em] truncate text-[12.5px] text-ink-muted">{unter || "\u00a0"}</span>
       </span>
       {wert ? <span className="tnum shrink-0 text-[15px] font-semibold">{wert}</span> : null}
       <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
