@@ -90,6 +90,12 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       };
     case "abmeldung":
       return { kategorie: "anmeldung", text: "hat sich abgemeldet", zusatz: null };
+    case "mitarbeiter.austritt":
+      return {
+        kategorie: "aenderung",
+        text: "Zugang zum Betrieb automatisch beendet (Austritt)",
+        zusatz: text(d.austritt) ? `letzter Arbeitstag ${text(d.austritt)}` : null,
+      };
     case "abmeldung.inaktiv":
       return {
         kategorie: "anmeldung",

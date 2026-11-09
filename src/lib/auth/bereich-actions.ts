@@ -32,7 +32,8 @@ export async function privatWeitermachen(): Promise<FormState> {
     maxAge: START_COOKIE_MAX_AGE,
   });
   revalidatePath("/", "layout");
-  redirect("/privat");
+  // Einmal ein Hinweis im Privatbereich: Zugang beendet, was mitgekommen ist, Datenschutz.
+  redirect("/privat?ausgetreten=1");
 }
 
 /** Mit dem bestehenden Konto einem Betrieb beitreten – nach der Übernahme-Frage. */

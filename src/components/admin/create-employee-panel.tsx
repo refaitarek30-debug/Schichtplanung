@@ -130,7 +130,7 @@ export function CreateEmployeePanel({
             <Field label="Eintritt" hint="Erster Arbeitstag. Leer = keine Grenze.">
               <Input name="entry_date" type="date" />
             </Field>
-            <Field label="Austritt" hint="Letzter Arbeitstag. Leer = unbefristet.">
+            <Field label="Austritt" hint="Letzter Arbeitstag. Ab dem Tag danach endet der Zugang zum Betrieb automatisch. Leer = unbefristet.">
               <Input name="exit_date" type="date" />
             </Field>
           </div>
