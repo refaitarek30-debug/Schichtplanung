@@ -77,7 +77,7 @@ export function PinselLeiste({
 }) {
   const fach = (an: boolean) =>
     cn(
-      "relative flex min-w-[5.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[22px] px-2.5",
+      "relative flex min-w-[5.25rem] shrink-0 snap-start flex-col items-center justify-center gap-0.5 rounded-[22px] px-2.5 transition-colors",
       an && "bg-ink/[0.07]",
     );
   const kreis = (an: boolean) =>
@@ -119,7 +119,7 @@ export function PinselLeiste({
       <div
         role="toolbar"
         aria-label="Pinsel: Eintrag wählen, dann Tage antippen – oder kurz halten und über die Tage wischen"
-        className="glas-dicht glas-voll flex h-[4.4rem] touch-pan-x select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-contain rounded-[28px] px-1.5 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4rem]"
+        className="glas-dicht glas-voll flex h-[4.4rem] touch-pan-x snap-x snap-proximity scroll-smooth select-none items-stretch overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-[28px] px-1.5 py-1.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [@media(max-height:700px)]:h-[4rem]"
       >
         {eintraege.map((a, i) => (
           <button key={a.id} type="button" onClick={() => onWahl(a.id)} aria-pressed={aktiv === a.id} className={fach(aktiv === a.id)}>
@@ -140,16 +140,26 @@ export function PinselLeiste({
           </button>
         ) : null}
         {onNeu ? (
-          <button type="button" onClick={onNeu} className={fach(false)}>
+          <button
+            type="button"
+            onClick={onNeu}
+            aria-label={eintraege.length ? "Neue Schicht anlegen" : "Eigenen Eintrag anlegen"}
+            className={cn(
+              "relative flex shrink-0 snap-start items-center justify-center",
+              eintraege.length ? "w-12" : "min-w-[5.25rem] flex-col gap-0.5 px-2.5",
+            )}
+          >
             {eintraege.length ? strich : null}
-            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/30 text-ink-muted [@media(max-height:700px)]:h-7 [@media(max-height:700px)]:w-7">
-              <Plus className="h-4 w-4" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] border-dashed border-ink/25 text-ink-muted">
+              <Plus className="h-3.5 w-3.5" />
             </span>
-            <span className="whitespace-nowrap text-[12.5px] font-semibold leading-tight text-ink-muted">
-              {eintraege.length ? "Neu" : "Eigenen Eintrag anlegen"}
-            </span>
+            {eintraege.length ? null : (
+              <span className="whitespace-nowrap text-[12.5px] font-semibold leading-tight text-ink-muted">Eigenen Eintrag anlegen</span>
+            )}
           </button>
         ) : null}
+        {/* Platz rechts, damit der letzte Eintrag nicht unter dem X liegt. */}
+        <span aria-hidden className="w-12 shrink-0" />
       </div>
     </div>
   );
@@ -367,7 +377,7 @@ export function useMonatWischen(springe: (schritt: number) => void) {
  * Haken nutzt, zeichnet drei Seiten (`seite(-1)`, `seite(0)`, `seite(1)`) in
  * einen gemeinsamen Rahmen (`flaeche`). Bei „Bewegung reduzieren“ ohne Animation.
  */
-export function useMonatKarussell(springe: (schritt: number) => void) {
+export function useMonatKarussell(springe: (schritt: number) => void, { nurSenkrecht = false }: { nurSenkrecht?: boolean } = {}) {
   const flaeche = useRef<HTMLDivElement>(null);
   const seiten = useRef<(HTMLDivElement | null)[]>([null, null, null]);
   const stand = useRef<{
@@ -438,10 +448,11 @@ export function useMonatKarussell(springe: (schritt: number) => void) {
       return;
     }
     laeuft.current = true;
-    const groesse = el.offsetWidth || 1;
-    lege("x", 0, groesse);
+    const achse = nurSenkrecht ? "y" : "x";
+    const groesse = (achse === "y" ? el.offsetHeight : el.offsetWidth) || 1;
+    lege(achse, 0, groesse);
     void el.offsetWidth; // erst die Ausgangslage zeichnen, dann bewegen
-    ende("x", 0, groesse, schritt);
+    ende(achse, 0, groesse, schritt);
   }
 
   const griffe = {
@@ -470,6 +481,11 @@ export function useMonatKarussell(springe: (schritt: number) => void) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
         s.achse = Math.abs(dx) > Math.abs(dy) * 1.2 ? "x" : Math.abs(dy) > Math.abs(dx) * 1.2 ? "y" : null;
         if (!s.achse) return;
+        // Nur hoch und runter blättern: seitliches Wischen bewegt nichts.
+        if (nurSenkrecht && s.achse === "x") {
+          stand.current = null;
+          return;
+        }
         const el = flaeche.current;
         if (el) s.groesse = (s.achse === "x" ? el.offsetWidth : el.offsetHeight) || 1;
       }

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronRight, UserPlus, Users } from "lucide-react";
+import type React from "react";
+import { Check, ChevronRight, UserPlus, Users, X } from "lucide-react";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -539,7 +540,7 @@ function Pille({
       aria-pressed={an}
       onClick={onClick}
       className={cn(
-        "h-8 shrink-0 rounded-full px-2.5 text-[12px] font-semibold transition-colors",
+        "h-8 shrink-0 rounded-full px-2 text-[11.5px] font-semibold transition-colors",
         an ? "bg-brand-500 text-white" : teil ? "bg-brand-500/10 text-brand-700 ring-1 ring-inset ring-brand-500/50" : "bg-ink/[0.06] text-ink-faint",
       )}
     >
@@ -621,11 +622,34 @@ function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
  * öffnet den Baum. Ohne Personen: Einladen.
  */
-export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Andere; onVerwalten: () => void; glas?: boolean }) {
-  const [offen, setOffen] = useState(false);
+export function WenSeheIch({
+  andere,
+  onVerwalten,
+  glas = false,
+  offen: offenVonAussen,
+  onOffen,
+}: {
+  andere: Andere;
+  onVerwalten: () => void;
+  glas?: boolean;
+  /** Von außen öffnen (z. B. Wischen vom rechten Rand). */
+  offen?: boolean;
+  onOffen?: (offen: boolean) => void;
+}) {
+  const [offenIntern, setOffenIntern] = useState(false);
+  const offen = offenVonAussen ?? offenIntern;
+  const setOffen = useCallback(
+    (o: boolean) => {
+      setOffenIntern(o);
+      onOffen?.(o);
+    },
+    [onOffen],
+  );
   const [zu, setZu] = useState<Record<string, boolean>>({});
   /** Bei wem gerade die Farbwahl offen ist. */
   const [farbWahl, setFarbWahl] = useState<string | null>(null);
+  const blatt = useRef<HTMLDivElement>(null);
+  const zug = useRef<{ x: number; dx: number } | null>(null);
 
   useEffect(() => {
     if (!offen) return;
@@ -634,7 +658,7 @@ export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Ande
     };
     window.addEventListener("keydown", taste);
     return () => window.removeEventListener("keydown", taste);
-  }, [offen]);
+  }, [offen, setOffen]);
   const alle = [...new Map(andere.zweige.flatMap((z) => z.knoten).map((k) => [k.key, k])).values()];
 
   if (andere.personen === null) return null;
@@ -643,220 +667,276 @@ export function WenSeheIch({ andere, onVerwalten, glas = false }: { andere: Ande
     "flex h-10 shrink-0 items-center rounded-full [@media(max-width:360px)]:h-9",
     glas ? "glas" : "bg-surface shadow-sm ring-1 ring-line",
   );
-
-  if (!alle.length) {
-    return (
-      <button type="button" onClick={onVerwalten} aria-label="Partner, Familie oder Freunde einladen" className={cn(knopfKlasse, "w-10 justify-center")}>
-        <UserPlus className="h-[18px] w-[18px]" />
-      </button>
-    );
-  }
-
   const sichtbar = andere.eingeblendet;
   const ich = andere.schalter(ICH);
 
+  // Nach rechts ziehen schließt das Seitenblatt.
+  const ziehen = {
+    onPointerDown: (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest("button, input, select")) return;
+      zug.current = { x: e.clientX, dx: 0 };
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const z = zug.current;
+      if (!z || !blatt.current) return;
+      z.dx = Math.max(0, e.clientX - z.x);
+      blatt.current.style.transition = "none";
+      blatt.current.style.transform = `translateX(${z.dx}px)`;
+    },
+    onPointerUp: () => {
+      const z = zug.current;
+      zug.current = null;
+      if (!z || !blatt.current) return;
+      blatt.current.style.transition = "";
+      blatt.current.style.transform = "";
+      if (z.dx > 70) setOffen(false);
+    },
+  };
+
+  const abschnitt = "px-1 pb-1.5 pt-3 text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-faint";
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOffen(true)}
-        aria-label={`Wen sehe ich? ${sichtbar.length} von ${alle.length} eingeblendet`}
-        aria-expanded={offen}
-        className={cn(knopfKlasse, "gap-0 pl-1 pr-2.5")}
-      >
-        {sichtbar.length ? (
-          sichtbar.slice(0, 2).map((k, i) => (
-            <span
-              key={k.key}
-              className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full text-[10.5px] font-bold text-white ring-2 ring-surface",
-                i > 0 && "-ml-1.5 [@media(max-width:360px)]:hidden",
-              )}
-              style={{ backgroundColor: k.farbe }}
-            >
-              {kuerzel(k.name)}
+      {alle.length ? (
+        <button
+          type="button"
+          onClick={() => setOffen(true)}
+          aria-label={`Wen sehe ich? ${sichtbar.length} von ${alle.length} eingeblendet`}
+          aria-expanded={offen}
+          className={cn(knopfKlasse, "gap-0 pl-1 pr-2.5")}
+        >
+          {sichtbar.length ? (
+            sichtbar.slice(0, 2).map((k, i) => (
+              <span
+                key={k.key}
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-full text-[10.5px] font-bold text-white ring-2 ring-surface",
+                  i > 0 && "-ml-1.5 [@media(max-width:360px)]:hidden",
+                )}
+                style={{ backgroundColor: k.farbe }}
+              >
+                {kuerzel(k.name)}
+              </span>
+            ))
+          ) : (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/[0.08]">
+              <Users className="h-4 w-4 text-ink-muted" />
             </span>
-          ))
-        ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ink/[0.08]">
-            <Users className="h-4 w-4 text-ink-muted" />
-          </span>
-        )}
-        <span className="tnum pl-1.5 text-[13px] font-bold text-brand-600">{sichtbar.length}</span>
-      </button>
+          )}
+          <span className="tnum pl-1.5 text-[13px] font-bold text-brand-600">{sichtbar.length}</span>
+        </button>
+      ) : (
+        <button type="button" onClick={onVerwalten} aria-label="Partner, Familie oder Freunde einladen" className={cn(knopfKlasse, "w-10 justify-center")}>
+          <UserPlus className="h-[18px] w-[18px]" />
+        </button>
+      )}
 
       {offen
         ? createPortal(
             <div className="privat-schrift fixed inset-0 z-50">
-              <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-black/20" onClick={() => setOffen(false)} />
+              <button
+                type="button"
+                aria-label="Schließen"
+                className="absolute inset-0 cursor-default bg-black/15 [animation:wen-dimm_.2s_ease-out]"
+                onClick={() => setOffen(false)}
+              />
               <div
+                ref={blatt}
                 role="dialog"
                 aria-label="Wen sehe ich?"
-                className="glas-dicht absolute right-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3.2rem)] max-h-[75dvh] w-[min(22rem,calc(100vw-1.5rem))] overflow-y-auto rounded-[24px] p-3"
+                data-wen-sehe-ich
+                {...ziehen}
+                onPointerCancel={ziehen.onPointerUp}
+                className="glas absolute bottom-[max(0.6rem,env(safe-area-inset-bottom))] right-2 top-[max(0.6rem,env(safe-area-inset-top))] flex w-[min(24rem,calc(100vw-1rem))] touch-pan-y flex-col overflow-hidden rounded-[28px] shadow-[0_18px_50px_rgba(31,41,77,0.25)] transition-transform duration-200 [animation:wen-rein_.26s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]"
               >
-                <div className="flex items-center justify-between gap-2 px-1 pb-2">
-                  <span className="text-[17px] font-bold">Wen sehe ich?</span>
-                  <span className="flex gap-1.5">
-                    <button type="button" onClick={andere.alleAn} className="h-8 rounded-full bg-ink/[0.06] px-3 text-[12.5px] font-semibold">
-                      Alle
-                    </button>
-                    <button type="button" onClick={andere.nurIch} className="h-8 rounded-full bg-ink/[0.06] px-3 text-[12.5px] font-semibold">
-                      Nur ich
-                    </button>
-                  </span>
+                <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-4">
+                  <span className="text-[19px] font-bold tracking-[-0.01em]">Wen sehe ich?</span>
+                  <button
+                    type="button"
+                    onClick={() => setOffen(false)}
+                    aria-label="Schließen"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
+                  >
+                    <X className="h-[18px] w-[18px]" />
+                  </button>
                 </div>
 
-                <div className="mb-1 rounded-[16px] bg-ink/[0.03] px-3 py-2.5">
-                  <p className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Schichten der anderen</p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[14px] font-medium">Größe</span>
-                    <Auswahl
-                      wert={andere.anzeige.groesse}
-                      onWahl={andere.setzeGroesse}
-                      optionen={[
-                        ["klein", "Klein"],
-                        ["mittel", "Mittel"],
-                        ["gross", "Groß"],
-                      ]}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[14px] font-medium">Schrift</span>
-                    <Auswahl
-                      wert={andere.anzeige.text}
-                      onWahl={andere.setzeText}
-                      optionen={[
-                        ["kurz", "Kurz · L·F"],
-                        ["voll", "Ausgeschrieben"],
-                      ]}
-                    />
-                  </div>
-                  <p className="mt-2 text-[11.5px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
-                </div>
-
-                <div className="flex items-center gap-2.5 rounded-[16px] px-2 py-2">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-surface">Ich</span>
-                  <span className="min-w-0 flex-1 text-[15px] font-semibold">Meine Termine</span>
-                  <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
-                    Termine
-                  </Pille>
-                </div>
-
-                {andere.zweige.map((z) => {
-                  const keys = z.knoten.map((k) => k.key);
-                  const s = keys.map((k) => andere.schalter(k));
-                  const alleS = s.every((x) => x[0]);
-                  const keineS = s.every((x) => !x[0]);
-                  const alleT = s.every((x) => x[1]);
-                  const keineT = s.every((x) => !x[1]);
-                  const einzeln = z.knoten.length === 1;
-                  const aufgeklappt = !zu[z.key];
-                  return (
-                    <div key={z.key} className="mt-1 rounded-[16px] bg-ink/[0.03]">
-                      <div className="flex items-center gap-2 px-2 py-2">
-                        {einzeln ? (
-                          <PersonAvatar name={z.knoten[0].name} farbe={z.knoten[0].farbe} klein />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setZu((a) => ({ ...a, [z.key]: aufgeklappt }))}
-                            aria-label={aufgeklappt ? `${z.titel} zuklappen` : `${z.titel} aufklappen`}
-                            aria-expanded={aufgeklappt}
-                            className="flex h-7 w-7 shrink-0 items-center justify-center"
-                          >
-                            <ChevronRight className={cn("h-4 w-4 text-ink-muted transition-transform", aufgeklappt && "rotate-90")} />
-                          </button>
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-semibold">{einzeln ? z.knoten[0].name : z.titel}</span>
-                          <span className="block truncate text-[11.5px] text-ink-muted">
-                            {einzeln ? z.titel : `${z.knoten.length} Personen`}
-                            {z.nurSchichten ? " · Gruppe" : ""}
-                          </span>
-                        </span>
-                        {einzeln ? (
-                          <FarbPunkt
-                            name={z.knoten[0].name}
-                            farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
-                            offen={farbWahl === z.knoten[0].key}
-                            onClick={() => setFarbWahl((k) => (k === z.knoten[0].key ? null : z.knoten[0].key))}
-                          />
-                        ) : null}
-                        <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
-                          Schichten
-                        </Pille>
-                        {z.nurSchichten ? null : (
-                          <Pille an={alleT} teil={!alleT && !keineT} onClick={() => andere.setze(keys, 1, !alleT)}>
-                            Termine
-                          </Pille>
-                        )}
-                      </div>
-                      {einzeln && farbWahl === z.knoten[0].key ? (
-                        <FarbReihe
-                          farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
-                          onWahl={(f) => {
-                            andere.setzeFarbe(z.knoten[0].key, f);
-                            setFarbWahl(null);
-                          }}
-                        />
-                      ) : null}
-                      {!einzeln && aufgeklappt ? (
-                        <div className="mb-1.5 ml-[1.3rem] border-l-2 border-ink/10">
-                          {z.knoten.map((k) => {
-                            const ks = andere.schalter(k.key);
-                            return (
-                              <div key={k.key}>
-                                <div className="flex items-center gap-2 py-1.5 pl-0 pr-2">
-                                  <span className="h-0.5 w-3 shrink-0 bg-ink/10" />
-                                  <PersonAvatar name={k.name} farbe={k.farbe} klein />
-                                  <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{k.name}</span>
-                                  <FarbPunkt
-                                    name={k.name}
-                                    farbe={andere.anzeige.farben[k.key] ?? null}
-                                    offen={farbWahl === k.key}
-                                    onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
-                                  />
-                                  <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
-                                    Schichten
-                                  </Pille>
-                                  {z.nurSchichten ? null : (
-                                    <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
-                                      Termine
-                                    </Pille>
-                                  )}
-                                </div>
-                                {farbWahl === k.key ? (
-                                  <FarbReihe
-                                    farbe={andere.anzeige.farben[k.key] ?? null}
-                                    onWahl={(f) => {
-                                      andere.setzeFarbe(k.key, f);
-                                      setFarbWahl(null);
-                                    }}
-                                  />
-                                ) : null}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : null}
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
+                  {alle.length ? (
+                    <div className="grid grid-cols-2 gap-1 rounded-[14px] bg-ink/[0.06] p-[3px]">
+                      <button type="button" onClick={andere.alleAn} className="h-9 rounded-[11px] bg-surface text-[13.5px] font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.1)]">
+                        Alle einblenden
+                      </button>
+                      <button type="button" onClick={andere.nurIch} className="h-9 rounded-[11px] text-[13.5px] font-semibold text-ink-muted">
+                        Nur ich
+                      </button>
                     </div>
-                  );
-                })}
+                  ) : null}
 
-                <p className="px-2 pt-2 text-[12px] leading-snug text-ink-muted">
-                  Antippen blendet ein oder aus. Gilt nur für deine Ansicht – niemand merkt etwas.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOffen(false);
-                    onVerwalten();
-                  }}
-                  className="mt-2 flex w-full items-center justify-between rounded-[14px] bg-ink/[0.05] px-3 py-2.5 text-[14px] font-semibold text-brand-600"
-                >
-                  Personen einladen oder verwalten
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+                  <p className={abschnitt}>Ich</p>
+                  <div className="flex items-center gap-2.5 rounded-[16px] bg-ink/[0.04] px-2.5 py-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-surface">Ich</span>
+                    <span className="min-w-0 flex-1 text-[15px] font-semibold">Meine Termine</span>
+                    <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
+                      Termine
+                    </Pille>
+                  </div>
+
+                  {alle.length ? (
+                    <>
+                      <p className={abschnitt}>Andere · {sichtbar.length} von {alle.length} sichtbar</p>
+                      <div className="space-y-1">
+                      {andere.zweige.map((z) => {
+                        const keys = z.knoten.map((k) => k.key);
+                        const s = keys.map((k) => andere.schalter(k));
+                        const alleS = s.every((x) => x[0]);
+                        const keineS = s.every((x) => !x[0]);
+                        const alleT = s.every((x) => x[1]);
+                        const keineT = s.every((x) => !x[1]);
+                        const einzeln = z.knoten.length === 1;
+                        const aufgeklappt = !zu[z.key];
+                        return (
+                          <div key={z.key} className="rounded-[16px] bg-ink/[0.04]">
+                            <div className="flex items-center gap-2 px-2 py-2">
+                              {einzeln ? (
+                                <PersonAvatar name={z.knoten[0].name} farbe={z.knoten[0].farbe} klein />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setZu((a) => ({ ...a, [z.key]: aufgeklappt }))}
+                                  aria-label={aufgeklappt ? `${z.titel} zuklappen` : `${z.titel} aufklappen`}
+                                  aria-expanded={aufgeklappt}
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center"
+                                >
+                                  <ChevronRight className={cn("h-4 w-4 text-ink-muted transition-transform", aufgeklappt && "rotate-90")} />
+                                </button>
+                              )}
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[15px] font-semibold">{einzeln ? z.knoten[0].name : z.titel}</span>
+                                <span className="block truncate text-[11.5px] text-ink-muted">
+                                  {einzeln ? z.titel : `${z.knoten.length} Personen`}
+                                  {z.nurSchichten ? " · Gruppe" : ""}
+                                </span>
+                              </span>
+                              {einzeln ? (
+                                <FarbPunkt
+                                  name={z.knoten[0].name}
+                                  farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
+                                  offen={farbWahl === z.knoten[0].key}
+                                  onClick={() => setFarbWahl((k) => (k === z.knoten[0].key ? null : z.knoten[0].key))}
+                                />
+                              ) : null}
+                              <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
+                                Schichten
+                              </Pille>
+                              {z.nurSchichten ? null : (
+                                <Pille an={alleT} teil={!alleT && !keineT} onClick={() => andere.setze(keys, 1, !alleT)}>
+                                  Termine
+                                </Pille>
+                              )}
+                            </div>
+                            {einzeln && farbWahl === z.knoten[0].key ? (
+                              <FarbReihe
+                                farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
+                                onWahl={(f) => {
+                                  andere.setzeFarbe(z.knoten[0].key, f);
+                                  setFarbWahl(null);
+                                }}
+                              />
+                            ) : null}
+                            {!einzeln && aufgeklappt ? (
+                              <div className="mb-1.5 ml-[1.3rem] border-l-2 border-ink/10">
+                                {z.knoten.map((k) => {
+                                  const ks = andere.schalter(k.key);
+                                  return (
+                                    <div key={k.key}>
+                                      <div className="flex items-center gap-2 py-1.5 pl-0 pr-2">
+                                        <span className="h-0.5 w-3 shrink-0 bg-ink/10" />
+                                        <PersonAvatar name={k.name} farbe={k.farbe} klein />
+                                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{k.name}</span>
+                                        <FarbPunkt
+                                          name={k.name}
+                                          farbe={andere.anzeige.farben[k.key] ?? null}
+                                          offen={farbWahl === k.key}
+                                          onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
+                                        />
+                                        <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
+                                          Schichten
+                                        </Pille>
+                                        {z.nurSchichten ? null : (
+                                          <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
+                                            Termine
+                                          </Pille>
+                                        )}
+                                      </div>
+                                      {farbWahl === k.key ? (
+                                        <FarbReihe
+                                          farbe={andere.anzeige.farben[k.key] ?? null}
+                                          onWahl={(f) => {
+                                            andere.setzeFarbe(k.key, f);
+                                            setFarbWahl(null);
+                                          }}
+                                        />
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                      </div>
+
+                      <p className={abschnitt}>Darstellung der anderen</p>
+                      <div className="space-y-2 rounded-[16px] bg-ink/[0.04] px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[14px] font-medium">Größe</span>
+                          <Auswahl
+                            wert={andere.anzeige.groesse}
+                            onWahl={andere.setzeGroesse}
+                            optionen={[
+                              ["klein", "Klein"],
+                              ["mittel", "Mittel"],
+                              ["gross", "Groß"],
+                            ]}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[14px] font-medium">Schrift</span>
+                          <Auswahl
+                            wert={andere.anzeige.text}
+                            onWahl={andere.setzeText}
+                            optionen={[
+                              ["kurz", "Kurz"],
+                              ["voll", "Ausgeschrieben"],
+                            ]}
+                          />
+                        </div>
+                        <p className="text-[11.5px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="px-1 pt-4 text-[14px] leading-snug text-ink-muted">
+                      Noch niemand verbunden. Lade Partner, Familie oder Freunde ein – dann siehst du hier, wessen Schichten und
+                      Termine im Kalender stehen.
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t border-line px-3 pb-3 pt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOffen(false);
+                      onVerwalten();
+                    }}
+                    className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[14px] bg-brand-600 text-[14.5px] font-semibold text-white"
+                  >
+                    <UserPlus className="h-4 w-4" /> Personen einladen oder verwalten
+                  </button>
+                  <p className="pt-2 text-center text-[11.5px] leading-snug text-ink-muted">Gilt nur für deine Ansicht – niemand merkt etwas.</p>
+                </div>
               </div>
             </div>,
             document.body,

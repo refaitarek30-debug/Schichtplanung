@@ -1,6 +1,6 @@
 # ShiftNexo – Unterlage für den Betriebsrat
 
-Stand: 9. November 2026 · Datenschutzerklärung Fassung 2.26
+Stand: 9. November 2026 · Datenschutzerklärung Fassung 2.27
 
 Diese Unterlage beschreibt, was die Anwendung tatsächlich tut – wer was sieht,
 was gespeichert wird und wie lange. Sie ersetzt keine Rechtsberatung und keine
@@ -85,5 +85,5 @@ Auswertungsverbot in einer Betriebsvereinbarung festzulegen.
 2. Zugriff auf Anmeldeprotokoll und Auswertung: namentlich festgelegte Personen.
 3. Fehlzeiten-Leiste: Zweck und Nutzung festlegen oder abschalten.
 4. Löschfristen wie oben; keine längere Aufbewahrung ohne Anlass.
-5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.26).
+5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.27).
 6. Änderungen an Rollen und Protokollen nur nach Information des Betriebsrats.

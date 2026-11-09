@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Building2, ChevronRight, FileUp, KeyRound, LogOut, Repeat, Trash2, Palmtree, CalendarHeart } from "lucide-react";
+import { Building2, ChevronRight, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
 import { wechsleBereich } from "@/lib/bereich";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
@@ -86,76 +86,44 @@ export function PrivatMehr() {
         )}
       </PrivatKarte>
 
-      <PrivatKarte titel="Mitteilungen & Vorschläge">
-        <div className="px-4 py-4">
-          <KalenderVorliebenInhalt />
-        </div>
-      </PrivatKarte>
-
       <PrivatKarte titel="Kalender">
-        <div className="space-y-4 px-4 py-4">
+        <div className="divide-y divide-line">
           <button
             type="button"
             onClick={() => setSchichtfolge(true)}
             disabled={!schichtarten}
-            className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left disabled:opacity-50"
+            className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:opacity-50"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-brand-500/12 text-brand-600">
               <Repeat className="h-[18px] w-[18px]" />
             </span>
-            <span>
-              <span className="block text-[15px] font-medium">Schichtfolge eintragen</span>
-              <span className="block text-[13px] text-ink-muted">Muster einmal wählen, der Kalender füllt sich von selbst</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold">Schichtfolge eintragen</span>
+              <span className="block truncate text-[12.5px] text-ink-muted">Muster einmal wählen, der Kalender füllt sich</span>
             </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
           </button>
-          <Link href="/privat/import" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <FileUp className="h-[18px] w-[18px]" />
-            </span>
-            <span>
-              <span className="block text-[15px] font-medium">Plan hochladen</span>
-              <span className="block text-[13px] text-ink-muted">Screenshot oder Kalender-Datei aus einer anderen App, z. B. Supershift</span>
-            </span>
-          </Link>
-          <Link href="/privat/schichten?reiter=urlaub" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <Palmtree className="h-[18px] w-[18px]" />
-            </span>
-            <span>
-              <span className="block text-[15px] font-medium">Urlaub clever legen</span>
-              <span className="block text-[13px] text-ink-muted">Brückentage finden: viele freie Tage für wenige Urlaubstage</span>
-            </span>
-          </Link>
-          <Link href="/privat/schichten?reiter=gemeinsam" className="flex w-full items-center gap-3 rounded-[16px] bg-ink/[0.06] px-3.5 py-3 text-left">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <CalendarHeart className="h-[18px] w-[18px]" />
-            </span>
-            <span>
-              <span className="block text-[15px] font-medium">Gemeinsam frei</span>
-              <span className="block text-[13px] text-ink-muted">Wann ihr beide frei habt – Monat und Jahr</span>
-            </span>
-          </Link>
-          <label className="flex items-center justify-between gap-3">
-            <span>
-              <span className="block text-[15px] font-medium">Feiertage anzeigen</span>
-              <span className="block text-[13px] text-ink-muted">Im Kalender rot hervorgehoben</span>
+          <label className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="min-w-0">
+              <span className="block text-[15px] font-semibold">Feiertage anzeigen</span>
+              <span className="block text-[12.5px] text-ink-muted">Im Kalender rot hervorgehoben</span>
             </span>
             <input
               type="checkbox"
               checked={konto.feiertageZeigen}
               onChange={(e) => speichere({ feiertageZeigen: e.target.checked })}
               disabled={laeuft}
-              className="h-5 w-5 accent-brand-500"
+              className="h-5 w-5 shrink-0 accent-brand-500"
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Bundesland (für die Feiertage)</span>
+          <label className="flex items-center justify-between gap-3 px-4 py-3">
+            <span className="text-[15px] font-semibold">Bundesland</span>
             <select
               id="privat-bundesland"
               value={konto.bundesland}
               onChange={(e) => speichere({ bundesland: e.target.value })}
               disabled={laeuft}
-              className={feld}
+              className="max-w-[58%] rounded-xl bg-ink/[0.06] px-3 py-2 text-[14px] font-semibold"
             >
               {BUNDESLAENDER.map((b) => (
                 <option key={b.code} value={b.code}>
@@ -165,7 +133,7 @@ export function PrivatMehr() {
             </select>
           </label>
           <form
-            className="block"
+            className="px-4 py-3"
             onSubmit={(e) => {
               e.preventDefault();
               const t = stunden.trim().replace(",", ".");
@@ -177,26 +145,36 @@ export function PrivatMehr() {
               speichere({ wochenstunden: n });
             }}
           >
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Wochenstunden laut Vertrag</span>
-            <div className="flex gap-2">
-              <input
-                id="privat-wochenstunden"
-                inputMode="decimal"
-                value={stunden}
-                onChange={(e) => setStunden(e.target.value)}
-                placeholder="z. B. 37,5"
-                className={feld}
-              />
-              <button type="submit" disabled={laeuft} className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white">
-                Speichern
-              </button>
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="privat-wochenstunden" className="min-w-0">
+                <span className="block text-[15px] font-semibold">Wochenstunden</span>
+                <span className="block text-[12.5px] text-ink-muted">Für Soll und Überstunden</span>
+              </label>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <input
+                  id="privat-wochenstunden"
+                  inputMode="decimal"
+                  value={stunden}
+                  onChange={(e) => setStunden(e.target.value)}
+                  placeholder="37,5"
+                  className="h-10 w-20 rounded-xl bg-ink/[0.06] px-3 text-right text-[15px] font-semibold outline-none focus:ring-2 focus:ring-brand-500/40"
+                />
+                <button type="submit" disabled={laeuft} className="h-10 rounded-xl bg-brand-500 px-3 text-[13.5px] font-semibold text-white">
+                  OK
+                </button>
+              </div>
             </div>
-            <span className="mt-1 block text-[12px] text-ink-faint">Für Soll und Überstunden in der Auswertung.</span>
           </form>
         </div>
       </PrivatKarte>
 
-      <PrivatKarte titel="Konto">
+      <PrivatKarte titel="Mitteilungen & Vorschläge">
+        <div className="px-4 py-4">
+          <KalenderVorliebenInhalt />
+        </div>
+      </PrivatKarte>
+
+      <PrivatKarte titel="Profil">
         <div className="space-y-4 px-4 py-4">
           <form
             onSubmit={(e) => {
@@ -204,14 +182,20 @@ export function PrivatMehr() {
               speichere({ name });
             }}
           >
-            <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Name</span>
+            <label htmlFor="privat-name" className="mb-1 block text-[13px] font-semibold text-ink-muted">
+              Name
+            </label>
             <div className="flex gap-2">
               <input id="privat-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className={feld} />
-              <button type="submit" disabled={laeuft} className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white">
+              <button
+                type="submit"
+                disabled={laeuft || name === konto.name}
+                className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white disabled:opacity-40"
+              >
                 Speichern
               </button>
             </div>
-            <span className="mt-1 block text-[12px] text-ink-faint">Dein Vorname erscheint in der Partneransicht.</span>
+            <span className="mt-1 block text-[12px] text-ink-faint">Dein Vorname erscheint bei den Leuten, mit denen du teilst.</span>
           </form>
           <div>
             <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Darstellung</span>
@@ -220,7 +204,7 @@ export function PrivatMehr() {
         </div>
       </PrivatKarte>
 
-      <PrivatKarte titel="Passwort vergessen?">
+      <PrivatKarte titel="Sicherheit">
         <WiederherstellungsCode />
         <form action={emailAktion} className="glas-linie space-y-2 border-t px-4 py-4">
           <p className="text-[13px] text-ink-muted">

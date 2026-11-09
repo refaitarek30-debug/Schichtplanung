@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-09T23:30:00+01:00",
+    titel: "Lohnabrechnungen",
+    text: "Unter Schichten: Foto oder PDF hochladen, nach Monat abgelegt, jederzeit abrufbar – nur für dich.",
+    bereich: "privat",
+  },
+  {
+    zeit: "2026-11-09T23:30:00+01:00",
+    titel: "Kalender: hoch und runter",
+    text: "Hochwischen = nächster Monat. Vom rechten Rand nach links ziehen: „Wen sehe ich?“.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-09T20:30:00+01:00",
     titel: "Geld je Job",
     text: "Zwei Jobs? Unter Schichten → Geld bekommt jeder Job seinen eigenen Lohn – Minijob netto mit Grenze, Zuschläge mit eigener Uhrzeit (z. B. 25 % von 23 bis 24 Uhr).",

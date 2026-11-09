@@ -21,6 +21,7 @@ import leiste from "./leiste.test.mjs";
 import rahmen from "./rahmen.test.mjs";
 import geld from "./geld.test.mjs";
 import urlaub from "./urlaub.test.mjs";
+import privatNeu from "./privat-neu.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -30,6 +31,7 @@ const ABLAEUFE = [
   ["Beitritt", "privat", beitritt],
   ["Privat: Geld je Job und andere Uhrzeit", "privat", geld],
   ["Privat: Urlaubsplaner", "privat", urlaub],
+  ["Privat: Lohnabrechnungen, Wischen, Wen sehe ich", "privat", privatNeu],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],

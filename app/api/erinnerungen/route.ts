@@ -61,10 +61,18 @@ export async function POST(anfrage: Request) {
   const oeffentlich = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const kopf = anfrage.headers.get("x-erinnerung") ?? "";
   if (!geheimnis || !gleich(kopf, geheimnis)) return new NextResponse(null, { status: 404 });
-  if (!privat || !oeffentlich) return NextResponse.json({ fehler: "nicht eingerichtet" }, { status: 503 });
-
-  webpush.setVapidDetails("https://ready-flame.vercel.app", oeffentlich, privat);
   const db = createAdminClient();
+
+  // Gelöschte Lohnabrechnungen (auch mit gelöschten Konten) aus dem Speicher entfernen (Migration 0204).
+  const { data: weg } = await db.from("lohnzettel_aufraeumen").select("pfad").limit(200);
+  const pfade = ((weg ?? []) as { pfad: string }[]).map((w) => w.pfad);
+  if (pfade.length) {
+    const { error: speicherFehler } = await db.storage.from("lohnzettel").remove(pfade);
+    if (!speicherFehler) await db.from("lohnzettel_aufraeumen").delete().in("pfad", pfade);
+  }
+
+  if (!privat || !oeffentlich) return NextResponse.json({ fehler: "nicht eingerichtet" }, { status: 503 });
+  webpush.setVapidDetails("https://ready-flame.vercel.app", oeffentlich, privat);
 
   const [{ data: faellig, error }, { data: schlange }] = await Promise.all([
     db.rpc("faellige_erinnerungen"),

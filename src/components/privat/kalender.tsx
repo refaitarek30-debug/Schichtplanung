@@ -472,10 +472,14 @@ export function PrivatKalender() {
   }
 
   /**
-   * Pinsel: ein Strich über einen oder mehrere Tage. Steht die gewählte
-   * Schicht am ersten Tag schon, nimmt der Strich sie überall weg (nochmal
-   * tippen = weg). Sonst kommt sie dazu – bis zu drei Einträge je Tag, volle
-   * Tage bleiben, wie sie sind. „Leeren“ fragt vorher nach.
+   * Pinsel: ein Strich über einen oder mehrere Tage. Je Tag gilt:
+   *  - leer → die Schicht
+   *  - eine andere Schicht → kommt dazu (z. B. Spät + Tanke)
+   *  - zwei oder mehr ohne sie → sie ersetzt die erste
+   *  - sie steht schon mit anderen → nur noch sie
+   *  - sie steht allein → Tag leer
+   * So wird z. B. Spät + Tanke mit Früh: Früh + Tanke → Früh → leer.
+   * „Leeren“ fragt vorher nach.
    */
   function pinselStrich(liste: string[]) {
     if (!pinselAn || !pinsel) return;
@@ -496,25 +500,19 @@ export function PrivatKalender() {
       return;
     }
     const name = artNach.get(pinsel)?.name ?? "neu";
-    const weg = idsVon(tage[liste[0]!]).includes(pinsel);
     const neu: Record<string, TagEintrag | undefined> = {};
-    let voll = 0;
+    let entfernt = 0;
     for (const t of liste) {
       const ids = idsVon(tage[t]);
-      if (weg) {
-        if (ids.includes(pinsel)) neu[t] = eintragAus(ids.filter((id) => id !== pinsel));
-      } else if (!ids.includes(pinsel)) {
-        if (ids.length >= MAX_JE_TAG) voll++;
-        else neu[t] = eintragAus([...ids, pinsel]);
-      }
+      const danach = pinselNaechste(ids, pinsel);
+      if (danach.join("|") === ids.join("|")) continue;
+      if (!danach.includes(pinsel)) entfernt++;
+      neu[t] = eintragAus(danach);
     }
     const geaendert = Object.keys(neu);
-    if (!geaendert.length) {
-      if (voll) setFehler(`An ${voll === 1 ? "diesem Tag" : "diesen Tagen"} stehen schon ${MAX_JE_TAG} Einträge.`);
-      return;
-    }
-    setFehler(voll ? `An ${voll} ${voll === 1 ? "Tag" : "Tagen"} stehen schon ${MAX_JE_TAG} Einträge – dort nichts geändert.` : null);
-    merke(geaendert, weg ? `${name} entfernt · {n}` : `${name} eingetragen · {n}`);
+    if (!geaendert.length) return;
+    setFehler(null);
+    merke(geaendert, entfernt === geaendert.length ? `${name} entfernt · {n}` : `${name} eingetragen · {n}`);
     void aendern(neu);
   }
 
@@ -575,8 +573,45 @@ export function PrivatKalender() {
       else springe(dx < 0 ? 1 : -1);
     }
   }
-  // Im Monat: seitlich oder nach oben/unten wischen – Vor- und Folgemonat folgen dem Finger.
-  const { flaeche: monatFlaeche, seite: monatSeite, griffe: monatGriffe, gewischt: monatGewischt } = useMonatKarussell(springe);
+  // Im Monat: hochwischen = nächster Monat, runter = vorheriger; der Monat folgt dem Finger.
+  const {
+    flaeche: monatFlaeche,
+    seite: monatSeite,
+    griffe: karussellGriffe,
+    gewischt: monatGewischt,
+  } = useMonatKarussell(springe, { nurSenkrecht: true });
+  // Vom rechten Rand nach links ziehen: „Wen sehe ich?“ kommt als Seitenblatt herein –
+  // überall am rechten Bildschirmrand, solange kein anderes Fenster offen ist.
+  const [wenOffen, setWenOffen] = useState(false);
+  const monatGriffe = karussellGriffe;
+  const randFrei = ansicht === "monat" && !pinselAn && !tagBlatt && !terminBlatt && !todoBlatt;
+  useEffect(() => {
+    if (!randFrei) return;
+    let start: { x: number; y: number } | null = null;
+    const RAND = 28;
+    const los = (x: number, y: number) => {
+      start = x > window.innerWidth - RAND ? { x, y } : null;
+    };
+    const ende = (x: number, y: number) => {
+      const s = start;
+      start = null;
+      if (s && s.x - x > 40 && Math.abs(y - s.y) < 80) setWenOffen(true);
+    };
+    const pDown = (e: PointerEvent) => los(e.clientX, e.clientY);
+    const pUp = (e: PointerEvent) => ende(e.clientX, e.clientY);
+    const tStart = (e: TouchEvent) => e.touches[0] && los(e.touches[0].clientX, e.touches[0].clientY);
+    const tEnd = (e: TouchEvent) => e.changedTouches[0] && ende(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    window.addEventListener("pointerdown", pDown, true);
+    window.addEventListener("pointerup", pUp, true);
+    window.addEventListener("touchstart", tStart, { capture: true, passive: true });
+    window.addEventListener("touchend", tEnd, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", pDown, true);
+      window.removeEventListener("pointerup", pUp, true);
+      window.removeEventListener("touchstart", tStart, true);
+      window.removeEventListener("touchend", tEnd, true);
+    };
+  }, [randFrei]);
   // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
   const langDruck = useLangDruck((iso) => {
     if (pinselAn) return;
@@ -640,10 +675,10 @@ export function PrivatKalender() {
         "bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.6rem)]",
       )}
     >
-      <header className="flex items-center justify-between gap-2 px-3.5 pb-2 pt-1.5 sm:px-0 sm:pb-2.5 sm:pt-0">
+      <header className="flex items-center justify-between gap-2 px-4 pb-2.5 pt-2 sm:px-0 sm:pb-2.5 sm:pt-0">
         <div className="min-w-0">
-          <h1 className="truncate text-[24px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[21px]">{titel}</h1>
-          <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-none text-ink-muted">
+          <h1 className="truncate text-[26px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[22px]">{titel}</h1>
+          <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-tight text-ink-muted">
             {unter}
             {!heuteSichtbar ? (
               <>
@@ -659,7 +694,7 @@ export function PrivatKalender() {
           {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
           <PrivatNeuigkeiten />
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
-          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} />
+          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} offen={wenOffen} onOffen={setWenOffen} />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
@@ -758,7 +793,7 @@ export function PrivatKalender() {
       <div
         className={cn(
           "relative min-h-0 flex-1 select-none",
-          ansicht === "monat" ? "-m-2 touch-none overflow-hidden p-2" : "touch-pan-y px-3.5 sm:px-0",
+          ansicht === "monat" ? "touch-none overflow-hidden px-2 pb-1.5 sm:-m-2 sm:p-2" : "touch-pan-y px-3.5 sm:px-0",
         )}
         {...(ansicht === "monat"
           ? pinselAn
@@ -1076,7 +1111,7 @@ function MonatsAnsicht({
   const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
   return (
     <div
-      className="glas grid h-full grid-cols-7 overflow-hidden rounded-none sm:rounded-[22px]"
+      className="glas grid h-full grid-cols-7 overflow-hidden rounded-[24px]"
       style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
     >
       {WT.map((w, i) => (
@@ -1520,4 +1555,12 @@ function AndereUhrzeit({
       })}
     </ul>
   );
+}
+
+/** Pinsel-Regel für einen Tag (siehe pinselStrich). */
+export function pinselNaechste(ids: string[], x: string): string[] {
+  if (!ids.length) return [x];
+  if (!ids.includes(x)) return ids.length === 1 ? [ids[0]!, x] : [x, ...ids.slice(1)].slice(0, MAX_JE_TAG);
+  if (ids.length > 1) return [x];
+  return [];
 }

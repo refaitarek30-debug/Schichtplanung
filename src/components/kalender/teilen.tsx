@@ -451,7 +451,7 @@ export function GruppenListe({
   return (
     <div className="space-y-3">
       {gruppen && gruppen.length ? (
-        <ul className="overflow-hidden rounded-[22px] bg-surface ring-1 ring-line">
+        <ul className="glas overflow-hidden rounded-[22px]">
           {gruppen.map((g, i) => (
             <li key={g.id} className={cn(i > 0 && "border-t border-line")}>
               <button type="button" onClick={() => onGruppe(g.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
@@ -473,7 +473,7 @@ export function GruppenListe({
       <button
         type="button"
         onClick={onNeu}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-surface text-[15px] font-semibold text-brand-600 ring-1 ring-line"
+        className="glas flex h-12 w-full items-center justify-center gap-2 rounded-[16px] text-[15px] font-semibold text-brand-600"
       >
         <Users className="h-[18px] w-[18px]" /> Gruppe erstellen
       </button>
