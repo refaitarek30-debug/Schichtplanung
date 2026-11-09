@@ -18,6 +18,7 @@ import schnell from "./schnell.test.mjs";
 import sperren from "./sperren.test.mjs";
 import passwort from "./passwort.test.mjs";
 import leiste from "./leiste.test.mjs";
+import rahmen from "./rahmen.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -33,6 +34,7 @@ const ABLAEUFE = [
   ["Urlaubssperren durch die Schichtleitung", "betrieb", sperren],
   ["Passwort ändern im Profil", "betrieb", passwort],
   ["Untere Leiste bleibt unten", "betrieb", leiste],
+  ["Handy: fester Rahmen, nur der Inhalt scrollt", "betrieb", rahmen],
 ];
 
 const nur = process.argv[2];

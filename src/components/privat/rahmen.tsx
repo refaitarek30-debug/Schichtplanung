@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react";
 import { useTodoZahl } from "@/components/kalender/todo-zaehler";
 import { LeisteHalten } from "@/components/layout/leiste-halten";
+import { appScroller } from "@/lib/app-scroller";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -20,8 +21,14 @@ const NAV = [
 export function PrivatRahmen({ children }: { children: ReactNode }) {
   const pfad = usePathname();
   const todoZahl = useTodoZahl(pfad);
+  // Neue Seite beginnt oben – es scrollt der Rahmen, nicht die Seite.
+  useEffect(() => {
+    appScroller()?.scrollTo({ top: 0 });
+  }, [pfad]);
   return (
-    <div className="privat min-h-dvh">
+    // Der Rahmen steht fest, nur der Inhalt scrollt – sonst verschiebt iOS 26
+    // die feste Leiste beim Scrollen (siehe src/lib/app-scroller.ts).
+    <div data-app-scroller className="privat fixed inset-0 overflow-y-auto overscroll-contain">
       <main className="mx-auto w-full max-w-3xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
         {children}
       </main>

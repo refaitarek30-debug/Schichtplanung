@@ -55,6 +55,7 @@ import { ladeFarben } from "@/lib/data/kalender-eigene";
 import { planZellStil } from "@/lib/kalender-farben";
 import { PlanAnsichtWahl, PlanFarbenSchalter, WochenendeWahl } from "@/components/kalender/anzeige-wahl";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
+import { scrolleUm } from "@/lib/app-scroller";
 
 /** Was ein Abruf des Plans liefert – als Ganzes zwischengespeichert. */
 interface PlanStand {
@@ -520,7 +521,7 @@ export function ShiftPlanGrid({
     // wandert sie nach oben – sonst trifft der zweite Tipp die Leiste.
     const zeile = document.getElementById("eigene-zeile");
     if (zeile && zeile.getBoundingClientRect().bottom > window.innerHeight - 200) {
-      window.scrollBy({ top: zeile.getBoundingClientRect().top - window.innerHeight * 0.3 });
+      scrolleUm(zeile.getBoundingClientRect().top - window.innerHeight * 0.3);
     }
     setAuswahl((bisher) => {
       if (!bisher || bisher.fertig) return { von: iso, bis: iso, fertig: false };
@@ -901,7 +902,7 @@ export function ShiftPlanGrid({
       const zeile = document.getElementById("eigene-zeile");
       const rect = zeile?.getBoundingClientRect();
       if (rect && rect.bottom > window.innerHeight * 0.85) {
-        window.scrollBy({ top: rect.top - window.innerHeight * 0.4 });
+        scrolleUm(rect.top - window.innerHeight * 0.4);
       }
     }, 80);
   }, [zurEigenenZeile, cells, groups]);

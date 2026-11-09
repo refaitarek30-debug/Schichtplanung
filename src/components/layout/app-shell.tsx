@@ -15,12 +15,19 @@ import { Topbar } from "./topbar";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    // `min-h-dvh` statt `min-h-screen`: auf dem Handy wächst und schrumpft
-    // die Adressleiste, und `100vh` rechnet mit dem größten Zustand. Die
-    // Seite war dadurch immer etwas zu lang.
-    <div className="flex min-h-dvh">
+    // Handy: Der Rahmen steht fest (fixed, inset-0), nur der Inhalt darin
+    // scrollt (data-app-scroller). Seit iOS 26 verschiebt Safari feste
+    // Leisten, wenn sich beim Scrollen der Seite die Richtung ändert – die
+    // untere Leiste stand dann mitten im Bild. Scrollt die Seite selbst nie,
+    // kann nichts verrutschen. Siehe src/lib/app-scroller.ts.
+    // Computer: wie bisher, die Seite scrollt (`min-h-dvh` statt
+    // `min-h-screen`, weil `100vh` mit der größten Adressleiste rechnet).
+    <div className="fixed inset-0 flex lg:static lg:min-h-dvh">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        data-app-scroller
+        className="flex min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain lg:overflow-visible lg:overscroll-auto"
+      >
         <Topbar />
         <ShellMain>
           <InstallHint />
