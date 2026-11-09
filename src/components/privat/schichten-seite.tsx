@@ -180,8 +180,8 @@ function Startliste() {
           href="/privat/schichten?reiter=urlaub"
           icon={<Palmtree className="h-[18px] w-[18px]" />}
           farbe="bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]"
-          name="Urlaub"
-          unter="übrig · Brückentage"
+          name="Urlaubsplaner"
+          unter="Brückentage · Urlaubstage im Jahr"
           wert={urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
         />
         <Eintrag
