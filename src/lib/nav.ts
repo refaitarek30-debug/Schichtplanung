@@ -109,12 +109,13 @@ export const navItems: NavItem[] = [
     roles: ["admin"],
   },
   {
-    // Anmeldungen, Änderungen und Fehler. Nur für freigeschaltete Personen
-    // – abgesichert in `protokoll_liste()`, hier wird nur ausgeblendet.
+    // Wer hat was geändert: ganze Führung. Anmeldungen und Fehler nur die
+    // freigeschaltete Administration – abgesichert in `protokoll_liste()`,
+    // hier wird nur ausgeblendet.
     href: "/protokoll",
     label: "Protokoll",
     icon: ScrollText,
-    roles: ["admin"],
+    roles: ["shift_leader", "admin"],
     nurProtokoll: true,
   },
   {
@@ -266,13 +267,13 @@ const LEISTE: { label: string | null; eintraege: LeistenEintrag[] }[] = [
         icon: Megaphone,
         roles: FUEHRUNG,
       },
+      { href: "/protokoll", label: "Protokoll", unter: "Wer hat was geändert", icon: ScrollText, roles: FUEHRUNG, nurProtokoll: true },
     ],
   },
   {
     label: "Nur Administration",
     eintraege: [
       { href: "/auswertung", label: "Auswertung", unter: "Ausfall · Anwesenheit · Gesundheitsrate", icon: BarChart3, roles: ["admin"] },
-      { href: "/protokoll", label: "Protokoll", unter: "Anmeldungen · Änderungen · Fehler", icon: ScrollText, roles: ["admin"], nurProtokoll: true },
     ],
   },
   {

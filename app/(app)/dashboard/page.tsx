@@ -60,6 +60,7 @@ import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher"
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 import { gruppiereAntraege } from "@/lib/leave-groups";
 import { GeburtsdatenOffen } from "@/components/admin/geburtsdaten-offen";
+import { OffeneAntraegeKachel } from "@/components/dashboard/offene-antraege-kachel";
 
 /**
  * Letzter Stand der Startseite. Wer vom Plan zurückkommt, sieht die Kacheln
@@ -471,7 +472,7 @@ export default function DashboardPage() {
       {mode === "live" && profile.employeeId && !kompakt ? (
         <Link
           href="/schichtplan?antrag=1"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 xl:col-start-2 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         >
           <Plus className="h-5 w-5" strokeWidth={2.2} />
           Urlaub beantragen
@@ -541,24 +542,8 @@ export default function DashboardPage() {
         <>
           <div className="grid gap-4">
             {mode === "live" ? (
-              <Card>
-                <CardHeader
-                  title="Anträge zur Entscheidung"
-                  hint={
-                    pendingCount > 0
-                      ? `${pendingCount} warten auf deine Entscheidung`
-                      : "keine offenen Anträge"
-                  }
-                />
-                <CardBody>
-                  <a
-                    href="/urlaubsantraege"
-                    className="text-[13px] font-medium text-brand-600 hover:underline"
-                  >
-                    Zu den Urlaubsanträgen →
-                  </a>
-                </CardBody>
-              </Card>
+              // Offene Anträge direkt in der Kachel, in sich scrollbar.
+              <OffeneAntraegeKachel />
             ) : (
               <RequestList
                 title="Anträge zur Entscheidung"
@@ -633,7 +618,15 @@ export default function DashboardPage() {
  * dort bleibt alles wie gehabt untereinander.
  */
 function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
-  if (!an) return <>{children}</>;
+  // „Klassisch“ am PC: links der Plan, rechts die Kacheln – der breite
+  // Bildschirm wird genutzt. Handy und Tablet: untereinander wie bisher.
+  if (!an) {
+    return (
+      <div className="space-y-6 xl:grid xl:grid-flow-row-dense xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start xl:gap-6 xl:space-y-0">
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-flow-row-dense xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start">
       {children}
@@ -641,8 +634,18 @@ function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
   );
 }
 
-/** Ein Platz im Raster der kompakten Startseite; bei „Klassisch“ ohne Hülle. */
+/**
+ * Ein Platz im Raster. „Kompakt“: Raster ab Tablet. „Klassisch“: erst am
+ * großen Bildschirm (xl) – dort gelten nur die xl-Angaben des Platzes,
+ * darunter bleibt alles wie gehabt untereinander.
+ */
 function Fach({ an, platz, children }: { an: boolean; platz: string; children: React.ReactNode }) {
-  if (!an) return <>{children}</>;
+  if (!an) {
+    const nurPc = platz
+      .split(/\s+/)
+      .filter((k) => k.startsWith("xl:"))
+      .join(" ");
+    return <div className={cn("min-w-0 empty:hidden", nurPc)}>{children}</div>;
+  }
   return <div className={cn("min-w-0 empty:hidden", platz)}>{children}</div>;
 }

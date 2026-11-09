@@ -28,6 +28,7 @@ import type { LiveLeaveImpact, LiveLeaveRequest } from "@/lib/types";
 import { artenText, gruppiereAntraege } from "@/lib/leave-groups";
 import { useSession } from "@/context/session";
 import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
+import { cn } from "@/lib/utils";
 
 type StatusFilter = "pending" | "approved" | "rejected" | "all";
 
@@ -41,8 +42,12 @@ export function ReviewPanel({
   onChanged: () => void;
 }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
-  /** Jahr des Antrags (Beginn oder Ende); null = alle Jahre. */
-  const [jahr, setJahr] = useState<number | null>(null);
+  /**
+   * Jahr des Antrags (Beginn oder Ende); null = alle Jahre. Getrennt nach
+   * diesem und nächstem Jahr – voreingestellt das laufende (deutsche Zeit).
+   */
+  const laufendesJahr = Number(heuteInBerlin().slice(0, 4));
+  const [jahr, setJahr] = useState<number | null>(laufendesJahr);
   /** Fortschritt der Sammelgenehmigung: geprüft von gesamt. */
   const [fortschritt, setFortschritt] = useState<{ fertig: number; gesamt: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -75,14 +80,33 @@ export function ReviewPanel({
   );
   /** Jahre, in denen es Anträge gibt – ab dem laufenden, vergangene nicht mehr. */
   const jahre = useMemo(() => {
-    const laufend = new Date().getFullYear();
-    const menge = new Set<number>([laufend]);
+    const laufend = laufendesJahr;
+    const menge = new Set<number>([laufend, laufend + 1]);
     for (const r of requests ?? []) {
       menge.add(Number(r.startDate.slice(0, 4)));
       menge.add(Number(r.endDate.slice(0, 4)));
     }
     return [...menge].filter((j) => j >= laufend).sort((a, b) => a - b);
+  }, [requests, laufendesJahr]);
+
+  /** Offene Anträge je Jahr – für die Zahl auf den Reitern. */
+  const offenJeJahr = useMemo(() => {
+    const zahl = new Map<number, number>();
+    for (const r of gruppiereAntraege(requests ?? [])) {
+      if (r.status !== "pending") continue;
+      const von = Number(r.startDate.slice(0, 4));
+      const bis = Number(r.endDate.slice(0, 4));
+      for (let j = von; j <= bis; j++) zahl.set(j, (zahl.get(j) ?? 0) + 1);
+    }
+    return zahl;
   }, [requests]);
+  const reiter: { wert: number | null; text: string }[] = [
+    ...jahre.map((j) => ({
+      wert: j,
+      text: j === laufendesJahr ? `Dieses Jahr · ${j}` : j === laufendesJahr + 1 ? `Nächstes Jahr · ${j}` : String(j),
+    })),
+    { wert: null, text: "Alle Jahre" },
+  ];
 
   /**
    * Ein Zeitraum ist ein Antrag – auch wenn er in der Datenbank aus
@@ -317,6 +341,34 @@ export function ReviewPanel({
         </div>
       ) : null}
 
+      {/* Dieses Jahr und nächstes Jahr getrennt – mit der Zahl offener Anträge. */}
+      <div role="tablist" aria-label="Jahr" data-jahr-reiter className="flex gap-1.5 overflow-x-auto border-b border-line px-5 py-3">
+        {reiter.map(({ wert, text }) => {
+          const offen = wert === null ? 0 : (offenJeJahr.get(wert) ?? 0);
+          const aktiv = jahr === wert;
+          return (
+            <button
+              key={text}
+              type="button"
+              role="tab"
+              aria-selected={aktiv}
+              onClick={() => setJahr(wert)}
+              className={cn(
+                "tnum inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold",
+                aktiv ? "border-ink bg-ink text-surface" : "border-line bg-surface text-ink-muted hover:bg-surface-muted",
+              )}
+            >
+              {text}
+              {offen > 0 ? (
+                <span className={cn("rounded-full px-1.5 text-[12px]", aktiv ? "bg-surface/20 text-surface" : "bg-warn-bg text-warn-fg")}>
+                  {offen}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex flex-col gap-2 border-b border-line px-5 py-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
@@ -328,19 +380,6 @@ export function ReviewPanel({
             aria-label="Mitarbeiter suchen"
           />
         </div>
-        <select
-          value={jahr ?? ""}
-          onChange={(e) => setJahr(e.target.value ? Number(e.target.value) : null)}
-          aria-label="Nach Jahr filtern"
-          className="tnum rounded-xl border border-line bg-surface px-3 py-2.5 text-sm"
-        >
-          <option value="">Alle Jahre</option>
-          {jahre.map((j) => (
-            <option key={j} value={j}>
-              {j}
-            </option>
-          ))}
-        </select>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}

@@ -156,6 +156,35 @@ export default async function fuehrung() {
         (await seite.locator("[data-mobile-nav]").getByRole("link", { name: "Urlaub" }).getAttribute("aria-current")) === "page",
       "Urlaub: „Entscheiden“ öffnet die Anträge, unten leuchtet „Urlaub“",
     );
+    // Dieses und nächstes Jahr getrennt, je mit der Zahl offener Anträge.
+    const jahrReiter = seite.locator("[data-jahr-reiter]");
+    const j = new Date().getFullYear();
+    pruefe(
+      (await jahrReiter.getByRole("tab", { name: new RegExp(`Dieses Jahr · ${j}`) }).getAttribute("aria-selected")) === "true" &&
+        (await jahrReiter.getByRole("tab", { name: new RegExp(`Nächstes Jahr · ${j + 1}`) }).isVisible()),
+      "Urlaubsanträge: Reiter „Dieses Jahr“ (gewählt) und „Nächstes Jahr“",
+    );
+
+    // Startseite: offene Anträge direkt in einer Kachel, in sich scrollbar.
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1500);
+    const kachel = seite.locator("[data-offene-antraege]");
+    pruefe(
+      (await kachel.locator("[data-antraege-liste] li").count()) === 2 &&
+        (await kachel.getByText(new RegExp(`Nächstes Jahr · ${j + 1}`)).isVisible()),
+      "Startseite: Kachel zeigt die 2 offenen Anträge, getrennt nach Jahr",
+    );
+    pruefe(
+      (await kachel.locator("[data-antraege-liste]").evaluate((el) => getComputedStyle(el).overflowY)) === "auto",
+      "Startseite: Anträge-Liste scrollt in sich",
+    );
+
+    // Mehr → Urlaubssperre: das Fenster zum Anlegen ist gleich offen.
+    await seite.goto(`${APP}/mitteilungen?bereich=sperren&neu=sperre`, { waitUntil: "networkidle" });
+    await warte(1000);
+    pruefe(await seite.locator("[data-sperre-form]").isVisible(), "Urlaubssperre: Fenster zum Anlegen öffnet sofort");
+    await seite.keyboard.press("Escape");
+    await warte(400);
 
     // Mitarbeiter: ruhige Liste, Person antippen → Blatt mit Aktionen
     await seite.goto(`${APP}/verwaltung?bereich=mitarbeiter`, { waitUntil: "networkidle" });
