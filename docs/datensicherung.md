@@ -21,6 +21,25 @@ nicht mehr weiß, setzt es dort neu; die App selbst nutzt es nicht.
 Danach unter Actions → „Datensicherung“ → „Run workflow“ einmal von Hand
 starten und prüfen, dass der Lauf grün wird.
 
+## Prüfen, ob die Sicherung taugt (ein Klick)
+
+Eine Sicherung, die sich nicht öffnen lässt, ist keine. Deshalb gibt es die Probe
+`.github/workflows/sicherung-pruefen.yml`:
+
+1. GitHub → Repository → **Actions** → links **„Sicherung prüfen“**.
+2. Rechts **„Run workflow“** → grüner Knopf **„Run workflow“**.
+3. Nach etwa einer Minute ist der Lauf **grün** (alles gut) oder **rot** (etwas stimmt nicht).
+
+Die Probe holt die neueste Sicherung, entschlüsselt sie mit `BACKUP_PASSWORT` und zählt
+die Zeilen je Tabelle. Im Protokoll stehen nur Tabellennamen und Anzahlen, keine Inhalte.
+Sie läuft außerdem von selbst am 1. jedes Monats. Wird sie rot, schickt GitHub eine Mail.
+
+Rot heißt meistens: `BACKUP_PASSWORT` wurde geändert (alte Sicherungen lassen sich dann
+nicht mehr öffnen) oder die nächtliche Sicherung ist ausgefallen.
+
+Die Probe spielt nichts in eine Datenbank ein. Das vollständige Einspielen steht unten
+und sollte einmal im Jahr in ein leeres Supabase-Testprojekt geübt werden.
+
 ## Wiederherstellen
 
 1. Artefakt herunterladen und entpacken.
