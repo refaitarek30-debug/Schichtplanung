@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { PERSON_FARBEN, PersonAvatar, kuerzel, personFarbe } from "./teilen";
 import { codeFarbe, partnerText } from "./partner";
 import { textFarbe } from "@/lib/privat/daten";
+import { FarbWahl } from "./farb-wahl";
 
 /**
  * Andere im eigenen Kalender: Personen, die über ihren Link selbst
@@ -572,28 +573,16 @@ function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl
 /** Die Farben zur Wahl; „Eigene“ nimmt wieder die Farben, die die Person selbst gewählt hat. */
 function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string | null) => void }) {
   return (
-    <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-[14px] bg-surface/60 px-2.5 py-2">
+    <div className="space-y-2 rounded-[14px] bg-surface/60 px-2.5 py-2.5">
       <button
         type="button"
         onClick={() => onWahl(null)}
         aria-pressed={!farbe}
-        className={cn("h-8 rounded-full px-3 text-[12px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
+        className={cn("h-8 rounded-full px-3 text-[12.5px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
       >
-        Eigene
+        Ihre eigenen Farben
       </button>
-      {SCHICHT_FARBEN.map((f) => (
-        <button
-          key={f}
-          type="button"
-          onClick={() => onWahl(f)}
-          aria-label={`Farbe ${f}`}
-          aria-pressed={farbe === f}
-          className="flex h-8 w-8 items-center justify-center rounded-full"
-          style={{ backgroundColor: f, color: textFarbe(f) }}
-        >
-          {farbe === f ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
-        </button>
-      ))}
+      <FarbWahl wert={farbe} onWahl={onWahl} name="Schicht dieser Person" />
     </div>
   );
 }

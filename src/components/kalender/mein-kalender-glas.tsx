@@ -1,5 +1,6 @@
 "use client";
 
+import { FarbWahl } from "./farb-wahl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { meldeBereichBereit } from "@/lib/bereich";
 import { halteSeiteFest } from "@/lib/seite-fest";
@@ -1525,18 +1526,8 @@ function FarbZeile({
         <span className="text-[13px] text-ink-muted">{eigen ? "Eigene Farbe" : "Standard"}</span>
       </button>
       {auf ? (
-        <div className="flex flex-wrap items-center gap-2 px-4 pb-3">
-          {FARBEN.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => onFarbe(schluessel, f)}
-              aria-label={`${name}: Farbe ${f}`}
-              aria-pressed={farben[schluessel] === f}
-              className={cn("h-9 w-9 rounded-full", farben[schluessel] === f && "ring-2 ring-ink ring-offset-2 ring-offset-surface")}
-              style={{ backgroundColor: f }}
-            />
-          ))}
+        <div className="space-y-2.5 px-4 pb-3">
+          <FarbWahl wert={farben[schluessel] ?? null} onWahl={(f) => onFarbe(schluessel, f)} name={name} />
           <button
             type="button"
             onClick={() => onFarbe(schluessel, null)}

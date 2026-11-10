@@ -1,10 +1,11 @@
 "use client";
 
+import { FarbWahl } from "./farb-wahl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { loescheEigeneArt, speichereEigeneArt, type EigeneArtEingabe } from "@/lib/data/kalender-eigene";
-import { FARBEN, farbStil } from "@/lib/privat/daten";
+import { farbStil } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { kuerzelAus } from "@/lib/kuerzel";
 
@@ -142,19 +143,7 @@ export function EigeneArtBlatt({
 
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Farbe</span>
-          <div className="flex flex-wrap gap-2">
-            {FARBEN.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setze("farbe", f)}
-                aria-label={`Farbe ${f}`}
-                aria-pressed={a.farbe === f}
-                className={cn("h-9 w-9 rounded-full", a.farbe === f && "ring-2 ring-ink ring-offset-2 ring-offset-surface")}
-                style={{ backgroundColor: f }}
-              />
-            ))}
-          </div>
+          <FarbWahl wert={a.farbe} onWahl={(f) => setze("farbe", f)} name={a.name || "Eintrag"} />
         </div>
 
         <div>

@@ -305,6 +305,22 @@ export function farbStil(farbe: string): { backgroundColor: string; color: strin
 }
 
 /**
+ * Pastellfarben in Reihen je Farbton – von kräftig-gedeckt bis ganz hell.
+ * Die Schrift auf dem Kästchen wählt textFarbe() passend (hell oder dunkel).
+ */
+export const PASTELL_REIHEN: { name: string; farben: string[] }[] = [
+  { name: "Salbei", farben: ["#6F8F80", "#93BFA3", "#8FA290", "#B5C7BF", "#BFDCC8", "#DDEBE0"] },
+  { name: "Mint", farben: ["#3E8E87", "#5FB3AA", "#7FCBC1", "#A6DDD5", "#C5EAE4", "#E0F4F1"] },
+  { name: "Senf", farben: ["#B08A3E", "#D3A257", "#DDB96B", "#EBCB8F", "#E6D3A3", "#EFE2C2"] },
+  { name: "Pfirsich", farben: ["#C7754A", "#E59866", "#F2B48A", "#F7C9A8", "#FAD9C1", "#FCE9DB"] },
+  { name: "Rosé", farben: ["#A8706F", "#C98F94", "#D6A9B2", "#E8C3CA", "#F0D3D9", "#F3E3E7"] },
+  { name: "Flieder", farben: ["#8A6E8A", "#A68AA6", "#C9A2C9", "#DDB8DD", "#E3CDEA", "#EEE1F1"] },
+  { name: "Himmel", farben: ["#3F7CB8", "#6A9FD6", "#8FB8E3", "#B3D0EE", "#CFE1F5", "#E6F0FA"] },
+  { name: "Taubenblau", farben: ["#6B7394", "#8E9CC2", "#8F97A6", "#B8C0CC", "#C9D0DB", "#DCE1EA"] },
+];
+export const PASTELL = PASTELL_REIHEN.flatMap((r) => r.farben);
+
+/**
  * Farbauswahl, nach Farbton sortiert. Gelb und Orange sind klar getrennt
  * (Zitronengelb – Bernstein – Orange). Gespeicherte Farben bleiben gültig,
  * auch wenn sie hier nicht mehr stehen.

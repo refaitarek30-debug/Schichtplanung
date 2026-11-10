@@ -1,5 +1,6 @@
 "use client";
 
+import { FarbWahl } from "@/components/kalender/farb-wahl";
 import { useState, type ReactNode } from "react";
 import { Layers, Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -251,19 +252,7 @@ function SchichtBlatt({
 
         <div>
           <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Farbe</span>
-          <div className="flex flex-wrap gap-2">
-            {FARBEN.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setze("farbe", f)}
-                aria-label={`Farbe ${f}`}
-                aria-pressed={s.farbe === f}
-                className={cn("h-9 w-9 rounded-full", s.farbe === f && "ring-2 ring-ink ring-offset-2 ring-offset-surface")}
-                style={{ backgroundColor: f }}
-              />
-            ))}
-          </div>
+          <FarbWahl wert={s.farbe} onWahl={(f) => setze("farbe", f)} name={s.name || "Schicht"} />
         </div>
 
         <div>

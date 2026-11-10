@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-10T16:30:00+01:00",
+    titel: "Viel mehr Farben für deine Schichten",
+    text: "Beim Bearbeiten einer Schicht: Pastell in sanften Reihen (Salbei, Mint, Senf, Pfirsich, Rosé, Flieder, Himmel, Taubenblau), dazu die kräftigen Farben – und unter „Eigene“ mischst du jede beliebige Farbe selbst.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-10T16:00:00+01:00",
     titel: "„Wen sehe ich?“ neu – auch eigene Schichten ausblenden",
     text: "Vom rechten Rand hereinziehen: Das Fenster folgt dem Finger. Übersichtliche Liste mit Häkchen je Person, unter „…“ Schichten/Termine einzeln und die Farbe. Neu bei „Ich“: eigene Schichten ausblenden, um nur die anderen zu sehen. Und der Privatkalender zeigt beim Öffnen sofort alles Gemerkte – auch Termine.",
