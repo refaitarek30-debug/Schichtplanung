@@ -1,0 +1,38 @@
+# Berechtigungskonzept ShiftNexo
+
+Stand: 10.11.2026 · wer darf was sehen und ändern
+
+## Grundsatz
+Jede Person sieht nur, was sie für ihre Aufgabe braucht. Die Regeln setzt die Datenbank selbst durch (Zugriffsregeln je Zeile) – nicht nur die Oberfläche. Jeder Betrieb ist vollständig vom anderen getrennt.
+
+## Rollen im Betrieb
+
+| | Mitarbeiter | Schichtleitung | Administration |
+|---|---|---|---|
+| Eigener Plan, eigener Urlaub, eigenes Konto | sehen, Anträge stellen | wie Mitarbeiter | wie Mitarbeiter |
+| Schichtplan des Betriebs | sehen | sehen, bearbeiten | sehen, bearbeiten |
+| Urlaubsanträge anderer | nein | sehen und entscheiden für die eigene Gruppe | alle |
+| Eigener Urlaubsantrag entscheiden | nein | nur wenn der Betrieb es erlaubt (Schalter), sonst Administration | ja |
+| Stammdaten von Beschäftigten | nein | nur von Mitarbeitern bearbeiten, nicht von Leitung oder Administration | alle |
+| Geburtsdatum (für Altersfreizeit) | nur das eigene | sehen | sehen |
+| Grund einer Abwesenheit | nur der eigene | je nach Einstellung des Betriebs | sehen |
+| Änderungsprotokoll | nein | sehen | sehen |
+| Zugänge vergeben, Passwort-Code erzeugen | nein | für Mitarbeiter (wird protokolliert) | ja (wird protokolliert) |
+| Regeln und Einstellungen des Betriebs | nein | nein | ja |
+
+## Was niemand kann
+- Gesundheitsangaben speichern: Freitextfelder lehnen sie ab.
+- Passwörter anderer sehen. Ein Passwort-Code gilt 24 Stunden; die Person wird benachrichtigt, und der Vorgang steht im Protokoll.
+- Ein Konto übernehmen, das die Person bereits selbst eingerichtet hat.
+- Leistung oder Verhalten auswerten: Es gibt keine Auswertung je Person über Arbeitsgeschwindigkeit, Anmeldezeiten oder Ähnliches.
+
+## Privatbereich
+Der private Kalender einer Person gehört nur ihr. Der Betrieb – auch die Administration – sieht davon nichts. Geteilt wird nur, was die Person selbst mit Partner, Familie oder Freunden teilt.
+
+## Betreiber
+Der Betreiber von ShiftNexo hat technischen Zugriff für Betrieb, Sicherung und Fehlersuche (AV-Vertrag). Zugriffe erfolgen nur dafür; Zugänge sind persönlich und sollen mit Zwei-Faktor-Anmeldung geschützt sein.
+
+## Kontrolle
+- Jede Änderung an Plan, Anträgen, Zugängen und Regeln steht im Änderungsprotokoll (24 Monate).
+- Rechte werden bei Rollenwechsel oder Austritt sofort wirksam; ab dem Tag nach dem Austritt gibt es keinen Zugang mehr.
+- Dieses Konzept wird bei jeder Änderung an Rollen geprüft.

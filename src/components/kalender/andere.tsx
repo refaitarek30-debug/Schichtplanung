@@ -817,7 +817,7 @@ export function WenSeheIch({
   };
 
   const abschnitt = (titel: string, unter: string | null, kinder: React.ReactNode, plus?: boolean) => (
-    <section className="pt-4">
+    <section className="pt-3">
       <div className="flex items-center gap-2 border-b border-line pb-2">
         <h3 className="min-w-0 flex-1 truncate text-[19px] font-bold">
           {titel}
@@ -891,14 +891,14 @@ export function WenSeheIch({
                 onPointerCancel={ziehen.onPointerUp}
                 style={zieht ? { transform: "translateX(calc(100% + 1rem))" } : undefined}
                 className={cn(
-                  "wen-blatt absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.9rem)] flex w-[min(23rem,calc(100vw-3.5rem))] touch-pan-y flex-col overflow-hidden rounded-[30px]",
+                  "wen-blatt absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-2 top-[max(0.6rem,env(safe-area-inset-top))] flex w-[min(23rem,calc(100vw-3.5rem))] touch-pan-y flex-col overflow-hidden rounded-[30px]",
                   !perHand && "[animation:wen-rein_.28s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]",
                 )}
               >
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5">
-                  <h2 className="border-b border-line pb-3 text-[21px] font-bold">Wen sehe ich?</h2>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4">
+                  <h2 className="border-b border-line pb-2 text-[20px] font-bold">Wen sehe ich?</h2>
 
-                  <div className="flex items-center gap-1 border-b border-line py-3">
+                  <div className="flex items-center gap-1 border-b border-line py-1.5">
                     {alle.length ? (
                       <>
                         <button
@@ -963,11 +963,8 @@ export function WenSeheIch({
                     </div>
                   ) : null}
 
-                  <div data-wen-ich>
-                    {abschnitt(
-                      "Ich",
-                      null,
-                      zeile({
+                  <div data-wen-ich className="border-b border-line py-1">
+                    {zeile({
                         key: "ich",
                         name: "Ich",
                         farbe: "rgb(var(--c-brand-500))",
@@ -985,8 +982,7 @@ export function WenSeheIch({
                             Farben meiner Schichten ändern
                           </button>
                         ) : null,
-                      }),
-                    )}
+                      })}
                   </div>
 
                   {andere.zweige.map((z) =>
