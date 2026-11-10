@@ -19,6 +19,13 @@ export default async function passwort() {
       await warte(1500);
     };
 
+    // Eigener Wiederherstellungs-Code: ohne E-Mail ein neues Passwort setzen können.
+    const karte = seite.locator("[data-wiederherstellung]");
+    pruefe(await karte.isVisible(), "Profil: Karte „Eigener Code“ ist da");
+    await karte.getByRole("button", { name: "Code erzeugen" }).click();
+    await warte(800);
+    pruefe(await karte.getByText("ABCDE-FGHJK").isVisible(), "Eigener Code wird einmal angezeigt");
+
     // 1) Die beiden neuen Passwörter sind verschieden.
     await fuelle("altes-passwort", "neues-passwort-1", "neues-passwort-2");
     pruefe(await seite.getByText("stimmen nicht überein").isVisible(), "verschiedene neue Passwörter: Hinweis");

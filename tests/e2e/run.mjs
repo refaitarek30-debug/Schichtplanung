@@ -31,7 +31,7 @@ const ABLAEUFE = [
   ["Beitritt", "privat", beitritt],
   ["Privat: Geld je Job und andere Uhrzeit", "privat", geld],
   ["Privat: Urlaubsplaner", "privat", urlaub],
-  ["Privat: Lohnabrechnungen, Wischen, Wen sehe ich", "privat", privatNeu],
+  ["Privat: Wischen, Wen sehe ich", "privat", privatNeu],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],

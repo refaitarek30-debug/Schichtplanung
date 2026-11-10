@@ -240,6 +240,8 @@ http.createServer((req, res) => {
         for (let t = body.p_von, i = 0; t <= body.p_bis; t = add(t, 1), i++) { const s2 = folge[i % 6]; aus.push(s2 ? { tag: t, name: s2[0], kuerzel: s2[1] } : { tag: t, name: "Frei", kuerzel: "FREI" }); }
         return send(200, aus);
       }
+      if (f === "mein_wiederherstellungscode_stand") return send(200, db.wiederherstellung ?? null);
+      if (f === "mein_wiederherstellungscode") { db.wiederherstellung = new Date().toISOString(); return send(200, "ABCDE-FGHJK"); }
       if (f === "austritt_stand") return send(200, [{ ausgetreten: !PROFIL.active, firma: "Testbetrieb", hat_privat: !!db.privatAn, erledigt: !!PROFIL.austritt_uebernommen_am }]);
       if (f === "privat_weitermachen") { if (PROFIL.active) return send(400, { code: "P0001", message: "Das geht nur, wenn dein Zugang zum Betrieb beendet ist." }); db.privatAn = true; PROFIL.austritt_uebernommen_am = new Date().toISOString(); return send(204); }
       if (f === "privat_neuigkeiten_gelesen") { db.konto.neuigkeiten_gesehen = new Date().toISOString(); return send(204); }

@@ -28,12 +28,6 @@ export interface Neuigkeit {
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
     zeit: "2026-11-09T23:30:00+01:00",
-    titel: "Lohnabrechnungen",
-    text: "Unter Schichten: Foto oder PDF hochladen, nach Monat abgelegt, jederzeit abrufbar – nur für dich.",
-    bereich: "privat",
-  },
-  {
-    zeit: "2026-11-09T23:30:00+01:00",
     titel: "Kalender: hoch und runter",
     text: "Hochwischen = nächster Monat. Vom rechten Rand nach links ziehen: „Wen sehe ich?“.",
     bereich: "privat",

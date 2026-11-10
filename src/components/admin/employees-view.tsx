@@ -206,12 +206,14 @@ export function EmployeesView() {
   /** Alles zu einer Person: Angaben und die erlaubten Aktionen (dieselben Regeln wie vorher in der Zeile). */
   function personInhalt(row: EmployeeRecord, kopf: boolean) {
     const fuehrung = role === "admin" || role === "shift_leader";
+    // Bearbeiten: Administration alle, Schichtleitung nur Personen mit Rolle Mitarbeiter (Migration 0209).
+    const darfBearbeiten = role === "admin" || (role === "shift_leader" && row.role === "employee");
     const darfHinweis = fuehrung && mode === "live" && row.active;
     // Einladen: Administration immer, Schichtleitung für normale Mitarbeiter.
     // Die Datenbank-seitige Prüfung steckt in inviteEmployee().
     const darfLink = mode === "live" && (role === "admin" || (role === "shift_leader" && row.role === "employee"));
     const aktionen = [
-      fuehrung
+      darfBearbeiten
         ? {
             name: "Bearbeiten",
             icon: Pencil,

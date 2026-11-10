@@ -303,11 +303,16 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
   // erkennen, ob sie sich geändert hat. Danach steht dort schon die neue.
   const { data: vorher } = await supabase
     .from("employees")
-    .select("email")
+    .select("email, role")
     .eq("id", employeeId)
     .eq("company_id", profile.company_id)
-    .returns<{ email: string | null }[]>()
+    .returns<{ email: string | null; role: Role }[]>()
     .maybeSingle();
+
+  // Schichtleitung bearbeitet nur Personen mit Rolle Mitarbeiter (die Datenbank prüft das auch).
+  if (profile.role === "shift_leader" && vorher?.role !== "employee") {
+    return { error: "Personen mit Führungsrolle bearbeitet nur die Administration." };
+  }
 
   const { error } = await supabase
     .from("employees")

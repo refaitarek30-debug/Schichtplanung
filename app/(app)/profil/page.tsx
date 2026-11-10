@@ -10,6 +10,7 @@ import { ProfileForm } from "./profile-form";
 import { PersonalDetailsForm } from "./personal-details-form";
 import { StammdatenForm } from "./stammdaten-form";
 import { PasswortAendernForm } from "./passwort-aendern-form";
+import { WiederherstellungsCodeKarte } from "./wiederherstellungs-code-karte";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
@@ -48,6 +49,11 @@ export default function ProfilePage() {
         <div className="lg:col-start-1">
           <PasswortAendernForm readOnly={mode === "demo"} />
         </div>
+        {mode === "live" ? (
+          <div className="lg:col-start-1">
+            <WiederherstellungsCodeKarte />
+          </div>
+        ) : null}
         <div className="lg:col-span-2">
           <a
             href="/profil/datenschutz"

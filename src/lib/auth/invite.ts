@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import type { FormState } from "./form-state";
 
 /*
@@ -147,6 +147,21 @@ async function createInviteLink(
   }
 
   if (konto) {
+    // Hat die Person das Konto schon übernommen (eigenes Passwort), bekommt die Führung
+    // KEINEN Link: Er würde eine Anmeldung als diese Person erlauben – auch im
+    // Privatbereich. Die Person nutzt „Passwort vergessen“.
+    const { data: uebernommen, error: pruefFehler } = await admin.rpc("konto_uebernommen", { p_user: konto.id });
+    if (pruefFehler || typeof uebernommen !== "boolean") {
+      return { fehler: "Der bestehende Zugang ließ sich nicht prüfen. Bitte später erneut versuchen." };
+    }
+    if (uebernommen) {
+      return {
+        fehler:
+          "Diese Person hat schon ein eigenes Passwort. Aus Datenschutzgründen gibt es dafür keinen Zugangslink. " +
+          "Sie setzt es selbst zurück („Passwort vergessen“ mit ihrem eigenen Code). Hat sie keinen, erzeugst du in der " +
+          "Mitarbeiterliste einen Passwort-Code.",
+      };
+    }
     // Der Link gilt immer dem Konto, mit dem sich die Person anmeldet. Steht
     // im Personalstamm inzwischen eine andere Adresse, würde ein Link dafür
     // ein fremdes oder gar kein Konto treffen.
@@ -280,6 +295,17 @@ export async function grantAccess(
   };
 
   if ("link" in ergebnis) {
+    // Jeder erzeugte Zugangslink steht im Änderungsprotokoll. Gelingt der Eintrag nicht,
+    // wird der Link nicht angezeigt.
+    try {
+      const { error: protokollFehler } = await (await createClient()).rpc("zugang_protokollieren", {
+        p_employee: employee.id,
+        p_art: ergebnis.neu ? "link_neu" : "link",
+      });
+      if (protokollFehler) throw protokollFehler;
+    } catch {
+      return { error: "Der Zugang konnte nicht protokolliert werden. Bitte später erneut versuchen." };
+    }
     const code = ergebnis.neu ? await beitrittsCode() : null;
     return {
       success: `Zugang für ${employee.email} eingerichtet. Diesen Link weitergeben – er gilt 24 Stunden und ist nur für diese Person.`,

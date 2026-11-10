@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, FileText, Layers, Palmtree, Upload, Wallet } from "lucide-react";
+import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Upload, Wallet } from "lucide-react";
 import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { PrivatAuswertung } from "./auswertung";
 import { PrivatGemeinsam } from "./gemeinsam";
 import { PrivatGeld, useGehalt, useMonatsDaten } from "./gehalt";
-import { PrivatLohnzettel } from "./lohnzettel";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 import { PrivatSchichten } from "./schichten";
@@ -48,8 +47,6 @@ export function PrivatSchichtenSeite({ start = null }: { start?: Reiter | null }
             <PrivatSchichten eingebettet />
           ) : reiter === "geld" ? (
             <PrivatGeld />
-          ) : reiter === "lohn" ? (
-            <PrivatLohnzettel />
           ) : reiter === "urlaub" ? (
             <PrivatUrlaub eingebettet />
           ) : (
@@ -181,13 +178,6 @@ function Startliste() {
           name="Geld"
           unter={bereit ? geldUnter : ""}
           wert={re?.summe != null ? euroGanz(re.summe) : undefined}
-        />
-        <Eintrag
-          href="/privat/schichten?reiter=lohn"
-          icon={<FileText className="h-[18px] w-[18px]" />}
-          farbe="bg-ink/[0.07] text-ink"
-          name="Lohnabrechnungen"
-          unter="Foto oder PDF – nur für dich"
         />
         <Eintrag
           href="/privat/schichten?reiter=urlaub"
