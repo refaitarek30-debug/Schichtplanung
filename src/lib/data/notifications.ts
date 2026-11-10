@@ -130,6 +130,14 @@ export async function fetchWorkOnHolidays(): Promise<boolean> {
  * freigibt)? Betriebsschalter der Administration, Vorgabe „nein":
  * dann sieht nur die Führung Urlaub, Krank & Co., Kollegen nur „Abwesend".
  */
+export async function fetchLeitungEigeneAntraege(): Promise<boolean> {
+  if (!isSupabaseConfigured) return false;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("leitung_eigene_antraege_erlaubt");
+  if (error) return false;
+  return data === true;
+}
+
 export async function fetchGruendeFuerKollegen(): Promise<boolean> {
   if (!isSupabaseConfigured) return false;
   const supabase = createClient();

@@ -129,7 +129,9 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
     case "urlaub.geloescht":
       return aenderung(`hat ${art(d.art)}${von(e)} gelöscht: ${zeitraum(d.von, d.bis)}`);
     case "leave.approved":
-      return aenderung(`hat ${art(d.kind)}${von(e)} genehmigt: ${zeitraum(d.von, d.bis)}`);
+      return aenderung(
+        `hat ${art(d.kind)}${von(e)} genehmigt: ${zeitraum(d.von, d.bis)}${d.trotz_unterbesetzung ? " (trotz Unterbesetzung)" : ""}`,
+      );
     case "leave.rejected":
       return aenderung(
         `hat ${art(d.kind)}${von(e)} abgelehnt: ${zeitraum(d.von, d.bis)}`,
@@ -231,6 +233,10 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
     case "hinweise.standard":
       return aenderung(
         `hat die Vorgabe für Hinweise auf „${d.wert === "sofort" ? "Sofort" : d.wert === "aus" ? "Nur in der App" : "Zur Arbeitszeit"}“ gestellt`,
+      );
+    case "regel.leitung_eigene_antraege":
+      return aenderung(
+        `hat „Schichtleitung genehmigt eigene Anträge“ ${d.erlaubt ? "eingeschaltet" : "ausgeschaltet"}`,
       );
     case "datenschutz.gruende_fuer_kollegen":
       return aenderung(

@@ -58,6 +58,8 @@ export function ReviewPanel({
   const [ruecknahmeGrund, setRuecknahmeGrund] = useState("");
   const heute = heuteInBerlin();
   const [error, setError] = useState<string | null>(null);
+  /** Genehmigung würde die Mindestbesetzung unterschreiten – Rückfrage „Trotzdem genehmigen?“. */
+  const [unterbesetzt, setUnterbesetzt] = useState<{ id: string; tage: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [impacts, setImpacts] = useState<Record<string, LiveLeaveImpact | null>>({});
@@ -170,12 +172,14 @@ export function ReviewPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, pruefRunde]);
 
-  function approve(id: string) {
+  function approve(id: string, trotz = false) {
     setError(null);
+    setUnterbesetzt(null);
     setBusyId(id);
     startTransition(async () => {
-      const result = await decideLeaveRequestAction(id, "approved");
-      if (result.error) setError(result.error);
+      const result = await decideLeaveRequestAction(id, "approved", undefined, trotz);
+      if (result.unterbesetzt) setUnterbesetzt({ id, tage: result.unterbesetzt });
+      else if (result.error) setError(result.error);
       setBusyId(null);
       onChanged();
     });
@@ -396,6 +400,28 @@ export function ReviewPanel({
       {error ? (
         <div className="px-5 pt-4">
           <Alert tone="error">{error}</Alert>
+        </div>
+      ) : null}
+      {unterbesetzt ? (
+        <div className="px-5 pt-4" data-unterbesetzt-frage>
+          <div role="alertdialog" aria-label="Trotzdem genehmigen?" className="rounded-2xl border border-warn-fg/30 bg-warn-bg p-4 text-warn-fg">
+            <p className="flex items-center gap-2 text-[15px] font-semibold">
+              <TriangleAlert className="h-4 w-4 shrink-0" />
+              Trotzdem genehmigen?
+            </p>
+            <p className="mt-1 text-[13.5px] leading-snug">
+              Die Schicht wäre dann unter der Mindestbesetzung: {unterbesetzt.tage}. Die Genehmigung wird mit dem Vermerk
+              „trotz Unterbesetzung“ im Änderungsprotokoll festgehalten.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button onClick={() => approve(unterbesetzt.id, true)} disabled={pending}>
+                Ja, genehmigen
+              </Button>
+              <Button variant="ghost" onClick={() => setUnterbesetzt(null)} disabled={pending}>
+                Nein
+              </Button>
+            </div>
+          </div>
         </div>
       ) : null}
       {hinweis && !(darfEntscheiden && offeneAnzahl > 0) ? (

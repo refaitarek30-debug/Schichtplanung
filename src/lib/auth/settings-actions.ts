@@ -89,6 +89,27 @@ export async function setGruendeFuerKollegen(value: boolean): Promise<FormState>
   };
 }
 
+/**
+ * Darf die Schichtleitung ihre eigenen Urlaubsanträge genehmigen (nur Admin)?
+ * Aus: Über eigene Anträge der Schichtleitung entscheidet die Administration.
+ */
+export async function setLeitungEigeneAntraege(value: boolean): Promise<FormState> {
+  if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_leitung_eigene_antraege", { p_value: value });
+  if (error) {
+    return { error: dataErrorMessage(error) ?? "Die Einstellung konnte nicht gespeichert werden." };
+  }
+  revalidatePath("/verwaltung");
+  revalidatePath("/urlaub");
+  return {
+    success: value
+      ? "Die Schichtleitung genehmigt ihre eigenen Anträge selbst."
+      : "Über eigene Anträge der Schichtleitung entscheidet jetzt die Administration.",
+  };
+}
+
 /** Vorgabe im Senden-Fenster für Hinweise (nur Admin). */
 export async function setHinweisStandard(wert: "schicht" | "sofort" | "aus"): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
