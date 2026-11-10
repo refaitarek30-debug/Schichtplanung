@@ -1,6 +1,6 @@
 # Verzeichnis von Verarbeitungstätigkeiten (Art. 30 Abs. 2 DSGVO)
 
-Stand: 22. Oktober 2026 · Betreiber: Tarek Oussama Refai
+Stand: 10. November 2026 · Betreiber: Tarek Oussama Refai
 
 Dieses Verzeichnis gilt für die Tätigkeit als **Auftragsverarbeiter**: ShiftNexo verarbeitet
 Beschäftigtendaten im Auftrag der Betriebe (Verantwortliche). Es muss nicht veröffentlicht
@@ -50,7 +50,7 @@ Person (eigene Verantwortung des Betreibers).
 | Supabase (Supabase Pte. Ltd. / Inc.) | Datenbank, Anmeldung | Region eu-west-1 (Irland) | DPA mit Standardvertragsklauseln (Modul 2), Transfer-Folgenabschätzung vom 14.03.2025 |
 | Vercel, Inc. | Auslieferung, Serverfunktionen | Region dub1 (Dublin) | DPA in den Bedingungen, EU-US Data Privacy Framework |
 | GitHub, Inc. | Aufbewahrung der verschlüsselten nächtlichen Sicherung (14 Tage) | USA | DPA in den Bedingungen; Inhalt mit AES-256 verschlüsselt, Schlüssel nur beim Betreiber |
-| Mailversand | noch offen | – | nach Klärung ergänzen |
+| Brevo (Sendinblue SAS, Paris) | Versand der Anmelde-Mails (Bestätigung, Einladung, Passwort) | EU | AV-Vereinbarung in den Brevo-Bedingungen (bitte als PDF ablegen) |
 | Push-Dienste der Gerätehersteller | Benachrichtigung, nur mit Erlaubnis der Person | weltweit | Inhalt verschlüsselt |
 
 Supabase setzt eigene Unterauftragnehmer ein (u. a. AWS, Google Cloud, Fly.io, Cloudflare,
