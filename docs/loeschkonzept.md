@@ -15,6 +15,9 @@ Gespeichert wird nur, was für Schichtplan, Urlaub und Abwesenheiten nötig ist.
 | Benachrichtigungen (Glocke) | 180 Tage | automatisch |
 | Anmeldeprotokoll, Fehlermeldungen | 90 Tage | automatisch |
 | Postausgang (vorbereitete Mails) | 30 Tage | automatisch |
+| Gesendete Push-Mitteilungen (Warteschlange) | 30 Tage | automatisch |
+| Abgelaufene Passwort- und Verbindungs-Codes | 7 Tage nach Ablauf | automatisch |
+| Protokoll des Betreibers (z. B. gelöschte Unternehmen) | 24 Monate | automatisch |
 | Verschlüsselte Datensicherung | 14 Tage | automatisch (GitHub) |
 | Gelöschtes Unternehmen (Papierkorb) | 14 Tage, danach endgültig | automatisch |
 | Demo-Bereiche | 24 Stunden | automatisch |
