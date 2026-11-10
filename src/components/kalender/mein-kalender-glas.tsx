@@ -765,7 +765,12 @@ export function MeinKalenderGlas() {
             </GlasKnopf>
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
-          <WenSeheIch andere={andere} glas onVerwalten={() => setEinladen(true)} />
+          <WenSeheIch
+            andere={andere}
+            glas
+            onVerwalten={() => setEinladen(true)}
+            randWischen={!pinselAn && !tagBlatt && !terminBlatt && !todoBlatt && !profilOffen && !einladen}
+          />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
             <GlasKnopf
@@ -818,8 +823,9 @@ export function MeinKalenderGlas() {
           const info = tagInfo(zellen.get(iso));
           const d = fromISO(iso);
           const imM = d.getMonth() === monat.monat;
-          const plan = sichtbar ? planKaestchen(info, farben, t) : [];
-          const eigen = eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
+          // „Wen sehe ich?“ → Ich · Schichten aus: eigene Einträge im Monat ausblenden.
+          const plan = sichtbar && andere.eigeneSchichten ? planKaestchen(info, farben, t) : [];
+          const eigen = andere.eigeneSchichten && eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
           const andereAm = andere.amTag(iso);
           const partner = andereAm.length > 0;
           const ts = termineAm(sichtbareTermine, iso);

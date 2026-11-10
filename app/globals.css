@@ -730,6 +730,16 @@ body {
 }
 
 /* Pinsel-Leiste im Kalender: kommt von unten herein. */
+/* „Wen sehe ich?“ kommt vom rechten Rand herein: Seitenblatt aus klarem Glas –
+   der Kalender bleibt dahinter sichtbar, nur leicht weichgezeichnet. */
+.wen-blatt {
+  background-color: rgb(var(--c-surface) / 0.32);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  backdrop-filter: blur(18px) saturate(170%);
+  border: 1px solid var(--glas-rand);
+  border-right: 0;
+  box-shadow: -12px 0 40px rgba(31, 41, 77, 0.16), inset 1px 0 0 var(--glas-licht);
+}
 /* „Wen sehe ich?“ kommt vom rechten Rand herein. */
 @keyframes wen-rein {
   from {

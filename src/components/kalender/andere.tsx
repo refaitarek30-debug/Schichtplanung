@@ -377,6 +377,8 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     rohTag: (key: string, iso: string): PartnerCode | null => tage[key]?.[iso] ?? null,
     schalter,
     setze,
+    /** Eigene Schichten im Kalender zeigen (Schalter „Ich · Schichten“). */
+    eigeneSchichten: schalter(ICH)[0],
     anzeige,
     setzeGroesse: (groesse: AnzeigeGroesse) => setzeAnzeige((a) => ({ ...a, groesse })),
     setzeText: (text: AnzeigeText) => setzeAnzeige((a) => ({ ...a, text })),
@@ -540,8 +542,12 @@ function Pille({
       aria-pressed={an}
       onClick={onClick}
       className={cn(
-        "h-8 shrink-0 rounded-full px-2 text-[11.5px] font-semibold transition-colors",
-        an ? "bg-brand-500 text-white" : teil ? "bg-brand-500/10 text-brand-700 ring-1 ring-inset ring-brand-500/50" : "bg-ink/[0.06] text-ink-faint",
+        "h-10 min-w-0 flex-1 truncate rounded-[12px] px-2 text-[13px] font-semibold transition-colors active:scale-[0.97]",
+        an
+          ? "bg-brand-500 text-white"
+          : teil
+            ? "bg-brand-500/10 text-brand-700 ring-1 ring-inset ring-brand-500/50"
+            : "bg-surface/50 text-ink-muted ring-1 ring-inset ring-ink/10",
       )}
     >
       {children}
@@ -552,7 +558,7 @@ function Pille({
 /** Zwei oder drei Möglichkeiten nebeneinander, eine ist gewählt. */
 function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl: (w: T) => void; optionen: [T, string][] }) {
   return (
-    <span className="flex rounded-full bg-ink/[0.06] p-[2px]">
+    <span className="flex w-full rounded-[12px] bg-ink/[0.06] p-[3px]">
       {optionen.map(([id, text]) => (
         <button
           key={id}
@@ -560,7 +566,7 @@ function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl
           aria-pressed={wert === id}
           onClick={() => onWahl(id)}
           className={cn(
-            "h-7 rounded-full px-2.5 text-[12px] font-semibold transition-colors",
+            "h-9 min-w-0 flex-1 truncate rounded-[10px] px-1.5 text-[12.5px] font-semibold transition-colors",
             wert === id ? "bg-surface text-ink shadow-sm" : "text-ink-muted",
           )}
         >
@@ -618,48 +624,167 @@ function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string
   );
 }
 
+
+/** Breite Rand-Zone rechts, in der ein Zug nach links „Wen sehe ich?“ hereinholt. */
+const RAND = 28;
+
+/** Eine Person im Seitenblatt: Name oben, darunter große Schalter. */
+function PersonZeile({
+  name,
+  farbe,
+  unter,
+  avatar,
+  farbPunkt,
+  children,
+}: {
+  name: string;
+  farbe?: string;
+  unter?: string;
+  avatar?: React.ReactNode;
+  farbPunkt?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2 px-2.5 pb-2.5 pt-2">
+      <div className="flex items-center gap-2.5">
+        {avatar ?? (farbe ? <PersonAvatar name={name} farbe={farbe} /> : null)}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15.5px] font-semibold leading-tight">{name}</span>
+          {unter ? <span className="block truncate text-[12px] leading-tight text-ink-muted">{unter}</span> : null}
+        </span>
+        {farbPunkt}
+      </div>
+      <div className="flex gap-1.5">{children}</div>
+    </div>
+  );
+}
+
 /**
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
- * öffnet den Baum. Ohne Personen: Einladen.
+ * öffnet „Wen sehe ich?“ als Seitenblatt am rechten Rand (volle Höhe, Glas,
+ * der Kalender bleibt dahinter sichtbar). Mit `randWischen` lässt es sich vom
+ * rechten Rand mit dem Finger hereinziehen und nach rechts wieder wegschieben.
  */
 export function WenSeheIch({
   andere,
   onVerwalten,
   glas = false,
-  offen: offenVonAussen,
-  onOffen,
+  randWischen = false,
 }: {
   andere: Andere;
   onVerwalten: () => void;
   glas?: boolean;
-  /** Von außen öffnen (z. B. Wischen vom rechten Rand). */
-  offen?: boolean;
-  onOffen?: (offen: boolean) => void;
+  /** Vom rechten Bildschirmrand hereinziehen (nur, wenn sonst nichts offen ist). */
+  randWischen?: boolean;
 }) {
-  const [offenIntern, setOffenIntern] = useState(false);
-  const offen = offenVonAussen ?? offenIntern;
-  const setOffen = useCallback(
-    (o: boolean) => {
-      setOffenIntern(o);
-      onOffen?.(o);
-    },
-    [onOffen],
-  );
+  const [offen, setOffen] = useState(false);
+  /** Blatt ist da, folgt aber noch dem Finger (beim Hereinziehen). */
+  const [zieht, setZieht] = useState(false);
   const [zu, setZu] = useState<Record<string, boolean>>({});
   const [darstellung, setDarstellung] = useState(false);
   /** Bei wem gerade die Farbwahl offen ist. */
   const [farbWahl, setFarbWahl] = useState<string | null>(null);
   const blatt = useRef<HTMLDivElement>(null);
   const zug = useRef<{ x: number; dx: number } | null>(null);
+  /** Hereingezogen statt angetippt: dann ohne Einflug-Animation. */
+  const [perHand, setPerHand] = useState(false);
+  const schliesstGerade = useRef(false);
+
+  const breite = () => blatt.current?.offsetWidth ?? 280;
+  const setzeVersatz = (px: number, weich: boolean) => {
+    const el = blatt.current;
+    if (!el) return;
+    el.style.transition = weich ? "transform .24s cubic-bezier(.2,.8,.2,1)" : "none";
+    el.style.transform = px > 0 ? `translateX(${px}px)` : "";
+  };
+
+  const schliessen = useCallback(() => {
+    if (schliesstGerade.current) return;
+    const el = blatt.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setOffen(false);
+      setZieht(false);
+      return;
+    }
+    schliesstGerade.current = true;
+    el.style.transition = "transform .2s cubic-bezier(.4,0,1,1)";
+    el.style.transform = "translateX(calc(100% + 1rem))";
+    window.setTimeout(() => {
+      schliesstGerade.current = false;
+      setOffen(false);
+      setZieht(false);
+    }, 190);
+  }, []);
+
+  const oeffnen = () => {
+    setPerHand(false);
+    setOffen(true);
+  };
 
   useEffect(() => {
     if (!offen) return;
     const taste = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOffen(false);
+      if (e.key === "Escape") schliessen();
     };
     window.addEventListener("keydown", taste);
     return () => window.removeEventListener("keydown", taste);
-  }, [offen, setOffen]);
+  }, [offen, schliessen]);
+
+  // Vom rechten Rand nach links ziehen: das Blatt folgt dem Finger.
+  useEffect(() => {
+    if (!randWischen || offen) return;
+    let start: { x: number; y: number; t: number } | null = null;
+    let gezogen = false;
+    let letztesX = 0;
+    const los = (e: PointerEvent) => {
+      start = e.clientX > window.innerWidth - RAND ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+      gezogen = false;
+      letztesX = e.clientX;
+    };
+    const bewegt = (e: PointerEvent) => {
+      if (!start) return;
+      letztesX = e.clientX;
+      const dx = start.x - e.clientX;
+      const dy = Math.abs(e.clientY - start.y);
+      if (!gezogen) {
+        if (dy > 24 && dy > dx) {
+          start = null;
+          return;
+        }
+        if (dx < 10) return;
+        gezogen = true;
+        setPerHand(true);
+        setZieht(true);
+      }
+      setzeVersatz(Math.max(0, breite() - dx), false);
+    };
+    const ende = () => {
+      const s = start;
+      start = null;
+      if (!s || !gezogen) return;
+      const dx = s.x - letztesX;
+      const schnell = dx > 30 && Date.now() - s.t < 260;
+      if (dx > breite() * 0.3 || schnell) {
+        setzeVersatz(0, true);
+        setOffen(true);
+        setZieht(false);
+      } else {
+        setzeVersatz(breite() + 16, true);
+        window.setTimeout(() => setZieht(false), 220);
+      }
+    };
+    window.addEventListener("pointerdown", los, true);
+    window.addEventListener("pointermove", bewegt, true);
+    window.addEventListener("pointerup", ende, true);
+    window.addEventListener("pointercancel", ende, true);
+    return () => {
+      window.removeEventListener("pointerdown", los, true);
+      window.removeEventListener("pointermove", bewegt, true);
+      window.removeEventListener("pointerup", ende, true);
+      window.removeEventListener("pointercancel", ende, true);
+    };
+  }, [randWischen, offen]);
+
   const alle = [...new Map(andere.zweige.flatMap((z) => z.knoten).map((k) => [k.key, k])).values()];
 
   if (andere.personen === null) return null;
@@ -670,8 +795,9 @@ export function WenSeheIch({
   );
   const sichtbar = andere.eingeblendet;
   const ich = andere.schalter(ICH);
+  const da = offen || zieht;
 
-  // Nach rechts ziehen schließt das Seitenblatt.
+  // Im Blatt nach rechts ziehen schiebt es wieder hinaus.
   const ziehen = {
     onPointerDown: (e: React.PointerEvent) => {
       if ((e.target as HTMLElement).closest("button, input, select")) return;
@@ -679,28 +805,27 @@ export function WenSeheIch({
     },
     onPointerMove: (e: React.PointerEvent) => {
       const z = zug.current;
-      if (!z || !blatt.current) return;
+      if (!z) return;
       z.dx = Math.max(0, e.clientX - z.x);
-      blatt.current.style.transition = "none";
-      blatt.current.style.transform = `translateX(${z.dx}px)`;
+      setzeVersatz(z.dx, false);
     },
     onPointerUp: () => {
       const z = zug.current;
       zug.current = null;
-      if (!z || !blatt.current) return;
-      blatt.current.style.transition = "";
-      blatt.current.style.transform = "";
-      if (z.dx > 70) setOffen(false);
+      if (!z) return;
+      if (z.dx > 70) schliessen();
+      else setzeVersatz(0, true);
     },
   };
 
+  const karte = "overflow-hidden rounded-[18px] bg-surface/45 ring-1 ring-inset ring-ink/[0.06]";
 
   return (
     <>
       {alle.length ? (
         <button
           type="button"
-          onClick={() => setOffen(true)}
+          onClick={oeffnen}
           aria-label={`Wen sehe ich? ${sichtbar.length} von ${alle.length} eingeblendet`}
           aria-expanded={offen}
           className={cn(knopfKlasse, "gap-0 pl-1 pr-2.5")}
@@ -726,20 +851,16 @@ export function WenSeheIch({
           <span className="tnum pl-1.5 text-[13px] font-bold text-brand-600">{sichtbar.length}</span>
         </button>
       ) : (
-        <button type="button" onClick={onVerwalten} aria-label="Partner, Familie oder Freunde einladen" className={cn(knopfKlasse, "w-10 justify-center")}>
+        <button type="button" onClick={oeffnen} aria-label="Wen sehe ich? Partner, Familie oder Freunde einladen" className={cn(knopfKlasse, "w-10 justify-center")}>
           <UserPlus className="h-[18px] w-[18px]" />
         </button>
       )}
 
-      {offen
+      {da
         ? createPortal(
             <div className="privat-schrift fixed inset-0 z-50">
-              <button
-                type="button"
-                aria-label="Schließen"
-                className="absolute inset-0 cursor-default bg-black/15 [animation:wen-dimm_.2s_ease-out]"
-                onClick={() => setOffen(false)}
-              />
+              {/* Kein Abdunkeln: der Kalender bleibt voll sichtbar. Antippen daneben schließt. */}
+              <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-transparent" onClick={schliessen} />
               <div
                 ref={blatt}
                 role="dialog"
@@ -747,200 +868,226 @@ export function WenSeheIch({
                 data-wen-sehe-ich
                 {...ziehen}
                 onPointerCancel={ziehen.onPointerUp}
-                className="glas-dicht absolute right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.4rem)] flex max-h-[max(34dvh,14rem)] w-[min(24rem,calc(100vw-1rem))] touch-pan-y flex-col overflow-hidden rounded-[24px] shadow-[0_18px_50px_rgba(31,41,77,0.25)] transition-transform duration-200 [animation:wen-rein_.26s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]"
+                style={zieht ? { transform: "translateX(calc(100% + 1rem))" } : undefined}
+                className={cn(
+                  "wen-blatt absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-0 top-[max(0.5rem,env(safe-area-inset-top))] flex w-[clamp(15rem,58vw,21rem)] touch-pan-y flex-col overflow-hidden rounded-l-[28px]",
+                  !perHand && "[animation:wen-rein_.28s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]",
+                )}
               >
-                <div className="flex items-center gap-2 border-b border-line px-3 py-2">
-                  <span className="min-w-0 flex-1 truncate text-[16px] font-bold">Wen sehe ich?</span>
-                  {alle.length ? (
-                    <>
-                      <button type="button" onClick={andere.alleAn} className="h-8 shrink-0 rounded-full bg-ink/[0.07] px-3 text-[12.5px] font-semibold">
-                        Alle
-                      </button>
-                      <button type="button" onClick={andere.nurIch} className="h-8 shrink-0 rounded-full bg-ink/[0.07] px-3 text-[12.5px] font-semibold">
-                        Nur ich
-                      </button>
-                    </>
-                  ) : null}
+                <div className="flex items-center gap-2 px-3.5 pb-2 pt-3">
+                  <span className="min-w-0 flex-1 truncate text-[18px] font-bold">Wen sehe ich?</span>
                   <button
                     type="button"
-                    onClick={() => setOffen(false)}
+                    onClick={schliessen}
                     aria-label="Schließen"
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface/50 text-ink-muted ring-1 ring-inset ring-ink/10"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-[18px] w-[18px]" />
                   </button>
                 </div>
-
-                <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-2 py-2">
-                  <div className="flex items-center gap-2 rounded-[16px] bg-ink/[0.04] px-2 py-1.5">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink text-[10.5px] font-bold text-surface">Ich</span>
-                    <span className="min-w-0 flex-1 text-[14.5px] font-semibold">Meine Termine</span>
-                    <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
-                      Termine
-                    </Pille>
+                {alle.length ? (
+                  <div className="flex gap-1.5 px-3 pb-2">
+                    <button type="button" onClick={andere.alleAn} className="h-10 flex-1 rounded-[12px] bg-surface/50 text-[13.5px] font-semibold ring-1 ring-inset ring-ink/10 active:scale-[0.97]">
+                      Alle
+                    </button>
+                    <button type="button" onClick={andere.nurIch} className="h-10 flex-1 rounded-[12px] bg-surface/50 text-[13.5px] font-semibold ring-1 ring-inset ring-ink/10 active:scale-[0.97]">
+                      Nur ich
+                    </button>
                   </div>
+                ) : null}
+
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2.5 pb-2">
+                  <div className={karte} data-wen-ich>
+                    <PersonZeile
+                      name="Ich"
+                      unter="Mein Kalender"
+                      avatar={
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-surface">Ich</span>
+                      }
+                    >
+                      <Pille an={ich[0]} onClick={() => andere.setze([ICH], 0, !ich[0])}>
+                        Schichten
+                      </Pille>
+                      <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
+                        Termine
+                      </Pille>
+                    </PersonZeile>
+                  </div>
+
+                  {andere.zweige.map((z) => {
+                    const keys = z.knoten.map((k) => k.key);
+                    const s = keys.map((k) => andere.schalter(k));
+                    const alleS = s.every((x) => x[0]);
+                    const keineS = s.every((x) => !x[0]);
+                    const alleT = s.every((x) => x[1]);
+                    const keineT = s.every((x) => !x[1]);
+                    const einzeln = z.knoten.length === 1;
+                    const aufgeklappt = !zu[z.key];
+                    const schalterZweig = (
+                      <>
+                        <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
+                          Schichten
+                        </Pille>
+                        {z.nurSchichten ? null : (
+                          <Pille an={alleT} teil={!alleT && !keineT} onClick={() => andere.setze(keys, 1, !alleT)}>
+                            Termine
+                          </Pille>
+                        )}
+                      </>
+                    );
+                    if (einzeln) {
+                      const k = z.knoten[0];
+                      return (
+                        <div key={z.key} className={karte}>
+                          <PersonZeile
+                            name={k.name}
+                            farbe={k.farbe}
+                            unter={`${z.titel}${z.nurSchichten ? " · Gruppe" : ""}`}
+                            farbPunkt={
+                              <FarbPunkt
+                                name={k.name}
+                                farbe={andere.anzeige.farben[k.key] ?? null}
+                                offen={farbWahl === k.key}
+                                onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
+                              />
+                            }
+                          >
+                            {schalterZweig}
+                          </PersonZeile>
+                          {farbWahl === k.key ? (
+                            <FarbReihe
+                              farbe={andere.anzeige.farben[k.key] ?? null}
+                              onWahl={(f) => {
+                                andere.setzeFarbe(k.key, f);
+                                setFarbWahl(null);
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={z.key} className={karte}>
+                        <PersonZeile
+                          name={z.titel}
+                          unter={`${z.knoten.length} Personen${z.nurSchichten ? " · Gruppe" : ""}`}
+                          avatar={
+                            <button
+                              type="button"
+                              onClick={() => setZu((a) => ({ ...a, [z.key]: aufgeklappt }))}
+                              aria-label={aufgeklappt ? `${z.titel} zuklappen` : `${z.titel} aufklappen`}
+                              aria-expanded={aufgeklappt}
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/[0.06]"
+                            >
+                              <ChevronRight className={cn("h-5 w-5 text-ink-muted transition-transform", aufgeklappt && "rotate-90")} />
+                            </button>
+                          }
+                        >
+                          {schalterZweig}
+                        </PersonZeile>
+                        {aufgeklappt ? (
+                          <div className="mx-2.5 mb-2.5 space-y-1.5">
+                            {z.knoten.map((k) => {
+                              const ks = andere.schalter(k.key);
+                              return (
+                                <div key={k.key} className="rounded-[14px] bg-ink/[0.04]">
+                                  <PersonZeile
+                                    name={k.name}
+                                    avatar={<PersonAvatar name={k.name} farbe={k.farbe} klein />}
+                                    farbPunkt={
+                                      <FarbPunkt
+                                        name={k.name}
+                                        farbe={andere.anzeige.farben[k.key] ?? null}
+                                        offen={farbWahl === k.key}
+                                        onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
+                                      />
+                                    }
+                                  >
+                                    <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
+                                      Schichten
+                                    </Pille>
+                                    {z.nurSchichten ? null : (
+                                      <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
+                                        Termine
+                                      </Pille>
+                                    )}
+                                  </PersonZeile>
+                                  {farbWahl === k.key ? (
+                                    <FarbReihe
+                                      farbe={andere.anzeige.farben[k.key] ?? null}
+                                      onWahl={(f) => {
+                                        andere.setzeFarbe(k.key, f);
+                                        setFarbWahl(null);
+                                      }}
+                                    />
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
 
                   {alle.length ? (
                     <>
-                      <div className="space-y-1">
-                      {andere.zweige.map((z) => {
-                        const keys = z.knoten.map((k) => k.key);
-                        const s = keys.map((k) => andere.schalter(k));
-                        const alleS = s.every((x) => x[0]);
-                        const keineS = s.every((x) => !x[0]);
-                        const alleT = s.every((x) => x[1]);
-                        const keineT = s.every((x) => !x[1]);
-                        const einzeln = z.knoten.length === 1;
-                        const aufgeklappt = !zu[z.key];
-                        return (
-                          <div key={z.key} className="rounded-[16px] bg-ink/[0.04]">
-                            <div className="flex items-center gap-2 px-2 py-1.5">
-                              {einzeln ? (
-                                <PersonAvatar name={z.knoten[0].name} farbe={z.knoten[0].farbe} klein />
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => setZu((a) => ({ ...a, [z.key]: aufgeklappt }))}
-                                  aria-label={aufgeklappt ? `${z.titel} zuklappen` : `${z.titel} aufklappen`}
-                                  aria-expanded={aufgeklappt}
-                                  className="flex h-7 w-7 shrink-0 items-center justify-center"
-                                >
-                                  <ChevronRight className={cn("h-4 w-4 text-ink-muted transition-transform", aufgeklappt && "rotate-90")} />
-                                </button>
-                              )}
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[15px] font-semibold">{einzeln ? z.knoten[0].name : z.titel}</span>
-                                <span className="block truncate text-[11.5px] text-ink-muted">
-                                  {einzeln ? z.titel : `${z.knoten.length} Personen`}
-                                  {z.nurSchichten ? " · Gruppe" : ""}
-                                </span>
-                              </span>
-                              {einzeln ? (
-                                <FarbPunkt
-                                  name={z.knoten[0].name}
-                                  farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
-                                  offen={farbWahl === z.knoten[0].key}
-                                  onClick={() => setFarbWahl((k) => (k === z.knoten[0].key ? null : z.knoten[0].key))}
-                                />
-                              ) : null}
-                              <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
-                                Schichten
-                              </Pille>
-                              {z.nurSchichten ? null : (
-                                <Pille an={alleT} teil={!alleT && !keineT} onClick={() => andere.setze(keys, 1, !alleT)}>
-                                  Termine
-                                </Pille>
-                              )}
-                            </div>
-                            {einzeln && farbWahl === z.knoten[0].key ? (
-                              <FarbReihe
-                                farbe={andere.anzeige.farben[z.knoten[0].key] ?? null}
-                                onWahl={(f) => {
-                                  andere.setzeFarbe(z.knoten[0].key, f);
-                                  setFarbWahl(null);
-                                }}
-                              />
-                            ) : null}
-                            {!einzeln && aufgeklappt ? (
-                              <div className="mb-1.5 ml-[1.3rem] border-l-2 border-ink/10">
-                                {z.knoten.map((k) => {
-                                  const ks = andere.schalter(k.key);
-                                  return (
-                                    <div key={k.key}>
-                                      <div className="flex items-center gap-2 py-1.5 pl-0 pr-2">
-                                        <span className="h-0.5 w-3 shrink-0 bg-ink/10" />
-                                        <PersonAvatar name={k.name} farbe={k.farbe} klein />
-                                        <span className="min-w-0 flex-1 truncate text-[14px] font-medium">{k.name}</span>
-                                        <FarbPunkt
-                                          name={k.name}
-                                          farbe={andere.anzeige.farben[k.key] ?? null}
-                                          offen={farbWahl === k.key}
-                                          onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
-                                        />
-                                        <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
-                                          Schichten
-                                        </Pille>
-                                        {z.nurSchichten ? null : (
-                                          <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
-                                            Termine
-                                          </Pille>
-                                        )}
-                                      </div>
-                                      {farbWahl === k.key ? (
-                                        <FarbReihe
-                                          farbe={andere.anzeige.farben[k.key] ?? null}
-                                          onWahl={(f) => {
-                                            andere.setzeFarbe(k.key, f);
-                                            setFarbWahl(null);
-                                          }}
-                                        />
-                                      ) : null}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                      </div>
-
                       <button
                         type="button"
                         aria-expanded={darstellung}
                         onClick={() => setDarstellung((d) => !d)}
-                        className="flex w-full items-center justify-between rounded-[14px] px-2 py-2 text-[13px] font-semibold text-ink-muted"
+                        className="flex h-11 w-full items-center justify-between rounded-[14px] px-2.5 text-[14px] font-semibold text-ink-muted"
                       >
                         Darstellung der anderen
                         <ChevronRight className={cn("h-4 w-4 transition-transform", darstellung && "rotate-90")} />
                       </button>
                       {darstellung ? (
-                      <div className="space-y-2 rounded-[16px] bg-ink/[0.04] px-3 py-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[14px] font-medium">Größe</span>
-                          <Auswahl
-                            wert={andere.anzeige.groesse}
-                            onWahl={andere.setzeGroesse}
-                            optionen={[
-                              ["klein", "Klein"],
-                              ["mittel", "Mittel"],
-                              ["gross", "Groß"],
-                            ]}
-                          />
+                        <div className={cn(karte, "space-y-2.5 px-3 py-3")}>
+                          <div className="space-y-1.5">
+                            <span className="block text-[13.5px] font-medium">Größe</span>
+                            <Auswahl
+                              wert={andere.anzeige.groesse}
+                              onWahl={andere.setzeGroesse}
+                              optionen={[
+                                ["klein", "Klein"],
+                                ["mittel", "Mittel"],
+                                ["gross", "Groß"],
+                              ]}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <span className="block text-[13.5px] font-medium">Schrift</span>
+                            <Auswahl
+                              wert={andere.anzeige.text}
+                              onWahl={andere.setzeText}
+                              optionen={[
+                                ["kurz", "Kurz"],
+                                ["voll", "Ausgeschrieben"],
+                              ]}
+                            />
+                          </div>
+                          <p className="text-[12px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[14px] font-medium">Schrift</span>
-                          <Auswahl
-                            wert={andere.anzeige.text}
-                            onWahl={andere.setzeText}
-                            optionen={[
-                              ["kurz", "Kurz"],
-                              ["voll", "Ausgeschrieben"],
-                            ]}
-                          />
-                        </div>
-                        <p className="text-[11.5px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
-                      </div>
                       ) : null}
                     </>
                   ) : (
-                    <p className="px-2 py-2 text-[13.5px] leading-snug text-ink-muted">
-                      Noch niemand verbunden. Lade Partner, Familie oder Freunde ein – dann siehst du hier, wessen Schichten und
-                      Termine im Kalender stehen.
+                    <p className="px-2 py-1 text-[13.5px] leading-snug text-ink-muted">
+                      Noch niemand verbunden. Lade Partner, Familie oder Freunde ein – dann siehst du hier auch deren Schichten und
+                      Termine.
                     </p>
                   )}
                 </div>
 
-                <div className="border-t border-line px-2 py-1.5">
+                <div className="px-2.5 pb-2.5 pt-1">
                   <button
                     type="button"
                     onClick={() => {
-                      setOffen(false);
+                      schliessen();
                       onVerwalten();
                     }}
-                    className="flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] text-[13.5px] font-semibold text-brand-600"
+                    className="flex h-12 w-full items-center justify-center gap-1.5 rounded-[14px] bg-surface/50 px-2 text-[14px] font-semibold text-brand-600 ring-1 ring-inset ring-ink/10"
                   >
-                    <UserPlus className="h-4 w-4" /> Personen einladen oder verwalten
+                    <UserPlus className="h-[18px] w-[18px] shrink-0" /> <span className="truncate">Personen einladen</span>
                   </button>
                 </div>
               </div>

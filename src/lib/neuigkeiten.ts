@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-10T16:00:00+01:00",
+    titel: "„Wen sehe ich?“ neu – auch eigene Schichten ausblenden",
+    text: "Vom rechten Rand hereinziehen: Das Fenster folgt dem Finger, nimmt die rechte Seite ein und lässt den Kalender durchscheinen. Größere Knöpfe – und bei „Ich“ kannst du jetzt auch deine eigenen Schichten ausblenden, um nur die anderen zu sehen.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-10T15:00:00+01:00",
     titel: "Urlaub trotz Unterbesetzung",
     text: "Würde eine Genehmigung die Mindestbesetzung unterschreiten, fragt die App „Trotzdem genehmigen?“. Bei Ja steht es mit Vermerk im Änderungsprotokoll.",
