@@ -20,8 +20,9 @@ export default function ForgotPasswordPage() {
 
       <div className="mt-6 space-y-2 rounded-2xl bg-surface-muted px-4 py-3 text-[13px] leading-relaxed text-ink-muted">
         <p>
-          <span className="font-semibold text-ink">Im Betrieb:</span> Den Code bekommst du von deiner Schichtleitung oder
-          Administration. Er gilt 24 Stunden.
+          <span className="font-semibold text-ink">Im Betrieb:</span> Nimm deinen eigenen Wiederherstellungs-Code aus
+          deinem Profil. Hast du keinen, gibt dir deine Schichtleitung oder Administration einen Code frei (gilt 24 Stunden,
+          du siehst es danach in deinen Benachrichtigungen).
         </p>
         <p>
           <span className="font-semibold text-ink">Privat:</span> Nimm deinen Wiederherstellungs-Code aus „Mehr“. Kein Code

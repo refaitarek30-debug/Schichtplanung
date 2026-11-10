@@ -158,7 +158,8 @@ async function createInviteLink(
       return {
         fehler:
           "Diese Person hat schon ein eigenes Passwort. Aus Datenschutzgründen gibt es dafür keinen Zugangslink. " +
-          "Sie setzt es selbst zurück: auf der Anmeldeseite „Passwort vergessen“.",
+          "Sie setzt es selbst zurück („Passwort vergessen“ mit ihrem eigenen Code). Hat sie keinen, erzeugst du in der " +
+          "Mitarbeiterliste einen Passwort-Code.",
       };
     }
     // Der Link gilt immer dem Konto, mit dem sich die Person anmeldet. Steht

@@ -313,7 +313,7 @@ export function PrivatMehr() {
  * aufheben. Gespeichert ist nur ein Prüfwert – der Code selbst steht nur
  * direkt nach dem Erzeugen hier. Ein neuer Code ersetzt den alten.
  */
-function WiederherstellungsCode() {
+export function WiederherstellungsCode() {
   const [stand, setStand] = useState<string | null | undefined>(undefined);
   const [code, setCode] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
