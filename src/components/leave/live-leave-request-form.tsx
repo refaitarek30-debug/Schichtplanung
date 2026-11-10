@@ -689,7 +689,7 @@ export function LiveLeaveRequestForm({
           {/* Der Kommentar nennt Beispiele, damit klar ist, was hier
               hingehört. Er ändert nichts an der Verrechnung: gebucht wird
               weiterhin das, was oben unter "Art" steht. */}
-          <Field label="Kommentar (optional)">
+          <Field label="Kommentar (optional)" hint="Bitte keine Gesundheitsangaben (Arzt, Krankheit …).">
             <textarea
               name="reason"
               value={reason}
