@@ -29,7 +29,7 @@ Die Schwächen liegen an drei Stellen:
 | L-05 | Resturlaub aus dem Vorjahr verfällt automatisch am 31.03. | mittel (rechtlich) |
 | L-06 | Halbe Tage: Antrag zählt 0,5 – Konto zählt 1 | klein |
 | L-07 | Nachtschicht wird am Namen erkannt („Nacht…“) | klein, für SaaS mittel |
-| L-08 | Feiertage: Bundesland fest auf NRW voreingestellt, regionale Feiertage fehlen | klein, für SaaS mittel |
+| L-08 | Feiertage: Bundesland steht auf NRW, wenn die Einrichtung übersprungen wird; regionale Feiertage fehlen | klein, für SaaS mittel |
 | L-09 | Automatischer Antrag liest das Restkonto ohne Sperre | klein |
 | L-10 | Rücknahme genehmigten Urlaubs durch die Führung ohne Zustimmung der Person | klein (rechtlich prüfen) |
 | L-11 | Sommerzeit: Schichtdauer wird aus Uhrzeiten gerechnet | klein |
@@ -189,15 +189,16 @@ werden die Schichten „Frühschicht / Spätschicht / Nachtschicht“ fest angel
 Frauentag (Berlin, Mecklenburg-Vorpommern), Weltkindertag (Thüringen), Reformationstag und Fronleichnam.
 
 **Was fehlt:**
-- Bei der Registrierung wird fest **NRW** eingetragen. Ein Betrieb in Bayern rechnet bis zur Korrektur mit falschen
-  Feiertagen – und damit falschen Urlaubstagen.
+- Bei der Registrierung wird **NRW** eingetragen. Die Einrichtung fragt das Bundesland in Schritt 2 ab – sie lässt
+  sich aber jederzeit überspringen. Ein Betrieb in Bayern, der abbricht, rechnet mit falschen Feiertagen und damit
+  falschen Urlaubstagen, ohne es zu merken.
 - Feiertage, die nur in Teilen eines Landes gelten: Mariä Himmelfahrt in Bayern (überwiegend katholische Gemeinden),
   Friedensfest in Augsburg, Fronleichnam in Teilen von Sachsen und Thüringen.
 - Heiligabend und Silvester sind keine Feiertage; viele Betriebe behandeln sie als halbe Tage oder Betriebsruhe.
 
 | Variante | Beschreibung | Aufwand | Risiko |
 |---|---|---|---|
-| A | Bundesland als Pflichtfrage im Einrichtungs-Assistenten; Feiertage danach neu erzeugen. | S | gering |
+| A | Bundesland als **Pflichtfrage** (nicht überspringbar) – am besten schon bei der Registrierung; Feiertage danach neu erzeugen. | S | gering |
 | B | Zusätzlich „regionale Feiertage“ zum Anhaken (Liste je Bundesland). | M | gering |
 | C | Feiertage frei pflegbar (gibt es schon als Betriebsruhe) – nur besser erklären. | S | gering |
 
