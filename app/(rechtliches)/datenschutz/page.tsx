@@ -213,9 +213,11 @@ export default function DatenschutzPage() {
           <li>
             Das Änderungsprotokoll (wer hat was geändert) sehen die Schichtleitung und die
             Administration des Unternehmens. Das Anmeldeprotokoll (Anmeldungen, fehlgeschlagene
-            Anmeldungen) und die Fehlermeldungen sieht nur eine vom Unternehmen ausdrücklich dafür
-            freigeschaltete Person der Administration, nicht jede Administration und nicht die
-            Schichtleitung
+            Anmeldungen) und die Fehlermeldungen kann im Unternehmen niemand einsehen – auch nicht
+            die Administration. Sie dienen allein der Aufklärung von Sicherheitsvorfällen und
+            technischen Störungen durch den Betreiber. Die Auswertung von Ausfall und Anwesenheit
+            zeigt der Administration nur Summen ohne Namen: je Schicht erst ab fünf Personen, sonst
+            nur für das ganze Unternehmen
           </li>
           <li>
             Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Jede
@@ -895,7 +897,7 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
           <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden, Privatkonten ohne Firma 30 Tage)</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
-          <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte, einsehbar nur für ausdrücklich freigeschaltete Personen</li>
+          <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte; das Anmeldeprotokoll ist im Unternehmen nicht einsehbar, Auswertungen nur als Summen ohne Namen</li>
           <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>
         </Liste>
         <Absatz>

@@ -4,11 +4,19 @@ import { dataErrorMessage } from "@/lib/errors";
 
 export class DataError extends Error {}
 
-/** Eine Zeile der Auswertung: eine Person in einem Monat. */
+/**
+ * Eine Zeile der Auswertung: eine Schicht (oder der ganze Betrieb) in einem Monat –
+ * ohne Namen. Einzelne Personen liefert die Datenbank nicht mehr (Migration 0215).
+ */
 export interface ReportRow {
+  /** Schlüssel der Gruppe: Schicht („A“ …), „TS“ oder „alle“. */
   employeeId: string;
   name: string;
   rotationTeam: string | null;
+  /** Die Datenbank gibt keine Aufteilung nach Schicht heraus (eine Schicht hätte unter fünf Personen). */
+  gesamtNur: boolean;
+  /** Anzahl Personen in der Gruppe. */
+  personen: number;
   monat: number;
   sollTage: number;
   anwesendTage: number;
@@ -29,11 +37,11 @@ export interface ReportRow {
 }
 
 /**
- * Ausfall und Anwesenheit, je Person und Monat.
+ * Ausfall und Anwesenheit, je Schicht und Monat – ohne Namen.
  *
- * Die Datenbank liefert bewusst die feinste Ebene. Gesamtbetrieb, Schicht
- * und Jahr entstehen daraus durch Summieren – eine eigene Abfrage je
- * Ebene wäre eine zweite Wahrheit für dieselbe Zahl.
+ * Gesamtbetrieb und Jahr entstehen daraus durch Summieren. Unter fünf
+ * Personen im Betrieb kommt nichts zurück; hat eine Schicht unter fünf
+ * Personen, kommt nur der Gesamtbetrieb (Gruppe „alle“).
  *
  * Ein ganzes Jahr über fünfzig Mitarbeiter braucht rund 2,7 Sekunden: die
  * Prüfung, ob ein Tag ein Arbeitstag ist, läuft für jede Kombination aus
@@ -44,16 +52,18 @@ export interface ReportRow {
 export async function fetchReport(year: number, month: number | null): Promise<ReportRow[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
-  const { data, error } = await supabase.rpc("absence_report", {
+  const { data, error } = await supabase.rpc("absence_report_anonym", {
     p_year: year,
     p_month: month,
   });
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
-    employeeId: String(row.employee_id),
-    name: String(row.name),
-    rotationTeam: (row.rotation_team as string) ?? null,
+    employeeId: String(row.gruppe),
+    name: String(row.gruppe),
+    rotationTeam: row.gruppe === "TS" || row.gruppe === "alle" ? null : String(row.gruppe),
+    gesamtNur: !row.aufgeteilt,
+    personen: Number(row.personen),
     monat: Number(row.monat),
     sollTage: Number(row.soll_tage),
     anwesendTage: Number(row.anwesend_tage),
