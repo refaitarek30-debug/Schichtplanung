@@ -276,6 +276,14 @@ export function PrivatKalender() {
     }
   }, [konto.userId]);
   useEffect(() => {
+    // Gleich nach dem Öffnen: die gemerkten eigenen Termine und To-dos dieses Geräts, bis die frischen da sind.
+    const t = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (Array.isArray(t)) setTermine((alt) => (alt.length ? alt : t));
+    const d = ausGeraet<Todo[]>(`${konto.userId}:privat:todos`);
+    if (Array.isArray(d)) setTodos((alt) => (alt.length ? alt : d));
+  }, [konto.userId]);
+  useEffect(() => {
     void ladeTermine();
   }, [ladeTermine]);
 
@@ -571,36 +579,8 @@ export function PrivatKalender() {
   } = useMonatKarussell(springe, { nurSenkrecht: true });
   // Vom rechten Rand nach links ziehen: „Wen sehe ich?“ kommt als Seitenblatt herein –
   // überall am rechten Bildschirmrand, solange kein anderes Fenster offen ist.
-  const [wenOffen, setWenOffen] = useState(false);
   const monatGriffe = karussellGriffe;
   const randFrei = ansicht === "monat" && !pinselAn && !tagBlatt && !terminBlatt && !todoBlatt;
-  useEffect(() => {
-    if (!randFrei) return;
-    let start: { x: number; y: number } | null = null;
-    const RAND = 28;
-    const los = (x: number, y: number) => {
-      start = x > window.innerWidth - RAND ? { x, y } : null;
-    };
-    const ende = (x: number, y: number) => {
-      const s = start;
-      start = null;
-      if (s && s.x - x > 40 && Math.abs(y - s.y) < 80) setWenOffen(true);
-    };
-    const pDown = (e: PointerEvent) => los(e.clientX, e.clientY);
-    const pUp = (e: PointerEvent) => ende(e.clientX, e.clientY);
-    const tStart = (e: TouchEvent) => e.touches[0] && los(e.touches[0].clientX, e.touches[0].clientY);
-    const tEnd = (e: TouchEvent) => e.changedTouches[0] && ende(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-    window.addEventListener("pointerdown", pDown, true);
-    window.addEventListener("pointerup", pUp, true);
-    window.addEventListener("touchstart", tStart, { capture: true, passive: true });
-    window.addEventListener("touchend", tEnd, { capture: true, passive: true });
-    return () => {
-      window.removeEventListener("pointerdown", pDown, true);
-      window.removeEventListener("pointerup", pUp, true);
-      window.removeEventListener("touchstart", tStart, true);
-      window.removeEventListener("touchend", tEnd, true);
-    };
-  }, [randFrei]);
   // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
   const langDruck = useLangDruck((iso) => {
     if (pinselAn) return;
@@ -682,7 +662,7 @@ export function PrivatKalender() {
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
           <PrivatNeuigkeiten />
-          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} offen={wenOffen} onOffen={setWenOffen} />
+          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} randWischen={randFrei} />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
@@ -801,7 +781,7 @@ export function PrivatKalender() {
                     jahr={m.getFullYear()}
                     monat={m.getMonth()}
                     heute={heute}
-                    tage={anzeigeTage}
+                    tage={andere.eigeneSchichten ? anzeigeTage : KEINE_TAGE}
                     artNach={anzeigeArtNach}
                     feiertagVon={feiertagVon}
                     termine={sichtbareTermine}
@@ -1071,6 +1051,9 @@ interface AnsichtProps {
   artNach: Map<string, Schichtart>;
   feiertagVon: (iso: string) => string | undefined;
 }
+
+/** Eigene Schichten ausgeblendet („Wen sehe ich?“ → Ich · Schichten). */
+const KEINE_TAGE: Record<string, TagEintrag> = {};
 
 function MonatsAnsicht({
   jahr,

@@ -53,6 +53,38 @@ export default async function privatNeu() {
     await warte(300);
     pruefe((await seite.locator("[data-wen-sehe-ich]").count()) === 0, "Escape schließt „Wen sehe ich?“");
 
+    // Eigene Schichten ausblenden: „Ich · Schichten“ im Seitenblatt.
+    const mitSchicht = () => seite.locator('[data-iso][aria-label*=": "]').count();
+    // Eigene Schichten im angezeigten Monat anlegen (im Mock), dann neu laden.
+    await seite.evaluate(async ([j, mo]) => {
+      const basis = "http://127.0.0.1:5459/rest/v1";
+      const h = { apikey: "anon", "content-type": "application/json" };
+      const arten = await (await fetch(`${basis}/privat_schichtarten`, { headers: h })).json();
+      // Aktueller und nächster Monat – je nachdem, welcher nach dem Neuladen zu sehen ist.
+      const rows = [-1, 0].flatMap((v) => {
+        const m = new Date(j, mo + v, 1);
+        return [3, 4, 5].map((d) => ({ tag: `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`, ebene: 1, schichtart_id: arten[0].id }));
+      });
+      await fetch(`${basis}/privat_tage`, { method: "POST", headers: h, body: JSON.stringify(rows) });
+    }, [new Date(jetzt.jahr, jetzt.monat, 1).getFullYear(), new Date(jetzt.jahr, jetzt.monat, 1).getMonth()]);
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1200);
+    const vorherSchichten = await mitSchicht();
+    await wische(seite, { x: v.width - 6, y: mitte.y }, { x: v.width - 160, y: mitte.y });
+    await warte(600);
+    const blattBox = await seite.locator("[data-wen-sehe-ich]").boundingBox();
+    pruefe(!!blattBox && blattBox.height > v.height * 0.7, `Seitenblatt fast über die ganze Höhe (${blattBox?.height}/${v.height})`);
+    pruefe(!!blattBox && v.width - (blattBox.x + blattBox.width) < 16, "Seitenblatt am rechten Rand");
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
+    await warte(300);
+    const nachher = await mitSchicht();
+    pruefe(vorherSchichten > 0 && nachher === 0, `Eigene Schichten ausgeblendet (${vorherSchichten} → ${nachher})`);
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
+    await warte(300);
+    pruefe((await mitSchicht()) === vorherSchichten, "Eigene Schichten wieder da");
+    await seite.keyboard.press("Escape");
+    await warte(300);
+
     // Geburtstag ohne Torte: Schalter im Termin-Fenster, Geburtsjahr freiwillig.
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
     await warte(1000);
