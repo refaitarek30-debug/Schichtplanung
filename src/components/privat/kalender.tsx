@@ -662,7 +662,9 @@ export function PrivatKalender() {
         <div className="flex shrink-0 items-center gap-1.5 [@media(max-width:360px)]:gap-1">
           {/* Glühbirne nur hier – der Kalender ist die Startseite des Privatbereichs. */}
           <PrivatNeuigkeiten />
-          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} randWischen={randFrei} />
+          <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} randWischen={randFrei}
+            onEigeneFarben={() => router.push("/privat/schichten?reiter=liste")}
+          />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />

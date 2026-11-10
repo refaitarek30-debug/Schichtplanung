@@ -771,6 +771,7 @@ export function MeinKalenderGlas() {
             glas
             onVerwalten={() => setEinladen(true)}
             randWischen={!pinselAn && !tagBlatt && !terminBlatt && !todoBlatt && !profilOffen && !einladen}
+            onEigeneFarben={() => setAnpassen(true)}
           />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">
