@@ -1,0 +1,56 @@
+# Probe: Lässt sich die letzte Datensicherung öffnen, und steht etwas Sinnvolles drin?
+# Holt das neueste Artefakt der „Datensicherung“, entschlüsselt es mit BACKUP_PASSWORT und
+# zählt die Zeilen je Tabelle. Im Protokoll stehen nur Tabellennamen und Anzahlen – keine Inhalte.
+# Anleitung: docs/datensicherung.md
+name: Sicherung prüfen
+
+on:
+  schedule:
+    - cron: "43 3 1 * *" # am 1. jedes Monats um 3:43 UTC
+  workflow_dispatch: {} # von Hand unter „Actions“ starten
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Neueste Sicherung holen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          lauf=$(gh run list --repo "$REPO" --workflow datensicherung.yml --status success --limit 1 --json databaseId,createdAt -q '.[0] | "\(.databaseId) \(.createdAt)"')
+          if [ -z "$lauf" ]; then
+            echo "::error::Kein erfolgreicher Lauf der Datensicherung gefunden."
+            exit 1
+          fi
+          echo "Sicherung vom ${lauf#* } (Lauf ${lauf%% *})"
+          gh run download "${lauf%% *}" --repo "$REPO" --dir artefakt
+          datei=$(find artefakt -name '*.tar.gz.gpg' | head -n 1)
+          test -n "$datei" || { echo "::error::Im Lauf liegt keine Sicherungsdatei."; exit 1; }
+          echo "DATEI=$datei" >> "$GITHUB_ENV"
+
+      - name: Entschlüsseln und auspacken
+        env:
+          BACKUP_PASSWORT: ${{ secrets.BACKUP_PASSWORT }}
+        run: |
+          if [ -z "$BACKUP_PASSWORT" ]; then
+            echo "::error::Das Secret BACKUP_PASSWORT fehlt."
+            exit 1
+          fi
+          printf '%s' "$BACKUP_PASSWORT" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            -d -o sicherung.tar.gz "$DATEI" \
+            || { echo "::error::Entschlüsseln fehlgeschlagen – passt BACKUP_PASSWORT noch zu den Sicherungen?"; exit 1; }
+          tar -xzf sicherung.tar.gz
+          rm -f sicherung.tar.gz
+
+      - name: Inhalt prüfen
+        run: bash scripts/sicherung-pruefen.sh sicherung
+
+      - name: Aufräumen
+        if: always()
+        run: rm -rf sicherung artefakt sicherung.tar.gz
