@@ -75,13 +75,27 @@ export default async function privatNeu() {
     const blattBox = await seite.locator("[data-wen-sehe-ich]").boundingBox();
     pruefe(!!blattBox && blattBox.height > v.height * 0.7, `Seitenblatt fast über die ganze Höhe (${blattBox?.height}/${v.height})`);
     pruefe(!!blattBox && v.width - (blattBox.x + blattBox.width) < 16, "Seitenblatt am rechten Rand");
-    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Ich: Schichten" }).click();
     await warte(300);
     const nachher = await mitSchicht();
     pruefe(vorherSchichten > 0 && nachher === 0, `Eigene Schichten ausgeblendet (${vorherSchichten} → ${nachher})`);
-    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Ich: Schichten" }).click();
     await warte(300);
     pruefe((await mitSchicht()) === vorherSchichten, "Eigene Schichten wieder da");
+    // Häkchen bei „Ich“: abwählen nimmt Schichten und Termine weg, anwählen zeigt beides.
+    await seite.getByRole("button", { name: "Ich: ausblenden" }).click();
+    await warte(300);
+    const ichS = seite.getByRole("button", { name: "Ich: Schichten" });
+    const ichT = seite.getByRole("button", { name: "Ich: Termine" });
+    pruefe((await mitSchicht()) === 0 && (await ichS.getAttribute("aria-pressed")) === "false" && (await ichT.getAttribute("aria-pressed")) === "false", "Häkchen ab: Schichten und Termine aus");
+    await seite.getByRole("button", { name: "Ich: einblenden" }).click();
+    await warte(300);
+    pruefe((await mitSchicht()) === vorherSchichten && (await ichT.getAttribute("aria-pressed")) === "true", "Häkchen an: beides wieder da");
+    // Farben nur in den Einstellungen (Regler oben).
+    pruefe((await seite.locator('[data-wen-sehe-ich] button[aria-label^="Farbe der Schichten"]').count()) === 0, "Farbpunkte erst in den Einstellungen");
+    await seite.getByRole("button", { name: "Einstellungen: Farben und Darstellung" }).click();
+    await warte(200);
+    pruefe((await seite.locator('[data-wen-sehe-ich] button[aria-label^="Farbe der Schichten"]').count()) > 0, "Einstellungen: Farbpunkte je Person");
     await seite.keyboard.press("Escape");
     await warte(300);
 

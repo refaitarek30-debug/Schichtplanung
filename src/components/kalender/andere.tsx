@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
-import { Check, Ellipsis, Minus, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
+import { Check, Minus, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { PERSON_FARBEN, PersonAvatar, kuerzel, personFarbe } from "./teilen";
 import { codeFarbe, partnerText } from "./partner";
 import { textFarbe } from "@/lib/privat/daten";
+import { FarbWahl } from "./farb-wahl";
 
 /**
  * Andere im eigenen Kalender: Personen, die über ihren Link selbst
@@ -282,29 +283,35 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
 
   const schalter = useCallback((key: string): Schalter => sicht[key] ?? AN, [sicht]);
 
+  /** Auswahl ändern – als Änderung am jeweils neuesten Stand, damit zwei Schalter direkt hintereinander beide wirken. */
   const speichern = useCallback(
-    (neu: Sicht) => {
-      setSichtState(neu);
-      try {
-        window.localStorage.setItem(speicherKey(benutzer), JSON.stringify(neu));
-      } catch {
-        // ohne Speicher gilt die Auswahl nur bis zum Neuladen
-      }
+    (aender: Sicht | ((alt: Sicht) => Sicht)) => {
+      setSichtState((alt) => {
+        const neu = typeof aender === "function" ? aender(alt) : aender;
+        try {
+          window.localStorage.setItem(speicherKey(benutzer), JSON.stringify(neu));
+        } catch {
+          // ohne Speicher gilt die Auswahl nur bis zum Neuladen
+        }
+        return neu;
+      });
     },
     [benutzer],
   );
 
   const setze = useCallback(
     (keys: string[], i: 0 | 1, wert: boolean) => {
-      const neu = { ...sicht };
-      for (const k of keys) {
-        const s: Schalter = [...(neu[k] ?? AN)] as Schalter;
-        s[i] = wert;
-        neu[k] = s;
-      }
-      speichern(neu);
+      speichern((alt) => {
+        const neu = { ...alt };
+        for (const k of keys) {
+          const s: Schalter = [...(neu[k] ?? AN)] as Schalter;
+          s[i] = wert;
+          neu[k] = s;
+        }
+        return neu;
+      });
     },
-    [sicht, speichern],
+    [speichern],
   );
 
   const alleKeys = useMemo(() => [ICH, ...new Set(zweige.flatMap((z) => z.knoten.map((k) => k.key)))], [zweige]);
@@ -517,36 +524,6 @@ export function AnDiesemTag({
   );
 }
 
-function Pille({
-  an,
-  teil = false,
-  onClick,
-  children,
-}: {
-  an: boolean;
-  teil?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={an}
-      onClick={onClick}
-      className={cn(
-        "h-10 min-w-0 flex-1 truncate rounded-[12px] px-2 text-[13px] font-semibold transition-colors active:scale-[0.97]",
-        an
-          ? "bg-brand-500 text-white"
-          : teil
-            ? "bg-brand-500/10 text-brand-700 ring-1 ring-inset ring-brand-500/50"
-            : "bg-surface/50 text-ink-muted ring-1 ring-inset ring-ink/10",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 /** Zwei oder drei Möglichkeiten nebeneinander, eine ist gewählt. */
 function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl: (w: T) => void; optionen: [T, string][] }) {
   return (
@@ -572,28 +549,16 @@ function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl
 /** Die Farben zur Wahl; „Eigene“ nimmt wieder die Farben, die die Person selbst gewählt hat. */
 function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string | null) => void }) {
   return (
-    <div className="mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-[14px] bg-surface/60 px-2.5 py-2">
+    <div className="space-y-2 rounded-[14px] bg-surface/60 px-2.5 py-2.5">
       <button
         type="button"
         onClick={() => onWahl(null)}
         aria-pressed={!farbe}
-        className={cn("h-8 rounded-full px-3 text-[12px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
+        className={cn("h-8 rounded-full px-3 text-[12.5px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
       >
-        Eigene
+        Ihre eigenen Farben
       </button>
-      {SCHICHT_FARBEN.map((f) => (
-        <button
-          key={f}
-          type="button"
-          onClick={() => onWahl(f)}
-          aria-label={`Farbe ${f}`}
-          aria-pressed={farbe === f}
-          className="flex h-8 w-8 items-center justify-center rounded-full"
-          style={{ backgroundColor: f, color: textFarbe(f) }}
-        >
-          {farbe === f ? <Check className="h-4 w-4" strokeWidth={3} aria-hidden /> : null}
-        </button>
-      ))}
+      <FarbWahl wert={farbe} onWahl={onWahl} name="Schicht dieser Person" />
     </div>
   );
 }
@@ -613,19 +578,23 @@ export function WenSeheIch({
   onVerwalten,
   glas = false,
   randWischen = false,
+  onEigeneFarben,
 }: {
   andere: Andere;
   onVerwalten: () => void;
   glas?: boolean;
   /** Vom rechten Bildschirmrand hereinziehen (nur, wenn sonst nichts offen ist). */
   randWischen?: boolean;
+  /** Einstellungen: zu den Farben der eigenen Schichten. */
+  onEigeneFarben?: () => void;
 }) {
   const [offen, setOffen] = useState(false);
   /** Blatt ist da, folgt aber noch dem Finger (beim Hereinziehen). */
   const [zieht, setZieht] = useState(false);
-  const [darstellung, setDarstellung] = useState(false);
-  /** Bei wem gerade „…“ (Schichten/Termine einzeln, Farbe) offen ist. */
-  const [mehr, setMehr] = useState<string | null>(null);
+  /** Einstellungen (Regler oben): Farben je Person, Größe und Schrift der anderen. */
+  const [einstellen, setEinstellen] = useState(false);
+  /** Bei wem in den Einstellungen gerade die Farbwahl offen ist. */
+  const [farbWahl, setFarbWahl] = useState<string | null>(null);
   const blatt = useRef<HTMLDivElement>(null);
   const zug = useRef<{ x: number; dx: number } | null>(null);
   /** Hereingezogen statt angetippt: dann ohne Einflug-Animation. */
@@ -764,66 +733,86 @@ export function WenSeheIch({
   const istAlle = ich[0] && ich[1] && keysAlle.every((k) => andere.schalter(k)[0] && andere.schalter(k)[1]);
   const istNurIch = ich[0] && ich[1] && keysAlle.every((k) => !andere.schalter(k)[0] && !andere.schalter(k)[1]);
 
-  /** Eine Zeile: Häkchen, Name, rechts „…“. */
+  /**
+   * Eine Zeile: Häkchen (alles an/aus), Name, daneben „Schichten“ und „Termine“
+   * einzeln. In den Einstellungen statt der beiden ein Farbpunkt.
+   */
   const zeile = ({
     key,
     name,
     farbe,
-    an,
-    teil = false,
-    onHaken,
-    details,
+    s: [sAn, tAn],
+    nurSchichten = false,
+    onSetze,
+    farbKey,
+    unten,
   }: {
     key: string;
     name: string;
     farbe: string;
-    an: boolean;
-    teil?: boolean;
-    onHaken: () => void;
-    details?: React.ReactNode;
-  }) => (
-    <div key={key}>
-      <div className="flex min-h-[48px] items-center gap-3">
-        <button type="button" onClick={onHaken} aria-pressed={an} className="flex min-w-0 flex-1 items-center gap-3.5 py-1.5 text-left">
-          <Haken an={an} teil={teil} farbe={farbe} />
-          <span className="min-w-0 flex-1 truncate text-[16.5px]">{name}</span>
-        </button>
-        {details ? (
+    s: Schalter;
+    nurSchichten?: boolean;
+    onSetze: (i: 0 | 1, wert: boolean) => void;
+    /** In den Einstellungen: wessen Farbe hier gewählt wird. */
+    farbKey?: string;
+    /** In den Einstellungen unter der Zeile (z. B. „Farben meiner Schichten“). */
+    unten?: React.ReactNode;
+  }) => {
+    const voll = nurSchichten ? sAn : sAn && tAn;
+    const an = nurSchichten ? sAn : sAn || tAn;
+    const eigeneFarbe = farbKey ? (andere.anzeige.farben[farbKey] ?? null) : null;
+    return (
+      <div key={key} data-wen-zeile={key}>
+        <div className="flex min-h-[50px] items-center gap-2">
           <button
             type="button"
-            onClick={() => setMehr((m) => (m === key ? null : key))}
-            aria-expanded={mehr === key}
-            aria-label={`Mehr zu ${name}`}
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
-              mehr === key ? "bg-ink/10 text-ink" : "text-ink-muted",
-            )}
+            onClick={() => {
+              // Anwählen zeigt Schichten und Termine, Abwählen nimmt beides weg.
+              onSetze(0, !voll);
+              if (!nurSchichten) onSetze(1, !voll);
+            }}
+            aria-pressed={voll}
+            aria-label={`${name}: ${voll ? "ausblenden" : "einblenden"}`}
+            className="flex min-w-0 flex-1 items-center gap-3 py-1.5 text-left"
           >
-            <Ellipsis className="h-[22px] w-[22px]" strokeWidth={2.2} />
+            <Haken an={an} teil={an && !voll} farbe={farbe} />
+            <span className="min-w-0 flex-1 truncate text-[16.5px]">{name}</span>
           </button>
-        ) : null}
-      </div>
-      {details && mehr === key ? <div className="mb-2 ml-[2.4rem] space-y-2">{details}</div> : null}
-    </div>
-  );
-
-  /** „…“ einer Person: Schichten und Termine einzeln, feste Farbe. */
-  const einzelheiten = (key: string, nurSchichten?: boolean) => {
-    const ks = andere.schalter(key);
-    return (
-      <>
-        <div className="flex gap-1.5">
-          <Pille an={ks[0]} onClick={() => andere.setze([key], 0, !ks[0])}>
-            Schichten
-          </Pille>
-          {nurSchichten ? null : (
-            <Pille an={ks[1]} onClick={() => andere.setze([key], 1, !ks[1])}>
-              Termine
-            </Pille>
+          {einstellen ? (
+            farbKey ? (
+              <button
+                type="button"
+                onClick={() => setFarbWahl((k) => (k === farbKey ? null : farbKey))}
+                aria-expanded={farbWahl === farbKey}
+                aria-label={`Farbe der Schichten von ${name}${eigeneFarbe ? "" : " (ihre eigenen Farben)"}`}
+                className="flex h-9 w-9 shrink-0 items-center justify-center"
+              >
+                <span
+                  className={cn("h-7 w-7 rounded-full ring-2", farbWahl === farbKey ? "ring-ink/60" : "ring-ink/15")}
+                  style={{ background: eigeneFarbe ?? "conic-gradient(#F5A524 0 33%, #22A06B 0 66%, #2F6FDE 0)" }}
+                />
+              </button>
+            ) : null
+          ) : (
+            <span className="flex shrink-0 gap-1">
+              <Mini an={sAn} onClick={() => onSetze(0, !sAn)} label={`${name}: Schichten`}>
+                Schichten
+              </Mini>
+              {nurSchichten ? null : (
+                <Mini an={tAn} onClick={() => onSetze(1, !tAn)} label={`${name}: Termine`}>
+                  Termine
+                </Mini>
+              )}
+            </span>
           )}
         </div>
-        <FarbReihe farbe={andere.anzeige.farben[key] ?? null} onWahl={(f) => andere.setzeFarbe(key, f)} />
-      </>
+        {einstellen && farbKey && farbWahl === farbKey ? (
+          <div className="mb-2">
+            <FarbReihe farbe={eigeneFarbe} onWahl={(f) => andere.setzeFarbe(farbKey, f)} />
+          </div>
+        ) : null}
+        {einstellen && unten ? <div className="mb-2 ml-[2.4rem]">{unten}</div> : null}
+      </div>
     );
   };
 
@@ -902,7 +891,7 @@ export function WenSeheIch({
                 onPointerCancel={ziehen.onPointerUp}
                 style={zieht ? { transform: "translateX(calc(100% + 1rem))" } : undefined}
                 className={cn(
-                  "wen-blatt absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.9rem)] flex w-[min(21.5rem,calc(100vw-5rem))] touch-pan-y flex-col overflow-hidden rounded-[30px]",
+                  "wen-blatt absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.9rem)] flex w-[min(23rem,calc(100vw-3.5rem))] touch-pan-y flex-col overflow-hidden rounded-[30px]",
                   !perHand && "[animation:wen-rein_.28s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]",
                 )}
               >
@@ -930,10 +919,13 @@ export function WenSeheIch({
                         </button>
                         <button
                           type="button"
-                          onClick={() => setDarstellung((d) => !d)}
-                          aria-expanded={darstellung}
-                          aria-label="Darstellung der anderen"
-                          className={cn("flex h-10 w-11 shrink-0 items-center justify-center rounded-full", darstellung ? "bg-ink/10 text-ink" : "text-ink-muted")}
+                          onClick={() => {
+                            setEinstellen((d) => !d);
+                            setFarbWahl(null);
+                          }}
+                          aria-expanded={einstellen}
+                          aria-label="Einstellungen: Farben und Darstellung"
+                          className={cn("flex h-10 w-11 shrink-0 items-center justify-center rounded-full", einstellen ? "bg-ink/10 text-ink" : "text-ink-muted")}
                         >
                           <SlidersHorizontal className="h-[21px] w-[21px]" />
                         </button>
@@ -942,7 +934,7 @@ export function WenSeheIch({
                       <p className="text-[14px] leading-snug text-ink-muted">Lade Partner, Familie oder Freunde ein – dann siehst du hier auch deren Schichten und Termine.</p>
                     )}
                   </div>
-                  {darstellung && alle.length ? (
+                  {einstellen && alle.length ? (
                     <div className="space-y-3 border-b border-line py-3">
                       <div className="space-y-1.5">
                         <span className="block text-[13.5px] font-semibold text-ink-muted">Größe der anderen</span>
@@ -967,7 +959,7 @@ export function WenSeheIch({
                           ]}
                         />
                       </div>
-                      <p className="text-[12.5px] leading-snug text-ink-muted">Die Farbe einer Person stellst du unter „…“ ein.</p>
+                      <p className="text-[12.5px] leading-snug text-ink-muted">Farbe einer Person: auf ihren Farbpunkt tippen.</p>
                     </div>
                   ) : null}
 
@@ -975,10 +967,25 @@ export function WenSeheIch({
                     {abschnitt(
                       "Ich",
                       null,
-                      <>
-                        {zeile({ key: "ich:s", name: "Meine Schichten", farbe: "rgb(var(--c-brand-500))", an: ich[0], onHaken: () => andere.setze([ICH], 0, !ich[0]) })}
-                        {zeile({ key: "ich:t", name: "Meine Termine", farbe: "rgb(var(--c-brand-500))", an: ich[1], onHaken: () => andere.setze([ICH], 1, !ich[1]) })}
-                      </>,
+                      zeile({
+                        key: "ich",
+                        name: "Ich",
+                        farbe: "rgb(var(--c-brand-500))",
+                        s: ich,
+                        onSetze: (i, w) => andere.setze([ICH], i, w),
+                        unten: onEigeneFarben ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              schliessen();
+                              onEigeneFarben();
+                            }}
+                            className="h-9 rounded-full bg-ink/[0.07] px-3.5 text-[13.5px] font-semibold"
+                          >
+                            Farben meiner Schichten ändern
+                          </button>
+                        ) : null,
+                      }),
                     )}
                   </div>
 
@@ -986,20 +993,17 @@ export function WenSeheIch({
                     abschnitt(
                       z.titel,
                       z.nurSchichten ? "Gruppe" : null,
-                      z.knoten.map((k) => {
-                        const ks = andere.schalter(k.key);
-                        const an = z.nurSchichten ? ks[0] : ks[0] || ks[1];
-                        const voll = z.nurSchichten ? ks[0] : ks[0] && ks[1];
-                        return zeile({
+                      z.knoten.map((k) =>
+                        zeile({
                           key: `${z.key}:${k.key}`,
                           name: k.name,
                           farbe: k.farbe,
-                          an,
-                          teil: an && !voll,
-                          onHaken: () => (z.nurSchichten ? andere.setze([k.key], 0, !ks[0]) : (andere.setze([k.key], 0, !an), andere.setze([k.key], 1, !an))),
-                          details: einzelheiten(k.key, z.nurSchichten),
-                        });
-                      }),
+                          s: andere.schalter(k.key),
+                          nurSchichten: z.nurSchichten,
+                          onSetze: (i, w) => andere.setze([k.key], i, w),
+                          farbKey: k.key,
+                        }),
+                      ),
                       !z.nurSchichten,
                     ),
                   )}
@@ -1029,5 +1033,23 @@ function Haken({ an, teil, farbe }: { an: boolean; teil: boolean; farbe: string 
     >
       {an ? teil ? <Minus className="h-4 w-4" strokeWidth={3.2} /> : <Check className="h-4 w-4" strokeWidth={3.2} /> : null}
     </span>
+  );
+}
+
+/** Kleiner Schalter neben dem Namen: „Schichten“ oder „Termine“. */
+function Mini({ an, onClick, label, children }: { an: boolean; onClick: () => void; label: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={an}
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "h-7 rounded-full px-2 text-[12px] font-semibold transition-colors active:scale-95",
+        an ? "bg-brand-500 text-white" : "text-ink-muted ring-1 ring-inset ring-ink/15",
+      )}
+    >
+      {children}
+    </button>
   );
 }

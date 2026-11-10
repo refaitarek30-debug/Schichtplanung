@@ -190,7 +190,15 @@ async function sitzungVerloren(zielUrl) {
   }
 }
 
-/** Gemerkte Kalender-Seite im Hintergrund auffrischen. Ohne Netz: nichts tun. */
+/** Kennung der App-Fassung: die Programmdateien, die eine Seite lädt (Name mit Prüfsumme). */
+const fassungVon = (html) => (html.match(/\/_next\/static\/[^"'\\\s]+\.js/g) || []).sort().join("|");
+
+/**
+ * Gemerkte Kalender-Seite im Hintergrund auffrischen. Ohne Netz: nichts tun.
+ * Gibt es inzwischen eine neue App-Fassung, erfährt das offene Fenster davon
+ * („neue-fassung“) und lädt sich gleich nach dem Öffnen einmal neu – sonst
+ * käme die neue Fassung erst beim übernächsten Öffnen an.
+ */
 async function auffrischen(pfad) {
   let antwort;
   try {
@@ -201,7 +209,16 @@ async function auffrischen(pfad) {
   const ende = ohneSchraegstrich(new URL(antwort.url).pathname);
   if (ende.startsWith("/login")) return sitzungVerloren(antwort.url);
   if (!antwort.ok || ende !== pfad || !istHtml(antwort)) return;
+  const alt = await (await caches.open(KALENDER_CACHE)).match(pfad);
+  const altText = alt ? await alt.text().catch(() => "") : "";
+  const neuText = await antwort.clone().text().catch(() => "");
   await merkeKalenderSeite(pfad, antwort);
+  if (altText && neuText && fassungVon(altText) !== fassungVon(neuText)) {
+    const fenster = await self.clients.matchAll({ type: "window" });
+    for (const f of fenster) {
+      if (ohneSchraegstrich(new URL(f.url).pathname) === pfad) f.postMessage({ typ: "neue-fassung" });
+    }
+  }
 }
 
 /** Startadresse im Hintergrund nachverfolgen: führt sie in den Kalender, wird beides gemerkt. */

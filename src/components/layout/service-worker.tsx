@@ -20,6 +20,15 @@ export function ServiceWorkerRegistration() {
 
     if (document.readyState === "complete") register();
     else window.addEventListener("load", register, { once: true });
+
+    // Der Kalender kam vom Gerät, inzwischen gibt es aber eine neue App-Fassung (sw.js meldet
+    // „neue-fassung“): gleich nach dem Öffnen einmal neu laden, damit Neuerungen sofort da sind.
+    // Später nicht mehr – dann soll nichts mitten in der Benutzung springen.
+    const nachricht = (e: MessageEvent) => {
+      if ((e.data as { typ?: string } | null)?.typ === "neue-fassung" && performance.now() < 15_000) window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("message", nachricht);
+    return () => navigator.serviceWorker.removeEventListener("message", nachricht);
   }, []);
 
   return null;
