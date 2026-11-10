@@ -27,6 +27,24 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-10T15:00:00+01:00",
+    titel: "Urlaub trotz Unterbesetzung",
+    text: "Würde eine Genehmigung die Mindestbesetzung unterschreiten, fragt die App „Trotzdem genehmigen?“. Bei Ja steht es mit Vermerk im Änderungsprotokoll.",
+    rollen: ["admin", "shift_leader"],
+  },
+  {
+    zeit: "2026-11-10T15:00:00+01:00",
+    titel: "Eigene Anträge der Schichtleitung",
+    text: "Unter Verwaltung → Regeln: einstellen, ob die Schichtleitung ihren eigenen Urlaub selbst genehmigt oder die Administration entscheidet.",
+    rollen: ["admin"],
+  },
+  {
+    zeit: "2026-11-10T12:00:00+01:00",
+    titel: "Passwort vergessen? Eigener Code",
+    text: "Im Profil kannst du dir einen eigenen Wiederherstellungs-Code erzeugen. Damit setzt du unter „Passwort vergessen“ selbst ein neues Passwort – ohne E-Mail.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-09T23:30:00+01:00",
     titel: "Kalender: hoch und runter",
     text: "Hochwischen = nächster Monat. Vom rechten Rand nach links ziehen: „Wen sehe ich?“.",

@@ -156,6 +156,7 @@ export async function decideLeaveRequestAction(
   requestId: string,
   decision: "approved" | "rejected",
   rejectionReason?: string,
+  trotzUnterbesetzung = false,
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   if (decision === "rejected" && !rejectionReason?.trim()) {
@@ -168,11 +169,19 @@ export async function decideLeaveRequestAction(
       p_request_id: requestId,
       p_decision: decision,
       p_rejection_reason: decision === "rejected" ? rejectionReason!.trim() : null,
+      p_trotz_unterbesetzung: trotzUnterbesetzung,
     })
     .returns<LeaveRequestRow>();
 
   if (error) {
     const message = error.message ?? "";
+    // Mindestbesetzung würde unterschritten: die Oberfläche fragt „Trotzdem genehmigen?“.
+    if (error.code === "SN001" || message.startsWith("UNTERBESETZT:")) {
+      return { unterbesetzt: message.replace(/^UNTERBESETZT:/, "").trim() };
+    }
+    if (message.includes("entscheidet die Administration")) {
+      return { error: "Über deine eigenen Anträge entscheidet die Administration." };
+    }
     if (message.includes("bereits entschieden")) {
       return { error: "Dieser Antrag wurde inzwischen bereits entschieden." };
     }

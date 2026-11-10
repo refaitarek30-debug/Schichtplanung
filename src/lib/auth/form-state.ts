@@ -19,4 +19,6 @@ export interface FormState {
   code?: string;
   /** Der Link ist ein Beitritts-Link für ein bestehendes Konto (kein neues Passwort). */
   beitritt?: boolean;
+  /** Genehmigung würde die Mindestbesetzung unterschreiten (Tage, z. B. „03.12.2026, 04.12.2026“). */
+  unterbesetzt?: string;
 }
