@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Das Prüf-Skript liegt im Repository.
+      - uses: actions/checkout@v4
+
       - name: Neueste Sicherung holen
         env:
           GH_TOKEN: ${{ github.token }}
