@@ -1,4 +1,4 @@
-// Privatbereich: Lohnabrechnungen, Monat per Hochwischen, „Wen sehe ich?“ vom rechten Rand.
+// Privatbereich: Lohnabrechnungen abgeschaltet, Monat per Hochwischen, „Wen sehe ich?“ vom rechten Rand.
 import { APP, DB, heute, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 /** Wischen mit Pointer-Ereignissen (das Handy-Profil schickt bei Maus-Gesten keine). */
@@ -21,27 +21,13 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 export default async function privatNeu() {
   const { browser, seite, seitenFehler } = await neuerBrowser();
   try {
-    // Lohnabrechnungen: erst einwilligen, dann hochladen, ansehen, löschen.
-    await seite.goto(`${APP}/privat/schichten?reiter=lohn`, { waitUntil: "networkidle", timeout: 120_000 });
+    // Lohnabrechnungen sind abgeschaltet: keine Kachel, kein eigener Bereich.
+    await seite.goto(`${APP}/privat/schichten`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(800);
-    const einwilligung = seite.locator("[data-lohnzettel-einwilligung]");
-    pruefe((await einwilligung.count()) === 1, "Lohnabrechnungen: erst die Einwilligung");
-    pruefe(await einwilligung.getByRole("button", { name: "Einverstanden" }).isDisabled(), "Einwilligung: ohne Haken kein Weiter");
-    await einwilligung.getByRole("checkbox").check();
-    await einwilligung.getByRole("button", { name: "Einverstanden" }).click();
+    pruefe((await seite.getByText("Lohnabrechnungen").count()) === 0, "Lohnabrechnungen: keine Kachel mehr");
+    await seite.goto(`${APP}/privat/schichten?reiter=lohn`, { waitUntil: "networkidle" });
     await warte(500);
-    await seite.locator("[data-lohnzettel-datei]").setInputFiles({ name: "lohn.png", mimeType: "image/png", buffer: PNG });
-    await warte(1500);
-    pruefe((await seite.locator("[data-lohnzettel-eintrag]").count()) === 1, "Lohnabrechnung hochgeladen und in der Liste");
-    const dateien = await (await fetch(`${DB}/rest/v1/privat_lohnzettel`)).json();
-    pruefe(dateien.length === 1 && dateien[0].typ === "image/jpeg" && dateien[0].pfad.endsWith(".jpg"), "Foto wird als verkleinertes JPEG gespeichert");
-    await seite.locator("[data-lohnzettel-eintrag]").click();
-    await warte(800);
-    pruefe((await seite.getByRole("img", { name: /Lohnabrechnung/ }).count()) === 1, "Lohnabrechnung lässt sich ansehen");
-    await seite.getByRole("button", { name: "Löschen" }).click();
-    await seite.getByRole("button", { name: "Löschen" }).last().click();
-    await warte(800);
-    pruefe((await seite.locator("[data-lohnzettel-eintrag]").count()) === 0, "Lohnabrechnung gelöscht");
+    pruefe((await seite.locator("[data-lohnzettel-einwilligung], [data-lohnzettel-datei]").count()) === 0, "Lohnabrechnungen: kein Upload erreichbar");
 
     // Kalender: seitlich wischen tut nichts, hochwischen = nächster Monat.
     const jetzt = heute();
