@@ -37,6 +37,24 @@ export default async function sperren() {
     pruefe((await seite.locator('[data-eintrag="sperre"]').filter({ hasText: "Stillstand" }).count()) === 1, "andere Sperre bleibt stehen");
     pruefe((await seite.getByRole("alert").filter({ hasText: /konnte nicht/ }).count()) === 0, "keine Fehlermeldung");
 
+    // Schichtleitung bearbeitet nur Personen mit Rolle Mitarbeiter (Migration 0209).
+    await seite.goto(`${APP}/verwaltung?bereich=mitarbeiter`, { waitUntil: "networkidle" });
+    await warte(1500);
+    const liste = seite.locator("[data-mitarbeiter-liste]");
+    await liste.getByText("Louis Becker", { exact: true }).click();
+    await warte(600);
+    pruefe(
+      await seite.locator('[role="dialog"] [data-person="Louis Becker"]').getByRole("button", { name: "Bearbeiten" }).isVisible(),
+      "Schichtleitung: Mitarbeiter lässt sich bearbeiten",
+    );
+    await seite.keyboard.press("Escape");
+    await warte(500);
+    await liste.getByText("Tarek Test", { exact: true }).click();
+    await warte(600);
+    const admin = seite.locator('[role="dialog"] [data-person="Tarek Test"]');
+    pruefe((await admin.count()) === 1, "Schichtleitung: Admin-Person öffnet");
+    pruefe((await admin.getByRole("button", { name: "Bearbeiten" }).count()) === 0, "Schichtleitung: Admin lässt sich nicht bearbeiten");
+
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
   } finally {
