@@ -4,7 +4,6 @@ import {
   Hinweis,
   LegalPage,
   Liste,
-  Platzhalter,
 } from "@/components/legal/prose";
 import { DATENSCHUTZ_VERSION } from "@/lib/legal/version";
 
@@ -37,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="9. November 2026"
+      updated="10. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -219,10 +218,14 @@ export default function DatenschutzPage() {
             Schichtleitung
           </li>
           <li>
-            Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Im
-            Unternehmen erzeugt ihn die Administration oder Schichtleitung für die betroffene
-            Person (24 Stunden gültig, einmal verwendbar); bei Privatkonten erzeugt die Person ihn
-            selbst, im Ausnahmefall der Betreiber auf ihre Anfrage. Gespeichert werden nur ein
+            Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Jede
+            Person kann sich im Profil (bzw. unter „Mehr“) einen eigenen Wiederherstellungs-Code
+            erzeugen, den nur sie kennt. Hat sie keinen, kann die Administration – bei
+            Mitarbeitenden auch die Schichtleitung – einen Einmal-Code (24 Stunden gültig) erzeugen,
+            aber nur für Konten ohne Privatbereich; das wird im Änderungsprotokoll festgehalten, und
+            die Person erhält eine Benachrichtigung. Für Konten, deren Inhaber schon ein eigenes
+            Passwort gesetzt hat, gibt es keinen Zugangslink der Führung. Bei Privatkonten hilft im
+            Ausnahmefall der Betreiber auf Anfrage. Gespeichert werden nur ein
             Prüfwert (SHA-256) des Codes, Art, Zeitpunkt, Gültigkeit, wer ihn erzeugt hat und die
             Zahl falscher Eingaben – nie der Code selbst. Nach fünf falschen Eingaben ist das
             Zurücksetzen 15 Minuten gesperrt. Ein neuer Code ersetzt den alten; mit dem Konto wird
@@ -242,9 +245,11 @@ export default function DatenschutzPage() {
         <Absatz className="pt-1">
           <strong>E-Mails:</strong> Systemmails (Bestätigung, Einladung, Passwort
           zurücksetzen) versendet der Authentifizierungsdienst über den dort eingerichteten
-          Mailserver. Benachrichtigungen zu Anträgen werden zunächst in einem Postausgang
-          (Empfänger, Betreff, Text, Status) zwischengespeichert und von dort versendet.
-          Versanddienstleister: <Platzhalter>SMTP-Anbieter eintragen und Region prüfen</Platzhalter>.
+          Mailserver des Versanddienstleisters Brevo (siehe Abschnitt 9). Benachrichtigungen zu
+          Anträgen erscheinen in der Anwendung. Zusätzlich wird ein kurzer Hinweis ohne
+          persönliche Inhalte (ohne Namen, Zeitraum oder Kommentar) in einem Postausgang
+          (Empfänger, Betreff, Text, Status) vorgemerkt; ein Versand dieser Hinweise per E-Mail ist
+          derzeit nicht eingerichtet. Der Postausgang wird nach 30 Tagen gelöscht.
         </Absatz>
 
         <Absatz className="pt-1">
@@ -556,10 +561,8 @@ export default function DatenschutzPage() {
           <strong>Rechtsgrundlage:</strong> Einwilligung bzw. Wunsch der Person, Art. 6 Abs. 1
           lit. a DSGVO; die Nutzung lässt sich jederzeit durch Beenden des Links und Löschen der
           Einträge zurücknehmen.{" "}
-          <Platzhalter>
-            Verantwortlichkeit für diese freiwilligen Kalenderdaten (Arbeitgeber oder Betreiber)
-            festlegen und mit Betriebsrat abstimmen
-          </Platzhalter>
+Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
+          (Abschnitt 1), nicht der Arbeitgeber; das Unternehmen hat auf sie keinen Zugriff.
         </Absatz>
       </Abschnitt>
 
@@ -584,14 +587,6 @@ export default function DatenschutzPage() {
             Feiertage, optional die Wochenstunden für die Auswertung
           </li>
           <li>
-            optional Lohnabrechnungen (Foto oder PDF) mit Monat und frei gewählter Bezeichnung des
-            Jobs – nur nach ausdrücklicher Einwilligung. Sie liegen in einem privaten Speicher
-            (Supabase Storage, EU), auf den nur die Person selbst zugreifen kann; geteilte Personen,
-            Gruppen und ein Betrieb sehen sie nicht. Fotos werden vor dem Hochladen im Browser
-            verkleinert. Gelöscht werden sie mit dem Eintrag oder dem Konto (aus dem Speicher
-            spätestens wenige Minuten danach)
-          </li>
-          <li>
             optional Termine, geteilte Links, Gruppen und Kalender-Abo wie in Abschnitt 8
             beschrieben. Ein Eintrag „Krank“ ist eine freiwillige eigene Angabe; eingeladene
             Personen und Gruppen sehen ihn nur als „Urlaub“ bzw. frei, das Kalender-Abo als
@@ -602,10 +597,8 @@ export default function DatenschutzPage() {
           Rechtsgrundlage ist die Bereitstellung des gewünschten Dienstes (Art. 6 Abs. 1 lit. b
           DSGVO), für eigene Angaben zu Krankheit die ausdrückliche Einwilligung durch das
           Eintragen selbst (Art. 9 Abs. 2 lit. a DSGVO), jederzeit widerrufbar durch Löschen des
-          Eintrags. Für Lohnabrechnungen, die Angaben zur Religion (Kirchensteuer) oder Gesundheit
-          enthalten können, gilt die vor dem ersten Hochladen erteilte ausdrückliche Einwilligung
-          (Art. 6 Abs. 1 lit. a, Art. 9 Abs. 2 lit. a DSGVO); widerrufen durch Löschen der
-          Lohnabrechnungen. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
+          Eintrags. Das Hochladen von Lohnabrechnungen ist seit dem 10.11.2026 abgeschaltet; es
+          wurden keine gespeichert. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
           das Konto lässt sich unter <em>Mehr → Konto löschen</em> jederzeit selbst endgültig
           löschen. Es gibt keine Werbung, kein Tracking und keine Weitergabe.
         </Absatz>
@@ -702,8 +695,9 @@ export default function DatenschutzPage() {
             14 Tagen automatisch gelöscht.
           </li>
           <li>
-            <strong>Mailversand:</strong>{" "}
-            <Platzhalter>SMTP-Anbieter, Sitz, Region – oder streichen, falls kein externer Anbieter</Platzhalter>
+            <strong>Brevo</strong> (Sendinblue SAS, Paris, Frankreich) – Versand der Anmelde-Mails
+            (Bestätigung der Registrierung, Einladung, Passwort). Verarbeitet werden E-Mail-Adresse
+            und Inhalt dieser Mails; Verarbeitung in der EU.
           </li>
         </Liste>
         <Absatz>

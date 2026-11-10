@@ -4,7 +4,6 @@ import {
   Hinweis,
   LegalPage,
   Liste,
-  Platzhalter,
 } from "@/components/legal/prose";
 import { AVV_VERSION } from "@/lib/legal/version";
 
@@ -36,7 +35,7 @@ export default function AvvPage() {
     <LegalPage
       title="Auftragsverarbeitungsvertrag"
       intro="Vertrag über die Verarbeitung personenbezogener Daten im Auftrag nach Art. 28 DSGVO."
-      updated="22. Oktober 2026"
+      updated="10. November 2026"
       version={AVV_VERSION}
     >
       <Hinweis titel="Abschluss und Entwurfsstatus">
@@ -207,8 +206,9 @@ export default function AvvPage() {
             Löschung nach 14 Tagen.
           </li>
           <li>
-            <strong>Mailversand:</strong>{" "}
-            <Platzhalter>SMTP-Anbieter mit Sitz und Region eintragen – oder streichen</Platzhalter>
+            <strong>Sendinblue SAS (Brevo)</strong> (Paris, Frankreich, EU) – Versand der
+            Anmelde-Mails (Bestätigung, Einladung, Passwort); verarbeitet werden E-Mail-Adresse
+            und Inhalt dieser Mails.
           </li>
         </Liste>
         <Absatz>
