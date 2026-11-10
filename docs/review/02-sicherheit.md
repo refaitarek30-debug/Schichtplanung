@@ -113,6 +113,8 @@ ist der heutige Stand offen benannt (`08-betriebsrat.md`).
 
 ## S-02 · Schichtleitung kann fast alle Stammdaten direkt ändern (mittel)
 
+> **Korrektur (10.11.2026, nach dem Review):** Das Bearbeiten-Formular bot der Schichtleitung diese Felder ganz offen an – auch bei Administratoren. Es war also keine versteckte Lücke über die Schnittstelle, sondern eine fehlende Begrenzung. Behoben in Pull Request #203: Die Schichtleitung bearbeitet nur noch Personen mit Rolle Mitarbeiter (Migration 0209).
+
 **Was passiert:** Die Policy „Personaldaten aendert auch Schichtleitung“ erlaubt der Rolle `shift_leader` ein UPDATE
 auf **alle Spalten** von `employees` im eigenen Unternehmen. Die Rolle `authenticated` hat Schreibrecht auf alle
 Spalten; geschützt ist per Trigger nur `role`. Die Oberfläche zeigt weniger – aber wer die Schnittstelle direkt
