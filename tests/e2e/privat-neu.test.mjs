@@ -73,13 +73,13 @@ export default async function privatNeu() {
     await wische(seite, { x: v.width - 6, y: mitte.y }, { x: v.width - 160, y: mitte.y });
     await warte(600);
     const blattBox = await seite.locator("[data-wen-sehe-ich]").boundingBox();
-    pruefe(!!blattBox && blattBox.height > v.height * 0.85, `Seitenblatt über die ganze Höhe (${blattBox?.height}/${v.height})`);
-    pruefe(!!blattBox && Math.abs(blattBox.x + blattBox.width - v.width) < 2, "Seitenblatt am rechten Rand");
-    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Schichten" }).click();
+    pruefe(!!blattBox && blattBox.height > v.height * 0.7, `Seitenblatt fast über die ganze Höhe (${blattBox?.height}/${v.height})`);
+    pruefe(!!blattBox && v.width - (blattBox.x + blattBox.width) < 16, "Seitenblatt am rechten Rand");
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
     await warte(300);
     const nachher = await mitSchicht();
     pruefe(vorherSchichten > 0 && nachher === 0, `Eigene Schichten ausgeblendet (${vorherSchichten} → ${nachher})`);
-    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Schichten" }).click();
+    await seite.locator("[data-wen-ich]").getByRole("button", { name: "Meine Schichten" }).click();
     await warte(300);
     pruefe((await mitSchicht()) === vorherSchichten, "Eigene Schichten wieder da");
     await seite.keyboard.press("Escape");

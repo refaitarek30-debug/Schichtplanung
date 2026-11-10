@@ -276,6 +276,14 @@ export function PrivatKalender() {
     }
   }, [konto.userId]);
   useEffect(() => {
+    // Gleich nach dem Öffnen: die gemerkten eigenen Termine und To-dos dieses Geräts, bis die frischen da sind.
+    const t = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (Array.isArray(t)) setTermine((alt) => (alt.length ? alt : t));
+    const d = ausGeraet<Todo[]>(`${konto.userId}:privat:todos`);
+    if (Array.isArray(d)) setTodos((alt) => (alt.length ? alt : d));
+  }, [konto.userId]);
+  useEffect(() => {
     void ladeTermine();
   }, [ladeTermine]);
 

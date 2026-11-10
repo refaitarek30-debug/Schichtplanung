@@ -44,7 +44,14 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
     const gemerkt = ausGeraet<Record<string, BetriebTag>>(`${benutzer}:privat:betrieb`);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (gemerkt) setTage((alt) => (Object.keys(alt).length ? alt : gemerkt));
-    ladeFarben().then(setFarben).catch(() => undefined);
+    const f = ausGeraet<Record<string, string>>(`${benutzer}:privat:betrieb-farben`);
+    if (f) setFarben((alt) => (Object.keys(alt).length ? alt : f));
+    ladeFarben()
+      .then((neu) => {
+        setFarben(neu);
+        aufGeraet(`${benutzer}:privat:betrieb-farben`, neu);
+      })
+      .catch(() => undefined);
   }, [aktiv, benutzer]);
 
   useEffect(() => {

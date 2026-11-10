@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
-import { Check, ChevronRight, UserPlus, Users, X } from "lucide-react";
+import { Check, Ellipsis, Minus, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -149,21 +149,13 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   );
 
   const ladePersonen = useCallback(async () => {
-    try {
-      setPersonen(await fetchPersonen());
-    } catch {
-      setPersonen((a) => a ?? []);
-    }
-    try {
-      setGruppen(await fetchGruppen());
-    } catch {
-      // Gruppen sind Beiwerk
-    }
-    try {
-      setVerbindungen(await fetchVerbindungen());
-    } catch {
-      // Verbindungen sind Beiwerk
-    }
+    // Alle drei gleichzeitig – nacheinander warten macht den Kalender beim Öffnen spürbar langsamer.
+    const [p, g, v] = await Promise.allSettled([fetchPersonen(), fetchGruppen(), fetchVerbindungen()]);
+    if (p.status === "fulfilled") setPersonen(p.value);
+    else setPersonen((a) => a ?? []);
+    // Gruppen und Verbindungen sind Beiwerk.
+    if (g.status === "fulfilled") setGruppen(g.value);
+    if (v.status === "fulfilled") setVerbindungen(v.value);
   }, []);
 
   const ladeVerbunden = useCallback(async () => {
@@ -577,24 +569,6 @@ function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl
   );
 }
 
-/** Kleiner Farbpunkt bei einer Person: ihre eigenen Farben (bunt) oder eine feste Farbe. */
-function FarbPunkt({ name, farbe, offen, onClick }: { name: string; farbe: string | null; offen: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={offen}
-      aria-label={`Farbe der Schicht von ${name}${farbe ? "" : " (eigene Farben)"}`}
-      className="flex h-8 w-8 shrink-0 items-center justify-center"
-    >
-      <span
-        className={cn("h-[22px] w-[22px] rounded-full ring-2", offen ? "ring-ink/60" : "ring-ink/15")}
-        style={{ background: farbe ?? "conic-gradient(#F5A524 0 33%, #22A06B 0 66%, #2F6FDE 0)" }}
-      />
-    </button>
-  );
-}
-
 /** Die Farben zur Wahl; „Eigene“ nimmt wieder die Farben, die die Person selbst gewählt hat. */
 function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string | null) => void }) {
   return (
@@ -628,41 +602,10 @@ function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string
 /** Breite Rand-Zone rechts, in der ein Zug nach links „Wen sehe ich?“ hereinholt. */
 const RAND = 28;
 
-/** Eine Person im Seitenblatt: Name oben, darunter große Schalter. */
-function PersonZeile({
-  name,
-  farbe,
-  unter,
-  avatar,
-  farbPunkt,
-  children,
-}: {
-  name: string;
-  farbe?: string;
-  unter?: string;
-  avatar?: React.ReactNode;
-  farbPunkt?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2 px-2.5 pb-2.5 pt-2">
-      <div className="flex items-center gap-2.5">
-        {avatar ?? (farbe ? <PersonAvatar name={name} farbe={farbe} /> : null)}
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15.5px] font-semibold leading-tight">{name}</span>
-          {unter ? <span className="block truncate text-[12px] leading-tight text-ink-muted">{unter}</span> : null}
-        </span>
-        {farbPunkt}
-      </div>
-      <div className="flex gap-1.5">{children}</div>
-    </div>
-  );
-}
-
 /**
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
- * öffnet „Wen sehe ich?“ als Seitenblatt am rechten Rand (volle Höhe, Glas,
- * der Kalender bleibt dahinter sichtbar). Mit `randWischen` lässt es sich vom
+ * öffnet „Wen sehe ich?“ als Seitenblatt am rechten Rand: eine ruhige Liste
+ * mit Häkchen je Person, „…“ für Einzelheiten (Schichten/Termine, Farbe). Mit `randWischen` lässt es sich vom
  * rechten Rand mit dem Finger hereinziehen und nach rechts wieder wegschieben.
  */
 export function WenSeheIch({
@@ -680,10 +623,9 @@ export function WenSeheIch({
   const [offen, setOffen] = useState(false);
   /** Blatt ist da, folgt aber noch dem Finger (beim Hereinziehen). */
   const [zieht, setZieht] = useState(false);
-  const [zu, setZu] = useState<Record<string, boolean>>({});
   const [darstellung, setDarstellung] = useState(false);
-  /** Bei wem gerade die Farbwahl offen ist. */
-  const [farbWahl, setFarbWahl] = useState<string | null>(null);
+  /** Bei wem gerade „…“ (Schichten/Termine einzeln, Farbe) offen ist. */
+  const [mehr, setMehr] = useState<string | null>(null);
   const blatt = useRef<HTMLDivElement>(null);
   const zug = useRef<{ x: number; dx: number } | null>(null);
   /** Hereingezogen statt angetippt: dann ohne Einflug-Animation. */
@@ -818,7 +760,97 @@ export function WenSeheIch({
     },
   };
 
-  const karte = "overflow-hidden rounded-[18px] bg-surface/45 ring-1 ring-inset ring-ink/[0.06]";
+  const keysAlle = alle.map((k) => k.key);
+  const istAlle = ich[0] && ich[1] && keysAlle.every((k) => andere.schalter(k)[0] && andere.schalter(k)[1]);
+  const istNurIch = ich[0] && ich[1] && keysAlle.every((k) => !andere.schalter(k)[0] && !andere.schalter(k)[1]);
+
+  /** Eine Zeile: Häkchen, Name, rechts „…“. */
+  const zeile = ({
+    key,
+    name,
+    farbe,
+    an,
+    teil = false,
+    onHaken,
+    details,
+  }: {
+    key: string;
+    name: string;
+    farbe: string;
+    an: boolean;
+    teil?: boolean;
+    onHaken: () => void;
+    details?: React.ReactNode;
+  }) => (
+    <div key={key}>
+      <div className="flex min-h-[48px] items-center gap-3">
+        <button type="button" onClick={onHaken} aria-pressed={an} className="flex min-w-0 flex-1 items-center gap-3.5 py-1.5 text-left">
+          <Haken an={an} teil={teil} farbe={farbe} />
+          <span className="min-w-0 flex-1 truncate text-[16.5px]">{name}</span>
+        </button>
+        {details ? (
+          <button
+            type="button"
+            onClick={() => setMehr((m) => (m === key ? null : key))}
+            aria-expanded={mehr === key}
+            aria-label={`Mehr zu ${name}`}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors",
+              mehr === key ? "bg-ink/10 text-ink" : "text-ink-muted",
+            )}
+          >
+            <Ellipsis className="h-[22px] w-[22px]" strokeWidth={2.2} />
+          </button>
+        ) : null}
+      </div>
+      {details && mehr === key ? <div className="mb-2 ml-[2.4rem] space-y-2">{details}</div> : null}
+    </div>
+  );
+
+  /** „…“ einer Person: Schichten und Termine einzeln, feste Farbe. */
+  const einzelheiten = (key: string, nurSchichten?: boolean) => {
+    const ks = andere.schalter(key);
+    return (
+      <>
+        <div className="flex gap-1.5">
+          <Pille an={ks[0]} onClick={() => andere.setze([key], 0, !ks[0])}>
+            Schichten
+          </Pille>
+          {nurSchichten ? null : (
+            <Pille an={ks[1]} onClick={() => andere.setze([key], 1, !ks[1])}>
+              Termine
+            </Pille>
+          )}
+        </div>
+        <FarbReihe farbe={andere.anzeige.farben[key] ?? null} onWahl={(f) => andere.setzeFarbe(key, f)} />
+      </>
+    );
+  };
+
+  const abschnitt = (titel: string, unter: string | null, kinder: React.ReactNode, plus?: boolean) => (
+    <section className="pt-4">
+      <div className="flex items-center gap-2 border-b border-line pb-2">
+        <h3 className="min-w-0 flex-1 truncate text-[19px] font-bold">
+          {titel}
+          {unter ? <span className="ml-1.5 text-[13px] font-medium text-ink-muted">{unter}</span> : null}
+        </h3>
+        {plus ? (
+          <button
+            type="button"
+            onClick={() => {
+              schliessen();
+              onVerwalten();
+            }}
+            aria-label="Personen einladen"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-surface"
+          >
+            <Plus className="h-[18px] w-[18px]" strokeWidth={2.6} />
+          </button>
+        ) : null}
+      </div>
+      <div className="pt-1">{kinder}</div>
+    </section>
+  );
 
   return (
     <>
@@ -859,7 +891,7 @@ export function WenSeheIch({
       {da
         ? createPortal(
             <div className="privat-schrift fixed inset-0 z-50">
-              {/* Kein Abdunkeln: der Kalender bleibt voll sichtbar. Antippen daneben schließt. */}
+              {/* Kein Abdunkeln: der Kalender bleibt sichtbar. Antippen daneben schließt. */}
               <button type="button" aria-label="Schließen" className="absolute inset-0 cursor-default bg-transparent" onClick={schliessen} />
               <div
                 ref={blatt}
@@ -870,225 +902,109 @@ export function WenSeheIch({
                 onPointerCancel={ziehen.onPointerUp}
                 style={zieht ? { transform: "translateX(calc(100% + 1rem))" } : undefined}
                 className={cn(
-                  "wen-blatt absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-0 top-[max(0.5rem,env(safe-area-inset-top))] flex w-[clamp(15rem,58vw,21rem)] touch-pan-y flex-col overflow-hidden rounded-l-[28px]",
+                  "wen-blatt absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-2 top-[calc(max(0.6rem,env(safe-area-inset-top))+3.9rem)] flex w-[min(21.5rem,calc(100vw-5rem))] touch-pan-y flex-col overflow-hidden rounded-[30px]",
                   !perHand && "[animation:wen-rein_.28s_cubic-bezier(.2,.8,.2,1)] motion-reduce:[animation:none]",
                 )}
               >
-                <div className="flex items-center gap-2 px-3.5 pb-2 pt-3">
-                  <span className="min-w-0 flex-1 truncate text-[18px] font-bold">Wen sehe ich?</span>
-                  <button
-                    type="button"
-                    onClick={schliessen}
-                    aria-label="Schließen"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface/50 text-ink-muted ring-1 ring-inset ring-ink/10"
-                  >
-                    <X className="h-[18px] w-[18px]" />
-                  </button>
-                </div>
-                {alle.length ? (
-                  <div className="flex gap-1.5 px-3 pb-2">
-                    <button type="button" onClick={andere.alleAn} className="h-10 flex-1 rounded-[12px] bg-surface/50 text-[13.5px] font-semibold ring-1 ring-inset ring-ink/10 active:scale-[0.97]">
-                      Alle
-                    </button>
-                    <button type="button" onClick={andere.nurIch} className="h-10 flex-1 rounded-[12px] bg-surface/50 text-[13.5px] font-semibold ring-1 ring-inset ring-ink/10 active:scale-[0.97]">
-                      Nur ich
-                    </button>
-                  </div>
-                ) : null}
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-5">
+                  <h2 className="border-b border-line pb-3 text-[21px] font-bold">Wen sehe ich?</h2>
 
-                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2.5 pb-2">
-                  <div className={karte} data-wen-ich>
-                    <PersonZeile
-                      name="Ich"
-                      unter="Mein Kalender"
-                      avatar={
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-surface">Ich</span>
-                      }
-                    >
-                      <Pille an={ich[0]} onClick={() => andere.setze([ICH], 0, !ich[0])}>
-                        Schichten
-                      </Pille>
-                      <Pille an={ich[1]} onClick={() => andere.setze([ICH], 1, !ich[1])}>
-                        Termine
-                      </Pille>
-                    </PersonZeile>
-                  </div>
-
-                  {andere.zweige.map((z) => {
-                    const keys = z.knoten.map((k) => k.key);
-                    const s = keys.map((k) => andere.schalter(k));
-                    const alleS = s.every((x) => x[0]);
-                    const keineS = s.every((x) => !x[0]);
-                    const alleT = s.every((x) => x[1]);
-                    const keineT = s.every((x) => !x[1]);
-                    const einzeln = z.knoten.length === 1;
-                    const aufgeklappt = !zu[z.key];
-                    const schalterZweig = (
+                  <div className="flex items-center gap-1 border-b border-line py-3">
+                    {alle.length ? (
                       <>
-                        <Pille an={alleS} teil={!alleS && !keineS} onClick={() => andere.setze(keys, 0, !alleS)}>
-                          Schichten
-                        </Pille>
-                        {z.nurSchichten ? null : (
-                          <Pille an={alleT} teil={!alleT && !keineT} onClick={() => andere.setze(keys, 1, !alleT)}>
-                            Termine
-                          </Pille>
-                        )}
-                      </>
-                    );
-                    if (einzeln) {
-                      const k = z.knoten[0];
-                      return (
-                        <div key={z.key} className={karte}>
-                          <PersonZeile
-                            name={k.name}
-                            farbe={k.farbe}
-                            unter={`${z.titel}${z.nurSchichten ? " · Gruppe" : ""}`}
-                            farbPunkt={
-                              <FarbPunkt
-                                name={k.name}
-                                farbe={andere.anzeige.farben[k.key] ?? null}
-                                offen={farbWahl === k.key}
-                                onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
-                              />
-                            }
-                          >
-                            {schalterZweig}
-                          </PersonZeile>
-                          {farbWahl === k.key ? (
-                            <FarbReihe
-                              farbe={andere.anzeige.farben[k.key] ?? null}
-                              onWahl={(f) => {
-                                andere.setzeFarbe(k.key, f);
-                                setFarbWahl(null);
-                              }}
-                            />
-                          ) : null}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={z.key} className={karte}>
-                        <PersonZeile
-                          name={z.titel}
-                          unter={`${z.knoten.length} Personen${z.nurSchichten ? " · Gruppe" : ""}`}
-                          avatar={
-                            <button
-                              type="button"
-                              onClick={() => setZu((a) => ({ ...a, [z.key]: aufgeklappt }))}
-                              aria-label={aufgeklappt ? `${z.titel} zuklappen` : `${z.titel} aufklappen`}
-                              aria-expanded={aufgeklappt}
-                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink/[0.06]"
-                            >
-                              <ChevronRight className={cn("h-5 w-5 text-ink-muted transition-transform", aufgeklappt && "rotate-90")} />
-                            </button>
-                          }
+                        <button
+                          type="button"
+                          onClick={andere.alleAn}
+                          aria-pressed={istAlle}
+                          className={cn("h-10 flex-1 rounded-full text-[15.5px] font-semibold transition-colors", istAlle ? "bg-ink/10" : "text-ink-muted")}
                         >
-                          {schalterZweig}
-                        </PersonZeile>
-                        {aufgeklappt ? (
-                          <div className="mx-2.5 mb-2.5 space-y-1.5">
-                            {z.knoten.map((k) => {
-                              const ks = andere.schalter(k.key);
-                              return (
-                                <div key={k.key} className="rounded-[14px] bg-ink/[0.04]">
-                                  <PersonZeile
-                                    name={k.name}
-                                    avatar={<PersonAvatar name={k.name} farbe={k.farbe} klein />}
-                                    farbPunkt={
-                                      <FarbPunkt
-                                        name={k.name}
-                                        farbe={andere.anzeige.farben[k.key] ?? null}
-                                        offen={farbWahl === k.key}
-                                        onClick={() => setFarbWahl((x) => (x === k.key ? null : k.key))}
-                                      />
-                                    }
-                                  >
-                                    <Pille an={ks[0]} onClick={() => andere.setze([k.key], 0, !ks[0])}>
-                                      Schichten
-                                    </Pille>
-                                    {z.nurSchichten ? null : (
-                                      <Pille an={ks[1]} onClick={() => andere.setze([k.key], 1, !ks[1])}>
-                                        Termine
-                                      </Pille>
-                                    )}
-                                  </PersonZeile>
-                                  {farbWahl === k.key ? (
-                                    <FarbReihe
-                                      farbe={andere.anzeige.farben[k.key] ?? null}
-                                      onWahl={(f) => {
-                                        andere.setzeFarbe(k.key, f);
-                                        setFarbWahl(null);
-                                      }}
-                                    />
-                                  ) : null}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
+                          Alle
+                        </button>
+                        <button
+                          type="button"
+                          onClick={andere.nurIch}
+                          aria-pressed={istNurIch}
+                          className={cn("h-10 flex-1 rounded-full text-[15.5px] font-semibold transition-colors", istNurIch ? "bg-ink/10" : "text-ink-muted")}
+                        >
+                          Nur ich
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDarstellung((d) => !d)}
+                          aria-expanded={darstellung}
+                          aria-label="Darstellung der anderen"
+                          className={cn("flex h-10 w-11 shrink-0 items-center justify-center rounded-full", darstellung ? "bg-ink/10 text-ink" : "text-ink-muted")}
+                        >
+                          <SlidersHorizontal className="h-[21px] w-[21px]" />
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-[14px] leading-snug text-ink-muted">Lade Partner, Familie oder Freunde ein – dann siehst du hier auch deren Schichten und Termine.</p>
+                    )}
+                  </div>
+                  {darstellung && alle.length ? (
+                    <div className="space-y-3 border-b border-line py-3">
+                      <div className="space-y-1.5">
+                        <span className="block text-[13.5px] font-semibold text-ink-muted">Größe der anderen</span>
+                        <Auswahl
+                          wert={andere.anzeige.groesse}
+                          onWahl={andere.setzeGroesse}
+                          optionen={[
+                            ["klein", "Klein"],
+                            ["mittel", "Mittel"],
+                            ["gross", "Groß"],
+                          ]}
+                        />
                       </div>
-                    );
-                  })}
+                      <div className="space-y-1.5">
+                        <span className="block text-[13.5px] font-semibold text-ink-muted">Schrift</span>
+                        <Auswahl
+                          wert={andere.anzeige.text}
+                          onWahl={andere.setzeText}
+                          optionen={[
+                            ["kurz", "Kurz"],
+                            ["voll", "Ausgeschrieben"],
+                          ]}
+                        />
+                      </div>
+                      <p className="text-[12.5px] leading-snug text-ink-muted">Die Farbe einer Person stellst du unter „…“ ein.</p>
+                    </div>
+                  ) : null}
 
-                  {alle.length ? (
-                    <>
-                      <button
-                        type="button"
-                        aria-expanded={darstellung}
-                        onClick={() => setDarstellung((d) => !d)}
-                        className="flex h-11 w-full items-center justify-between rounded-[14px] px-2.5 text-[14px] font-semibold text-ink-muted"
-                      >
-                        Darstellung der anderen
-                        <ChevronRight className={cn("h-4 w-4 transition-transform", darstellung && "rotate-90")} />
-                      </button>
-                      {darstellung ? (
-                        <div className={cn(karte, "space-y-2.5 px-3 py-3")}>
-                          <div className="space-y-1.5">
-                            <span className="block text-[13.5px] font-medium">Größe</span>
-                            <Auswahl
-                              wert={andere.anzeige.groesse}
-                              onWahl={andere.setzeGroesse}
-                              optionen={[
-                                ["klein", "Klein"],
-                                ["mittel", "Mittel"],
-                                ["gross", "Groß"],
-                              ]}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <span className="block text-[13.5px] font-medium">Schrift</span>
-                            <Auswahl
-                              wert={andere.anzeige.text}
-                              onWahl={andere.setzeText}
-                              optionen={[
-                                ["kurz", "Kurz"],
-                                ["voll", "Ausgeschrieben"],
-                              ]}
-                            />
-                          </div>
-                          <p className="text-[12px] leading-snug text-ink-muted">Die Farbe wählst du mit dem Farbpunkt bei jeder Person.</p>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="px-2 py-1 text-[13.5px] leading-snug text-ink-muted">
-                      Noch niemand verbunden. Lade Partner, Familie oder Freunde ein – dann siehst du hier auch deren Schichten und
-                      Termine.
-                    </p>
+                  <div data-wen-ich>
+                    {abschnitt(
+                      "Ich",
+                      null,
+                      <>
+                        {zeile({ key: "ich:s", name: "Meine Schichten", farbe: "rgb(var(--c-brand-500))", an: ich[0], onHaken: () => andere.setze([ICH], 0, !ich[0]) })}
+                        {zeile({ key: "ich:t", name: "Meine Termine", farbe: "rgb(var(--c-brand-500))", an: ich[1], onHaken: () => andere.setze([ICH], 1, !ich[1]) })}
+                      </>,
+                    )}
+                  </div>
+
+                  {andere.zweige.map((z) =>
+                    abschnitt(
+                      z.titel,
+                      z.nurSchichten ? "Gruppe" : null,
+                      z.knoten.map((k) => {
+                        const ks = andere.schalter(k.key);
+                        const an = z.nurSchichten ? ks[0] : ks[0] || ks[1];
+                        const voll = z.nurSchichten ? ks[0] : ks[0] && ks[1];
+                        return zeile({
+                          key: `${z.key}:${k.key}`,
+                          name: k.name,
+                          farbe: k.farbe,
+                          an,
+                          teil: an && !voll,
+                          onHaken: () => (z.nurSchichten ? andere.setze([k.key], 0, !ks[0]) : (andere.setze([k.key], 0, !an), andere.setze([k.key], 1, !an))),
+                          details: einzelheiten(k.key, z.nurSchichten),
+                        });
+                      }),
+                      !z.nurSchichten,
+                    ),
                   )}
-                </div>
 
-                <div className="px-2.5 pb-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      schliessen();
-                      onVerwalten();
-                    }}
-                    className="flex h-12 w-full items-center justify-center gap-1.5 rounded-[14px] bg-surface/50 px-2 text-[14px] font-semibold text-brand-600 ring-1 ring-inset ring-ink/10"
-                  >
-                    <UserPlus className="h-[18px] w-[18px] shrink-0" /> <span className="truncate">Personen einladen</span>
-                  </button>
+                  {!andere.zweige.some((z) => !z.nurSchichten) ? abschnitt("Partner & Familie", null, null, true) : null}
                 </div>
               </div>
             </div>,
@@ -1096,5 +1012,22 @@ export function WenSeheIch({
           )
         : null}
     </>
+  );
+}
+
+/** Häkchen-Kästchen in der Farbe der Person; halb = nur Schichten oder nur Termine. */
+function Haken({ an, teil, farbe }: { an: boolean; teil: boolean; farbe: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[7px] transition-colors",
+        an ? "text-white" : "ring-2 ring-inset ring-ink/25",
+        an && teil && "opacity-55",
+      )}
+      style={an ? { backgroundColor: farbe } : undefined}
+    >
+      {an ? teil ? <Minus className="h-4 w-4" strokeWidth={3.2} /> : <Check className="h-4 w-4" strokeWidth={3.2} /> : null}
+    </span>
   );
 }
