@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="10. November 2026"
+      updated="11. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -606,6 +606,16 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
           wurden keine gespeichert. Die Daten bleiben gespeichert, bis die Person sie oder ihr Konto löscht;
           das Konto lässt sich unter <em>Mehr → Konto löschen</em> jederzeit selbst endgültig
           löschen. Es gibt keine Werbung, kein Tracking und keine Weitergabe.
+        </Absatz>
+        <Absatz>
+          Kurze Umfrage: Frühestens drei Tage nach dem Einrichten des Privatbereichs fragt die App
+          einmalig, wie zufrieden die Person ist, wie sie von ShiftNexo erfahren hat und – optional
+          als freier Text – was besser werden soll. Die Teilnahme ist freiwillig; wer überspringt,
+          wird nicht erneut gefragt (dafür wird nur „übersprungen“ vermerkt). Die Antworten werden
+          zum Privatkonto gespeichert, damit die Frage nicht wiederkommt, dem Betreiber aber nur
+          zusammengefasst und ohne Namen, E-Mail-Adresse oder Konto angezeigt. Rechtsgrundlage ist
+          das berechtigte Interesse an der Verbesserung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO).
+          Die Antworten werden mit dem Privatbereich gelöscht.
         </Absatz>
       </Abschnitt>
 
