@@ -18,6 +18,8 @@ import {
   type JobArt,
   type JobRechnung,
   type Rechnung,
+  stundenlohnAusGehalt,
+  type Bezahlung,
 } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
@@ -243,6 +245,36 @@ function Wahl<T extends string>({ wert, optionen, onWahl, label }: { wert: T; op
   );
 }
 
+const BEZAHLUNG_OPTIONEN: { id: Bezahlung; name: string }[] = [
+  { id: "stunde", name: "Stundenlohn" },
+  { id: "monat", name: "Monatsgehalt" },
+];
+
+/** Bei festem Gehalt: welcher Stundenlohn für die Zuschläge herauskommt – und wie. */
+function GehaltStundenlohn({ grundgehalt }: { grundgehalt: number | null }) {
+  const { konto } = usePrivat();
+  const ws = konto.wochenstunden;
+  if (grundgehalt === null) return null;
+  if (ws === null || ws <= 0) {
+    return (
+      <p className="py-3 text-[13px] leading-snug text-warn-fg" data-gehalt-hinweis>
+        Für die Zuschläge braucht ShiftNexo deine Wochenstunden – trag sie unter{" "}
+        <Link href="/privat/mehr" className="font-semibold underline">
+          Mehr
+        </Link>{" "}
+        ein.
+      </p>
+    );
+  }
+  return (
+    <p className="py-3 text-[13px] leading-snug text-ink-muted" data-gehalt-stundenlohn>
+      Stundenlohn für die Zuschläge: <b className="text-ink">{euro(stundenlohnAusGehalt(grundgehalt, ws))}</b>
+      <br />
+      {euro(grundgehalt)} ÷ ({std(ws)} Std × 13 ÷ 3 Wochen im Monat)
+    </p>
+  );
+}
+
 const ART_OPTIONEN: { id: JobArt; name: string }[] = [
   { id: "minijob", name: "Minijob" },
   { id: "brutto", name: "Normal" },
@@ -297,20 +329,26 @@ function UhrBand({ schicht, job }: { schicht: Schichtart; job: Pick<Job, "nacht"
 function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: string; onEinstellungen: () => void }) {
   const { job, geld } = jr;
   const zeilen: { text: string; detail: string; betrag: number }[] = [];
-  if (geld && job.stundenlohn !== null) {
-    zeilen.push({ text: "Grundlohn", detail: `${std(jr.stunden)} Std × ${euro(job.stundenlohn)}`, betrag: geld.grundlohn });
+  if (geld) {
+    zeilen.push(
+      geld.ausGehalt
+        ? { text: "Grundgehalt", detail: job.grundgehalt !== null && Math.abs(geld.grundlohn - job.grundgehalt) > 0.01 ? "anteilig für den Zeitraum" : "brutto im Monat", betrag: geld.grundlohn }
+        : { text: "Grundlohn", detail: `${std(jr.stunden)} Std × ${euro(geld.stundenlohn ?? 0)}`, betrag: geld.grundlohn },
+    );
+    const auf = geld.ausGehalt && geld.stundenlohn !== null ? ` · auf ${euro(geld.stundenlohn)}/Std` : "";
     if (jr.zuschlag.nacht > 0 && job.nacht > 0)
       zeilen.push({
         text: `Nachtzuschlag ${std(job.nacht)} %`,
-        detail: `${std(jr.zuschlag.nacht)} Std zwischen ${job.nachtVon} und ${job.nachtBis} Uhr`,
+        detail: `${std(jr.zuschlag.nacht)} Std zwischen ${job.nachtVon} und ${job.nachtBis} Uhr${auf}`,
         betrag: geld.nacht,
       });
     if (jr.zuschlag.sonntag > 0 && job.sonntag > 0)
-      zeilen.push({ text: `Sonntagszuschlag ${std(job.sonntag)} %`, detail: `${std(jr.zuschlag.sonntag)} Std`, betrag: geld.sonntag });
+      zeilen.push({ text: `Sonntagszuschlag ${std(job.sonntag)} %`, detail: `${std(jr.zuschlag.sonntag)} Std${auf}`, betrag: geld.sonntag });
     if (jr.zuschlag.feiertag > 0 && job.feiertag > 0)
-      zeilen.push({ text: `Feiertagszuschlag ${std(job.feiertag)} %`, detail: `${std(jr.zuschlag.feiertag)} Std`, betrag: geld.feiertag });
-    if (geld.ueber > 0) zeilen.push({ text: `Überstundenzuschlag ${std(job.ueber)} %`, detail: "Stunden über Soll", betrag: geld.ueber });
+      zeilen.push({ text: `Feiertagszuschlag ${std(job.feiertag)} %`, detail: `${std(jr.zuschlag.feiertag)} Std${auf}`, betrag: geld.feiertag });
+    if (geld.ueber > 0) zeilen.push({ text: `Überstundenzuschlag ${std(job.ueber)} %`, detail: `Stunden über Soll${auf}`, betrag: geld.ueber });
   }
+  const ohneWochenstunden = !!geld?.ausGehalt && geld.stundenlohn === null;
   const anteil = jr.minijob ? Math.min(100, (jr.minijob.zaehlt / jr.minijob.grenze) * 100) : 0;
   const ueberGrenze = jr.minijob ? jr.minijob.zaehlt > jr.minijob.grenze : false;
   return (
@@ -357,6 +395,15 @@ function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: stri
                 </div>
               ))}
             </dl>
+            {ohneWochenstunden ? (
+              <p className="text-[12.5px] leading-snug text-warn-fg">
+                Zuschläge fehlen noch: Trag unter{" "}
+                <Link href="/privat/mehr" className="font-semibold underline">
+                  Mehr
+                </Link>{" "}
+                deine Wochenstunden ein – daraus wird der Stundenlohn für die Zuschläge gerechnet.
+              </p>
+            ) : null}
             {jr.minijob ? (
               <div className="space-y-1.5" data-minijob-grenze>
                 <div className="flex items-center justify-between gap-2 text-[12.5px]">
@@ -380,7 +427,11 @@ function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: stri
             ) : null}
           </>
         ) : (
-          <p className="text-[14px] text-ink-muted">Trag den Stundenlohn ein, dann rechnet ShiftNexo diesen Job aus.</p>
+          <p className="text-[14px] text-ink-muted">
+            {job.art === "brutto" && job.bezahlung === "monat"
+              ? "Trag dein Grundgehalt ein, dann rechnet ShiftNexo diesen Job aus."
+              : "Trag den Stundenlohn ein, dann rechnet ShiftNexo diesen Job aus."}
+          </p>
         )}
 
         <button
@@ -534,18 +585,42 @@ function JobBlatt({
 
         {job.art !== "ohne" ? (
           <div className="divide-y divide-line">
-            <FeldZeile id="job-lohn" name="Stundenlohn" hinweis={job.art === "minijob" ? "so wie er ausgezahlt wird" : "brutto"}>
-              <Zahlenfeld
-                id="job-lohn"
-                wert={job.stundenlohn}
-                min={0}
-                max={1000}
-                einheit="€"
-                breite="w-[92px]"
-                platzhalter="z. B. 13,90"
-                onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
-              />
-            </FeldZeile>
+            {job.art === "brutto" ? (
+              <div className="space-y-1.5 py-3">
+                <span className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Bezahlung</span>
+                <Wahl label="Bezahlung" wert={job.bezahlung} optionen={BEZAHLUNG_OPTIONEN} onWahl={(bezahlung) => aendere({ bezahlung })} />
+              </div>
+            ) : null}
+            {job.art === "brutto" && job.bezahlung === "monat" ? (
+              <>
+                <FeldZeile id="job-gehalt" name="Grundgehalt" hinweis="brutto im Monat, ohne Zuschläge">
+                  <Zahlenfeld
+                    id="job-gehalt"
+                    wert={job.grundgehalt}
+                    min={0}
+                    max={100000}
+                    einheit="€"
+                    breite="w-[110px]"
+                    platzhalter="z. B. 3.989"
+                    onWert={(n) => aendere({ grundgehalt: n !== null && n > 0 ? n : null })}
+                  />
+                </FeldZeile>
+                <GehaltStundenlohn grundgehalt={job.grundgehalt} />
+              </>
+            ) : (
+              <FeldZeile id="job-lohn" name="Stundenlohn" hinweis={job.art === "minijob" ? "so wie er ausgezahlt wird" : "brutto"}>
+                <Zahlenfeld
+                  id="job-lohn"
+                  wert={job.stundenlohn}
+                  min={0}
+                  max={1000}
+                  einheit="€"
+                  breite="w-[92px]"
+                  platzhalter="z. B. 13,90"
+                  onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
+                />
+              </FeldZeile>
+            )}
             <NachtFelder job={job} aendere={aendere} praefix="job" />
             <FeldZeile id="job-sonntag" name="Sonntagszuschlag" hinweis="0 = keiner">
               <Zahlenfeld id="job-sonntag" wert={job.sonntag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ sonntag: n })} />
@@ -723,20 +798,43 @@ function Assistent({
       </div>
     );
   } else if (aktuell === "lohn") {
-    frage = `Wie viel bekommst du bei ${name} pro Stunde?`;
-    unter = job.art === "minijob" ? "Beim Minijob: so viel, wie ausgezahlt wird." : "Brutto, so wie er im Vertrag steht.";
+    const monat = job.art === "brutto" && job.bezahlung === "monat";
+    frage = monat ? `Wie hoch ist dein Grundgehalt bei ${name}?` : `Wie viel bekommst du bei ${name} pro Stunde?`;
+    unter =
+      job.art === "minijob"
+        ? "Beim Minijob: so viel, wie ausgezahlt wird."
+        : monat
+          ? "Brutto im Monat, ohne Zuschläge – die rechnet ShiftNexo dazu."
+          : "Brutto, so wie er im Vertrag steht.";
     inhalt = (
-      <div className="flex justify-center py-2">
-        <Zahlenfeld
-          id="assistent-lohn"
-          wert={job.stundenlohn}
-          min={0}
-          max={1000}
-          einheit="€"
-          breite="w-[130px]"
-          platzhalter="13,90"
-          onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
-        />
+      <div className="space-y-3 py-2">
+        {job.art === "brutto" ? <Wahl label="Bezahlung" wert={job.bezahlung} optionen={BEZAHLUNG_OPTIONEN} onWahl={(bezahlung) => aendere({ bezahlung })} /> : null}
+        <div className="flex justify-center">
+          {monat ? (
+            <Zahlenfeld
+              id="assistent-gehalt"
+              wert={job.grundgehalt}
+              min={0}
+              max={100000}
+              einheit="€"
+              breite="w-[150px]"
+              platzhalter="3.989"
+              onWert={(n) => aendere({ grundgehalt: n !== null && n > 0 ? n : null })}
+            />
+          ) : (
+            <Zahlenfeld
+              id="assistent-lohn"
+              wert={job.stundenlohn}
+              min={0}
+              max={1000}
+              einheit="€"
+              breite="w-[130px]"
+              platzhalter="13,90"
+              onWert={(n) => aendere({ stundenlohn: n !== null && n > 0 ? n : null })}
+            />
+          )}
+        </div>
+        {monat ? <GehaltStundenlohn grundgehalt={job.grundgehalt} /> : null}
       </div>
     );
   } else if (aktuell === "schichten") {

@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-11T18:00:00+01:00",
+    titel: "Festes Monatsgehalt im Geld-Bereich",
+    text: "Bekommst du ein festes Gehalt? Trag bei deinem Job unter „Bezahlung“ dein Brutto-Grundgehalt ein, z. B. 3.989 €. Die Zuschläge für Nacht, Sonntag und Feiertag werden dann aus dem Stundenlohn gerechnet, der sich aus Gehalt und deinen Wochenstunden ergibt.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-11T16:00:00+01:00",
     titel: "Meine Zahlen – deine eigene Statistik",
     text: "Wie viele Sonntage, Feiertage und Nächte hast du gearbeitet? Längste Serie, freie Wochenenden, Vergleich mit dem Vorjahr und „Mein Jahr“ zum Durchtippen. Nur du siehst das, nichts wird gespeichert. Privat: Schichten → Meine Zahlen. Betrieb: Mehr → Meine Zahlen.",
