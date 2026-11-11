@@ -76,7 +76,18 @@ export default async function geld() {
     await seite.getByRole("button", { name: /Lohn, Zuschläge, Schichten/ }).click();
     await warte(500);
     pruefe((await seite.locator("[data-job-blatt]").count()) === 1, "Job-Einstellungen öffnen");
+
+    // Festes Monatsgehalt: Grundgehalt brutto, Zuschläge brauchen die Wochenstunden.
+    await seite.getByRole("radiogroup", { name: "Art des Jobs" }).getByRole("radio", { name: "Normal" }).click();
+    await seite.getByRole("radiogroup", { name: "Bezahlung" }).getByRole("radio", { name: "Monatsgehalt" }).click();
+    await seite.locator("#job-gehalt").fill("3989");
+    await seite.locator("#job-gehalt").press("Tab");
+    await warte(300);
+    pruefe((await seite.locator("[data-gehalt-hinweis]").count()) === 1, "Monatsgehalt: Hinweis auf fehlende Wochenstunden");
     await seite.keyboard.press("Escape");
+    await warte(500);
+    const gehaltKarte = await seite.locator('[data-job-karte="Tankstelle"]').innerText();
+    pruefe(/Grundgehalt/.test(gehaltKarte) && /Zuschläge fehlen/.test(gehaltKarte), "Monatsgehalt: Karte zeigt Grundgehalt und Hinweis");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
