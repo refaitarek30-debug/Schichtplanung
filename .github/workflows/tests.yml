@@ -41,6 +41,8 @@ jobs:
       - name: Bauen
         run: npm run build
       - name: Browser installieren
-        run: npx playwright install --with-deps chromium
+        # Systempakete kommen aus den Ubuntu-Spiegeln; fallen die aus, reicht meist der Browser allein
+        # (das Runner-Abbild bringt die nötigen Bibliotheken mit).
+        run: npx playwright install --with-deps chromium || npx playwright install chromium
       - name: Oberflächen-Tests
         run: npm run test:e2e
