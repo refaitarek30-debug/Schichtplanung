@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Upload, Wallet } from "lucide-react";
+import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Sparkles, Upload, Wallet } from "lucide-react";
 import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
@@ -186,6 +186,13 @@ function Startliste() {
           name="Urlaubsplaner"
           unter="Brückentage · Urlaubstage im Jahr"
           wert={bereit && urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
+        />
+        <Eintrag
+          href="/privat/zahlen"
+          icon={<Sparkles className="h-[18px] w-[18px]" />}
+          farbe="bg-[rgb(47_91_234/0.15)] text-[rgb(47_91_234)]"
+          name="Meine Zahlen"
+          unter="Sonntage · Nächte · dein Jahr"
         />
         <Eintrag
           href="/privat/schichten?reiter=gemeinsam"

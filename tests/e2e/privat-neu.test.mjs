@@ -122,6 +122,21 @@ export default async function privatNeu() {
       await seite.setViewportSize({ width: v.width, height: v.height });
     }
 
+    // Meine Zahlen: eigene Statistik, Kranktage erst auf Wunsch, Rückblick zum Durchtippen.
+    await seite.goto(`${APP}/privat/zahlen`, { waitUntil: "networkidle" });
+    await seite.locator("[data-meine-zahlen]").waitFor({ timeout: 15_000 });
+    await warte(800);
+    pruefe((await seite.getByText("Arbeitstage", { exact: true }).count()) >= 1, "Meine Zahlen: Kacheln sichtbar");
+    pruefe((await seite.locator("[data-krank-wert]").count()) === 0, "Meine Zahlen: Kranktage zunächst verborgen");
+    await seite.locator("[data-krank-zeigen]").click();
+    pruefe((await seite.locator("[data-krank-wert]").count()) === 1, "Meine Zahlen: Kranktage auf Wunsch");
+    await seite.locator("[data-rueckblick-start]").click();
+    await warte(300);
+    pruefe((await seite.locator("[data-rueckblick]").count()) === 1, "Meine Zahlen: Rückblick öffnet");
+    await seite.keyboard.press("Escape");
+    await warte(200);
+    if (process.env.EXPORT_BILDER) await seite.screenshot({ path: `${process.env.EXPORT_BILDER}/zahlen.png` });
+
     // Geburtstag ohne Torte: Schalter im Termin-Fenster, Geburtsjahr freiwillig.
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
     await warte(1000);

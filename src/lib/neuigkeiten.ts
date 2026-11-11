@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-11T16:00:00+01:00",
+    titel: "Meine Zahlen – deine eigene Statistik",
+    text: "Wie viele Sonntage, Feiertage und Nächte hast du gearbeitet? Längste Serie, freie Wochenenden, Vergleich mit dem Vorjahr und „Mein Jahr“ zum Durchtippen. Nur du siehst das, nichts wird gespeichert. Privat: Schichten → Meine Zahlen. Betrieb: Mehr → Meine Zahlen.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-11T15:00:00+01:00",
     titel: "Kalender als PDF",
     text: "Jahreskalender in drei Darstellungen (schlicht, farbig, kompakt mit Summen) und eine Monatsansicht – zum Drucken oder als PDF. Im Kalender: „Wen sehe ich?“ öffnen, unten „Kalender als PDF“.",

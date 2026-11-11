@@ -217,7 +217,10 @@ export default function DatenschutzPage() {
             die Administration. Sie dienen allein der Aufklärung von Sicherheitsvorfällen und
             technischen Störungen durch den Betreiber. Die Auswertung von Ausfall und Anwesenheit
             zeigt der Administration nur Summen ohne Namen: je Schicht erst ab fünf Personen, sonst
-            nur für das ganze Unternehmen
+            nur für das ganze Unternehmen. Unter „Meine Zahlen“ kann jede Person freiwillig eine
+            Statistik über sich selbst ansehen (z. B. gearbeitete Sonntage, Feiertage, Nächte); sie
+            wird beim Öffnen aus dem eigenen Plan errechnet, nicht gespeichert und ist für niemand
+            anderen sichtbar
           </li>
           <li>
             Passwort-Code: Wer sein Passwort vergessen hat, setzt es mit einem Code neu. Jede
