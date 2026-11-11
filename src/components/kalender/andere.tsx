@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
-import { Check, Minus, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
+import { Check, Minus, Share, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -579,6 +579,7 @@ export function WenSeheIch({
   glas = false,
   randWischen = false,
   onEigeneFarben,
+  onExport,
 }: {
   andere: Andere;
   onVerwalten: () => void;
@@ -587,6 +588,8 @@ export function WenSeheIch({
   randWischen?: boolean;
   /** Einstellungen: zu den Farben der eigenen Schichten. */
   onEigeneFarben?: () => void;
+  /** Unten im Fenster: Kalender als PDF (nur Privatbereich). */
+  onExport?: () => void;
 }) {
   const [offen, setOffen] = useState(false);
   /** Blatt ist da, folgt aber noch dem Finger (beim Hereinziehen). */
@@ -1006,6 +1009,21 @@ export function WenSeheIch({
 
                   {!andere.zweige.some((z) => !z.nurSchichten) ? abschnitt("Partner & Familie", null, null, true) : null}
                 </div>
+                {onExport ? (
+                  <div className="shrink-0 px-4 pb-4 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        schliessen();
+                        onExport();
+                      }}
+                      data-wen-export
+                      className="glas flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold active:scale-[0.98]"
+                    >
+                      <Share className="h-[18px] w-[18px]" /> Kalender als PDF
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </div>,
             document.body,

@@ -81,6 +81,13 @@ export const navItems: NavItem[] = [
     roles: ["employee", "shift_leader", "admin"],
   },
   {
+    // Eigene Statistik – sieht nur die Person selbst, freiwillig.
+    href: "/meine-zahlen",
+    label: "Meine Zahlen",
+    icon: BarChart3,
+    roles: ["employee", "shift_leader", "admin"],
+  },
+  {
     href: "/besetzung",
     label: "Besetzung",
     icon: Layers,
@@ -243,7 +250,7 @@ const LEISTE: { label: string | null; eintraege: LeistenEintrag[] }[] = [
         unter: "Mein Monat · To-dos",
         icon: CalendarRange,
         roles: ALLE,
-        auch: ["/todos"],
+        auch: ["/todos", "/meine-zahlen"],
         neu: "kalender-partner",
         todoZahl: true,
       },

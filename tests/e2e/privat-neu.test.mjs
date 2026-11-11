@@ -99,6 +99,44 @@ export default async function privatNeu() {
     await seite.keyboard.press("Escape");
     await warte(300);
 
+    // Kalender als PDF: Knopf unten im Fenster, drei Jahres-Darstellungen und Monat.
+    await seite.getByRole("button", { name: /Wen sehe ich\?/ }).first().click();
+    await warte(500);
+    await seite.locator("[data-wen-export]").click();
+    await seite.waitForURL(/\/privat\/export/, { timeout: 15_000 });
+    await seite.locator("[data-export-blatt]").waitFor({ timeout: 15_000 });
+    pruefe((await seite.locator('[data-export-blatt="b"]').count()) === 1, "Export: Jahreskalender (farbig) wird gezeigt");
+    for (const [name, art] of [["Jahr · schlicht", "a"], ["Jahr · kompakt", "c"], ["Monat", "monat"]]) {
+      await seite.getByRole("button", { name, exact: true }).click();
+      await warte(200);
+      pruefe((await seite.locator(`[data-export-blatt="${art}"]`).count()) === 1, `Export: ${name}`);
+    }
+    pruefe(await seite.locator("[data-export-drucken]").isEnabled(), "Export: Drucken-Knopf bereit");
+    if (process.env.EXPORT_BILDER) {
+      await seite.setViewportSize({ width: 1200, height: 900 });
+      for (const [name, art] of [["Jahr · schlicht", "a"], ["Jahr · farbig", "b"], ["Jahr · kompakt", "c"], ["Monat", "monat"]]) {
+        await seite.getByRole("button", { name, exact: true }).click();
+        await warte(300);
+        await seite.locator("[data-export-blatt]").screenshot({ path: `${process.env.EXPORT_BILDER}/export-${art}.png` });
+      }
+      await seite.setViewportSize({ width: v.width, height: v.height });
+    }
+
+    // Meine Zahlen: eigene Statistik, Kranktage erst auf Wunsch, Rückblick zum Durchtippen.
+    await seite.goto(`${APP}/privat/zahlen`, { waitUntil: "networkidle" });
+    await seite.locator("[data-meine-zahlen]").waitFor({ timeout: 15_000 });
+    await warte(800);
+    pruefe((await seite.getByText("Arbeitstage", { exact: true }).count()) >= 1, "Meine Zahlen: Kacheln sichtbar");
+    pruefe((await seite.locator("[data-krank-wert]").count()) === 0, "Meine Zahlen: Kranktage zunächst verborgen");
+    await seite.locator("[data-krank-zeigen]").click();
+    pruefe((await seite.locator("[data-krank-wert]").count()) === 1, "Meine Zahlen: Kranktage auf Wunsch");
+    await seite.locator("[data-rueckblick-start]").click();
+    await warte(300);
+    pruefe((await seite.locator("[data-rueckblick]").count()) === 1, "Meine Zahlen: Rückblick öffnet");
+    await seite.keyboard.press("Escape");
+    await warte(200);
+    if (process.env.EXPORT_BILDER) await seite.screenshot({ path: `${process.env.EXPORT_BILDER}/zahlen.png` });
+
     // Geburtstag ohne Torte: Schalter im Termin-Fenster, Geburtsjahr freiwillig.
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
     await warte(1000);

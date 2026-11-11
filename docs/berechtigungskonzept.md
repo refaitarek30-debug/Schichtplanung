@@ -17,6 +17,8 @@ Jede Person sieht nur, was sie für ihre Aufgabe braucht. Die Regeln setzt die D
 | Geburtsdatum (für Altersfreizeit) | nur das eigene | sehen | sehen |
 | Grund einer Abwesenheit | nur der eigene | je nach Einstellung des Betriebs | sehen |
 | Änderungsprotokoll | nein | sehen | sehen |
+| Anmeldeprotokoll, Fehlermeldungen | nein | nein | nein (nur Betreiber bei Vorfällen) |
+| Auswertung Ausfall/Anwesenheit | nein | nein | nur Summen ohne Namen |
 | Zugänge vergeben, Passwort-Code erzeugen | nein | für Mitarbeiter (wird protokolliert) | ja (wird protokolliert) |
 | Regeln und Einstellungen des Betriebs | nein | nein | ja |
 

@@ -664,6 +664,7 @@ export function PrivatKalender() {
           <PrivatNeuigkeiten />
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} randWischen={randFrei}
             onEigeneFarben={() => router.push("/privat/schichten?reiter=liste")}
+            onExport={() => router.push("/privat/export")}
           />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>

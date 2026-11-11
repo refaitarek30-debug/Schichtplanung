@@ -22,13 +22,15 @@ import { cn } from "@/lib/utils";
 import { Activity, CalendarCheck, Thermometer } from "lucide-react";
 import { useBegriffe } from "@/lib/begriffe";
 
-type Ebene = "gesamt" | "schicht" | "person";
+type Ebene = "gesamt" | "schicht";
 
 /**
  * Auswertung von Ausfall, Anwesenheit und Gesundheitsrate.
  *
- * Die Datenbank liefert eine Zeile je Person und Monat; alle Ebenen
- * entstehen daraus durch Summieren. Die Raten werden dabei aus den
+ * Ohne Namen: Die Datenbank liefert nur Summen je Schicht und Monat
+ * (`absence_report_anonym`), und auch die nur, wenn jede Schicht mindestens
+ * fünf Personen hat – sonst allein den Gesamtbetrieb. Unter fünf Personen im
+ * Betrieb gibt es keine Auswertung. Einzelne Personen sind so nicht erkennbar. Die Raten werden dabei aus den
  * summierten Tagen neu gerechnet und nicht aus Einzelraten gemittelt –
  * ein Mittelwert würde jemanden mit fünf Arbeitstagen genauso stark
  * gewichten wie jemanden mit zwanzig.
@@ -90,11 +92,10 @@ export default function AuswertungPage() {
         bezeichnung: z.rotationTeam ? `${z.rotationTeam}-Schicht` : "Tagschicht",
       })).sort((a, b) => a.bezeichnung.localeCompare(b.bezeichnung));
     }
-    return fassenZusammen(zeilen, (z) => ({
-      schluessel: z.employeeId,
-      bezeichnung: z.name,
-    })).sort((a, b) => a.bezeichnung.localeCompare(b.bezeichnung));
+    return [];
   }, [zeilen, ebene, gesamt]);
+  // Aufteilung nach Schicht nur, wenn die Datenbank sie herausgibt (jede Schicht ab fünf Personen).
+  const mitSchichten = !!zeilen?.length && zeilen.every((z) => !z.gesamtNur);
 
   // Monatsverlauf nur sinnvoll, wenn ein ganzes Jahr geladen ist.
   const verlauf = useMemo(() => {
@@ -179,8 +180,7 @@ export default function AuswertungPage() {
               {(
                 [
                   ["gesamt", "Gesamt"],
-                  ["schicht", "Schicht"],
-                  ["person", "Mitarbeiter"],
+                  ...(mitSchichten ? [["schicht", "Schicht"]] : []),
                 ] as [Ebene, string][]
               ).map(([wert, text]) => (
                 <button
@@ -210,7 +210,10 @@ export default function AuswertungPage() {
           </CardBody>
         </Card>
       ) : zeilen.length === 0 ? (
-        <Alert tone="info">Für diesen Zeitraum gibt es keine Daten.</Alert>
+        <Alert tone="info">
+          Für diesen Zeitraum gibt es keine Daten. Die Auswertung zeigt nur Summen ohne Namen und erst ab fünf
+          Personen im Unternehmen.
+        </Alert>
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -269,11 +272,7 @@ export default function AuswertungPage() {
           <Card>
             <CardHeader
               title={
-                ebene === "gesamt"
-                  ? "Gesamtbetrieb"
-                  : ebene === "schicht"
-                    ? "Nach Schicht"
-                    : "Nach Mitarbeiter"
+                ebene === "gesamt" ? "Gesamtbetrieb" : "Nach Schicht"
               }
               hint={
                 monat === null ? `Jahr ${jahr}` : `${MONATSNAMEN[monat - 1]} ${jahr}`
@@ -285,7 +284,7 @@ export default function AuswertungPage() {
                   <thead>
                     <tr className="border-b border-line">
                       <Kopf links>
-                        {ebene === "schicht" ? "Schicht" : ebene === "person" ? "Mitarbeiter" : ""}
+                        {ebene === "schicht" ? "Schicht" : ""}
                       </Kopf>
                       <Kopf>Soll</Kopf>
                       <Kopf>Anwesend</Kopf>

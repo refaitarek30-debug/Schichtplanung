@@ -1,6 +1,6 @@
 # ShiftNexo – Unterlage für den Betriebsrat
 
-Stand: 9. November 2026 · Datenschutzerklärung Fassung 2.27
+Stand: 10. November 2026 · Datenschutzerklärung Fassung 2.29
 
 Diese Unterlage beschreibt, was die Anwendung tatsächlich tut – wer was sieht,
 was gespeichert wird und wie lange. Sie ersetzt keine Rechtsberatung und keine
@@ -24,8 +24,8 @@ keine automatisierten Entscheidungen: Über jeden Antrag entscheidet ein Mensch
 | Urlaubssperren anlegen/entfernen | – | ja | ja |
 | Mitteilungen und Hinweise senden | – | ja | ja |
 | Änderungsprotokoll (wer hat was geändert) | – | ja | ja |
-| Auswertung (Ausfall, Kranktage je Person) | – | – | ja |
-| Anmeldeprotokoll und Fehlermeldungen | – | – | nur ausdrücklich freigeschaltete Person |
+| Auswertung (Ausfall, Anwesenheit) – nur Summen ohne Namen, je Schicht erst ab 5 Personen | – | – | ja |
+| Anmeldeprotokoll und Fehlermeldungen | – | – | – (im Betrieb nicht einsehbar) |
 | Rollen vergeben, Mitarbeiter anlegen/löschen | – | – | ja |
 
 Rollen vergibt ausschließlich die Administration. Die Rechte werden in der
@@ -47,17 +47,22 @@ Datenbank durchgesetzt (Row Level Security), nicht nur in der Oberfläche.
   Stammdaten). Sichtbar für Schichtleitung und Administration. Inhalte von
   Kommentaren und Krankmeldungen stehen nicht darin. Löschung nach 24 Monaten.
 - **Anmeldeprotokoll**: Anmeldung/Abmeldung mit Zeit und grobem Gerätetyp,
-  fehlgeschlagene Anmeldungen, angezeigte Fehlermeldungen. Sichtbar **nur** für
-  eine ausdrücklich freigeschaltete Person der Administration. Löschung nach
+  fehlgeschlagene Anmeldungen, angezeigte Fehlermeldungen. Im Betrieb **für
+  niemanden einsehbar** – auch nicht für die Administration. Es dient allein dem
+  Betreiber zur Aufklärung von Sicherheitsvorfällen und Störungen. Löschung nach
   90 Tagen.
+- **Auswertung**: Ausfall und Anwesenheit nur als **Summen ohne Namen** – je
+  Schicht erst ab fünf Personen, sonst nur für den ganzen Betrieb; unter fünf
+  Personen im Betrieb gar nicht. Einzelne Personen sind nicht erkennbar.
 - Es wird **nicht** protokolliert, welche Seiten jemand aufruft oder worauf
   geklickt wird.
 
-**Zur Mitbestimmung (§ 87 Abs. 1 Nr. 6 BetrVG):** Anmeldeprotokoll,
-Auswertung (Kranktage je Person) und die Fehlzeiten-Leiste (früher gegangen /
-später gekommen; derzeit Testphase, nur Administration) sind geeignet,
-Verhalten oder Leistung zu überwachen. Wir schlagen vor, Zweck, Zugriff und
-Auswertungsverbot in einer Betriebsvereinbarung festzulegen.
+**Zur Mitbestimmung (§ 87 Abs. 1 Nr. 6 BetrVG):** Eine Auswertung je Person
+gibt es nicht, und das Anmeldeprotokoll kann im Betrieb niemand einsehen. Offen
+ist die Fehlzeiten-Leiste (früher gegangen / später gekommen; derzeit
+Testphase, nur Administration): Sie verrechnet Stunden mit dem
+Zeitausgleichskonto und ist geeignet, Verhalten zu erfassen. Wir schlagen vor,
+ihren Zweck in einer Betriebsvereinbarung festzulegen oder sie abzuschalten.
 
 ## 5. Austritt
 
@@ -76,14 +81,14 @@ Auswertungsverbot in einer Betriebsvereinbarung festzulegen.
   (siehe `docs/verarbeitungsverzeichnis.md`).
 - Verschlüsselte Übertragung (HTTPS), Rechte in der Datenbank, automatische
   Abmeldung bei Inaktivität, Ratenbegrenzung gegen Passwort-Durchprobieren.
-  Die tägliche Datensicherung nach GitHub schlägt seit dem 29.10.2026 fehl und
-  muss vor der Vorlage repariert sein.
+  Die Datenbank wird jede Nacht verschlüsselt gesichert (14 Tage Aufbewahrung);
+  eine monatliche Probe prüft, dass sich die Sicherung öffnen lässt.
 
 ## 7. Vorschläge für die Betriebsvereinbarung
 
 1. Zweckbindung: Planung und Urlaub – keine Leistungs- oder Verhaltenskontrolle.
-2. Zugriff auf Anmeldeprotokoll und Auswertung: namentlich festgelegte Personen.
+2. Anmeldeprotokoll: kein Zugriff im Betrieb; Auswertung nur als Summen ohne Namen.
 3. Fehlzeiten-Leiste: Zweck und Nutzung festlegen oder abschalten.
 4. Löschfristen wie oben; keine längere Aufbewahrung ohne Anlass.
-5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.27).
+5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.29).
 6. Änderungen an Rollen und Protokollen nur nach Information des Betriebsrats.

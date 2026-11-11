@@ -41,6 +41,11 @@ jobs:
       - name: Bauen
         run: npm run build
       - name: Browser installieren
-        run: npx playwright install --with-deps chromium
+        # Erst der Browser selbst (von Playwright, nicht von Ubuntu). Die Systempakete kommen aus den
+        # Ubuntu-Spiegeln – sind die gestört, hängt das sonst 20 Minuten. Deshalb mit Zeitlimit; das
+        # Runner-Abbild bringt die nötigen Bibliotheken ohnehin mit.
+        run: |
+          npx playwright install chromium
+          timeout 180 npx playwright install-deps chromium || echo "Systempakete übersprungen (Spiegel nicht erreichbar)"
       - name: Oberflächen-Tests
         run: npm run test:e2e

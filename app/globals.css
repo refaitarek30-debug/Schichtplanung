@@ -733,9 +733,9 @@ body {
 /* „Wen sehe ich?“ kommt vom rechten Rand herein: schwebendes Glasblatt,
    der Kalender bleibt links daneben sichtbar und scheint leicht durch. */
 .wen-blatt {
-  background-color: rgb(var(--c-surface) / 0.74);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
+  background-color: rgb(var(--c-surface) / 0.38);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid var(--glas-rand);
   box-shadow: 0 24px 60px rgba(15, 20, 40, 0.28), inset 0 1px 0 var(--glas-licht);
 }
