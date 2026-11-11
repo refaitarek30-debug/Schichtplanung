@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-11T15:00:00+01:00",
+    titel: "Kalender als PDF",
+    text: "Jahreskalender in drei Darstellungen (schlicht, farbig, kompakt mit Summen) und eine Monatsansicht – zum Drucken oder als PDF. Im Kalender: „Wen sehe ich?“ öffnen, unten „Kalender als PDF“.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-10T19:30:00+01:00",
     titel: "Auswertung ohne Namen",
     text: "Die Auswertung zeigt nur noch Summen für den Betrieb und – ab fünf Personen je Schicht – je Schicht. Einzelne Personen sind nicht mehr erkennbar. Das Anmeldeprotokoll ist im Betrieb nicht mehr einsehbar.",
