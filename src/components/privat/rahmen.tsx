@@ -7,6 +7,7 @@ import { CalendarDays, Ellipsis, Layers, ListChecks, Users } from "lucide-react"
 import { useTodoZahl } from "@/components/kalender/todo-zaehler";
 import { LeisteHalten } from "@/components/layout/leiste-halten";
 import { AustrittHinweis } from "./austritt-hinweis";
+import { PrivatUmfrage } from "./umfrage";
 import { appScroller } from "@/lib/app-scroller";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
       <Suspense fallback={null}>
         <AustrittHinweis />
       </Suspense>
+      <PrivatUmfrage />
       {/* Schwebende Leiste im Glas-Stil – fest am unteren Rand. */}
       <nav
         aria-label="Bereiche"

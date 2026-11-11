@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { PlattformTabelle, type Dashboard, type FirmaKennzahlen } from "./tabelle";
+import { PlattformTabelle, type Dashboard, type FirmaKennzahlen, type Umfrage } from "./tabelle";
 import { SupportCode } from "./support-code";
 import { LoeschBereich, type LoeschListe } from "./loeschen";
 
@@ -86,10 +86,12 @@ export default async function PlattformPage() {
   const { data: dash } = await admin.rpc("platform_dashboard", { p_limit: 30 });
   // Auch die Löschliste ist eine Zugabe: ohne sie bleibt der Rest der Seite stehen.
   const { data: loeschliste } = await admin.rpc("plattform_loeschliste");
+  // Umfrage im Privatbereich (0217): nur Summen und Texte ohne Namen.
+  const { data: umfrage } = await admin.rpc("platform_umfrage");
 
   return (
     <>
-      <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} />
+      <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} umfrage={(umfrage as Umfrage | null) ?? null} />
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
         <SupportCode />
       </div>

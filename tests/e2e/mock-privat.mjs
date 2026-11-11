@@ -117,6 +117,8 @@ http.createServer((req, res) => {
         }
         return send(200, n);
       }
+      if (f === "privat_umfrage_offen") return send(200, db.umfrageOffen === true);
+      if (f === "privat_umfrage_senden") { db.umfrage = body; db.umfrageOffen = false; return send(204); }
       if (f === "privat_feiertage") return send(200, feiertage(body.p_jahr));
       if (f === "lohnzettel_einwilligung") { db.konto.lohnzettel_einwilligung = body.p_an ? new Date().toISOString() : null; return send(204); }
       if (f === "meine_termine") return send(200, db.termine);
@@ -174,6 +176,8 @@ http.createServer((req, res) => {
       // ---- Beitritt mit bestehendem Konto (0194) ----
       if (f === "beitritt_vorschau") return body.p_code === "ABCD2345" ? send(200, [{ firma: "Testbetrieb", name: "Tarek Test", termine: 3, todos: 2, eigene_schichten: 12 }]) : send(400, { code: "P0001", message: "Dieser Code ist ungültig oder abgelaufen. Bitte frag im Betrieb nach einem neuen." });
       if (f === "beitritt_annehmen") { db.beitritt = body; return send(204); }
+      if (f === "_umfrage_oeffnen") { db.umfrageOffen = true; return send(204); }
+      if (f === "_umfrage") return send(200, db.umfrage ?? null);
       if (f === "_beitritt") return send(200, db.beitritt ?? null);
       return send(200, null);
     }
