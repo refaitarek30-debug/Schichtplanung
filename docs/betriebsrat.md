@@ -1,6 +1,6 @@
 # ShiftNexo – Unterlage für den Betriebsrat
 
-Stand: 10. November 2026 · Datenschutzerklärung Fassung 2.29
+Stand: 12. November 2026 · Datenschutzerklärung Fassung 2.31
 
 Diese Unterlage beschreibt, was die Anwendung tatsächlich tut – wer was sieht,
 was gespeichert wird und wie lange. Sie ersetzt keine Rechtsberatung und keine
@@ -56,6 +56,12 @@ Datenbank durchgesetzt (Row Level Security), nicht nur in der Oberfläche.
   Personen im Betrieb gar nicht. Einzelne Personen sind nicht erkennbar.
 - Es wird **nicht** protokolliert, welche Seiten jemand aufruft oder worauf
   geklickt wird.
+- **Meine Zahlen** (freiwillig, nur für die Person selbst): Jede Person kann
+  für sich ansehen, wie viele Sonntage, Feiertage und Nächte sie gearbeitet hat,
+  längste Serie, freie Wochenenden und Vergleich mit dem Vorjahr. Die Zahlen
+  werden beim Öffnen aus dem eigenen Plan errechnet, **nicht gespeichert** und
+  sind für niemanden sonst sichtbar – auch nicht für Schichtleitung oder
+  Administration. Es gibt keinen Vergleich zwischen Personen.
 
 **Zur Mitbestimmung (§ 87 Abs. 1 Nr. 6 BetrVG):** Eine Auswertung je Person
 gibt es nicht, und das Anmeldeprotokoll kann im Betrieb niemand einsehen. Offen
@@ -90,5 +96,5 @@ ihren Zweck in einer Betriebsvereinbarung festzulegen oder sie abzuschalten.
 2. Anmeldeprotokoll: kein Zugriff im Betrieb; Auswertung nur als Summen ohne Namen.
 3. Fehlzeiten-Leiste: Zweck und Nutzung festlegen oder abschalten.
 4. Löschfristen wie oben; keine längere Aufbewahrung ohne Anlass.
-5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.29).
+5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.31).
 6. Änderungen an Rollen und Protokollen nur nach Information des Betriebsrats.
