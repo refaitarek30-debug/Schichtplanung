@@ -1,6 +1,6 @@
 # ShiftNexo – Unterlage für den Betriebsrat
 
-Stand: 12. November 2026 · Datenschutzerklärung Fassung 2.31
+Stand: 12. November 2026 · Datenschutzerklärung Fassung 2.32
 
 Diese Unterlage beschreibt, was die Anwendung tatsächlich tut – wer was sieht,
 was gespeichert wird und wie lange. Sie ersetzt keine Rechtsberatung und keine
@@ -64,11 +64,11 @@ Datenbank durchgesetzt (Row Level Security), nicht nur in der Oberfläche.
   Administration. Es gibt keinen Vergleich zwischen Personen.
 
 **Zur Mitbestimmung (§ 87 Abs. 1 Nr. 6 BetrVG):** Eine Auswertung je Person
-gibt es nicht, und das Anmeldeprotokoll kann im Betrieb niemand einsehen. Offen
-ist die Fehlzeiten-Leiste (früher gegangen / später gekommen; derzeit
-Testphase, nur Administration): Sie verrechnet Stunden mit dem
-Zeitausgleichskonto und ist geeignet, Verhalten zu erfassen. Wir schlagen vor,
-ihren Zweck in einer Betriebsvereinbarung festzulegen oder sie abzuschalten.
+gibt es nicht, und das Anmeldeprotokoll kann im Betrieb niemand einsehen. Die
+Fehlzeiten-Leiste (früher gegangen / später gekommen) ist seit dem 12.11.2026
+**abgeschaltet**: Neue Einträge sind weder in der Anwendung noch in der
+Datenbank möglich. Ein einzelner älterer Eintrag aus der Testphase bleibt
+bestehen und wird weiter mit dem V-Konto verrechnet.
 
 ## 5. Austritt
 
@@ -94,7 +94,7 @@ ihren Zweck in einer Betriebsvereinbarung festzulegen oder sie abzuschalten.
 
 1. Zweckbindung: Planung und Urlaub – keine Leistungs- oder Verhaltenskontrolle.
 2. Anmeldeprotokoll: kein Zugriff im Betrieb; Auswertung nur als Summen ohne Namen.
-3. Fehlzeiten-Leiste: Zweck und Nutzung festlegen oder abschalten.
+3. Fehlzeiten-Leiste bleibt abgeschaltet; eine Wiedereinführung nur nach Zustimmung des Betriebsrats.
 4. Löschfristen wie oben; keine längere Aufbewahrung ohne Anlass.
-5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.31).
+5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.32).
 6. Änderungen an Rollen und Protokollen nur nach Information des Betriebsrats.

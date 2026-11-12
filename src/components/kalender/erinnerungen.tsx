@@ -109,7 +109,7 @@ export function ErinnerungenGeraet({ className }: { className?: string }) {
 
 const ARTEN: { id: MitteilungsArt; titel: string; text: string; firma: boolean }[] = [
   { id: "antraege", titel: "Anträge", text: "Urlaub genehmigt oder abgelehnt, neue Anträge (Leitung)", firma: true },
-  { id: "plan", titel: "Planänderungen", text: "Wenn die Schichtleitung deinen Plan ändert oder eine Fehlzeit einträgt", firma: true },
+  { id: "plan", titel: "Planänderungen", text: "Wenn die Schichtleitung deinen Plan ändert", firma: true },
   { id: "einspringen", titel: "Einspringen", text: "Wenn du gefragt wirst, ob du einspringen kannst", firma: true },
   { id: "teilen", titel: "Partner, Familie & Gruppen", text: "Wenn jemand bei dir einträgt, sich verbindet oder einer Gruppe beitritt", firma: false },
 ];
