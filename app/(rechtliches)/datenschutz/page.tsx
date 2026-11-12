@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="11. November 2026"
+      updated="12. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -165,9 +165,10 @@ export default function DatenschutzPage() {
             Abwesenheiten mit Art (z. B. Urlaub, Freischicht, Schulung, <em>krank</em>)
           </li>
           <li>
-            Fehlzeiten („früher gegangen“, „später gekommen“) mit Datum und Stunden; sie
-            mindern V- oder Altersfreizeit-Konto. Diese Funktion ist derzeit auf die
-            Administration beschränkt
+            Fehlzeiten („früher gegangen“, „später gekommen“): Die Erfassung ist seit dem
+            12.11.2026 abgeschaltet; neue Einträge sind nicht möglich. Bereits erfasste
+            Einträge (Datum und Stunden) bleiben gespeichert und mindern weiter das V- oder
+            Altersfreizeit-Konto
           </li>
           <li>Benachrichtigungen in der Anwendung (z. B. zu Antragsentscheidungen)</li>
           <li>
@@ -388,7 +389,7 @@ export default function DatenschutzPage() {
           </li>
           <li>
             <strong>Administration</strong> sieht und verwaltet alle Daten des eigenen
-            Unternehmens, einschließlich Fehlzeiten, Änderungsprotokoll und
+            Unternehmens, einschließlich früher erfasster Fehlzeiten, Änderungsprotokoll und
             Benachrichtigungen im Unternehmen
           </li>
           <li>
@@ -444,7 +445,7 @@ export default function DatenschutzPage() {
           <strong>Mitteilungen aufs Handy:</strong> Wer auf einem Gerät Mitteilungen erlaubt,
           bekommt als Push-Mitteilung: Erinnerungen an Termine und To-dos, die Benachrichtigungen
           der Glocke (z. B. Urlaub genehmigt oder abgelehnt, neuer Antrag für die Leitung,
-          eingetragene Fehlzeit, Frage zum Einspringen), Änderungen des eigenen Plans durch die
+          Frage zum Einspringen), Änderungen des eigenen Plans durch die
           Schichtleitung (Datum und neue Schicht, mehrere Tage zusammengefasst), Hinweise der
           Schichtleitung an die Person (Absender und Text; je nach Wahl der Leitung sofort oder erst
           zu Beginn der nächsten eigenen Schicht) und Hinweise, wenn

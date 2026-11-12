@@ -55,7 +55,6 @@ import { dayStatus, leaveBalance } from "@/lib/staffing";
 import { addDays, formatDE, formatDays, fromISO, vTageInStunden } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { useAktualisierung } from "@/lib/live-refresh";
-import { FehlzeitenLeiste } from "@/components/dashboard/fehlzeiten-leiste";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 import { gruppiereAntraege } from "@/lib/leave-groups";
@@ -496,19 +495,6 @@ export default function DashboardPage() {
           // wird über den großen Knopf „Urlaub beantragen“ oder im Plan.
           nurLesen={!(role === "admin" || role === "shift_leader")}
           antragLink={kompakt ? "/schichtplan?antrag=1" : undefined}
-        />
-        </Fach>
-      ) : null}
-
-      {/* Direkt unter dem Plan: früher gegangen / später gekommen. Vorerst
-          nur für die Administration (Testphase) – die Schichtleitung sieht
-          die Leiste noch nicht. Die Datenbank prüft es noch einmal. */}
-      {mode === "live" && role === "admin" ? (
-        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-1">
-        <FehlzeitenLeiste
-          heute={TODAY}
-          istAdmin={role === "admin"}
-          eigeneEmployeeId={profile.employeeId}
         />
         </Fach>
       ) : null}

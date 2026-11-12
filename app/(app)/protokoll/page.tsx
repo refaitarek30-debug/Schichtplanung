@@ -201,7 +201,7 @@ export default function ProtokollPage() {
         description={
           voll
             ? "Wer sich wann angemeldet hat, wer was geändert hat und wo jemandem eine Fehlermeldung angezeigt wurde."
-            : "Wer was geändert hat – Plan, Urlaub, Anträge und Stammdaten. Anmeldungen sieht nur die dafür freigeschaltete Administration."
+            : "Wer was geändert hat – Plan, Urlaub, Anträge und Stammdaten. Anmeldungen und Fehlermeldungen sind im Betrieb für niemanden einsehbar."
         }
         action={
           <button
