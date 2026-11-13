@@ -23,7 +23,9 @@ was noch fehlt.
 
 ### 1.2 Zugangskontrolle (Anmeldung)
 - Persönliche Konten, keine Sammelkonten. Passwörter nur als Hash (bcrypt beim
-  Anmeldedienst), Mindestlänge 8 Zeichen.
+  Anmeldedienst). Neue Passwörter: mindestens 10 Zeichen; häufige Passwörter
+  (z. B. „Passwort123“, „Sommer2026“), Zahlenreihen und Passwörter mit dem eigenen
+  Namen oder der E-Mail-Adresse werden abgelehnt.
 - **Zwei-Faktor-Anmeldung** (6-stelliger Code aus einer Authenticator-App, TOTP):
   **Pflicht für Administration, Schichtleitung und Betreiber**, freiwillig für alle
   anderen. Die Pflicht setzt die Datenbank selbst durch: Wer einen zweiten Faktor hat,

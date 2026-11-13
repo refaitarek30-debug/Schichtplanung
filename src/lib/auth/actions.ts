@@ -12,7 +12,7 @@ import type { FormState } from "./form-state";
 import { grantAccess, siteOrigin } from "./invite";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
-import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
+import { PASSWORT_MAX, passwortProblem } from "./password-policy";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, mitFrist, protokolliere } from "./protokoll-server";
 import { GESPERRT_TEXT, zielMitWeiter, zweiterFaktorOffen } from "./zwei-faktor";
@@ -168,12 +168,8 @@ export async function updatePassword(
   const password = String(formData.get("password") ?? "");
   const repeat = String(formData.get("password_repeat") ?? "");
 
-  if (password.length < PASSWORT_MIN) {
-    return { error: `Das Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
-  }
-  if (password.length > PASSWORT_MAX) {
-    return { error: `Das Passwort darf höchstens ${PASSWORT_MAX} Zeichen lang sein.` };
-  }
+  const problem = passwortProblem(password);
+  if (problem) return { error: problem };
   if (password !== repeat) return { error: "Die beiden Passwörter stimmen nicht überein." };
 
   const supabase = await createClient();

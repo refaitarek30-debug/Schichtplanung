@@ -9,7 +9,7 @@ import { LEGAL_VERSIONS } from "@/lib/legal/version";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 import { PRIVAT_DOMAIN, pruefeSpitzname, spitznameZuEmail } from "./spitzname";
-import { PASSWORT_MAX, PASSWORT_MIN } from "@/lib/auth/password-policy";
+import { passwortProblem } from "@/lib/auth/password-policy";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import type { FormState } from "@/lib/auth/form-state";
 
@@ -42,12 +42,8 @@ export async function registrierePrivat(_prev: FormState, formData: FormData): P
 
   const nameFehler = pruefeSpitzname(spitzname);
   if (nameFehler) return { error: nameFehler };
-  if (password.length < PASSWORT_MIN) {
-    return { error: `Das Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
-  }
-  if (password.length > PASSWORT_MAX) {
-    return { error: `Das Passwort darf höchstens ${PASSWORT_MAX} Zeichen lang sein.` };
-  }
+  const passwortFehler = passwortProblem(password, spitzname);
+  if (passwortFehler) return { error: passwortFehler };
   if (!datenschutz) return { error: "Bitte bestätige, dass du die Datenschutzerklärung gelesen hast." };
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { error: "Die Registrierung ist auf diesem Server gerade nicht verfügbar." };

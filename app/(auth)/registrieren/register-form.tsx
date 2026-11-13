@@ -134,11 +134,11 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
           <Field label="E-Mail">
             <Input type="email" name="email" autoComplete="email" required placeholder="du@unternehmen.de" disabled={disabled} />
           </Field>
-          <Field label="Passwort" hint="Mindestens 8 Zeichen.">
-            <PasswortInput name="password" autoComplete="new-password" required minLength={8} maxLength={72} disabled={disabled} />
+          <Field label="Passwort" hint="Mindestens 10 Zeichen.">
+            <PasswortInput name="password" autoComplete="new-password" required minLength={10} maxLength={72} disabled={disabled} />
           </Field>
           <Field label="Passwort wiederholen">
-            <PasswortInput name="password_repeat" autoComplete="new-password" required minLength={8} maxLength={72} disabled={disabled} />
+            <PasswortInput name="password_repeat" autoComplete="new-password" required minLength={10} maxLength={72} disabled={disabled} />
           </Field>
         </>
       ),
