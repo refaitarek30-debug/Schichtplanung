@@ -6,7 +6,35 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { zweiFaktorBestaetigen, zweiFaktorStarten } from "@/lib/auth/zwei-faktor-actions";
 
-type Start = { factorId?: string; qr?: string; secret?: string; error?: string };
+type Start = { factorId?: string; qr?: string; secret?: string; uri?: string; error?: string };
+
+/**
+ * Der Schlüssel gilt nur für diesen einen Einrichtungsversuch. Wird die Seite
+ * neu geladen (Wechsel in die Authenticator-App, Handy sperrt), muss es
+ * derselbe bleiben – sonst passt der gescannte Code nicht mehr. Deshalb merkt
+ * sich das Gerät ihn kurz; nach dem Bestätigen wird er sofort gelöscht.
+ */
+const MERKER = "sn-zwei-faktor-einrichtung";
+const MERK_DAUER_MS = 30 * 60 * 1000;
+
+function gemerkt(): (Start & { t: number }) | null {
+  try {
+    const roh = window.localStorage.getItem(MERKER);
+    if (!roh) return null;
+    const w = JSON.parse(roh) as Start & { t: number };
+    return w.factorId && w.secret && Date.now() - w.t < MERK_DAUER_MS ? w : null;
+  } catch {
+    return null;
+  }
+}
+function merke(s: Start | null) {
+  try {
+    if (s) window.localStorage.setItem(MERKER, JSON.stringify({ ...s, t: Date.now() }));
+    else window.localStorage.removeItem(MERKER);
+  } catch {
+    // ohne Speicher: dann eben ein neuer Schlüssel beim Neuladen
+  }
+}
 
 /** QR-Code scannen, ersten Code eingeben – fertig. */
 export function Einrichten({ weiter }: { weiter: string }) {
@@ -19,8 +47,15 @@ export function Einrichten({ weiter }: { weiter: string }) {
 
   useEffect(() => {
     let weg = false;
-    void zweiFaktorStarten().then((s) => {
-      if (!weg) setStart(s);
+    const alt = gemerkt();
+    void zweiFaktorStarten(alt?.factorId ?? null).then((s) => {
+      if (weg) return;
+      if (s.weiter && alt) {
+        setStart(alt);
+        return;
+      }
+      if (s.factorId) merke(s);
+      setStart(s);
     });
     return () => {
       weg = true;
@@ -38,6 +73,7 @@ export function Einrichten({ weiter }: { weiter: string }) {
       setFehler(r.error);
       return;
     }
+    merke(null);
     setFertig(true);
     // Ganz neu laden: die bestätigte Sitzung steckt jetzt im Cookie.
     window.setTimeout(() => window.location.assign(weiter), 1200);
@@ -62,7 +98,8 @@ export function Einrichten({ weiter }: { weiter: string }) {
           <b>1.</b> Authenticator-App aufs Handy laden (Microsoft Authenticator, Google Authenticator oder ähnlich).
         </li>
         <li>
-          <b>2.</b> In der App „Konto hinzufügen“ und diesen QR-Code scannen.
+          <b>2.</b> In der App „Konto hinzufügen“ und diesen QR-Code scannen. Bist du auf demselben Handy: den Knopf
+          darunter nutzen oder den Schlüssel abtippen.
         </li>
         <li>
           <b>3.</b> Den 6-stelligen Code aus der App unten eingeben.
@@ -73,6 +110,14 @@ export function Einrichten({ weiter }: { weiter: string }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={start.qr} alt="QR-Code für die Authenticator-App" width={200} height={200} className="rounded-xl bg-white p-2" />
       </div>
+      {start.uri ? (
+        <a
+          href={start.uri}
+          className="block rounded-xl bg-surface-muted px-3 py-2.5 text-center text-[14px] font-semibold text-brand-700"
+        >
+          Auf diesem Handy? Direkt in der Authenticator-App öffnen
+        </a>
+      ) : null}
       <div className="text-center">
         {zeigeSchluessel ? (
           <p className="break-all font-mono text-[13px]" data-zwei-faktor-schluessel>

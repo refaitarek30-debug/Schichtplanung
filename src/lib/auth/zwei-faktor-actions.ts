@@ -26,19 +26,32 @@ function nurZiffern(code: string): string {
   return code.replace(/\D/g, "").slice(0, 6);
 }
 
-/** Einrichten, Schritt 1: neuen Faktor anlegen und den QR-Code liefern. */
-export async function zweiFaktorStarten(): Promise<{ factorId?: string; qr?: string; secret?: string; error?: string }> {
+/**
+ * Einrichten, Schritt 1: neuen Faktor anlegen und den QR-Code liefern.
+ *
+ * `behalten`: ein Faktor, dessen Schlüssel das Gerät noch kennt (Seite neu
+ * geladen, z. B. nach dem Wechsel in die Authenticator-App). Den lassen wir
+ * stehen – sonst passt der schon gescannte Schlüssel nicht mehr zum Konto.
+ */
+export async function zweiFaktorStarten(
+  behalten?: string | null,
+): Promise<{ factorId?: string; qr?: string; secret?: string; uri?: string; weiter?: boolean; error?: string }> {
   if (!isSupabaseConfigured) return { error: NICHT_KONFIGURIERT };
   const supabase = await createClient();
 
-  // Halbfertige Versuche von vorher aufräumen – sonst sammelt sich pro
-  // abgebrochenem Einrichten ein unbestätigter Faktor an.
   const { data: liste, error: listeFehler } = await supabase.auth.mfa.listFactors();
   if (listeFehler) return { error: "Bitte neu anmelden und noch einmal versuchen." };
   if ((liste?.totp ?? []).length > 0) return { error: "Die Zwei-Faktor-Anmeldung ist schon eingerichtet." };
-  for (const f of liste?.all ?? []) {
-    if (f.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+
+  const offen = (liste?.all ?? []).filter((f) => f.status !== "verified");
+  if (behalten && offen.some((f) => f.id === behalten)) {
+    // Andere halbfertige Versuche aufräumen, den gemerkten behalten.
+    for (const f of offen) if (f.id !== behalten) await supabase.auth.mfa.unenroll({ factorId: f.id });
+    return { factorId: behalten, weiter: true };
   }
+  // Halbfertige Versuche von vorher aufräumen – sonst sammelt sich pro
+  // abgebrochenem Einrichten ein unbestätigter Faktor an.
+  for (const f of offen) await supabase.auth.mfa.unenroll({ factorId: f.id });
 
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: "totp",
@@ -54,6 +67,7 @@ export async function zweiFaktorStarten(): Promise<{ factorId?: string; qr?: str
     factorId: data.id,
     qr: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
     secret: data.totp.secret,
+    uri: data.totp.uri,
   };
 }
 
