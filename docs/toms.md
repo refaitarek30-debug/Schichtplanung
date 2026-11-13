@@ -109,6 +109,9 @@ was noch fehlt.
   14 Tage aufbewahrt (`docs/datensicherung.md`).
 - **Wiederherstellungsprobe** monatlich und auf Knopfdruck: Die neueste Sicherung wird
   entschlüsselt und auf Vollständigkeit geprüft.
+- **Zusätzliche Offline-Kopie:** wöchentlich auf einer eigenen, verschlüsselten externen
+  Festplatte beim Betreiber (Sicherung bleibt zusätzlich mit eigenem Passwort
+  verschlüsselt; Kopien älter als 14 Tage werden gelöscht).
 - Anwendung ohne eigenen Server (Vercel): Ausfälle einzelner Rechner fängt der
   Anbieter ab; jede neue Fassung kann per Klick auf die vorige zurückgesetzt werden.
 - Störung des Anmeldedienstes: Die App meldet sie ehrlich, statt still abzumelden;

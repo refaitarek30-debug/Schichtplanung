@@ -52,3 +52,33 @@ und sollte einmal im Jahr in ein leeres Supabase-Testprojekt geübt werden.
      --dbname "<verbindungs-uri>"
    ```
    (Vorgehen nach der Supabase-Anleitung „Backup and restore using the CLI“.)
+
+## Zusätzliche Kopie auf einer eigenen Festplatte (offline)
+
+Die Sicherungen bei GitHub verschwinden nach 14 Tagen, und GitHub sitzt in den USA. Eine
+zusätzliche Kopie auf einer externen Festplatte, die sonst nicht am Rechner hängt, schützt
+gegen den Fall, dass GitHub-Konto oder Supabase gleichzeitig ausfallen (Regel 3-2-1: drei
+Kopien, zwei Speicherarten, eine davon außer Haus bzw. offline).
+
+**Einmal pro Woche (Erinnerung in den Kalender, z. B. sonntags):**
+
+1. GitHub → Repository → **Actions** → **„Datensicherung“** → oberster grüner Lauf →
+   unten unter „Artifacts“ die Datei herunterladen.
+2. Die heruntergeladene Datei **so wie sie ist** (verschlüsselt, `.gpg`) auf die Festplatte
+   in den Ordner `ShiftNexo-Sicherungen` kopieren. Nicht entschlüsseln.
+3. Festplatte abziehen und an einem sicheren Ort aufbewahren (nicht im selben Raum wie
+   der Rechner, am besten abschließbar).
+4. **Alte Kopien löschen:** jede Datei, die **älter als 14 Tage** ist, löschen (also höchstens
+   zwei Dateien behalten). Die 14 Tage stehen so im AV-Vertrag (§ 10) und in der
+   Datenschutzerklärung – längere Aufbewahrung müsste dort erst geändert werden.
+
+**Regeln:**
+
+- Die Festplatte selbst verschlüsseln (Windows: BitLocker, Mac: „Verschlüsseln“ im Finder,
+  Linux: LUKS). Doppelt hält besser, falls die Platte verloren geht.
+- Das Sicherungs-Passwort (`BACKUP_PASSWORT`) nie auf derselben Festplatte speichern. Es
+  steht nur im Passwort-Manager und in Umschlag B des Notfallplans.
+- Nur der Betreiber hat Zugriff. Verlust der Festplatte ist eine mögliche Datenpanne:
+  `docs/datenpanne.md` befolgen (wegen der Verschlüsselung meist ohne Meldepflicht,
+  aber immer dokumentieren).
+- Kunden in der TOM-Anlage darüber informieren (steht dort unter „Verfügbarkeit“).

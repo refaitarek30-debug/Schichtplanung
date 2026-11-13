@@ -1,6 +1,6 @@
 # ShiftNexo – Unterlage für den Betriebsrat
 
-Stand: 12. November 2026 · Datenschutzerklärung Fassung 2.32
+Stand: 13. November 2026 · Datenschutzerklärung Fassung 2.34
 
 Diese Unterlage beschreibt, was die Anwendung tatsächlich tut – wer was sieht,
 was gespeichert wird und wie lange. Sie ersetzt keine Rechtsberatung und keine
@@ -56,6 +56,9 @@ Datenbank durchgesetzt (Row Level Security), nicht nur in der Oberfläche.
   Personen im Betrieb gar nicht. Einzelne Personen sind nicht erkennbar.
 - Es wird **nicht** protokolliert, welche Seiten jemand aufruft oder worauf
   geklickt wird.
+- **Hinweise ohne Lesebestätigung**: Schichtleitung und Administration können
+  einer Person einen Hinweis schicken, sehen aber **nicht**, ob oder wann er
+  gelesen wurde.
 - **Meine Zahlen** (freiwillig, nur für die Person selbst): Jede Person kann
   für sich ansehen, wie viele Sonntage, Feiertage und Nächte sie gearbeitet hat,
   längste Serie, freie Wochenenden und Vergleich mit dem Vorjahr. Die Zahlen
@@ -89,6 +92,12 @@ bestehen und wird weiter mit dem V-Konto verrechnet.
   Abmeldung bei Inaktivität, Ratenbegrenzung gegen Passwort-Durchprobieren.
   Die Datenbank wird jede Nacht verschlüsselt gesichert (14 Tage Aufbewahrung);
   eine monatliche Probe prüft, dass sich die Sicherung öffnen lässt.
+- **Zwei-Faktor-Anmeldung** (Code aus einer Authenticator-App): Pflicht für
+  Schichtleitung und Administration, freiwillig für alle anderen. Nach fünf
+  falschen Versuchen wird der Zugang gesperrt; die Administration schaltet ihn
+  wieder frei.
+- **Meine Daten herunterladen**: Jede Person lädt alle über sie gespeicherten
+  Daten selbst als Datei herunter (Auskunft nach Art. 15 DSGVO).
 
 ## 7. Vorschläge für die Betriebsvereinbarung
 
@@ -96,5 +105,6 @@ bestehen und wird weiter mit dem V-Konto verrechnet.
 2. Anmeldeprotokoll: kein Zugriff im Betrieb; Auswertung nur als Summen ohne Namen.
 3. Fehlzeiten-Leiste bleibt abgeschaltet; eine Wiedereinführung nur nach Zustimmung des Betriebsrats.
 4. Löschfristen wie oben; keine längere Aufbewahrung ohne Anlass.
-5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.32).
+5. Information der Beschäftigten über die Datenschutzerklärung (Fassung 2.34).
 6. Änderungen an Rollen und Protokollen nur nach Information des Betriebsrats.
+7. Keine Lesebestätigung bei Hinweisen; eine Wiedereinführung nur nach Zustimmung des Betriebsrats.

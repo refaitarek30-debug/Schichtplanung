@@ -17,6 +17,7 @@ import {
   GraduationCap,
   History,
   Lock,
+  KeyRound,
   ListChecks,
   LogOut,
   MonitorSmartphone,
@@ -25,6 +26,7 @@ import {
   Plane,
   Repeat,
   Server,
+  ShieldCheck,
   Smartphone,
   Thermometer,
   Trash2,
@@ -137,16 +139,16 @@ const SICHER_PRIVAT: Punkt[] = [
   { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter, keine Werbe- oder Analysedienste." },
   { icon: <Users className={i} />, titel: "Nur wen du einlädst", text: "Deine Schichten sieht nur, wem du sie freigibst." },
   { icon: <Smartphone className={i} />, titel: "Ohne E-Mail möglich", text: "Spitzname und Passwort genügen." },
-  { icon: <Trash2 className={i} />, titel: "Löschen jederzeit", text: "Dein Konto mit allen Einträgen, selbst und sofort." },
+  { icon: <Trash2 className={i} />, titel: "Löschen jederzeit", text: "Dein Konto mit allen Einträgen, selbst und sofort. Vorher alles als Datei sichern." },
 ];
 
 const SICHER_BETRIEB: Punkt[] = [
   { icon: <Server className={i} />, titel: "Server in der EU", text: "Die Daten liegen in einer Datenbank in Irland." },
-  { icon: <Lock className={i} />, titel: "Verschlüsselt übertragen", text: "Jede Verbindung läuft über HTTPS." },
+  { icon: <KeyRound className={i} />, titel: "Zwei-Faktor-Anmeldung", text: "Pflicht für Leitung und Administration. Nach 5 Fehlversuchen wird der Zugang gesperrt." },
   { icon: <Users className={i} />, titel: "Getrennte Bereiche", text: "Jeder Betrieb hat einen eigenen Bereich; die Trennung setzt die Datenbank selbst durch." },
+  { icon: <ShieldCheck className={i} />, titel: "Keine Leistungskontrolle", text: "Keine Auswertung je Person, keine Lesebestätigung. Krankheit ist standardmäßig privat." },
   { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter. Über Anträge entscheidet immer ein Mensch." },
-  { icon: <LogOut className={i} />, titel: "Automatische Abmeldung", text: "Nach Rolle gestaffelt – für die Administration am kürzesten." },
-  { icon: <FileDown className={i} />, titel: "AV-Vertrag", text: "Ein Vertrag zur Auftragsverarbeitung steht bereit." },
+  { icon: <FileDown className={i} />, titel: "AV-Vertrag und Datenkopie", text: "AV-Vertrag mit TOMs. Jede Person lädt ihre Daten selbst als Datei herunter." },
 ];
 
 type Frage = { frage: string; antwort: ReactNode };
@@ -240,7 +242,9 @@ const FRAGEN_BETRIEB: Frage[] = [
     frage: "Wo liegen die Daten, und gibt es einen AV-Vertrag?",
     antwort: (
       <>
-        Die Daten liegen in einer Datenbank in der EU (Irland). Jeder Betrieb hat einen eigenen, in der Datenbank abgetrennten Bereich. Den{" "}
+        Die Daten liegen in einer Datenbank in der EU (Irland). Jeder Betrieb hat einen eigenen, in der Datenbank abgetrennten Bereich;
+        Leitung und Administration melden sich mit Zwei-Faktor-Code an. Technische und organisatorische Maßnahmen,
+        Löschkonzept und eine Vorlage für die Datenschutz-Folgenabschätzung schicken wir euch gern. Den{" "}
         <Link href="/avv" className="font-medium text-brand-600 hover:underline">
           Vertrag zur Auftragsverarbeitung
         </Link>{" "}
