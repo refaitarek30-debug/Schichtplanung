@@ -11,7 +11,7 @@ export type Sperre = { email: string; seit: string; firma: string | null };
  * Zwei-Faktor-Anmeldung zurücksetzen, wenn das Handy weg ist (Migration 0219).
  * Für Firmenkonten macht das normalerweise die Administration des Betriebs.
  */
-export function ZugangVerwalten({ sperren }: { sperren: Sperre[] }) {
+export function ZugangVerwalten({ sperren, nurLesen = false }: { sperren: Sperre[]; nurLesen?: boolean }) {
   const [stand, aktion, laeuft] = useActionState(plattformZugang, {} as FormState);
   return (
     <section className="rounded-2xl border border-line bg-surface p-4" data-plattform-zugang>
@@ -34,6 +34,7 @@ export function ZugangVerwalten({ sperren }: { sperren: Sperre[] }) {
       ) : (
         <p className="mt-3 text-[13px] text-ink-faint">Gerade ist kein Konto gesperrt.</p>
       )}
+      {nurLesen ? null : (
       <form action={aktion} className="mt-3 flex flex-wrap gap-2">
         <input
           name="kennung"
@@ -62,6 +63,7 @@ export function ZugangVerwalten({ sperren }: { sperren: Sperre[] }) {
           Zwei-Faktor zurücksetzen
         </button>
       </form>
+      )}
       {stand.error ? <p className="mt-2 text-sm text-crit-fg">{stand.error}</p> : null}
       {stand.success ? <p className="mt-2 text-sm text-ok-fg">{stand.success}</p> : null}
     </section>

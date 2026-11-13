@@ -10,6 +10,7 @@ import type { FormState } from "./form-state";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, protokolliere } from "./protokoll-server";
+import { betreiberPruefen } from "./betreiber";
 
 /**
  * Passwort zurücksetzen mit einem Code statt per E-Mail (Migration 0172).
@@ -92,20 +93,10 @@ export async function meinWiederherstellungscode(): Promise<{ code?: string; err
 /** Betreiber (/plattform): Code für ein Privatkonto, das seinen Code verloren hat. */
 export async function plattformPasswortCode(_prev: FormState & { code?: string }, formData: FormData): Promise<FormState & { code?: string }> {
   if (!isSupabaseConfigured) return NICHT_KONFIGURIERT;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Bitte neu anmelden." };
-
-  let admin: ReturnType<typeof createAdminClient>;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return NICHT_KONFIGURIERT;
-  }
-  const { data: istBetreiber } = await admin.rpc("is_platform_admin", { p_user_id: user.id });
-  if (istBetreiber !== true) return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  // Betreiber mit Zwei-Faktor-Code, nicht der Notfallzugang (Migration 0219/0221).
+  const betreiber = await betreiberPruefen({ aendern: true });
+  if (!betreiber) return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  const { admin } = betreiber;
 
   const kennung = String(formData.get("kennung") ?? "").trim();
   if (!kennung) return { error: "Bitte Spitzname oder E-Mail eingeben." };

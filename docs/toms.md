@@ -162,4 +162,4 @@ was noch fehlt.
 | Prüfung gegen bekannte, geleakte Passwörter | nicht vorhanden | mit Supabase Pro |
 | Zugesagte Verfügbarkeit (SLA) | keine (kostenloser Tarif) | mit Supabase Pro bzw. Vertrag |
 | Externer Sicherheitstest (Penetrationstest) | noch keiner | vor dem Regelbetrieb; Test durch die IT des Auftraggebers ist willkommen |
-| Abhängigkeit von einer Person | Notfallkonto und Notfall-Blatt in Arbeit | Notfallkonto (nur lesen), Notfall-Umschlag |
+| Abhängigkeit von einer Person | Notfallzugang (nur lesen, protokolliert) und Notfallplan mit zwei versiegelten Umschlägen (`docs/notfallplan.md`) | jährliche Prüfung der Umschläge |

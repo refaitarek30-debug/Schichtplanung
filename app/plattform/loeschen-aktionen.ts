@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { betreiberPruefen } from "@/lib/auth/betreiber";
 
 /**
  * Löschen im Betreiber-Bereich (Migration 0182).
@@ -21,21 +20,9 @@ export interface LoeschErgebnis {
 const BESTAETIGUNG = "LÖSCHEN";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Nur Betreiber mit Zwei-Faktor-Code, nie der Notfallzugang (nur lesen). */
 async function betreiber() {
-  if (!isSupabaseConfigured) return null;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  let admin: ReturnType<typeof createAdminClient>;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return null;
-  }
-  const { data } = await admin.rpc("is_platform_admin", { p_user_id: user.id });
-  return data === true ? { admin, userId: user.id } : null;
+  return betreiberPruefen({ aendern: true });
 }
 
 function ids(roh: string[]): string[] | null {

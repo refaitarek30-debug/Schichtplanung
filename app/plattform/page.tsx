@@ -67,6 +67,12 @@ export default async function PlattformPage() {
   if (await zweiterFaktorOffen(supabase)) redirect("/zwei-faktor?weiter=/plattform");
   if (!(await zweiterFaktorBestaetigt(supabase))) redirect("/zwei-faktor/einrichten?pflicht=1&weiter=/plattform");
 
+  // Notfallzugang (0221): darf nur lesen; jede Öffnung wird festgehalten.
+  // Fehlt die Funktion noch, gilt der Betreiber wie bisher als vollwertig.
+  const { data: darf, error: darfFehler } = await admin.rpc("platform_darf_aendern", { p_user_id: user.id });
+  const nurLesen = !darfFehler && darf === false;
+  if (nurLesen) await admin.rpc("platform_notfall_merken");
+
   const { data, error } = await admin.rpc("platform_overview");
   if (error) {
     throw new Error(`Die Betreiber-Übersicht konnte nicht geladen werden: ${error.message}`);
@@ -96,17 +102,36 @@ export default async function PlattformPage() {
   const { data: umfrage } = await admin.rpc("platform_umfrage");
   // Gesperrte Konten (0219) – ebenfalls eine Zugabe.
   const { data: sperren } = await admin.rpc("platform_sperren");
+  const { data: notfall } = nurLesen ? { data: null } : await admin.rpc("platform_notfall_zugriffe");
+  const notfallZugriffe = (notfall as string[] | null) ?? [];
 
   return (
     <>
+      {nurLesen ? (
+        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6" data-notfallzugang>
+          <p className="rounded-2xl bg-warn-bg px-4 py-3 text-[14px] font-semibold text-warn-fg">
+            Notfallzugang – nur lesen. Ändern, löschen und Codes erzeugen ist gesperrt. Diese Öffnung wird festgehalten.
+          </p>
+        </div>
+      ) : notfallZugriffe.length > 0 ? (
+        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
+          <p className="rounded-2xl bg-warn-bg px-4 py-3 text-[14px] text-warn-fg">
+            <b>Notfallzugang benutzt:</b>{" "}
+            {notfallZugriffe
+              .slice(0, 5)
+              .map((t) => new Date(t).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }))
+              .join(" · ")}
+          </p>
+        </div>
+      ) : null}
       <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} umfrage={(umfrage as Umfrage | null) ?? null} />
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
-        <SupportCode />
+        {nurLesen ? null : <SupportCode />}
         <div className="mt-4">
-          <ZugangVerwalten sperren={(sperren as Sperre[] | null) ?? []} />
+          <ZugangVerwalten sperren={(sperren as Sperre[] | null) ?? []} nurLesen={nurLesen} />
         </div>
       </div>
-      {loeschliste ? (
+      {loeschliste && !nurLesen ? (
         <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
           <LoeschBereich liste={loeschliste as LoeschListe} />
         </div>

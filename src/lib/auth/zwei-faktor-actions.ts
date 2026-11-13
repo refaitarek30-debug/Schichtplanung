@@ -10,6 +10,7 @@ import { allow, clientKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import type { FormState } from "./form-state";
 import { geraet, protokolliere } from "./protokoll-server";
+import { betreiberPruefen } from "./betreiber";
 
 /**
  * Zwei-Faktor-Anmeldung und Sperre (Migration 0219).
@@ -173,22 +174,10 @@ export async function zweiFaktorFuerMitarbeiterZuruecksetzen(employeeId: string)
 /** Betreiber (/plattform): Konto entsperren oder zweiten Faktor zurücksetzen. */
 export async function plattformZugang(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: NICHT_KONFIGURIERT };
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Bitte neu anmelden." };
-
-  let admin: ReturnType<typeof createAdminClient>;
-  try {
-    admin = createAdminClient();
-  } catch {
-    return { error: NICHT_KONFIGURIERT };
-  }
-  const { data: istBetreiber } = await admin.rpc("is_platform_admin", { p_user_id: user.id });
-  if (istBetreiber !== true) return { error: "Du hast keine Berechtigung für diesen Bereich." };
-  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") return { error: "Bitte zuerst mit Zwei-Faktor-Code anmelden." };
+  // Betreiber mit Zwei-Faktor-Code, nicht der Notfallzugang (Migration 0221).
+  const betreiber = await betreiberPruefen({ aendern: true });
+  if (!betreiber) return { error: "Du hast keine Berechtigung für diesen Bereich." };
+  const { admin } = betreiber;
 
   const kennung = String(formData.get("kennung") ?? "").trim();
   const aktion = String(formData.get("aktion") ?? "");
