@@ -18,7 +18,7 @@ Gespeichert wird nur, was für Schichtplan, Urlaub und Abwesenheiten nötig ist.
 | Gesendete Push-Mitteilungen (Warteschlange) | 30 Tage | automatisch |
 | Abgelaufene Passwort- und Verbindungs-Codes | 7 Tage nach Ablauf | automatisch |
 | Protokoll des Betreibers (z. B. gelöschte Unternehmen) | 24 Monate | automatisch |
-| Verschlüsselte Datensicherung | 14 Tage | automatisch (GitHub) |
+| Verschlüsselte Datensicherung | 14 Tage | automatisch (GitHub); Offline-Kopie auf Festplatte: wöchentlich von Hand gelöscht |
 | Gelöschtes Unternehmen (Papierkorb) | 14 Tage, danach endgültig | automatisch |
 | Demo-Bereiche | 24 Stunden | automatisch |
 | Daten auf dem eigenen Gerät (gemerkter Kalender) | 14 Tage, sofort beim Abmelden | automatisch im Browser |

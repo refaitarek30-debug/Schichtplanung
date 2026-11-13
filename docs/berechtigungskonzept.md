@@ -1,6 +1,6 @@
 # Berechtigungskonzept ShiftNexo
 
-Stand: 10.11.2026 · wer darf was sehen und ändern
+Stand: 13.11.2026 · wer darf was sehen und ändern
 
 ## Grundsatz
 Jede Person sieht nur, was sie für ihre Aufgabe braucht. Die Regeln setzt die Datenbank selbst durch (Zugriffsregeln je Zeile) – nicht nur die Oberfläche. Jeder Betrieb ist vollständig vom anderen getrennt.
@@ -21,6 +21,12 @@ Jede Person sieht nur, was sie für ihre Aufgabe braucht. Die Regeln setzt die D
 | Auswertung Ausfall/Anwesenheit | nein | nein | nur Summen ohne Namen |
 | Zugänge vergeben, Passwort-Code erzeugen | nein | für Mitarbeiter (wird protokolliert) | ja (wird protokolliert) |
 | Regeln und Einstellungen des Betriebs | nein | nein | ja |
+| Gesperrten Zugang freischalten, Zwei-Faktor zurücksetzen | nein | nein | ja (wird protokolliert) |
+| Lesen, ob ein Hinweis gelesen wurde | nein | nein | nein |
+
+## Anmeldung
+- Zwei-Faktor-Anmeldung ist Pflicht für Schichtleitung und Administration, freiwillig für Mitarbeiter. Die Datenbank gibt ohne bestätigten Code keine Firmendaten heraus.
+- Nach fünf falschen Passwörtern oder Codes ist der Zugang gesperrt, bis die Administration freischaltet.
 
 ## Was niemand kann
 - Gesundheitsangaben speichern: Freitextfelder lehnen sie ab.
@@ -32,7 +38,7 @@ Jede Person sieht nur, was sie für ihre Aufgabe braucht. Die Regeln setzt die D
 Der private Kalender einer Person gehört nur ihr. Der Betrieb – auch die Administration – sieht davon nichts. Geteilt wird nur, was die Person selbst mit Partner, Familie oder Freunden teilt.
 
 ## Betreiber
-Der Betreiber von ShiftNexo hat technischen Zugriff für Betrieb, Sicherung und Fehlersuche (AV-Vertrag). Zugriffe erfolgen nur dafür; Zugänge sind persönlich und sollen mit Zwei-Faktor-Anmeldung geschützt sein.
+Der Betreiber von ShiftNexo hat technischen Zugriff für Betrieb, Sicherung und Fehlersuche (AV-Vertrag). Zugriffe erfolgen nur dafür und nur auf Weisung. Die Betreiber-Seite zeigt nur Zählwerte je Firma und verlangt die Zwei-Faktor-Anmeldung. Ein Notfallzugang darf nur lesen; jede Öffnung wird festgehalten (`docs/notfallplan.md`).
 
 ## Kontrolle
 - Jede Änderung an Plan, Anträgen, Zugängen und Regeln steht im Änderungsprotokoll (24 Monate).

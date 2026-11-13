@@ -1,6 +1,6 @@
 # Verzeichnis von Verarbeitungstätigkeiten (Art. 30 Abs. 2 DSGVO)
 
-Stand: 10. November 2026 · Betreiber: Tarek Oussama Refai
+Stand: 13. November 2026 · Betreiber: Tarek Oussama Refai
 
 Dieses Verzeichnis gilt für die Tätigkeit als **Auftragsverarbeiter**: ShiftNexo verarbeitet
 Beschäftigtendaten im Auftrag der Betriebe (Verantwortliche). Es muss nicht veröffentlicht
@@ -70,10 +70,12 @@ Upstash). Aktuelle Liste: supabase.com/legal/customer-resources/subprocessor-lis
 
 - Verschlüsselte Übertragung (HTTPS, HSTS), Sicherheits-Header
 - Mandantentrennung und Rollenrechte direkt in der Datenbank (Row Level Security)
-- Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen
+- Passwörter nur als Hash (mind. 10 Zeichen, häufige Passwörter abgelehnt); Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen
+- Zwei-Faktor-Anmeldung (Pflicht für Schichtleitung, Administration, Betreiber), Sperre nach 5 Fehlversuchen
 - Automatische Abmeldung (Administration 15 Min., Schichtleitung 8 Std., Mitarbeiter 12 Std.)
 - Voreinstellungen schützen: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte
 - Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte
 - Nächtliche verschlüsselte Datensicherung (GitHub Actions), Wiederherstellung siehe `datensicherung.md`
 - Automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung
 - Sicherheitsvorfälle werden dem Kunden unverzüglich gemeldet (Art. 33/34)
+- Ausführlich: Anlage TOM (`docs/toms.md`), Notfallplan (`docs/notfallplan.md`)
