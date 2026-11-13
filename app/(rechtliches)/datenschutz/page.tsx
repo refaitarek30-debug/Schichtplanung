@@ -899,6 +899,17 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen
             (Art. 21 DSGVO)
           </li>
+        </Liste>
+        <Absatz>
+          Eine Kopie der eigenen Daten (Auskunft und Datenübertragbarkeit) kann jede Person
+          jederzeit selbst als Datei herunterladen: im Betrieb unter <em>Profil → Datenschutz →
+          Meine Daten herunterladen</em>, im Privatbereich unter <em>Mehr</em>. Die Datei wird
+          beim Klick erstellt und nicht gespeichert. Sie enthält alle zur Person gespeicherten
+          Angaben; ausgelassen sind nur technische Geheimnisse (Prüfwerte von Codes und Links,
+          Schlüssel für Handy-Mitteilungen) und aus dem Änderungsprotokoll der Name der Person,
+          die eine Änderung vorgenommen hat (Rechte Dritter).
+        </Absatz>
+        <Liste>
           <li>
             Widerruf einer erteilten Einwilligung mit Wirkung für die Zukunft (Art. 7 Abs. 3
             DSGVO) – für die Freigaben unter <em>Profil → Datenschutz</em> jederzeit

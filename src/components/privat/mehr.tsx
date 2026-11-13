@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { Building2, ChevronRight, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
@@ -231,6 +232,10 @@ export function PrivatMehr() {
       </PrivatKarte>
 
       {meldung ? <Alert tone={meldung.ok ? "success" : "error"}>{meldung.text}</Alert> : null}
+
+      <PrivatKarte>
+        <MeineDatenKnopf />
+      </PrivatKarte>
 
       <PrivatKarte>
         <form

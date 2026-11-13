@@ -35,7 +35,7 @@ export default function AvvPage() {
     <LegalPage
       title="Auftragsverarbeitungsvertrag"
       intro="Vertrag über die Verarbeitung personenbezogener Daten im Auftrag nach Art. 28 DSGVO."
-      updated="10. November 2026"
+      updated="13. November 2026"
       version={AVV_VERSION}
     >
       <Hinweis titel="Abschluss und Entwurfsstatus">
@@ -246,7 +246,10 @@ export default function AvvPage() {
           </li>
           <li>
             <strong>Zugang:</strong> Anmeldung über persönliche Konten mit E-Mail und Passwort
-            (Passwörter nur als Hash); Begrenzung von Anmelde-, Zurücksetzen- und
+            (Passwörter nur als Hash); Zwei-Faktor-Anmeldung mit Code aus einer
+            Authenticator-App, Pflicht für Administration, Schichtleitung und Betreiber und in
+            der Datenbank durchgesetzt; Sperre nach fünf Fehlversuchen bis zur Freischaltung
+            durch die Administration; Begrenzung von Anmelde-, Zurücksetzen- und
             Registrierungsversuchen; automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden).
           </li>
           <li>
@@ -266,13 +269,20 @@ export default function AvvPage() {
             Gesundheitsinhalte im Änderungsprotokoll festgehalten.
           </li>
           <li>
-            <strong>Verfügbarkeit:</strong> Sicherungen der Datenbank durch den Dienstleister;
-            Wiederherstellbarkeit im Rahmen des gebuchten Tarifs.
+            <strong>Verfügbarkeit:</strong> nächtliche Vollsicherung der Datenbank, zusätzlich
+            mit eigenem Passwort verschlüsselt (AES-256) und 14 Tage aufbewahrt; regelmäßige
+            Wiederherstellungsprobe.
           </li>
           <li>
             <strong>Datenminimierung und Voreinstellung:</strong> keine Diagnosen oder
             Gesundheitsfreitexte, Abwesenheitsgründe für Kolleginnen und Kollegen standardmäßig
-            verborgen, Krankheit standardmäßig privat.
+            verborgen, Krankheit standardmäßig privat; keine Lesebestätigung bei Hinweisen,
+            keine Auswertung je Person; Datenkopie für jede Person auf Knopfdruck.
+          </li>
+          <li>
+            <strong>Betreiber:</strong> Die Betreiber-Übersicht zeigt nur Zählwerte je Firma und
+            verlangt die Zwei-Faktor-Anmeldung; Zugriff auf Inhalte nur auf Weisung des
+            Auftraggebers; Lösch- und Support-Vorgänge werden protokolliert.
           </li>
           <li>
             <strong>Überprüfung:</strong> automatisierte Prüfskripte für Zugriffsregeln und
@@ -281,7 +291,8 @@ export default function AvvPage() {
           </li>
         </Liste>
         <Absatz className="text-[13px] text-ink-muted">
-          Der Auftragnehmer entwickelt die Maßnahmen weiter. Änderungen sind zulässig, solange
+          Die ausführliche Beschreibung (Anlage TOM) stellt der Auftragnehmer auf Anfrage zur
+          Verfügung. Der Auftragnehmer entwickelt die Maßnahmen weiter. Änderungen sind zulässig, solange
           das Schutzniveau nicht unterschritten wird.
         </Absatz>
       </Abschnitt>

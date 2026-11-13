@@ -65,7 +65,7 @@ export default function ProfilePage() {
             href="/profil/datenschutz"
             className="inline-flex rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface-muted"
           >
-            Datenschutz &amp; Sichtbarkeit verwalten
+            Datenschutz, Sichtbarkeit &amp; meine Daten
           </a>
         </div>
 

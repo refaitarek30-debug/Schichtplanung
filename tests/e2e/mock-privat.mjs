@@ -118,6 +118,7 @@ http.createServer((req, res) => {
         return send(200, n);
       }
       if (f === "privat_umfrage_offen") return send(200, db.umfrageOffen === true);
+      if (f === "meine_daten") return send(200, { erstellt_am: new Date().toISOString(), privat_konto: { name: "Test" }, privat_tage: [] });
       if (f === "privat_umfrage_senden") { db.umfrage = body; db.umfrageOffen = false; return send(204); }
       if (f === "privat_feiertage") return send(200, feiertage(body.p_jahr));
       if (f === "lohnzettel_einwilligung") { db.konto.lohnzettel_einwilligung = body.p_an ? new Date().toISOString() : null; return send(204); }

@@ -1,6 +1,7 @@
 import { getAppSession } from "@/lib/auth/session";
 import { PrivacySettingsForm } from "@/components/privacy/privacy-settings-form";
 import { PageHeader } from "@/components/ui/page-header";
+import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,6 +45,9 @@ export default async function PrivacySettingsPage() {
         sicknessVisibility={data.sickness_visibility}
         acknowledged={Boolean(data.accepted_at)}
       />
+      <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <MeineDatenKnopf />
+      </div>
     </div>
   );
 }
