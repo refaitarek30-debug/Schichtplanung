@@ -23,6 +23,7 @@ import geld from "./geld.test.mjs";
 import urlaub from "./urlaub.test.mjs";
 import privatNeu from "./privat-neu.test.mjs";
 import umfrage from "./umfrage.test.mjs";
+import zweiFaktor from "./zwei-faktor.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -43,6 +44,7 @@ const ABLAEUFE = [
   ["Passwort ändern im Profil", "betrieb", passwort],
   ["Untere Leiste bleibt unten", "betrieb", leiste],
   ["Handy: fester Rahmen, nur der Inhalt scrollt", "betrieb", rahmen],
+  ["Zwei-Faktor-Anmeldung und Sperre", "betrieb", zweiFaktor],
 ];
 
 const nur = process.argv[2];

@@ -6,6 +6,8 @@ import { StartWeiterleitung } from "@/components/layout/start-weiterleitung";
 import { fristFuer } from "@/lib/auth/idle";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
+import { zweiFaktorPflicht, zweiterFaktorBestaetigt, zweiterFaktorOffen } from "@/lib/auth/zwei-faktor";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
@@ -28,11 +30,28 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  // Zwei-Faktor-Anmeldung (Migration 0219): Passwort allein reicht nicht.
+  // Vor dem Laden des Profils – ohne Code liefert die Datenbank keins.
+  const supabase = await createClient();
+  if (await zweiterFaktorOffen(supabase)) redirect("/zwei-faktor");
+
   const session = await getAppSession();
   if (!session) {
+    // Nach 5 Fehlversuchen gesperrt: ehrliche Seite statt Umleitung im Kreis.
+    const { data: gesperrt } = await supabase.rpc("mein_zugang_gesperrt");
+    if (gesperrt === true) redirect("/gesperrt");
     // Privatkonten haben kein Firmenprofil – sonst liefe /login ↔ /start im Kreis.
     if (await getPrivatKonto()) redirect("/privat");
     redirect("/login");
+  }
+
+  // Pflicht für Administration und Schichtleitung: erst einrichten.
+  if (
+    session.profile.active &&
+    zweiFaktorPflicht(session.profile.role, session.company.isDemo === true) &&
+    !(await zweiterFaktorBestaetigt(supabase))
+  ) {
+    redirect("/zwei-faktor/einrichten?pflicht=1");
   }
 
   // Deaktiviert = Austritt (Migration 0194): Frage „Privat weitermachen?“ –

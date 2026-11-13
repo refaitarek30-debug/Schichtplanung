@@ -8,18 +8,29 @@ export const NUTZER = "11111111-2222-4333-8444-555555555555";
 
 const ROOT = new URL("../../", import.meta.url).pathname;
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: NUTZER, role: "authenticated", exp: 4102444800, aud: "authenticated" })}.sig`;
-/** Angemeldete Sitzung für das nachgeahmte Supabase (Cookie wie @supabase/ssr). */
-const SITZUNG =
-  "base64-" +
-  b64({
-    access_token: jwt,
-    refresh_token: "r",
-    token_type: "bearer",
-    expires_in: 3600,
-    expires_at: 4102444800,
-    user: { id: NUTZER, aud: "authenticated" },
-  });
+/**
+ * Angemeldete Sitzung für das nachgeahmte Supabase (Cookie wie @supabase/ssr).
+ * Standard: Zwei-Faktor eingerichtet und bestätigt (aal2) – Administration und
+ * Schichtleitung brauchen das seit Migration 0219. "offen" = Passwort ja, Code
+ * noch nicht; "keiner" = ohne Zwei-Faktor.
+ */
+function sitzung(zweiFaktor = "bestaetigt") {
+  const aal = zweiFaktor === "bestaetigt" ? "aal2" : "aal1";
+  const jwt = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: NUTZER, role: "authenticated", exp: 4102444800, aud: "authenticated", aal })}.sig`;
+  const factors = zweiFaktor === "keiner" ? [] : [{ id: "f1", factor_type: "totp", status: "verified" }];
+  return (
+    "base64-" +
+    b64({
+      access_token: jwt,
+      refresh_token: "r",
+      token_type: "bearer",
+      expires_in: 3600,
+      expires_at: 4102444800,
+      user: { id: NUTZER, aud: "authenticated", factors },
+    })
+  );
+}
+const SITZUNG = sitzung();
 
 /** Heute in deutscher Zeit, z. B. { iso: "2026-10-26", jahr: 2026, monat: 10, tage: 31, name: "Oktober" }. */
 export function heute() {
@@ -116,7 +127,7 @@ export const HINWEIS_GESEHEN = () => {
 };
 
 /** Browser wie ein iPhone, angemeldet. Mit `{ hinweis: true }` darf der Kompakt-Hinweis erscheinen. */
-export async function neuerBrowser({ hinweis = false } = {}) {
+export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt" } = {}) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
     ...devices["iPhone 13"],
@@ -126,7 +137,7 @@ export async function neuerBrowser({ hinweis = false } = {}) {
     bypassCSP: true,
     serviceWorkers: "allow",
   });
-  await ctx.addCookies([SITZUNG_COOKIE]);
+  await ctx.addCookies([zweiFaktor === "bestaetigt" ? SITZUNG_COOKIE : { ...SITZUNG_COOKIE, value: sitzung(zweiFaktor) }]);
   if (!hinweis) await ctx.addInitScript(HINWEIS_GESEHEN);
   const seite = await ctx.newPage();
   const seitenFehler = [];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
-import { ChevronRight, KeyRound, Link2, MessageSquare, Pencil, Search, Trash2 } from "lucide-react";
+import { ChevronRight, KeyRound, Link2, LockOpen, MessageSquare, Pencil, Search, ShieldOff, Trash2 } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Alert } from "@/components/ui/alert";
@@ -16,6 +16,8 @@ import { DataError, fetchEmployees, setEmployeeActive } from "@/lib/data/employe
 import { inviteEmployee } from "@/lib/auth/actions";
 import { deleteEmployee } from "@/lib/auth/employee-actions";
 import { passwortCodeFuerMitarbeiter } from "@/lib/auth/passwort-code";
+import { zugangFreischalten, zweiFaktorFuerMitarbeiterZuruecksetzen } from "@/lib/auth/zwei-faktor-actions";
+import { createClient } from "@/lib/supabase/client";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { roleLabels } from "@/lib/nav";
 import type { EmployeeRecord } from "@/lib/types";
@@ -75,8 +77,23 @@ export function EmployeesView() {
   const [offenId, setOffenId] = useState<string | null>(null);
   const breit = useBreit();
 
+  /** Sperre und Zwei-Faktor je Person (Migration 0219) – nur die Administration sieht das. */
+  const [zugang, setZugang] = useState<Record<string, { gesperrt: boolean; zweiFaktor: boolean }>>({});
+  const [zugangMeldung, setZugangMeldung] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setError(null);
+    if (mode === "live" && role === "admin") {
+      void Promise.resolve(createClient().rpc("zugang_status_firma"))
+        .then(({ data }) => {
+          const neu: Record<string, { gesperrt: boolean; zweiFaktor: boolean }> = {};
+          for (const z of (data ?? []) as { employee_id: string; gesperrt: boolean; zwei_faktor: boolean }[]) {
+            neu[z.employee_id] = { gesperrt: z.gesperrt, zweiFaktor: z.zwei_faktor };
+          }
+          setZugang(neu);
+        })
+        .catch(() => setZugang({}));
+    }
     try {
       setRows(await fetchEmployees());
     } catch (caught) {
@@ -87,7 +104,7 @@ export function EmployeesView() {
           : "Die Daten konnten nicht geladen werden.",
       );
     }
-  }, []);
+  }, [mode, role]);
 
   useEffect(() => {
     void load();
@@ -173,6 +190,26 @@ export function EmployeesView() {
     });
   }
 
+  /** Gesperrten Zugang freischalten oder Zwei-Faktor zurücksetzen (nur Administration). */
+  function zugangAktion(row: EmployeeRecord, art: "freischalten" | "zwei_faktor") {
+    setBusyId(row.id);
+    setZugangMeldung(null);
+    startTransition(async () => {
+      const r =
+        art === "freischalten" ? await zugangFreischalten(row.id) : await zweiFaktorFuerMitarbeiterZuruecksetzen(row.id);
+      const name = `${row.firstName} ${row.lastName}`;
+      setZugangMeldung(
+        r.error ??
+          (art === "freischalten"
+            ? `${name} ist wieder freigeschaltet und kann sich anmelden.`
+            : `Zwei-Faktor-Anmeldung von ${name} ist zurückgesetzt. Beim nächsten Anmelden richtet ${name} sie neu ein.`),
+      );
+      setBusyId(null);
+      void load();
+      nachOben();
+    });
+  }
+
   /** Administration für alle außer sich selbst, Schichtleitung nur für Mitarbeiter. */
   function darfCode(row: EmployeeRecord) {
     if (mode !== "live" || !row.hasAccount || !row.active || row.id === profile.employeeId) return false;
@@ -250,6 +287,22 @@ export function EmployeesView() {
               }),
           }
         : null,
+      zugang[row.id]?.gesperrt
+        ? {
+            name: "Freischalten",
+            icon: LockOpen,
+            disabled: pending && busyId === row.id,
+            los: () => ausPerson(() => zugangAktion(row, "freischalten")),
+          }
+        : null,
+      zugang[row.id]?.zweiFaktor && row.id !== profile.employeeId
+        ? {
+            name: "2FA zurücksetzen",
+            icon: ShieldOff,
+            disabled: pending && busyId === row.id,
+            los: () => ausPerson(() => zugangAktion(row, "zwei_faktor")),
+          }
+        : null,
       darfLink
         ? {
             name: row.hasAccount ? "Zugangslink" : "Einladen",
@@ -286,6 +339,8 @@ export function EmployeesView() {
           {mode === "live" ? (
             <Badge tone={row.hasAccount ? "ok" : "neutral"}>{row.hasAccount ? "Hat Zugang" : "Ohne Zugang"}</Badge>
           ) : null}
+          {zugang[row.id]?.gesperrt ? <Badge tone="critical">Gesperrt</Badge> : null}
+          {zugang[row.id]?.zweiFaktor ? <Badge tone="ok">Zwei-Faktor an</Badge> : null}
         </div>
 
         {aktionen.length ? (
@@ -406,7 +461,7 @@ export function EmployeesView() {
         <HinweisSenden
           vorauswahl={[hinweisAn]}
           onClose={() => setHinweisAn(null)}
-          onGesendet={() => setHinweisMeldung("Hinweis gesendet. Ob er gelesen wurde, siehst du unter Mitteilungen.")}
+          onGesendet={() => setHinweisMeldung("Hinweis gesendet. Er erscheint beim nächsten Öffnen der App.")}
         />
       ) : null}
 
@@ -443,6 +498,16 @@ export function EmployeesView() {
         </Card>
       ) : null}
 
+      {zugangMeldung ? (
+        <Alert tone="info">
+          <span className="flex items-start justify-between gap-3">
+            <span data-zugang-meldung>{zugangMeldung}</span>
+            <button type="button" className="text-[12.5px] font-semibold" onClick={() => setZugangMeldung(null)}>
+              OK
+            </button>
+          </span>
+        </Alert>
+      ) : null}
       {codeErgebnis ? (
         <Card className={codeErgebnis.error ? "border-crit-dot/40" : "border-ok-dot/40"}>
           <CardBody className="space-y-3">
@@ -588,6 +653,7 @@ export function EmployeesView() {
                             </span>
                           </span>
                         </span>
+                        {zugang[row.id]?.gesperrt ? <Badge tone="critical">Gesperrt</Badge> : null}
                         {row.role !== "employee" ? <Badge tone="info">{roleLabels[row.role]}</Badge> : null}
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
                       </button>

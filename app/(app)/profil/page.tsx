@@ -11,6 +11,7 @@ import { PersonalDetailsForm } from "./personal-details-form";
 import { StammdatenForm } from "./stammdaten-form";
 import { PasswortAendernForm } from "./passwort-aendern-form";
 import { WiederherstellungsCodeKarte } from "./wiederherstellungs-code-karte";
+import { ZweiFaktorKarte } from "./zwei-faktor-karte";
 
 export default function ProfilePage() {
   const { profile, company, mode } = useSession();
@@ -49,6 +50,11 @@ export default function ProfilePage() {
         <div className="lg:col-start-1">
           <PasswortAendernForm readOnly={mode === "demo"} />
         </div>
+        {mode === "live" && !company.isDemo ? (
+          <div className="lg:col-start-1">
+            <ZweiFaktorKarte />
+          </div>
+        ) : null}
         {mode === "live" ? (
           <div className="lg:col-start-1">
             <WiederherstellungsCodeKarte />

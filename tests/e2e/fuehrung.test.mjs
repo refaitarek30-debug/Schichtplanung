@@ -19,7 +19,7 @@ export default async function fuehrung() {
     const hinweis = seite.locator('[data-eintrag="personen"]').filter({ hasText: "Schichttausch Freitag klären" });
     pruefe((await hinweis.count()) === 1, "Mitteilungen: Hinweis an 2 Personen ist eine Zeile");
     pruefe(await hinweis.getByText("Hinweis an 2 Personen").isVisible(), "Mitteilungen: „Hinweis an 2 Personen“");
-    pruefe(await hinweis.getByText("0 von 2 gelesen").isVisible(), "Mitteilungen: „0 von 2 gelesen“");
+    pruefe(await hinweis.getByText("an 2 Personen", { exact: true }).isVisible(), "Mitteilungen: „an 2 Personen“ ohne Lesebestätigung");
     await hinweis.getByRole("button", { name: /Wer\?/ }).click();
     await warte(300);
     pruefe(

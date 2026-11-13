@@ -11,7 +11,6 @@ import {
   Megaphone,
   MessageSquare,
   Plus,
-  Smartphone,
   Undo2,
 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -296,7 +295,6 @@ export function MitteilungenZentrale({
             const erster = g[0]!;
             const schluessel = `h-${erster.id}`;
             const einzeln = g.length === 1;
-            const gelesen = g.filter((h) => h.gelesenAm).length;
             return (
               <Zeile
                 key={schluessel}
@@ -308,14 +306,12 @@ export function MitteilungenZentrale({
                   einzeln ? (
                     <HinweisStand h={erster} />
                   ) : (
-                    <Marke ton={gelesen === g.length ? "ok" : "aus"}>
-                      {gelesen} von {g.length} gelesen
-                    </Marke>
+                    <Marke ton="aus">an {g.length} Personen</Marke>
                   )
                 }
                 aktion={
                   einzeln ? (
-                    !erster.gelesenAm && !erster.zurueckgezogenAm ? (
+                    !erster.zurueckgezogenAm ? (
                       <Aktion onClick={() => zurueckziehen(erster.id)} disabled={beschaeftigt === erster.id}>
                         <Undo2 className="h-3.5 w-3.5" />
                         Zurückziehen
@@ -338,7 +334,7 @@ export function MitteilungenZentrale({
                       <li key={h.id} className="flex flex-wrap items-center gap-2 px-3 py-2">
                         <span className="min-w-0 flex-1 text-[13.5px] font-medium">{h.empfaenger}</span>
                         <HinweisStand h={h} />
-                        {!h.gelesenAm && !h.zurueckgezogenAm ? (
+                        {!h.zurueckgezogenAm ? (
                           <Aktion onClick={() => zurueckziehen(h.id)} disabled={beschaeftigt === h.id}>
                             <Undo2 className="h-3.5 w-3.5" />
                             Zurückziehen
@@ -360,7 +356,7 @@ export function MitteilungenZentrale({
             <Wahl
               art="personen"
               titel="Einzelne Personen"
-              text="Hinweis erscheint beim nächsten Öffnen der App – mit „gelesen“"
+              text="Hinweis erscheint beim nächsten Öffnen der App"
               onClick={() => setNeu("personen")}
             />
             <Wahl
@@ -469,23 +465,13 @@ function Aktion({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElem
   );
 }
 
-/** Stand eines Hinweises – dieselben Stufen wie bisher. */
+/**
+ * Stand eines Hinweises. Ob und wann er gelesen wurde, sieht die Leitung
+ * bewusst nicht (Migration 0219) – nur ob er zurückgezogen ist und wann er
+ * aufs Handy geht.
+ */
 function HinweisStand({ h }: { h: GesendeterHinweis }) {
   if (h.zurueckgezogenAm) return <Marke ton="aus">zurückgezogen</Marke>;
-  if (h.gelesenAm)
-    return (
-      <Marke ton="ok">
-        <Check className="h-3 w-3" />
-        gelesen {wannText(h.gelesenAm)}
-      </Marke>
-    );
-  if (h.pushGesendet)
-    return (
-      <Marke ton="info">
-        <Smartphone className="h-3 w-3" />
-        aufs Handy geschickt
-      </Marke>
-    );
   if (h.pushAb && new Date(h.pushAb) > new Date())
     return (
       <Marke ton="warn">
@@ -493,7 +479,12 @@ function HinweisStand({ h }: { h: GesendeterHinweis }) {
         {h.push === "schicht" ? "kommt" : "Handy"} {wannText(h.pushAb)}
       </Marke>
     );
-  return <Marke ton="aus">noch nicht gelesen</Marke>;
+  return (
+    <Marke ton="info">
+      <Check className="h-3 w-3" />
+      gesendet
+    </Marke>
+  );
 }
 
 function Wahl({ art, titel, text, onClick }: { art: keyof typeof ART; titel: string; text: string; onClick: () => void }) {
