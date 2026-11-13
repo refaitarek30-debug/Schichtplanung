@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-13T21:00:00+01:00",
+    titel: "Meine Daten herunterladen",
+    text: "Alles, was ShiftNexo über dich gespeichert hat, als eine Datei – jederzeit und ohne Nachfrage. Betrieb: Profil → Datenschutz. Privat: Mehr.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-13T18:01:00+01:00",
     titel: "Hinweise ohne Lesebestätigung",
     text: "Unter Mitteilungen steht bei Hinweisen nicht mehr, ob und wann sie gelesen wurden – das sind Verhaltensdaten, die niemand braucht. Zurückziehen geht jetzt jederzeit.",

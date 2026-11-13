@@ -188,43 +188,24 @@ Telekommunikationsdienste oder Postversand.
 
 ## § 8 Technische und organisatorische Maßnahmen (Art. 32 DSGVO)
 
-**Zutrittskontrolle.** Die Verarbeitung findet ausschließlich in
-Rechenzentren der in § 7 genannten Dienstleister statt. Deren Zutrittsschutz
-ist nach anerkannten Standards zertifiziert; der Auftragnehmer selbst
-betreibt keine eigenen Server.
+Der Auftragnehmer trifft die in der **Anlage TOM** (`docs/toms.md`) beschriebenen
+Maßnahmen. Kurzfassung:
 
-**Zugangskontrolle.** Anmeldung ausschließlich über persönliche Konten mit
-E-Mail-Adresse und Passwort. Passwörter werden nur als Hash gespeichert.
-Sitzungen enden automatisch nach 30 Minuten ohne Aktivität.
-
-**Zugriffskontrolle.** Die Trennung der Mandanten wird in der Datenbank
-durchgesetzt (Row Level Security in PostgreSQL) und nicht in der
-Benutzeroberfläche. Jede Abfrage wird serverseitig auf das Unternehmen der
-angemeldeten Person eingegrenzt; eine Abfrage über Unternehmensgrenzen
-hinweg ist technisch ausgeschlossen, auch bei manipulierten Anfragen.
-Innerhalb eines Unternehmens gilt ein abgestuftes Rollenmodell
-(Mitarbeiter — Schichtleitung — Administration).
-
-**Weitergabekontrolle.** Sämtliche Übertragung erfolgt ausschließlich
-verschlüsselt über TLS. Es findet keine Übermittlung an Dritte außerhalb
-der in § 7 genannten Unterauftragsverarbeiter statt.
-
-**Eingabekontrolle.** Urlaubsanträge und Entscheidungen werden mit
-Zeitstempel und entscheidender Person gespeichert. Änderungen an
-Stammdatensätzen tragen einen Änderungszeitstempel.
-
-**Verfügbarkeitskontrolle.** Automatische Sicherung der Datenbank durch den
-Dienstleister; Wiederherstellbarkeit im Rahmen des gebuchten Tarifs.
-
-**Trennungskontrolle.** Mandantentrennung über eine Unternehmenskennung in
-jedem Datensatz, durchgesetzt durch Row Level Security (siehe
-Zugriffskontrolle).
-
-**Verschlüsselung und Pseudonymisierung.** Verschlüsselung bei der
-Übertragung und im Ruhezustand auf Ebene des Dienstleisters.
-
-**Regelmäßige Überprüfung.** Automatisierte Sicherheitsprüfungen der
-Datenbankkonfiguration (Supabase Advisors) nach jeder Änderung am Schema.
+- **Zugang:** persönliche Konten, Passwörter nur als Hash; Zwei-Faktor-Anmeldung
+  (Pflicht für Administration, Schichtleitung und Betreiber, in der Datenbank
+  durchgesetzt); Sperre nach 5 Fehlversuchen bis zur Freischaltung durch die
+  Administration; automatische Abmeldung nach Inaktivität je nach Rolle
+  (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden).
+- **Zugriff und Trennung:** Mandantentrennung in der Datenbank (Row Level Security),
+  Rollenmodell, keine Auswertung je Person, keine Lesebestätigung.
+- **Weitergabe:** nur verschlüsselt (TLS, HSTS); keine Dritten außer § 7.
+- **Eingabe:** Änderungsprotokoll ohne Gesundheitsinhalte (24 Monate).
+- **Verfügbarkeit:** nächtliche, zusätzlich verschlüsselte Vollsicherung (14 Tage),
+  regelmäßige Wiederherstellungsprobe.
+- **Betreiber:** Übersicht nur mit Zählwerten und Zwei-Faktor-Anmeldung; Zugriff auf
+  Inhalte nur auf Weisung; Vorgänge werden protokolliert.
+- **Überprüfung:** automatische Tests vor jeder Veröffentlichung, Prüfskripte für die
+  Zugriffsregeln, jährliche Überprüfung der Anlage.
 
 > Der Auftragnehmer überprüft und aktualisiert diese Maßnahmen fortlaufend.
 > Änderungen sind zulässig, solange das Schutzniveau nicht unterschritten

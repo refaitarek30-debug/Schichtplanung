@@ -24,6 +24,7 @@ import urlaub from "./urlaub.test.mjs";
 import privatNeu from "./privat-neu.test.mjs";
 import umfrage from "./umfrage.test.mjs";
 import zweiFaktor from "./zwei-faktor.test.mjs";
+import meineDaten from "./meine-daten.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -35,6 +36,7 @@ const ABLAEUFE = [
   ["Privat: Urlaubsplaner", "privat", urlaub],
   ["Privat: Wischen, Wen sehe ich", "privat", privatNeu],
   ["Privat: Umfrage nach 3 Tagen", "privat", umfrage],
+  ["Privat: Meine Daten herunterladen", "privat", meineDaten],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],
