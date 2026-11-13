@@ -80,8 +80,8 @@ export function PrivatRegistrierung({
         />
       </Field>
 
-      <Field label="Passwort" hint="Mindestens 8 Zeichen. Gut merken – es gibt keine Bestätigungsmail.">
-        <PasswortInput name="password" autoComplete="new-password" required minLength={8} maxLength={72} disabled={disabled} />
+      <Field label="Passwort" hint="Mindestens 10 Zeichen. Gut merken – es gibt keine Bestätigungsmail.">
+        <PasswortInput name="password" autoComplete="new-password" required minLength={10} maxLength={72} disabled={disabled} />
       </Field>
 
       <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface-muted px-3.5 py-3">

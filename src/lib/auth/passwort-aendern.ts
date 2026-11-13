@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/config";
 import { authErrorMessage } from "@/lib/errors";
 import { allow, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
-import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
+import { PASSWORT_MAX, passwortProblem } from "./password-policy";
 import { protokolliere } from "./protokoll-server";
 import type { FormState } from "./form-state";
 
@@ -38,12 +38,8 @@ export async function changeOwnPassword(_prev: FormState, formData: FormData): P
   const wiederholt = String(formData.get("password_repeat") ?? "");
 
   if (!aktuell) return { error: "Bitte gib dein aktuelles Passwort ein." };
-  if (neu.length < PASSWORT_MIN) {
-    return { error: `Das neue Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
-  }
-  if (neu.length > PASSWORT_MAX) {
-    return { error: `Das neue Passwort darf höchstens ${PASSWORT_MAX} Zeichen lang sein.` };
-  }
+  const problem = passwortProblem(neu);
+  if (problem) return { error: problem };
   if (neu !== wiederholt) return { error: "Die beiden neuen Passwörter stimmen nicht überein." };
   if (neu === aktuell) return { error: "Das neue Passwort muss sich vom aktuellen unterscheiden." };
   // Länger als erlaubt kann das alte nicht sein – gar nicht erst anfragen.

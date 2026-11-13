@@ -7,7 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { authErrorMessage, dataErrorMessage } from "@/lib/errors";
 import { LEGAL_VERSIONS } from "@/lib/legal/version";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
-import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
+import { passwortProblem } from "./password-policy";
 import type { FormState } from "./form-state";
 
 export type { FormState };
@@ -96,12 +96,8 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   if (vTagName.length > 40 || vTageName.length > 40) {
     return { error: "Die Bezeichnung für den V-Tag darf höchstens 40 Zeichen lang sein." };
   }
-  if (password.length < PASSWORT_MIN) {
-    return { error: `Das Passwort muss mindestens ${PASSWORT_MIN} Zeichen lang sein.` };
-  }
-  if (password.length > PASSWORT_MAX) {
-    return { error: `Das Passwort darf höchstens ${PASSWORT_MAX} Zeichen lang sein.` };
-  }
+  const passwortFehler = passwortProblem(password, email);
+  if (passwortFehler) return { error: passwortFehler };
   if (password !== passwordRepeat) return { error: "Die beiden Passwörter stimmen nicht überein." };
 
   // Pflichtangaben. Die Zeitpunkte entstehen in der Datenbank – was der

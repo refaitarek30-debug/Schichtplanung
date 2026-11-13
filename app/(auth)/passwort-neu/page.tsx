@@ -9,7 +9,7 @@ export default async function NewPasswordPage({ searchParams }: { searchParams: 
       <h1 className="text-2xl font-semibold tracking-tight">Neues Passwort setzen</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         {mit === "code" ? "Der Code stimmt. " : ""}
-        Mindestens 8 Zeichen, zweimal eingeben. Danach bist du direkt angemeldet.
+        Mindestens 10 Zeichen, zweimal eingeben. Danach bist du direkt angemeldet.
       </p>
       <NewPasswordForm />
       {mit === "code" ? (

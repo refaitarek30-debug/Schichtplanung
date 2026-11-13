@@ -15,14 +15,14 @@ export function NewPasswordForm() {
   return (
     <form action={formAction} className="mt-6 space-y-4">
       <Field label="Neues Passwort">
-        <PasswortInput name="password" autoComplete="new-password" required minLength={8} />
+        <PasswortInput name="password" autoComplete="new-password" required minLength={10} />
       </Field>
       <Field label="Passwort wiederholen">
         <PasswortInput
           name="password_repeat"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={10}
         />
       </Field>
 
