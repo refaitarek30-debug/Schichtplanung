@@ -15,6 +15,7 @@ import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/ra
 import { PASSWORT_MAX, PASSWORT_MIN } from "./password-policy";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, mitFrist, protokolliere } from "./protokoll-server";
+import { GESPERRT_TEXT, zielMitWeiter, zweiterFaktorOffen } from "./zwei-faktor";
 
 export type { FormState } from "./form-state";
 
@@ -45,6 +46,20 @@ async function protokolliereFehlanmeldung(email: string) {
   }
 }
 
+/**
+ * Sperre nach Fehlversuchen (Migration 0219) – über den Service-Schlüssel,
+ * weil vor der Anmeldung keine Sitzung da ist. Fehlt der Schlüssel
+ * (Vorschau, lokal), gibt es keine Sperre.
+ */
+async function sperreFrage(funktion: "anmeldung_gesperrt" | "anmeldung_fehlversuch", email: string): Promise<boolean> {
+  try {
+    const antwort = await mitFrist(Promise.resolve(createAdminClient().rpc(funktion, { p_email: email })));
+    return antwort?.data === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
@@ -67,20 +82,34 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     (await allow("login-mail", emailKey(email), 10, 600));
   if (!erlaubt) return { error: ZU_VIELE_VERSUCHE };
 
+  // Nach 5 Fehlversuchen gesperrt (Migration 0219): gar nicht erst prüfen.
+  if (await sperreFrage("anmeldung_gesperrt", email)) return { error: GESPERRT_TEXT };
+
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: angemeldet, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     if ((error.message ?? "").toLowerCase().includes("invalid login credentials")) {
       await protokolliereFehlanmeldung(email);
+      if (await sperreFrage("anmeldung_fehlversuch", email)) return { error: GESPERRT_TEXT };
     }
     return { error: authErrorMessage(error) ?? "Anmeldung fehlgeschlagen." };
   }
 
-  await protokolliere(supabase, "anmeldung", await geraet());
-
-  // Die Frist für die automatische Abmeldung beginnt jetzt. Ohne das würde
-  // ein Zeitstempel aus einer früheren Sitzung sofort wieder greifen.
+  // Die Frist für die automatische Abmeldung beginnt jetzt (auch während der Code-Eingabe).
   await merkeAnmeldung();
+
+  // Zwei-Faktor-Anmeldung eingerichtet: erst noch der Code aus der App.
+  if (await zweiterFaktorOffen(supabase)) {
+    revalidatePath("/", "layout");
+    redirect(zielMitWeiter("/zwei-faktor", safeInternalPath(next, "")));
+  }
+
+  try {
+    await mitFrist(Promise.resolve(createAdminClient().rpc("anmeldung_erfolgreich", { p_user: angemeldet.user?.id ?? null })));
+  } catch {
+    // Zähler ist Beiwerk.
+  }
+  await protokolliere(supabase, "anmeldung", await geraet());
 
   revalidatePath("/", "layout");
   redirect(safeInternalPath(next, "/start"));

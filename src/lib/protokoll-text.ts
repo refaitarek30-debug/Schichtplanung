@@ -90,6 +90,12 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       };
     case "abmeldung":
       return { kategorie: "anmeldung", text: "hat sich abgemeldet", zusatz: null };
+    case "anmeldung.gesperrt":
+      return { kategorie: "fehlanmeldung", text: "Zugang nach 5 Fehlversuchen gesperrt", zusatz: null };
+    case "zugang.freigeschaltet":
+      return aenderung(`hat den gesperrten Zugang${von(e)} freigeschaltet`);
+    case "zwei_faktor.zurueckgesetzt":
+      return aenderung(`hat die Zwei-Faktor-Anmeldung${von(e)} zurückgesetzt`);
     case "mitarbeiter.austritt":
       return {
         kategorie: "aenderung",

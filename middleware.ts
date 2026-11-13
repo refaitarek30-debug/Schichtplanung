@@ -44,6 +44,8 @@ const PROTECTED_PREFIXES = [
   "/hilfe",
   "/privat",
   "/beitreten",
+  "/zwei-faktor",
+  "/gesperrt",
 ];
 
 const AUTH_PATHS = ["/login", "/passwort-vergessen", "/registrieren", "/privat/registrieren"];

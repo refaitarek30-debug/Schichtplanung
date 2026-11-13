@@ -1,8 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { PlattformTabelle, type Dashboard, type FirmaKennzahlen, type Umfrage } from "./tabelle";
 import { SupportCode } from "./support-code";
+import { ZugangVerwalten, type Sperre } from "./zugang";
+import { zweiterFaktorBestaetigt, zweiterFaktorOffen } from "@/lib/auth/zwei-faktor";
 import { LoeschBereich, type LoeschListe } from "./loeschen";
 
 export const metadata = { title: "Plattform" };
@@ -61,6 +63,10 @@ export default async function PlattformPage() {
   });
   if (pruefFehler || istBetreiber !== true) notFound();
 
+  // Betreiber sieht alle Firmen: nur mit Zwei-Faktor-Anmeldung (Migration 0219).
+  if (await zweiterFaktorOffen(supabase)) redirect("/zwei-faktor?weiter=/plattform");
+  if (!(await zweiterFaktorBestaetigt(supabase))) redirect("/zwei-faktor/einrichten?pflicht=1&weiter=/plattform");
+
   const { data, error } = await admin.rpc("platform_overview");
   if (error) {
     throw new Error(`Die Betreiber-Übersicht konnte nicht geladen werden: ${error.message}`);
@@ -88,12 +94,17 @@ export default async function PlattformPage() {
   const { data: loeschliste } = await admin.rpc("plattform_loeschliste");
   // Umfrage im Privatbereich (0217): nur Summen und Texte ohne Namen.
   const { data: umfrage } = await admin.rpc("platform_umfrage");
+  // Gesperrte Konten (0219) – ebenfalls eine Zugabe.
+  const { data: sperren } = await admin.rpc("platform_sperren");
 
   return (
     <>
       <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} umfrage={(umfrage as Umfrage | null) ?? null} />
       <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
         <SupportCode />
+        <div className="mt-4">
+          <ZugangVerwalten sperren={(sperren as Sperre[] | null) ?? []} />
+        </div>
       </div>
       {loeschliste ? (
         <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">

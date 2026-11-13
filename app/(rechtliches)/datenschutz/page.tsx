@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="12. November 2026"
+      updated="13. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -174,8 +174,10 @@ export default function DatenschutzPage() {
           <li>
             Hinweise der Schichtleitung oder Administration an einzelne Personen: Text, Absender,
             Empfänger, gewählter Knopf, ob und ab wann eine Mitteilung aufs Handy geht, Zeitpunkt
-            des Sendens und des Lesens („Verstanden“). Absender und Leitung des Betriebs sehen, ob
-            ein Hinweis gelesen wurde; eine Antwort gibt es nicht. Zur Wahl „zur nächsten Schicht“
+            des Sendens und des Lesens („Verstanden“). Der Lesezeitpunkt dient nur dazu, den Hinweis
+            nicht erneut anzuzeigen und eine geplante Handy-Mitteilung zu streichen: Absender und
+            Leitung des Betriebs sehen nicht, ob oder wann ein Hinweis gelesen wurde; eine Antwort
+            gibt es nicht. Zur Wahl „zur nächsten Schicht“
             wird aus dem Schichtplan berechnet, wann die Person das nächste Mal arbeitet (Urlaub und
             Abwesenheiten ausgenommen). Gelöscht nach 90 Tagen
           </li>
@@ -236,6 +238,23 @@ export default function DatenschutzPage() {
             Zahl falscher Eingaben – nie der Code selbst. Nach fünf falschen Eingaben ist das
             Zurücksetzen 15 Minuten gesperrt. Ein neuer Code ersetzt den alten; mit dem Konto wird
             alles gelöscht
+          </li>
+          <li>
+            Zwei-Faktor-Anmeldung: Wer sie einrichtet (Pflicht für Administration und
+            Schichtleitung, freiwillig für alle anderen), meldet sich nach dem Passwort zusätzlich
+            mit einem 6-stelligen Code aus einer Authenticator-App an. Gespeichert werden beim
+            Anmeldedienst nur der geheime Schlüssel für die Codes, der Zeitpunkt der Einrichtung
+            und ob er bestätigt ist – keine Telefonnummer und keine Daten der App. Die
+            Administration sieht, ob die Zwei-Faktor-Anmeldung bei einer Person eingeschaltet ist,
+            und kann sie zurücksetzen (zum Beispiel bei einem neuen Handy); das wird im
+            Änderungsprotokoll festgehalten. Mit dem Konto wird alles gelöscht
+          </li>
+          <li>
+            Sperre nach Fehlversuchen: Gezählt werden falsche Passwörter und falsche Codes je Konto
+            (Anzahl, Zeitpunkt des letzten Versuchs). Nach fünf Fehlversuchen ist der Zugang
+            gesperrt – im Betrieb, bis die Administration ihn freischaltet, bei reinen Privatkonten
+            für 15 Minuten. Die Administration sieht, ob eine Person gesperrt ist. Nach einer
+            erfolgreichen Anmeldung wird der Zähler gelöscht, mit dem Konto auch die Sperre
           </li>
           <li>
             Ratenbegrenzung: für Anmeldung, Passwort-Zurücksetzen und Registrierung werden

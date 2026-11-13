@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-13T18:01:00+01:00",
+    titel: "Hinweise ohne Lesebestätigung",
+    text: "Unter Mitteilungen steht bei Hinweisen nicht mehr, ob und wann sie gelesen wurden – das sind Verhaltensdaten, die niemand braucht. Zurückziehen geht jetzt jederzeit.",
+    rollen: ["admin", "shift_leader"],
+  },
+  {
+    zeit: "2026-11-13T18:00:00+01:00",
+    titel: "Zwei-Faktor-Anmeldung",
+    text: "Mehr Schutz für dein Konto: Nach dem Passwort fragt ShiftNexo einen Code aus einer Authenticator-App ab (zum Beispiel Microsoft oder Google Authenticator). Für Administration und Schichtleitung ist sie Pflicht, für alle anderen freiwillig unter Profil → Zwei-Faktor-Anmeldung. Nach 5 falschen Versuchen wird der Zugang gesperrt – die Administration schaltet ihn unter Mitarbeiter wieder frei.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-11T18:00:00+01:00",
     titel: "Festes Monatsgehalt im Geld-Bereich",
     text: "Bekommst du ein festes Gehalt? Trag bei deinem Job unter „Bezahlung“ dein Brutto-Grundgehalt ein, z. B. 3.989 €. Die Zuschläge für Nacht, Sonntag und Feiertag werden dann aus dem Stundenlohn gerechnet, der sich aus Gehalt und deinen Wochenstunden ergibt.",

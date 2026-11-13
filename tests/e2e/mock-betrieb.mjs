@@ -168,6 +168,10 @@ http.createServer((req, res) => {
         return send(200, n);
       }
       if (f === "privat_feiertage") return send(200, feiertage(body.p_jahr));
+      // Sperre und Zwei-Faktor (0219): e1 ist gesperrt, bis die Administration freischaltet.
+      if (f === "zugang_status_firma") return send(200, [{ employee_id: "e1", gesperrt: !db.e1frei, zwei_faktor: true }]);
+      if (f === "anmeldesperre_aufheben") { db.e1frei = body.p_employee === "e1"; return send(204); }
+      if (f === "mein_zugang_gesperrt") return send(200, false);
       if (f === "meine_termine") return send(200, db.termine);
       if (f === "termin_ausnahme") { const t = db.termine.find((x) => x.id === body.p_id); if (!t) return send(400, { message: "weg" }); if (body.p_ab) { if (body.p_datum <= t.datum) { db.termine = db.termine.filter((x) => x.id !== t.id); return send(200, true); } t.serie_ab = body.p_datum; } else { (t.ausfaelle ??= []).push(body.p_datum); } return send(200, false); }
       if (f === "termin_loeschen") { db.termine = db.termine.filter((t) => t.id !== body.p_id); return send(204); }
