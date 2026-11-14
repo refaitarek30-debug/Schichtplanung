@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
+import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { Building2, ChevronRight, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
@@ -235,6 +236,8 @@ export function PrivatMehr() {
 
       <PrivatKarte>
         <MeineDatenKnopf />
+        {/* Nur für Betreiber-Konten sichtbar (z. B. den Notfallzugang, der ein reines Privatkonto ist). */}
+        <BetreiberLink className="glas-linie flex w-full items-center gap-3 border-t px-4 py-3.5 text-left text-[15px] font-medium" />
       </PrivatKarte>
 
       <PrivatKarte>
