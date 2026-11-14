@@ -1,141 +1,86 @@
-import { notFound, redirect } from "next/navigation";
-import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { PlattformTabelle, type Dashboard, type FirmaKennzahlen, type Umfrage } from "./tabelle";
-import { SupportCode } from "./support-code";
-import { ZugangVerwalten, type Sperre } from "./zugang";
-import { zweiterFaktorBestaetigt, zweiterFaktorOffen } from "@/lib/auth/zwei-faktor";
-import { LoeschBereich, type LoeschListe } from "./loeschen";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { konsoleZugang } from "@/lib/auth/konsole";
+import { KennzahlenReihe, Seitenkopf } from "./tabelle";
+import { ladeDashboard, ladeFirmen, ladeUmfrage } from "./daten";
+import type { LoeschListe } from "./loeschen";
 
-export const metadata = { title: "Plattform" };
-
-/**
- * Die Seite hängt an der angemeldeten Person und darf nie im Cache
- * landen – sonst könnte eine einmal gerenderte Fassung bei jemandem
- * ankommen, der sie nicht sehen darf.
- */
+export const metadata = { title: "Übersicht · Betreiber-Konsole" };
 export const dynamic = "force-dynamic";
 
 /**
- * Betreiber-Übersicht über alle Firmen hinweg.
+ * Übersicht der Betreiber-Konsole: Kennzahlen und eine Liste „Zu tun“ –
+ * jede Zeile führt in den Bereich, in dem man es erledigt.
  *
- * Drei Dinge, die hier bewusst so und nicht anders sind:
- *
- * 1. **Server Component, kein Client-Code.** Die Daten kommen mit dem
- *    Service-Role-Schlüssel, der RLS umgeht. Der darf den Server nie
- *    verlassen. Eine client-seitige Abfrage gegen die normalen Tabellen
- *    wäre durch RLS ohnehin auf die eigene Firma beschränkt – sie könnte
- *    diese Seite gar nicht füllen.
- *
- * 2. **404 statt 403.** Wer nicht Betreiber ist, soll nicht einmal
- *    erfahren, dass es diese Seite gibt. Ein 403 wäre eine Bestätigung.
- *
- * 3. **Nur Kennzahlen – und die E-Mail-Adressen neuer Konten.**
- *    `platform_overview()` und `platform_dashboard()` geben Zählwerte und
- *    Zeitstempel zurück, keine Urlaubsinhalte, keine Abwesenheitsgründe,
- *    keine Termine oder To-dos. Dazu kommen die E-Mail-Adressen der
- *    neuesten Registrierungen. Die Grenze steht in der Datenbank, nicht
- *    erst hier – was die Funktionen nicht herausgeben, kann diese Seite
- *    auch nicht anzeigen.
+ * Grenze wie bisher: nur Zählwerte und Zeitstempel aus der Datenbank
+ * (platform_overview, platform_dashboard) – keine Urlaubsinhalte, keine
+ * Abwesenheitsgründe, keine Termine oder To-dos.
  */
-export default async function PlattformPage() {
-  if (!isSupabaseConfigured) notFound();
+export default async function KonsoleUebersicht() {
+  const k = await konsoleZugang();
+  const [firmen, dashboard, umfrage, sperrenRoh, loeschRoh, notfallRoh] = await Promise.all([
+    ladeFirmen(k),
+    ladeDashboard(k),
+    ladeUmfrage(k),
+    k.admin.rpc("platform_sperren").then((r) => r.data),
+    k.admin.rpc("plattform_loeschliste").then((r) => r.data),
+    k.nurLesen ? Promise.resolve(null) : k.admin.rpc("platform_notfall_zugriffe").then((r) => r.data),
+  ]);
+  const sperren = ((sperrenRoh as unknown[] | null) ?? []).length;
+  const papierkorb = ((loeschRoh as LoeschListe | null)?.firmen ?? []).filter((f) => f.geloescht_am).length;
+  const notfall = (notfallRoh as string[] | null) ?? [];
+  const ohneAvv = firmen.filter((f) => f.aktiv && !f.avvAkzeptiertAm).length;
+  const ohneEinrichtung = firmen.filter((f) => f.aktiv && !f.einrichtungFertigAm).length;
+  const offen = firmen.reduce((s, f) => s + f.offeneAntraege, 0);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) notFound();
-
-  // Fehlt der Service-Role-Schlüssel, lässt sich die Berechtigung gar
-  // nicht prüfen. Dann gilt dasselbe wie für jeden Unbefugten: die Seite
-  // gibt es nicht. Lieber eine falsche 404 für den Betreiber als eine
-  // Fehlermeldung, die Fremden die Existenz der Seite verrät.
-  let admin: ReturnType<typeof createAdminClient>;
-  try {
-    admin = createAdminClient();
-  } catch {
-    notFound();
-  }
-
-  const { data: istBetreiber, error: pruefFehler } = await admin.rpc("is_platform_admin", {
-    p_user_id: user.id,
-  });
-  if (pruefFehler || istBetreiber !== true) notFound();
-
-  // Betreiber sieht alle Firmen: nur mit Zwei-Faktor-Anmeldung (Migration 0219).
-  if (await zweiterFaktorOffen(supabase)) redirect("/zwei-faktor?weiter=/plattform");
-  if (!(await zweiterFaktorBestaetigt(supabase))) redirect("/zwei-faktor/einrichten?pflicht=1&weiter=/plattform");
-
-  // Notfallzugang (0221): darf nur lesen; jede Öffnung wird festgehalten.
-  // Fehlt die Funktion noch, gilt der Betreiber wie bisher als vollwertig.
-  const { data: darf, error: darfFehler } = await admin.rpc("platform_darf_aendern", { p_user_id: user.id });
-  const nurLesen = !darfFehler && darf === false;
-  if (nurLesen) await admin.rpc("platform_notfall_merken");
-
-  const { data, error } = await admin.rpc("platform_overview");
-  if (error) {
-    throw new Error(`Die Betreiber-Übersicht konnte nicht geladen werden: ${error.message}`);
-  }
-
-  const firmen = ((data ?? []) as Record<string, unknown>[]).map(
-    (row): FirmaKennzahlen => ({
-      companyId: String(row.company_id),
-      name: String(row.name ?? ""),
-      angelegtAm: (row.angelegt_am as string | null) ?? null,
-      aktiv: Boolean(row.aktiv),
-      avvAkzeptiertAm: (row.avv_akzeptiert_am as string | null) ?? null,
-      einrichtungFertigAm: (row.einrichtung_fertig_am as string | null) ?? null,
-      mitarbeiterAktiv: Number(row.mitarbeiter_aktiv ?? 0),
-      zugaenge: Number(row.zugaenge ?? 0),
-      letzteAktivitaet: (row.letzte_aktivitaet as string | null) ?? null,
-      urlaubsantraege: Number(row.urlaubsantraege ?? 0),
-      offeneAntraege: Number(row.offene_antraege ?? 0),
-    }),
-  );
-
-  // Das Dashboard ist eine Zugabe: schlägt es fehl, bleibt die Firmenliste da.
-  const { data: dash } = await admin.rpc("platform_dashboard", { p_limit: 30 });
-  // Auch die Löschliste ist eine Zugabe: ohne sie bleibt der Rest der Seite stehen.
-  const { data: loeschliste } = await admin.rpc("plattform_loeschliste");
-  // Umfrage im Privatbereich (0217): nur Summen und Texte ohne Namen.
-  const { data: umfrage } = await admin.rpc("platform_umfrage");
-  // Gesperrte Konten (0219) – ebenfalls eine Zugabe.
-  const { data: sperren } = await admin.rpc("platform_sperren");
-  const { data: notfall } = nurLesen ? { data: null } : await admin.rpc("platform_notfall_zugriffe");
-  const notfallZugriffe = (notfall as string[] | null) ?? [];
+  const aufgaben: { text: string; zusatz: string; pfad: string }[] = [];
+  if (sperren) aufgaben.push({ text: `${sperren} ${sperren === 1 ? "Konto ist" : "Konten sind"} gesperrt`, zusatz: "nach 5 Fehlversuchen", pfad: "/plattform/zugang" });
+  if (ohneAvv) aufgaben.push({ text: `${ohneAvv} ${ohneAvv === 1 ? "Firma" : "Firmen"} ohne AVV-Zustimmung`, zusatz: "vor dem echten Einsatz nachholen", pfad: "/plattform/firmen" });
+  if (ohneEinrichtung) aufgaben.push({ text: `${ohneEinrichtung} ${ohneEinrichtung === 1 ? "Firma" : "Firmen"} mit offener Einrichtung`, zusatz: "evtl. Hilfe anbieten", pfad: "/plattform/firmen" });
+  if (papierkorb) aufgaben.push({ text: `${papierkorb} ${papierkorb === 1 ? "Firma" : "Firmen"} im Papierkorb`, zusatz: "werden nach 14 Tagen endgültig gelöscht", pfad: "/plattform/loeschen" });
+  if (notfall.length) aufgaben.push({ text: "Notfallzugang wurde benutzt", zusatz: new Date(notfall[0]).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }), pfad: "/plattform/protokoll" });
 
   return (
     <>
-      {nurLesen ? (
-        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6" data-notfallzugang>
-          <p className="rounded-2xl bg-warn-bg px-4 py-3 text-[14px] font-semibold text-warn-fg">
-            Notfallzugang – nur lesen. Ändern, löschen und Codes erzeugen ist gesperrt. Diese Öffnung wird festgehalten.
-          </p>
-        </div>
-      ) : notfallZugriffe.length > 0 ? (
-        <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-          <p className="rounded-2xl bg-warn-bg px-4 py-3 text-[14px] text-warn-fg">
-            <b>Notfallzugang benutzt:</b>{" "}
-            {notfallZugriffe
-              .slice(0, 5)
-              .map((t) => new Date(t).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Berlin" }))
-              .join(" · ")}
-          </p>
-        </div>
-      ) : null}
-      <PlattformTabelle firmen={firmen} dashboard={(dash as Dashboard | null) ?? null} umfrage={(umfrage as Umfrage | null) ?? null} />
-      <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
-        {nurLesen ? null : <SupportCode />}
-        <div className="mt-4">
-          <ZugangVerwalten sperren={(sperren as Sperre[] | null) ?? []} nurLesen={nurLesen} />
-        </div>
-      </div>
-      {loeschliste && !nurLesen ? (
-        <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
-          <LoeschBereich liste={loeschliste as LoeschListe} />
-        </div>
-      ) : null}
+      <Seitenkopf titel="Übersicht" text="Was gerade los ist – nur Zahlen, keine Inhalte aus den Betrieben." />
+      {dashboard ? <KennzahlenReihe dashboard={dashboard} umfrage={umfrage} /> : null}
+
+      <section className="rounded-card border border-line bg-surface shadow-card" data-zu-tun>
+        <h2 className="px-5 pb-1 pt-4 text-[15px] font-semibold">Zu tun</h2>
+        {aufgaben.length === 0 ? (
+          <p className="px-5 pb-4 pt-1 text-sm text-ink-muted">Alles erledigt – gerade gibt es nichts zu tun.</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {aufgaben.map((a) => (
+              <li key={a.text}>
+                <Link href={a.pfad} className="flex items-center gap-3 px-5 py-3 hover:bg-ink/[0.03]">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{a.text}</span>
+                    <span className="block text-[12.5px] text-ink-muted">{a.zusatz}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-ink-faint" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Kurz titel="Firmen" wert={`${firmen.filter((f) => f.aktiv).length} aktiv`} zusatz={offen ? `${offen} Anträge offen` : "keine offenen Anträge"} pfad="/plattform/firmen" />
+        <Kurz titel="Zugänge" wert={sperren ? `${sperren} gesperrt` : "keine Sperre"} zusatz="Freischalten, Zwei-Faktor, Passwort-Code" pfad="/plattform/zugang" />
+        <Kurz titel="Umfrage" wert={umfrage ? `${umfrage.antworten} Antworten` : "–"} zusatz="Privatbereich, ohne Namen" pfad="/plattform/umfrage" />
+      </section>
     </>
+  );
+}
+
+function Kurz({ titel, wert, zusatz, pfad }: { titel: string; wert: string; zusatz: string; pfad: string }) {
+  return (
+    <Link href={pfad} className="rounded-card border border-line bg-surface px-4 py-3 shadow-card hover:bg-ink/[0.02]">
+      <p className="text-[12px] text-ink-muted">{titel}</p>
+      <p className="mt-0.5 text-[17px] font-semibold">{wert}</p>
+      <p className="mt-0.5 text-[12px] text-ink-faint">{zusatz}</p>
+    </Link>
   );
 }

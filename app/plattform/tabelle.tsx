@@ -62,7 +62,7 @@ const SUMMEN: { schluessel: string; label: string }[] = [
   { schluessel: "gruppen", label: "Gruppen" },
 ];
 
-function datumZeit(wert: string): string {
+export function datumZeit(wert: string): string {
   return new Date(wert).toLocaleString("de-DE", {
     day: "2-digit",
     month: "2-digit",
@@ -110,183 +110,161 @@ const NOTEN = [
   { wert: 1, text: "😞 Schlecht" },
 ];
 
-/**
- * Reine Darstellung – bekommt fertige Kennzahlen und holt selbst nichts
- * nach. Reihenfolge: Überblick, Umfrage, neue Konten, Firmen, Summen.
- */
-export function PlattformTabelle({
-  firmen,
-  dashboard,
-  umfrage,
-}: {
-  firmen: FirmaKennzahlen[];
-  dashboard: Dashboard | null;
-  umfrage: Umfrage | null;
-}) {
+/** Kopf einer Konsolen-Seite. */
+export function Seitenkopf({ titel, text }: { titel: string; text?: string }) {
+  return (
+    <header>
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-[26px]">{titel}</h1>
+      {text ? <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted">{text}</p> : null}
+    </header>
+  );
+}
+
+/** Vier Kennzahlen oben in der Übersicht. */
+export function KennzahlenReihe({ dashboard, umfrage }: { dashboard: Dashboard; umfrage: Umfrage | null }) {
+  const beide = dashboard.beide ?? 0;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <Kennzahl label="Konten" wert={dashboard.konten} zusatz={`${dashboard.firma - beide} Betrieb · ${dashboard.privat - beide} privat · ${beide} beides`} />
+      <Kennzahl label="Neu in 7 Tagen" wert={dashboard.neu_7} zusatz={`${dashboard.neu_heute} heute · ${dashboard.neu_30} in 30 Tagen`} />
+      <Kennzahl label="Aktiv in 7 Tagen" wert={dashboard.angemeldet_7} zusatz={`${dashboard.angemeldet_24h} in 24 Std.`} />
+      <Kennzahl
+        label="Zufriedenheit"
+        wert={umfrage?.durchschnitt != null ? umfrage.durchschnitt.toLocaleString("de-DE") : "–"}
+        zusatz={umfrage ? `von 5 · ${umfrage.antworten} Antworten` : "noch keine Umfrage"}
+      />
+    </div>
+  );
+}
+
+/** Die neuesten Registrierungen. */
+export function NeueKonten({ dashboard }: { dashboard: Dashboard }) {
+  return (
+    <Card>
+      <CardHeader title="Neue Konten" hint="neueste oben" />
+      <CardBody className="overflow-x-auto px-0 py-0">
+        <table className="w-full border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-[0.12em] text-ink-faint">
+              <Th className="pl-5">Konto · registriert</Th>
+              <Th className="pr-5">Bereich</Th>
+              <Th className="hidden pr-5 sm:table-cell">Zuletzt angemeldet</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {dashboard.neu.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-5 py-8 text-center text-ink-muted">
+                  Noch keine Registrierung.
+                </td>
+              </tr>
+            ) : (
+              dashboard.neu.map((n, i) => (
+                <tr key={`${n.email}-${i}`}>
+                  <td className="border-t border-line px-3 py-2.5 pl-5">
+                    <span className="block break-all font-medium">{anzeigeKonto(n.email)}</span>
+                    <span className="tnum block text-[12.5px] text-ink-muted">{datumZeit(n.created_at)}</span>
+                    {!n.bestaetigt ? <span className="text-[12px] text-warn-fg">E-Mail noch nicht bestätigt</span> : null}
+                  </td>
+                  <td className="border-t border-line px-3 py-2.5 pr-5">
+                    <span className="flex flex-wrap gap-1">
+                      {n.art === "firma" || n.art === "beide" ? <Badge tone="neutral">{n.firma ?? "Betrieb"}</Badge> : null}
+                      {n.art === "privat" || n.art === "beide" ? <Badge tone="ok">privat</Badge> : null}
+                      {n.art === "ohne" ? <Badge tone="warn">ohne Bereich</Badge> : null}
+                    </span>
+                  </td>
+                  <td className="hidden border-t border-line px-3 py-2.5 pr-5 text-ink-muted sm:table-cell">{seitdem(n.last_sign_in_at)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** Alle Firmen mit Kennzahlen – keine Inhalte. */
+export function FirmenListe({ firmen }: { firmen: FirmaKennzahlen[] }) {
   const ohneAvv = firmen.filter((f) => !f.avvAkzeptiertAm).length;
   const ohneEinrichtung = firmen.filter((f) => !f.einrichtungFertigAm).length;
   const offen = firmen.reduce((s, f) => s + f.offeneAntraege, 0);
-  const beide = dashboard?.beide ?? 0;
-
   return (
-    <div className="min-h-screen bg-surface-sunken">
-      <div className="mx-auto w-full max-w-5xl space-y-5 px-4 py-8 sm:px-6">
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-muted">ShiftNexo · Betreiber</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">Überblick</h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted">
-            Zahlen zum Betrieb, die E-Mail-Adressen neuer Konten und die Umfrage ohne Namen – keine Urlaubsinhalte,
-            keine Abwesenheitsgründe, keine Termine oder To-dos. Diese Seite taucht in keiner Navigation auf.
+    <Card>
+      <CardHeader title="Firmen" hint={`${firmen.filter((f) => f.aktiv).length} aktiv${offen > 0 ? ` · ${offen} Anträge offen` : ""}`} />
+      <CardBody className="overflow-x-auto px-0 py-0">
+        {ohneAvv > 0 || ohneEinrichtung > 0 ? (
+          <p className="px-5 pb-1 pt-3 text-[13px] leading-relaxed text-warn-fg">
+            {ohneAvv > 0 ? `${ohneAvv} ohne AVV-Zustimmung (vor dem produktiven Einsatz nachholen). ` : ""}
+            {ohneEinrichtung > 0 ? `${ohneEinrichtung} mit offener Einrichtung.` : ""}
           </p>
-        </header>
-
-        {dashboard ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Kennzahl
-              label="Konten"
-              wert={dashboard.konten}
-              zusatz={`${dashboard.firma - beide} Betrieb · ${dashboard.privat - beide} privat · ${beide} beides`}
-            />
-            <Kennzahl label="Neu in 7 Tagen" wert={dashboard.neu_7} zusatz={`${dashboard.neu_heute} heute · ${dashboard.neu_30} in 30 Tagen`} />
-            <Kennzahl label="Aktiv in 7 Tagen" wert={dashboard.angemeldet_7} zusatz={`${dashboard.angemeldet_24h} in 24 Std.`} />
-            <Kennzahl
-              label="Zufriedenheit"
-              wert={umfrage?.durchschnitt != null ? umfrage.durchschnitt.toLocaleString("de-DE") : "–"}
-              zusatz={umfrage ? `von 5 · ${umfrage.antworten} Antworten` : "noch keine Umfrage"}
-            />
-          </div>
         ) : null}
-
-        {umfrage ? <UmfrageKarte umfrage={umfrage} /> : null}
-
-        {dashboard ? (
-          <Card>
-            <CardHeader title="Neue Konten" hint="neueste oben" />
-            <CardBody className="overflow-x-auto px-0 py-0">
-              <table className="w-full border-separate border-spacing-0 text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-[0.12em] text-ink-faint">
-                    <Th className="pl-5">Konto · registriert</Th>
-                    <Th className="pr-5">Bereich</Th>
-                    <Th className="hidden pr-5 sm:table-cell">Zuletzt angemeldet</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dashboard.neu.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="px-5 py-8 text-center text-ink-muted">
-                        Noch keine Registrierung.
-                      </td>
-                    </tr>
-                  ) : (
-                    dashboard.neu.map((n, i) => (
-                      <tr key={`${n.email}-${i}`}>
-                        <td className="border-t border-line px-3 py-2.5 pl-5">
-                          <span className="block break-all font-medium">{anzeigeKonto(n.email)}</span>
-                          <span className="tnum block text-[12.5px] text-ink-muted">{datumZeit(n.created_at)}</span>
-                          {!n.bestaetigt ? <span className="text-[12px] text-warn-fg">E-Mail noch nicht bestätigt</span> : null}
-                        </td>
-                        <td className="border-t border-line px-3 py-2.5 pr-5">
-                          <span className="flex flex-wrap gap-1">
-                            {n.art === "firma" || n.art === "beide" ? <Badge tone="neutral">{n.firma ?? "Betrieb"}</Badge> : null}
-                            {n.art === "privat" || n.art === "beide" ? <Badge tone="ok">privat</Badge> : null}
-                            {n.art === "ohne" ? <Badge tone="warn">ohne Bereich</Badge> : null}
-                          </span>
-                        </td>
-                        <td className="hidden border-t border-line px-3 py-2.5 pr-5 text-ink-muted sm:table-cell">{seitdem(n.last_sign_in_at)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </CardBody>
-          </Card>
-        ) : null}
-
-        <Card>
-          <CardHeader
-            title="Firmen"
-            hint={`${firmen.filter((f) => f.aktiv).length} aktiv${offen > 0 ? ` · ${offen} Anträge offen` : ""}`}
-          />
-          <CardBody className="overflow-x-auto px-0 py-0">
-            {ohneAvv > 0 || ohneEinrichtung > 0 ? (
-              <p className="px-5 pb-1 pt-3 text-[13px] leading-relaxed text-warn-fg">
-                {ohneAvv > 0 ? `${ohneAvv} ohne AVV-Zustimmung (vor dem produktiven Einsatz nachholen). ` : ""}
-                {ohneEinrichtung > 0 ? `${ohneEinrichtung} mit offener Einrichtung.` : ""}
-              </p>
-            ) : null}
-            <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
-              <thead>
-                <tr className="text-left text-[11px] uppercase tracking-[0.12em] text-ink-faint">
-                  <Th className="pl-5">Firma</Th>
-                  <Th>Angelegt</Th>
-                  <Th className="text-right">Mitarbeiter</Th>
-                  <Th className="text-right">Zugänge</Th>
-                  <Th className="text-right">Anträge</Th>
-                  <Th>Letzte Anmeldung</Th>
-                  <Th className="pr-5">Stand</Th>
+        <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm" data-firmen-liste>
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-[0.12em] text-ink-faint">
+              <Th className="pl-5">Firma</Th>
+              <Th>Angelegt</Th>
+              <Th className="text-right">Mitarbeiter</Th>
+              <Th className="text-right">Zugänge</Th>
+              <Th className="text-right">Anträge</Th>
+              <Th>Letzte Anmeldung</Th>
+              <Th className="pr-5">Stand</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {firmen.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-ink-muted">
+                  Noch keine Firma registriert.
+                </td>
+              </tr>
+            ) : (
+              firmen.map((f) => (
+                <tr key={f.companyId}>
+                  <td className="border-t border-line px-3 py-3 pl-5">
+                    <span className="block font-medium">{f.name}</span>
+                    {!f.aktiv ? <span className="text-[12px] text-crit-fg">deaktiviert</span> : null}
+                  </td>
+                  <td className="tnum border-t border-line px-3 py-3 text-ink-muted">{datum(f.angelegtAm)}</td>
+                  <td className="tnum border-t border-line px-3 py-3 text-right">{f.mitarbeiterAktiv}</td>
+                  <td className="tnum border-t border-line px-3 py-3 text-right">{f.zugaenge}</td>
+                  <td className="tnum border-t border-line px-3 py-3 text-right">
+                    {f.urlaubsantraege}
+                    {f.offeneAntraege > 0 ? <span className="text-warn-fg"> ({f.offeneAntraege} offen)</span> : null}
+                  </td>
+                  <td className="border-t border-line px-3 py-3 text-ink-muted">{seitdem(f.letzteAktivitaet)}</td>
+                  <td className="border-t border-line px-3 py-3 pr-5">
+                    <span className="flex flex-wrap gap-1.5">
+                      <Badge tone={f.avvAkzeptiertAm ? "ok" : "warn"}>{f.avvAkzeptiertAm ? "AVV" : "AVV fehlt"}</Badge>
+                      <Badge tone={f.einrichtungFertigAm ? "ok" : "neutral"}>{f.einrichtungFertigAm ? "eingerichtet" : "Einrichtung offen"}</Badge>
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {firmen.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-8 text-center text-ink-muted">
-                      Noch keine Firma registriert.
-                    </td>
-                  </tr>
-                ) : (
-                  firmen.map((f) => (
-                    <tr key={f.companyId}>
-                      <td className="border-t border-line px-3 py-3 pl-5">
-                        <span className="block font-medium">{f.name}</span>
-                        {!f.aktiv ? <span className="text-[12px] text-crit-fg">deaktiviert</span> : null}
-                      </td>
-                      <td className="tnum border-t border-line px-3 py-3 text-ink-muted">{datum(f.angelegtAm)}</td>
-                      <td className="tnum border-t border-line px-3 py-3 text-right">{f.mitarbeiterAktiv}</td>
-                      <td className="tnum border-t border-line px-3 py-3 text-right">{f.zugaenge}</td>
-                      <td className="tnum border-t border-line px-3 py-3 text-right">
-                        {f.urlaubsantraege}
-                        {f.offeneAntraege > 0 ? <span className="text-warn-fg"> ({f.offeneAntraege} offen)</span> : null}
-                      </td>
-                      <td className="border-t border-line px-3 py-3 text-ink-muted">{seitdem(f.letzteAktivitaet)}</td>
-                      <td className="border-t border-line px-3 py-3 pr-5">
-                        <span className="flex flex-wrap gap-1.5">
-                          <Badge tone={f.avvAkzeptiertAm ? "ok" : "warn"}>{f.avvAkzeptiertAm ? "AVV" : "AVV fehlt"}</Badge>
-                          <Badge tone={f.einrichtungFertigAm ? "ok" : "neutral"}>
-                            {f.einrichtungFertigAm ? "eingerichtet" : "Einrichtung offen"}
-                          </Badge>
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </CardBody>
-        </Card>
+              ))
+            )}
+          </tbody>
+        </table>
+      </CardBody>
+    </Card>
+  );
+}
 
-        {dashboard ? (
-          <Card>
-            <CardHeader title="Gesamtzahlen" hint="Kalender und Schichtplan, nur Summen" />
-            <CardBody>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-3 [&_dt]:min-w-0">
-                {SUMMEN.map((s) => (
-                  <div key={s.schluessel} className="flex items-baseline justify-between gap-3 border-b border-line pb-1.5">
-                    <dt className="text-ink-muted">{s.label}</dt>
-                    <dd className="tnum font-semibold">{(dashboard.summen[s.schluessel] ?? 0).toLocaleString("de-DE")}</dd>
-                  </div>
-                ))}
-              </dl>
-            </CardBody>
-          </Card>
-        ) : null}
-
-        <p className="text-[12px] leading-relaxed text-ink-faint">
-          Betreiber werden ausschließlich per SQL in <code>platform_admins</code> eingetragen. Es gibt bewusst keine
-          Oberfläche dafür – sonst könnte sich jemand selbst eintragen.
-        </p>
-      </div>
-    </div>
+/** Summen über alle Bereiche. */
+export function Gesamtzahlen({ dashboard }: { dashboard: Dashboard }) {
+  return (
+    <Card>
+      <CardHeader title="Gesamtzahlen" hint="Kalender und Schichtplan, nur Summen" />
+      <CardBody>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm sm:grid-cols-3 [&_dt]:min-w-0">
+          {SUMMEN.map((s) => (
+            <div key={s.schluessel} className="flex items-baseline justify-between gap-3 border-b border-line pb-1.5">
+              <dt className="text-ink-muted">{s.label}</dt>
+              <dd className="tnum font-semibold">{(dashboard.summen[s.schluessel] ?? 0).toLocaleString("de-DE")}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardBody>
+    </Card>
   );
 }
 
@@ -296,7 +274,7 @@ function anzeigeKonto(email: string | null): string {
   return email.endsWith("@privat.invalid") ? `${email.slice(0, -"@privat.invalid".length)} (Spitzname)` : email;
 }
 
-function UmfrageKarte({ umfrage }: { umfrage: Umfrage }) {
+export function UmfrageKarte({ umfrage }: { umfrage: Umfrage }) {
   const notenMax = Math.max(1, ...NOTEN.map((n) => umfrage.zufriedenheit[String(n.wert)] ?? 0));
   const quellen = QUELLEN.map((q) => ({ ...q, n: umfrage.quellen[q.id] ?? 0 })).sort((a, b) => b.n - a.n);
   const quellenMax = Math.max(1, ...quellen.map((q) => q.n));

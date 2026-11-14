@@ -10,7 +10,7 @@ import { allow, clientKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import type { FormState } from "./form-state";
 import { geraet, protokolliere } from "./protokoll-server";
-import { betreiberPruefen } from "./betreiber";
+import { betreiberPruefen, betreiberProtokoll } from "./betreiber";
 import { cookies } from "next/headers";
 import { createHash, randomBytes } from "node:crypto";
 import { GERAET_COOKIE, GERAET_TAGE } from "./zwei-faktor";
@@ -238,7 +238,8 @@ export async function plattformZugang(_prev: FormState, formData: FormData): Pro
   const { data, error } = await admin.rpc("platform_zugang", { p_email: anmeldeEingabeZuEmail(kennung), p_aktion: aktion });
   if (error) return { error: dataErrorMessage(error) ?? "Das hat nicht geklappt." };
   if (data !== true) return { error: "Zu dieser Angabe gibt es kein Konto." };
-  revalidatePath("/plattform");
+  await betreiberProtokoll(betreiber, aktion === "entsperren" ? "entsperrt" : "zwei_faktor_zurueck", "konto");
+  revalidatePath("/plattform/zugang");
   return {
     success: aktion === "entsperren" ? `${kennung} ist wieder freigeschaltet.` : `Zwei-Faktor-Anmeldung von ${kennung} ist zurückgesetzt.`,
   };

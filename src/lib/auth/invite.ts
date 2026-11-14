@@ -79,7 +79,7 @@ const NACH_EINLADUNG = "/passwort-neu";
  * verlässlichere Weg und der Grund, warum eine Einladung jetzt auch ohne
  * Postversand ankommt.
  */
-function buildInviteUrl(
+export function buildInviteUrl(
   origin: string,
   properties: { hashed_token?: string | null; action_link?: string | null },
   type: "invite" | "recovery",

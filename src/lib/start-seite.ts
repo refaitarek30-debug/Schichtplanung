@@ -30,7 +30,7 @@ export function startPfad(wert: string | null | undefined): string {
 export const START_COOKIE = "sp_start";
 export const START_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-export function startCookieWert(benutzerId: string, wahl: StartSeite | "privat" | null): string {
+export function startCookieWert(benutzerId: string, wahl: StartSeite | "privat" | "konsole" | null): string {
   return `${benutzerId}|${wahl ?? "dashboard"}`;
 }
 
@@ -40,5 +40,6 @@ export function startZielAusCookie(wert: string | undefined, benutzerId: string)
   const [id, wahl] = wert.split("|");
   if (id !== benutzerId) return null;
   if (wahl === "privat") return "/privat";
+  if (wahl === "konsole") return "/plattform";
   return istStartSeite(wahl) ? startPfad(wahl) : null;
 }

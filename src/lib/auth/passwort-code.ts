@@ -10,7 +10,7 @@ import type { FormState } from "./form-state";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, protokolliere } from "./protokoll-server";
-import { betreiberPruefen } from "./betreiber";
+import { betreiberPruefen, betreiberProtokoll } from "./betreiber";
 
 /**
  * Passwort zurücksetzen mit einem Code statt per E-Mail (Migration 0172).
@@ -102,5 +102,6 @@ export async function plattformPasswortCode(_prev: FormState & { code?: string }
   if (!kennung) return { error: "Bitte Spitzname oder E-Mail eingeben." };
   const { data, error } = await admin.rpc("plattform_passwort_code", { p_email: anmeldeEingabeZuEmail(kennung) });
   if (error) return { error: dataErrorMessage(error) ?? "Der Code ließ sich nicht erzeugen." };
+  await betreiberProtokoll(betreiber, "passwort_code", "konto");
   return { code: String(data), success: kennung };
 }

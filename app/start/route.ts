@@ -3,6 +3,8 @@ import { getAppSession } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { START_COOKIE, START_COOKIE_MAX_AGE, startCookieWert, startPfad } from "@/lib/start-seite";
 import { getPrivatKonto } from "@/lib/privat/server";
+import { istKonsolenKonto } from "@/lib/auth/konsole";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Einstieg in die App: schickt jede Person auf ihre gewählte Startseite.
@@ -25,6 +27,14 @@ export async function GET(request: NextRequest) {
   };
   const session = await getAppSession();
   if (!session) {
+    // Reines Betreiber-Konto (ohne Betrieb): direkt in die Konsole.
+    const { data: anspruch } = await (await createClient()).auth.getClaims();
+    const userId = anspruch?.claims?.sub;
+    if (userId && (await istKonsolenKonto(userId))) {
+      const antwort = NextResponse.redirect(new URL("/plattform", request.url));
+      antwort.headers.set("Cache-Control", "no-store");
+      return merke(antwort, startCookieWert(userId, "konsole"));
+    }
     // Privatkonto (ohne Firma): eigener Bereich.
     const privat = await getPrivatKonto();
     if (privat) return merke(NextResponse.redirect(new URL("/privat", request.url)), startCookieWert(privat.userId, "privat"));
