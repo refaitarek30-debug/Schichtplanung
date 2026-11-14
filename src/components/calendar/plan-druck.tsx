@@ -18,8 +18,11 @@ import { cn } from "@/lib/utils";
  * F/S/N und unten die Legende. „Drucken“ öffnet den Druckdialog – dort
  * lässt sich der Plan auch als PDF sichern und teilen.
  *
- * Abwesenheiten erscheinen auf dem Papier nur als U (Urlaub), V (V-Tag)
- * oder A (abwesend) – ein ausgehängter Plan verrät keine Gründe.
+ * In den Zeilen der Personen steht nur Urlaub (beantragt oder genehmigt) –
+ * der Rest wird wie auf Papier von Hand ergänzt, und ein ausgehängter Plan
+ * verrät keine Krankheit oder andere Gründe. Ohne Legende; das Blatt passt
+ * immer auf eine Seite quer (Zeilenhöhe und Schrift passen sich an), und am
+ * Bildschirm wird es auf die Breite verkleinert.
  */
 
 type Format = "A4" | "A3";
@@ -29,18 +32,25 @@ const tageIm = (j: number, m: number) => new Date(j, m + 1, 0).getDate();
 
 /** Farben wie auf dem Papierplan. */
 const SCHICHT_VOLL: Record<string, string> = { F: "#f4e64b", S: "#6aa84f", N: "#3d85c6" };
-const SCHICHT_HELL: Record<string, string> = { F: "#fbf4b0", S: "#d3e8c8", N: "#cadcf0" };
+const URLAUB = "#f6d58e";
 const SA = "#ecdccb";
 const SO = "#e3c3a3";
 const FEIERTAG = "#c0392b";
 const FERIEN = "#9fbfe5";
 
-function abwesenheit(code: string | null): string | null {
-  if (!code) return null;
-  const c = code.toUpperCase();
-  if (c === "U" || c === "V") return c;
-  return "A";
+/** Urlaub: „U“ genehmigt, „u“ beantragt (Kleinbuchstaben = noch offen). Alles andere bleibt leer. */
+function urlaub(code: string | null | undefined): "genehmigt" | "beantragt" | null {
+  if (code === "U") return "genehmigt";
+  if (code === "u") return "beantragt";
+  return null;
 }
+
+/** Druckbare Fläche quer (Seite minus 8 mm Rand), in mm. */
+const SEITE: Record<"A4" | "A3", { b: number; h: number; schrift: number; zeile: number; kopf: number; name: number }> = {
+  A4: { b: 280, h: 192, schrift: 2.9, zeile: 9, kopf: 26, name: 34 },
+  A3: { b: 403, h: 279, schrift: 3.9, zeile: 13, kopf: 34, name: 48 },
+};
+const PX_JE_MM = 96 / 25.4;
 
 interface Monat {
   jahr: number;
@@ -59,14 +69,22 @@ export function PlanDruck({
   const [monat, setMonat] = useState<number | null>(start.monat);
   const [team, setTeam] = useState(start.team);
   const [format, setFormat] = useState<Format>(start.format);
-  const [eintraege, setEintraege] = useState(true);
+  const [breite, setBreite] = useState(0);
   const [daten, setDaten] = useState<Monat[] | null>(null);
   const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
   const [ferien, setFerien] = useState<SchoolHolidayRange[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
   const [da, setDa] = useState(false);
 
-  useEffect(() => setDa(true), []);
+  useEffect(() => {
+    setDa(true);
+    const messen = () => setBreite(window.innerWidth);
+    messen();
+    window.addEventListener("resize", messen);
+    return () => window.removeEventListener("resize", messen);
+  }, []);
+  // Am Bildschirm aufs Fenster verkleinern – gedruckt wird in Originalgröße.
+  const zoom = breite ? Math.min(1, (breite - 24) / (SEITE[format].b * PX_JE_MM + 2)) : 1;
 
   useEffect(() => {
     let aktiv = true;
@@ -115,7 +133,9 @@ export function PlanDruck({
           body > *:not([data-plan-druck-wurzel]) { display: none !important; }
           .plan-druck { position: static !important; overflow: visible !important; }
           .plan-druck-leiste { display: none !important; }
-          .plan-blatt { box-shadow: none !important; margin: 0 !important; break-after: page; }
+          .plan-druck-blaetter { padding: 0 !important; gap: 0 !important; display: block !important; }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          .plan-blatt { box-shadow: none !important; margin: 0 !important; break-after: page; zoom: 1 !important; }
           .plan-blatt:last-child { break-after: auto; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
@@ -155,9 +175,6 @@ export function PlanDruck({
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-1.5">
-          <input type="checkbox" checked={eintraege} onChange={(e) => setEintraege(e.target.checked)} /> Einträge zeigen
-        </label>
         <button type="button" onClick={() => window.print()} disabled={!daten} className="ml-auto flex items-center gap-2 rounded-lg bg-black px-4 py-2 font-semibold text-white disabled:opacity-40" data-plan-drucken>
           <Printer className="h-4 w-4" /> Drucken / als PDF
         </button>
@@ -166,9 +183,9 @@ export function PlanDruck({
       {fehler ? <p className="p-6 text-[15px] text-red-700">{fehler}</p> : null}
       {!daten && !fehler ? <p className="p-6 text-[15px] text-black/60">Plan wird geladen …</p> : null}
 
-      <div className="flex flex-col items-center gap-6 py-6">
+      <div className="plan-druck-blaetter flex flex-col items-center gap-6 py-6">
         {blaetter.map((b) => (
-          <Blatt key={`${b.jahr}-${b.monat}`} {...b} format={format} team={team} eintraege={eintraege} feiertage={feiertage} istFerien={istFerien} />
+          <Blatt key={`${b.jahr}-${b.monat}`} {...b} format={format} team={team} zoom={zoom} feiertage={feiertage} istFerien={istFerien} />
         ))}
       </div>
     </div>
@@ -185,13 +202,13 @@ function Blatt({
   zellen,
   format,
   team,
-  eintraege,
+  zoom,
   feiertage,
   istFerien,
 }: Monat & {
   format: Format;
   team: string;
-  eintraege: boolean;
+  zoom: number;
   feiertage: Map<string, string>;
   istFerien: (iso: string) => boolean;
 }) {
@@ -237,13 +254,19 @@ function Blatt({
     return undefined;
   };
 
-  const masse = format === "A3" ? { breite: "400mm", hoehe: "273mm", schrift: "11pt", name: "44mm", zeile: "7.6mm" } : { breite: "281mm", hoehe: "190mm", schrift: "8pt", name: "32mm", zeile: "5.4mm" };
-  const leer = Math.max(0, 3);
+  // Alles auf eine Seite: Zeilenhöhe (und damit Schrift) nach der Zahl der Zeilen.
+  const seite = SEITE[format];
+  const leer = 2;
+  const zeilen = personenListe.length + gruppenFolge.length + leer;
+  // Kopf (Ferienband, Wochentage, Datum) und Rand haben feste Höhe; die Zeilen teilen sich den Rest.
+  const zeileMm = Math.max(3.2, Math.min(seite.zeile, (seite.h - seite.kopf) / Math.max(1, zeilen)));
+  const schriftMm = Math.min(seite.schrift, zeileMm * 0.58);
+  const masse = { breite: `${seite.b}mm`, hoehe: `${seite.h}mm`, schrift: `${schriftMm}mm`, name: `${seite.name}mm`, zeile: `${zeileMm}mm` };
 
   return (
     <section
-      className="plan-blatt flex flex-col bg-white px-[6mm] py-[5mm] shadow-[0_2px_16px_rgba(0,0,0,0.18)]"
-      style={{ width: masse.breite, minHeight: masse.hoehe, fontSize: masse.schrift, fontFamily: "Arial, Helvetica, sans-serif" }}
+      className="plan-blatt flex flex-col overflow-hidden bg-white px-[4mm] py-[4mm] shadow-[0_2px_16px_rgba(0,0,0,0.18)]"
+      style={{ width: masse.breite, height: masse.hoehe, fontSize: masse.schrift, fontFamily: "Arial, Helvetica, sans-serif", zoom }}
       data-plan-blatt={`${jahr}-${monat + 1}`}
     >
       <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
@@ -316,12 +339,15 @@ function Blatt({
                     {p.azubi ? <span style={{ color: "#666" }}> (Azubi)</span> : null}
                   </th>
                   {tage.map((t) => {
-                    const z = p.tage.get(t);
-                    const ab = eintraege ? abwesenheit(z?.absenceCode ?? null) : null;
-                    const c = eintraege && !ab ? (z?.shiftCode ?? null) : null;
+                    const u = urlaub(p.tage.get(t)?.absenceCode);
                     return (
-                      <td key={t} className="border border-black/70 text-center" style={{ background: c && SCHICHT_HELL[c] ? SCHICHT_HELL[c] : hinterTag(t) }}>
-                        {ab ?? c ?? ""}
+                      <td
+                        key={t}
+                        className="border border-black/70 text-center font-semibold"
+                        style={{ background: u === "genehmigt" ? URLAUB : hinterTag(t), color: u === "beantragt" ? "#8a6d1f" : undefined }}
+                        title={u === "beantragt" ? "Urlaub beantragt" : u === "genehmigt" ? "Urlaub" : undefined}
+                      >
+                        {u ? "U" : ""}
                       </td>
                     );
                   })}
@@ -340,27 +366,6 @@ function Blatt({
         </tbody>
       </table>
 
-      <div className="mt-auto flex flex-wrap items-center gap-x-[6mm] gap-y-[1.5mm] pt-[4mm]">
-        <Legende farbe={FERIEN} text="Ferien" />
-        <Legende farbe={FEIERTAG} text="Feiertage" />
-        <Legende farbe={SO} text="Wochenende" />
-        <Legende farbe={SCHICHT_VOLL.F} text="F Früh" />
-        <Legende farbe={SCHICHT_VOLL.S} text="S Spät" />
-        <Legende farbe={SCHICHT_VOLL.N} text="N Nacht" />
-        <span>U Urlaub · V V-Tag · A abwesend</span>
-        <span className="ml-auto" style={{ color: "#888" }}>
-          Stand {new Date().toLocaleDateString("de-DE")} · ShiftNexo
-        </span>
-      </div>
     </section>
-  );
-}
-
-function Legende({ farbe, text }: { farbe: string; text: string }) {
-  return (
-    <span className="flex items-center gap-[1.5mm]">
-      <i className="inline-block h-[3.5mm] w-[3.5mm]" style={{ background: farbe }} />
-      {text}
-    </span>
   );
 }

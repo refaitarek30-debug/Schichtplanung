@@ -85,7 +85,9 @@ export function Topbar() {
         {startseite ? <NeuigkeitenKnopf /> : null}
         <NotificationBell />
 
-        <div className="relative" ref={wurzel}>
+        {/* Am Computer steht das Konto unten in der Seitenleiste (KontoMenue) –
+            hier nur noch auf Tablet und Handy, und in der Demo (Rollenwechsel). */}
+        <div className={cn("relative", mode !== "demo" && "lg:hidden")} ref={wurzel}>
           <button
             onClick={() => setOpen((v) => !v)}
             className="flex items-center gap-2.5 rounded-xl border border-line py-1.5 pl-1.5 pr-2.5 hover:bg-surface-muted"

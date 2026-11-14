@@ -104,12 +104,30 @@ export default async function startseite() {
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 
-    // Profil-Fenster: Abmelden oben, Umschalter Startseite.
+    // Profil-Fenster (Entwurf A): Glocke oben, Gruppen, keine Kachel-Liste, Abmelden unten.
     await seite.locator("[data-glas-profil]").first().click();
     await warte(500);
-    const abmelden = seite.getByRole("button", { name: "Abmelden" });
-    const box = await abmelden.boundingBox();
-    pruefe(!!box && box.y < 400, `Profil: „Abmelden“ gleich oben sichtbar (y=${box ? Math.round(box.y) : "?"})`);
+    const dialog = seite.locator('[role="dialog"]');
+    pruefe(await dialog.locator("[data-zu-benachrichtigungen]").isVisible(), "Profil: Glocke oben im Fenster");
+    pruefe((await dialog.getByText("Kacheln auf dem Start").count()) === 0, "Profil: keine Kachel-Liste mehr (steht in den Einstellungen)");
+    const abmelden = dialog.getByRole("button", { name: "Abmelden" });
+    await abmelden.scrollIntoViewIfNeeded();
+    pruefe(await abmelden.isVisible(), "Profil: „Abmelden“ unten im Fenster");
+    // Kein Text ragt aus seiner Zeile.
+    const ueberlauf = await dialog.evaluate((d) =>
+      [...d.querySelectorAll("a, button")].filter((el) => el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent?.trim()),
+    );
+    pruefe(ueberlauf.length === 0, `Profil: alle Texte passen in ihre Zeile ${ueberlauf.join(" | ")}`);
+    // Benachrichtigung führt zur passenden Seite (Antrag → Anträge).
+    const mitteilung = dialog.locator('[data-benachrichtigung-ziel="/urlaubsantraege"]').first();
+    if (!(await mitteilung.isVisible().catch(() => false))) await dialog.locator("[data-benachrichtigungen-zeile]").click();
+    await dialog.locator('[data-benachrichtigung-ziel="/urlaubsantraege"]').first().click();
+    await seite.waitForURL(/\/urlaubsantraege/, { timeout: 15_000 }).catch(() => {});
+    pruefe(/\/urlaubsantraege/.test(seite.url()), "Profil: Benachrichtigung öffnet die passende Seite");
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1000);
+    await seite.locator("[data-glas-profil]").first().click();
+    await warte(500);
     await seite.locator('[role="dialog"]').getByRole("radio", { name: "Kompakt" }).click();
     await warte(300);
     await seite.keyboard.press("Escape");

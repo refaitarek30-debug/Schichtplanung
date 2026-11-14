@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/context/session";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PushAnstoss } from "@/components/kalender/erinnerungen";
@@ -28,6 +29,7 @@ function timeAgo(iso: string): string {
 
 export function NotificationBell() {
   const { mode, profile } = useSession();
+  const router = useRouter();
   const employeeId = profile.employeeId;
   const [open, setOpen] = useState(false);
   const speicherSchluessel = `${employeeId ?? "-"}:glocke`;
@@ -151,16 +153,23 @@ export function NotificationBell() {
                         ),
                       );
                     }
+                    // Zur passenden Seite (Antrag, Urlaub, Einspringen …).
+                    if (item.ziel) {
+                      setOpen(false);
+                      router.push(item.ziel);
+                    }
                   }}
+                  data-benachrichtigung-ziel={item.ziel ?? undefined}
                   className={cn(
                     "flex w-full flex-col items-start gap-0.5 rounded-xl px-2.5 py-2 text-left hover:bg-surface-muted",
                     !item.readAt && "bg-brand-50/60",
                   )}
                 >
                   <span className="flex w-full items-center justify-between gap-2">
-                    <span className="text-[13px] font-medium">{item.title}</span>
-                    <span className="shrink-0 text-[11px] text-ink-faint">
+                    <span className="min-w-0 text-[13px] font-medium">{item.title}</span>
+                    <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-ink-faint">
                       {timeAgo(item.createdAt)}
+                      {item.ziel ? <ChevronRight className="h-3.5 w-3.5" /> : null}
                     </span>
                   </span>
                   <span className="text-[12px] leading-snug text-ink-muted">{item.body}</span>

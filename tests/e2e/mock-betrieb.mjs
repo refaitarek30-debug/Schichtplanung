@@ -128,6 +128,9 @@ http.createServer((req, res) => {
       }
       return liste(filter(q, db.sperren));
     }
+    if (p === "/rest/v1/notifications" && m === "GET") {
+      return liste([{ id: "n0000000-0000-4000-8000-000000000001", company_id: PROFIL.company_id, employee_id: "e0", type: "leave_submitted", title: "Neuer Antrag: Urlaub", body: "Ben Krause hat Urlaub beantragt.", related_entity: "leave_requests", related_id: null, read_at: null, created_at: new Date(Date.now() - 3600e3).toISOString() }]);
+    }
     if (p === "/rest/v1/announcements") {
       if (m === "POST") { const z = Array.isArray(body) ? body[0] : body; db.mitteilungen = [{ id: randomUUID(), title: z.title, body: z.body, level: z.level, active: true, created_at: new Date().toISOString() }, ...(db.mitteilungen ?? [])]; return send(201); }
       if (m === "PATCH") { const id = (url.searchParams.get("id") ?? "").replace("eq.", ""); db.mitteilungen = (db.mitteilungen ?? []).filter((x) => x.id !== id); return send(204); }

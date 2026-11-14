@@ -70,21 +70,6 @@ export default function ShiftPlanPage() {
             }
           />
 
-          <Link
-            href="/schichtplan/druck"
-            className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3.5 shadow-card hover:bg-surface-muted"
-            data-plan-druck-link
-          >
-            <span className="flex items-center gap-3">
-              <Printer className="h-5 w-5 text-ink-muted" strokeWidth={1.8} />
-              <span>
-                <span className="block text-[15px] font-medium">Plan drucken oder als PDF teilen</span>
-                <span className="block text-[13px] text-ink-muted">A4 oder A3 quer, wie der Plan auf Papier – ein Monat oder das ganze Jahr</span>
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 text-ink-faint" />
-          </Link>
-
           {canEdit ? (
             <>
               {/* Schichtwechsel und Abwesenheiten in einer Kachel direkt
@@ -98,15 +83,39 @@ export default function ShiftPlanPage() {
                 }}
               />
 
+              <DruckLink />
+
               <ShiftPlanExport
                 companyId={company.id}
                 ownTeam={ownTeam}
                 canExportAllTeams={role === "admin"}
               />
             </>
-          ) : null}
+          ) : (
+            <DruckLink />
+          )}
         </>
       )}
     </div>
+  );
+}
+
+/** Plan zum Ausdrucken oder als PDF – direkt unter „Plan ändern“. */
+function DruckLink() {
+  return (
+    <Link
+      href="/schichtplan/druck"
+      className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3.5 shadow-card hover:bg-surface-muted"
+      data-plan-druck-link
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <Printer className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.8} />
+        <span className="min-w-0">
+          <span className="block text-[15px] font-medium">Plan drucken oder als PDF teilen</span>
+          <span className="block text-[13px] text-ink-muted">A4 oder A3 quer, wie der Plan auf Papier – ein Monat oder das ganze Jahr</span>
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+    </Link>
   );
 }
