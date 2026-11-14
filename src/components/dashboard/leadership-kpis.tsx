@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Activity, HandHelping } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { KachelHuelle } from "@/components/dashboard/kachel-bearbeiten";
 import { useSession } from "@/context/session";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -79,6 +80,7 @@ export function LeadershipKpis({
   return (
     <>
       {zeigeRate ? (
+      <KachelHuelle id="gesundheit" name="Gesundheitsrate">
       <KpiCard
         label="Gesundheitsrate"
         kompakt={kompakt}
@@ -101,8 +103,10 @@ export function LeadershipKpis({
         }
         icon={<Activity className="h-4 w-4" strokeWidth={1.8} />}
       />
+      </KachelHuelle>
       ) : null}
       {zeigeAnfragen ? (
+      <KachelHuelle id="ersatz" name="Offene Ersatzanfragen">
       <KpiCard
         label="Offene Ersatzanfragen"
         kompakt={kompakt}
@@ -114,6 +118,7 @@ export function LeadershipKpis({
         accent={(offen ?? 0) > 0 ? "warn" : "ok"}
         icon={<HandHelping className="h-4 w-4" strokeWidth={1.8} />}
       />
+      </KachelHuelle>
       ) : null}
     </>
   );

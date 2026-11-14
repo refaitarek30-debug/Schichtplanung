@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-14T23:00:00+01:00",
+    titel: "Kacheln selbst anordnen",
+    text: "Lange auf eine Kachel der Startseite drücken: Minus blendet sie aus, „Kachel hinzufügen“ holt sie zurück. Neu: „Nächste Schicht“ zeigt, wann z. B. die Berufsschule als Nächstes kommt. Die Einstellungen sind jetzt in aufklappbare Bereiche sortiert.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-14T21:00:00+01:00",
     titel: "Meine Zahlen: genauer und verständlicher",
     text: "Gezählt wird jetzt bis heute – was schon geplant ist, steht extra daneben. Tage ohne Eintrag zählen als frei, dadurch stimmen freie Wochenenden und längste Pause. Der Vergleich mit dem Vorjahr nimmt denselben Zeitraum.",

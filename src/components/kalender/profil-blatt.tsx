@@ -3,7 +3,7 @@
 import { PushAnstoss } from "./erinnerungen";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { Bell, ChevronRight, Cog, Home, LayoutGrid, LogOut, UserRound } from "lucide-react";
+import { Bell, ChevronRight, Cog, Home, LayoutGrid, LogOut, TrendingUp, UserRound } from "lucide-react";
 import { usePrivatWechsel } from "@/components/layout/bereich";
 import { KachelListe } from "@/components/dashboard/tile-settings";
 import { useKachelAuswahl } from "@/lib/kachel-auswahl";
@@ -159,6 +159,18 @@ export function ProfilBlatt({
         <Link href="/einstellungen" onClick={onClose} className={zeile}>
           <Cog className="h-5 w-5 text-ink-muted" strokeWidth={1.8} /> Einstellungen
         </Link>
+        <button
+          type="button"
+          data-zu-benachrichtigungen
+          onClick={() => document.getElementById("profil-benachrichtigungen")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          className={zeile}
+        >
+          <Bell className="h-5 w-5 text-ink-muted" strokeWidth={1.8} /> Benachrichtigungen
+          {ungelesen > 0 ? <span className="ml-auto rounded-full bg-ink px-1.5 text-[11.5px] font-semibold text-surface">{ungelesen}</span> : null}
+        </button>
+        <Link href="/meine-zahlen" onClick={onClose} className={zeile}>
+          <TrendingUp className="h-5 w-5 text-ink-muted" strokeWidth={1.8} /> Meine Zahlen
+        </Link>
         <BetreiberLink onClick={onClose} className={zeile} />
       </div>
 
@@ -178,7 +190,7 @@ export function ProfilBlatt({
         </>
       ) : null}
 
-      <p className="mb-1.5 mt-5 flex items-center gap-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
+      <p id="profil-benachrichtigungen" className="mb-1.5 mt-5 flex scroll-mt-4 items-center gap-1.5 px-1 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
         <Bell className="h-3.5 w-3.5" /> Benachrichtigungen
         {ungelesen > 0 ? <span className="rounded-full bg-crit-dot px-1.5 text-[10.5px] text-white">{ungelesen}</span> : null}
       </p>

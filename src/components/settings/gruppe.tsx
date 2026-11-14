@@ -1,23 +1,48 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { Check, ChevronRight } from "lucide-react";
+import { createContext, useContext, type ReactNode } from "react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
  * Bausteine für die Einstellungen: eine Überschrift in Kapitälchen und
  * darunter eine ruhige Karte, deren Zeilen durch feine Linien getrennt sind.
  */
+/**
+ * In den Einstellungen sind die Gruppen aufklappbar: die Überschrift ist
+ * eine Zeile zum Antippen, der Inhalt liegt darunter. Andere Seiten zeigen
+ * die Gruppen wie bisher offen.
+ */
+export const GruppenAufklappen = createContext(false);
+
 export function Gruppe({
   titel,
   hinweis,
   children,
   className,
+  offen,
 }: {
   titel?: string;
   hinweis?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Aufklappbar: zu Beginn offen. */
+  offen?: boolean;
 }) {
+  const aufklappen = useContext(GruppenAufklappen);
+  if (aufklappen && titel) {
+    return (
+      <details className={cn("group/gruppe rounded-card border border-line bg-surface shadow-card", className)} open={offen} data-gruppe={titel}>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
+          <span className="text-[15.5px] font-semibold">{titel}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-ink-faint transition-transform group-open/gruppe:rotate-180" strokeWidth={2} />
+        </summary>
+        <div className="divide-y divide-line border-t border-line">{children}</div>
+        {hinweis ? <p className="border-t border-line px-4 py-2.5 text-[12.5px] leading-snug text-ink-muted sm:px-5">{hinweis}</p> : null}
+      </details>
+    );
+  }
   return (
     <section className={cn("space-y-2", className)}>
       {titel ? (

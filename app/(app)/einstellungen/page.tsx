@@ -15,7 +15,8 @@ import { PrivacySettingsPanel } from "./privacy-settings-panel";
 import { StartSeiteCard } from "@/components/settings/start-seite-card";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
 import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstellungen";
-import { Gruppe, LinkZeile, Zeile } from "@/components/settings/gruppe";
+import { Gruppe, GruppenAufklappen, LinkZeile, Zeile } from "@/components/settings/gruppe";
+import { StartKachelnGruppe } from "@/components/settings/start-kacheln";
 import { roleLabels } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
@@ -91,11 +92,22 @@ export default function SettingsPage() {
         </Link>
       </Gruppe>
 
-      <Gruppe titel="Darstellung">
-        <Zeile titel="Farbschema" text="Gilt nur auf diesem Gerät – für die Nachtschicht meist dunkel." rechts={<ThemeToggle />} />
+      <p className="-mt-3 px-1 text-[13px] text-ink-muted">Tippe auf einen Bereich, um ihn aufzuklappen.</p>
+      <GruppenAufklappen.Provider value>
+      <div className="space-y-2.5">
+      <Gruppe titel="Konto & Sicherheit" offen>
+        <LinkZeile href="/profil" titel="Profil & Stammdaten" text="Name, Kontakt, Passwort" />
+        <LinkZeile href="/profil" titel="Zwei-Faktor-Anmeldung" text="Code aus der Authenticator-App, vertraute Geräte" />
+        <LinkZeile href="/profil/datenschutz" titel="Datenschutz & meine Daten" text="Einwilligungen, alles herunterladen" />
+        <LinkZeile href="/meine-zahlen" titel="Meine Zahlen" text="Deine eigene Statistik – nur für dich" />
       </Gruppe>
 
       {live ? <StartSeiteCard /> : null}
+      {live ? <StartKachelnGruppe /> : null}
+
+      <Gruppe titel="Darstellung">
+        <Zeile titel="Farbschema" text="Gilt nur auf diesem Gerät – für die Nachtschicht meist dunkel." rechts={<ThemeToggle />} />
+      </Gruppe>
 
       {live ? <PrivacySettingsPanel /> : null}
 
@@ -151,6 +163,8 @@ export default function SettingsPage() {
           </details>
         ))}
       </Gruppe>
+      </div>
+      </GruppenAufklappen.Provider>
     </div>
   );
 }

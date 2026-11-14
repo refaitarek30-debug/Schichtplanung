@@ -22,6 +22,8 @@ export default async function rahmen() {
   try {
     await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1500);
+    // Einstellungen sind aufklappbar – für die Scroll-Prüfung alles offen.
+    await seite.evaluate(() => document.querySelectorAll("details[data-gruppe]").forEach((d) => (d.open = true)));
     await seite.getByRole("button", { name: "Überspringen" }).click({ timeout: 1000 }).catch(() => {});
 
     let l = await lage(seite);
@@ -53,6 +55,8 @@ export default async function rahmen() {
     // Ganz unten: der Fuß (Impressum) ist nicht von der Leiste verdeckt.
     await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle" });
     await warte(1000);
+    // Einstellungen sind aufklappbar – für die Scroll-Prüfung alles offen.
+    await seite.evaluate(() => document.querySelectorAll("details[data-gruppe]").forEach((d) => (d.open = true)));
     await seite.evaluate(() => {
       const s = document.querySelector("[data-app-scroller]");
       s.scrollTop = s.scrollHeight;
@@ -78,6 +82,8 @@ export default async function rahmen() {
     const s = await ctx.newPage();
     await s.goto(`${APP}/einstellungen`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1000);
+    // Einstellungen sind aufklappbar – für die Scroll-Prüfung alles offen.
+    await s.evaluate(() => document.querySelectorAll("details[data-gruppe]").forEach((d) => (d.open = true)));
     await s.mouse.move(700, 400);
     await s.mouse.wheel(0, 800);
     await warte(600);

@@ -27,7 +27,9 @@ import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
-import { TileSettings, kachelSichtbar, type TileOption } from "@/components/dashboard/tile-settings";
+import { TileSettings, kachelSichtbar, speichereKachelAuswahl, startKachelOptionen } from "@/components/dashboard/tile-settings";
+import { KachelBearbeitung, KachelHuelle } from "@/components/dashboard/kachel-bearbeiten";
+import { NAECHSTE_KEY, NAECHSTE_PREFIX, NaechsteSchichtKachel } from "@/components/dashboard/naechste-schicht";
 import { KompaktHinweis } from "@/components/dashboard/kompakt-hinweis";
 import { StartAnsichtSchalter } from "@/components/layout/start-ansicht-schalter";
 import { ProfilInline, useGlasModus } from "@/components/layout/glas-profil";
@@ -111,7 +113,7 @@ export default function DashboardPage() {
   );
   // „Nächster Urlaub" ist standardmäßig aus – jeder schaltet ihn selbst ein.
   const zeige = useCallback(
-    (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub"),
+    (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub" || key === NAECHSTE_KEY),
     [versteckt],
   );
 
@@ -269,21 +271,23 @@ export default function DashboardPage() {
   // Zur Auswahl stehen nur Kacheln, die diese Person überhaupt sehen
   // könnte – ein Mitarbeiter soll nicht „Gesundheitsrate“ abwählen
   // müssen, die es für ihn gar nicht gibt.
-  const kachelOptionen = useMemo(() => {
-    const liste: TileOption[] = [
-      { key: "urlaub", label: "Urlaubstage verfügbar" },
-      { key: "antraege", label: role === "employee" ? "Meine offenen Anträge" : "Offene Anträge" },
-    ];
-    if (role !== "employee") liste.push({ key: "kritisch", label: "Kritische Tage" });
-    liste.push({ key: "krank", label: "Krank gesamt" });
-    if (role !== "employee") {
-      liste.push({ key: "gesundheit", label: "Gesundheitsrate" });
-      liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
-    }
-    if (hatVKonto) liste.push({ key: "vtage", label: t("V-Tage gesamt") });
-    liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub", optIn: true });
-    return liste;
-  }, [role, hatVKonto, t]);
+  const kachelOptionen = useMemo(
+    () => startKachelOptionen({ rolle: role, vTage: hatVKonto ? t("V-Tage gesamt") : null, mitNaechster: mode === "live" && !!profile.employeeId }),
+    [role, hatVKonto, t, mode, profile.employeeId],
+  );
+
+  // Kachel „Nächste …“: gewählte Schicht, gespeichert wie die Kachel-Auswahl.
+  const naechsteWahl = [...versteckt].find((e) => e.startsWith(NAECHSTE_PREFIX))?.slice(NAECHSTE_PREFIX.length) ?? null;
+  const waehleNaechste = useCallback(
+    (name: string) => {
+      const vorher = new Set(versteckt);
+      const naechste = new Set([...versteckt].filter((e) => !e.startsWith(NAECHSTE_PREFIX)));
+      naechste.add(`${NAECHSTE_PREFIX}${name}`);
+      setVersteckt(naechste);
+      speichereKachelAuswahl(profile.id, naechste).catch(() => setVersteckt(vorher));
+    },
+    [versteckt, profile.id],
+  );
 
   // Auf dem Handy (neue Oberfläche) steht die Auswahl im Profil-Fenster.
   const glas = useGlasModus();
@@ -356,14 +360,17 @@ export default function DashboardPage() {
         <ProfilInline />
       </header>
 
+      <KachelBearbeitung profileId={profile.id} optionen={kachelOptionen} versteckt={versteckt} onChange={setVersteckt} aktiv={mode === "live"}>
       <div
         className={
           kompakt
             ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]"
             : "grid grid-cols-2 gap-3 lg:grid-cols-5"
         }
+        data-kachel-raster
       >
         {zeige("urlaub") ? (
+        <KachelHuelle id="urlaub" name="Urlaubstage">
         <KpiCard
           label="Urlaubstage verfügbar"
           kompakt={kompakt}
@@ -377,8 +384,10 @@ export default function DashboardPage() {
           ton="gruen"
           icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
         />
+        </KachelHuelle>
         ) : null}
         {zeige("antraege") ? (
+        <KachelHuelle id="antraege" name="Offene Anträge">
         <KpiCard
           label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
           kompakt={kompakt}
@@ -397,9 +406,11 @@ export default function DashboardPage() {
           ton="blau"
           icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
         />
+        </KachelHuelle>
         ) : null}
         {role === "employee" || !zeige("kritisch") ? null : (
-          <KpiCard
+          <KachelHuelle id="kritisch" name="Kritische Tage">
+        <KpiCard
             label="Kritische Tage (14 T.)"
             kompakt={kompakt}
             kurz="Kritisch"
@@ -415,8 +426,10 @@ export default function DashboardPage() {
             ton={criticalDays.length > 0 ? "rot" : "neutral"}
             icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
           />
+        </KachelHuelle>
         )}
         {zeige("krank") ? (
+        <KachelHuelle id="krank" name="Krank gesamt">
         <KpiCard
           label="Krank gesamt"
           kompakt={kompakt}
@@ -429,6 +442,7 @@ export default function DashboardPage() {
           ton="orange"
           icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
         />
+        </KachelHuelle>
         ) : null}
         {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
             offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
@@ -440,7 +454,8 @@ export default function DashboardPage() {
         />
 
         {hatVKonto && zeige("vtage") ? (
-          <KpiCard
+          <KachelHuelle id="vtage" name="V-Tage">
+        <KpiCard
             label={t("V-Tage gesamt")}
             kompakt={kompakt}
             kurz={t("V-Tage")}
@@ -452,8 +467,16 @@ export default function DashboardPage() {
             ton="lila"
             icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
           />
+        </KachelHuelle>
+        ) : null}
+
+        {mode === "live" && profile.employeeId && zeige(NAECHSTE_KEY) ? (
+          <KachelHuelle id={NAECHSTE_KEY} name="Nächste Schicht">
+            <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={kompakt} />
+          </KachelHuelle>
         ) : null}
       </div>
+      </KachelBearbeitung>
 
       {/* Der eigene nächste Urlaub, direkt über dem Knopf zum Beantragen:
           erst sehen, was schon steht, dann den nächsten planen.

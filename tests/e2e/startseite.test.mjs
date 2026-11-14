@@ -43,6 +43,32 @@ export default async function startseite() {
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 
+    // Kacheln bearbeiten: lange drücken, Minus blendet aus, „Kachel hinzufügen“ holt zurück.
+    const urlaubKachel = seite.locator('[data-kachel="urlaub"]');
+    const kachelBox = await urlaubKachel.boundingBox();
+    await seite.mouse.move(kachelBox.x + kachelBox.width / 2, kachelBox.y + kachelBox.height / 2);
+    await seite.mouse.down();
+    await warte(800);
+    await seite.mouse.up();
+    await warte(300);
+    pruefe(await seite.locator("[data-kacheln-bearbeiten]").isVisible(), "Kacheln: langes Drücken startet das Bearbeiten");
+    pruefe(/\/dashboard$/.test(seite.url()), "Kacheln: langes Drücken öffnet die Kachel nicht");
+    await seite.locator('[data-kachel-weg="urlaub"]').click();
+    await warte(300);
+    pruefe((await seite.locator('[data-kachel="urlaub"]').count()) === 0, "Kacheln: Minus blendet die Kachel aus");
+    await seite.locator("[data-kachel-hinzufuegen]").click();
+    await seite.getByRole("button", { name: "Urlaubstage verfügbar" }).click();
+    await warte(300);
+    pruefe((await seite.locator('[data-kachel="urlaub"]').count()) === 1, "Kacheln: „Kachel hinzufügen“ holt sie zurück");
+    await seite.getByRole("button", { name: "Fertig" }).click();
+    await warte(300);
+    pruefe((await seite.locator("[data-kacheln-bearbeiten]").count()) === 0, "Kacheln: „Fertig“ beendet das Bearbeiten");
+    await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle" });
+    await warte(1000);
+    pruefe((await seite.locator('details[data-gruppe="Kacheln auf der Startseite"]').count()) === 1, "Einstellungen: Gruppe „Kacheln auf der Startseite“ (aufklappbar)");
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1000);
+
     // „Mehr“: oben die Kacheln Team, Urlaubssperre, Mitteilungen – darunter der Rest ohne Doppelte.
     await seite.locator("[data-mobile-nav]").getByRole("button", { name: "Mehr" }).click();
     await warte(500);
