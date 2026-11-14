@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronRight, Printer } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { PlanReiter } from "@/components/layout/plan-reiter";
@@ -67,6 +69,21 @@ export default function ShiftPlanPage() {
                 : "Deine Schichtgruppe ist aufgeklappt, die anderen öffnest du per Tipp. Zum Beantragen erst auf „Urlaub beantragen“ tippen, dann in deiner Zeile auf den ersten und letzten Tag. Lange auf einen Tag drücken für einen Kommentar."
             }
           />
+
+          <Link
+            href="/schichtplan/druck"
+            className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-4 py-3.5 shadow-card hover:bg-surface-muted"
+            data-plan-druck-link
+          >
+            <span className="flex items-center gap-3">
+              <Printer className="h-5 w-5 text-ink-muted" strokeWidth={1.8} />
+              <span>
+                <span className="block text-[15px] font-medium">Plan drucken oder als PDF teilen</span>
+                <span className="block text-[13px] text-ink-muted">A4 oder A3 quer, wie der Plan auf Papier – ein Monat oder das ganze Jahr</span>
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-ink-faint" />
+          </Link>
 
           {canEdit ? (
             <>

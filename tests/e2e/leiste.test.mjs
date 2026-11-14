@@ -6,6 +6,8 @@ export default async function leiste() {
   try {
     await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1500);
+    // Einstellungen sind aufklappbar – für die Scroll-Prüfung alles offen.
+    await seite.evaluate(() => document.querySelectorAll("details[data-gruppe]").forEach((d) => (d.open = true)));
     await seite.getByRole("button", { name: "Überspringen" }).click({ timeout: 1000 }).catch(() => {});
 
     // Zähler für die Anstöße (window.scrollBy mit ±1).

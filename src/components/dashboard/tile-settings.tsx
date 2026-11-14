@@ -18,6 +18,47 @@ export interface TileOption {
   optIn?: boolean;
 }
 
+/**
+ * Auswahl im Profil speichern (`profiles.hidden_dashboard_tiles`). Wirft bei
+ * einem Fehler – die Aufrufer setzen dann den alten Stand zurück.
+ */
+export async function speichereKachelAuswahl(profileId: string, auswahl: Set<string>): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await createClient().from("profiles").update({ hidden_dashboard_tiles: [...auswahl] }).eq("id", profileId);
+  if (error) throw error;
+}
+
+/**
+ * Kacheln, die eine Person auf der Startseite haben kann – nur die, die es
+ * für sie überhaupt gibt. Dieselbe Liste für Startseite und Einstellungen.
+ */
+export function startKachelOptionen({
+  rolle,
+  vTage,
+  mitNaechster,
+}: {
+  rolle: string;
+  /** Name der V-Tage-Kachel – fehlt er, gibt es im Betrieb keine V-Tage. */
+  vTage: string | null;
+  /** Kachel „Nächste Schicht“ (eigener Plan nötig). */
+  mitNaechster: boolean;
+}): TileOption[] {
+  const liste: TileOption[] = [
+    { key: "urlaub", label: "Urlaubstage verfügbar" },
+    { key: "antraege", label: rolle === "employee" ? "Meine offenen Anträge" : "Offene Anträge" },
+  ];
+  if (rolle !== "employee") liste.push({ key: "kritisch", label: "Kritische Tage" });
+  liste.push({ key: "krank", label: "Krank gesamt" });
+  if (rolle !== "employee") {
+    liste.push({ key: "gesundheit", label: "Gesundheitsrate" });
+    liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
+  }
+  if (vTage) liste.push({ key: "vtage", label: vTage });
+  liste.push({ key: "naechsterurlaub", label: "Nächster Urlaub", optIn: true });
+  if (mitNaechster) liste.push({ key: "naechsteschicht", label: "Nächste Schicht (z. B. Berufsschule)", optIn: true });
+  return liste;
+}
+
 /** Ist die Kachel sichtbar – nach der gespeicherten Liste? */
 export function kachelSichtbar(gespeichert: Set<string>, key: string, optIn = false): boolean {
   return optIn ? gespeichert.has(`zeige:${key}`) : !gespeichert.has(key);
@@ -65,12 +106,7 @@ export function KachelListe({
     if (!isSupabaseConfigured) return;
     startTransition(async () => {
       try {
-        const supabase = createClient();
-        const { error } = await supabase
-          .from("profiles")
-          .update({ hidden_dashboard_tiles: [...naechste] })
-          .eq("id", profileId);
-        if (error) throw error;
+        await speichereKachelAuswahl(profileId, naechste);
       } catch {
         onChange(vorher);
         setFehler("Die Auswahl konnte nicht gespeichert werden.");
