@@ -127,6 +127,7 @@ export default async function privatNeu() {
     await seite.locator("[data-meine-zahlen]").waitFor({ timeout: 15_000 });
     await warte(800);
     pruefe((await seite.getByText("Arbeitstage", { exact: true }).count()) >= 1, "Meine Zahlen: Kacheln sichtbar");
+    pruefe(/Gezählt:/.test((await seite.locator("[data-zeitraum]").textContent()) ?? ""), "Meine Zahlen: Zeitraum wird genannt");
     pruefe((await seite.locator("[data-krank-wert]").count()) === 0, "Meine Zahlen: Kranktage zunächst verborgen");
     await seite.locator("[data-krank-zeigen]").click();
     pruefe((await seite.locator("[data-krank-wert]").count()) === 1, "Meine Zahlen: Kranktage auf Wunsch");
