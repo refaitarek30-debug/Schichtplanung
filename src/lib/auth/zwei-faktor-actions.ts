@@ -11,6 +11,36 @@ import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import type { FormState } from "./form-state";
 import { geraet, protokolliere } from "./protokoll-server";
 import { betreiberPruefen } from "./betreiber";
+import { cookies } from "next/headers";
+import { createHash, randomBytes } from "node:crypto";
+import { GERAET_COOKIE, GERAET_TAGE } from "./zwei-faktor";
+
+/**
+ * „Diesem Gerät vertrauen“ (Migration 0222): zufälliges Merkzeichen ins Cookie
+ * (nur der Server liest es), Prüfwert in die Datenbank. Schlägt etwas fehl,
+ * fragt die App beim nächsten Mal eben wieder nach dem Code.
+ */
+async function geraetMerken(userId: string | null) {
+  if (!userId) return;
+  const merkzeichen = randomBytes(32).toString("base64url");
+  try {
+    const { error } = await createAdminClient().rpc("geraet_merken", {
+      p_user: userId,
+      p_token_hash: createHash("sha256").update(merkzeichen).digest("hex"),
+      p_geraet: (await geraet()) ?? "unbekanntes Gerät",
+    });
+    if (error) return;
+  } catch {
+    return;
+  }
+  (await cookies()).set(GERAET_COOKIE, merkzeichen, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: GERAET_TAGE * 24 * 60 * 60,
+  });
+}
 
 /**
  * Zwei-Faktor-Anmeldung und Sperre (Migration 0219).
@@ -73,7 +103,11 @@ export async function zweiFaktorStarten(
 }
 
 /** Einrichten, Schritt 2: ersten Code bestätigen. */
-export async function zweiFaktorBestaetigen(factorId: string, eingabe: string): Promise<{ ok?: boolean; error?: string }> {
+export async function zweiFaktorBestaetigen(
+  factorId: string,
+  eingabe: string,
+  merken = false,
+): Promise<{ ok?: boolean; error?: string }> {
   if (!isSupabaseConfigured) return { error: NICHT_KONFIGURIERT };
   const code = nurZiffern(eingabe);
   if (code.length !== 6) return { error: "Bitte den 6-stelligen Code aus der App eingeben." };
@@ -85,6 +119,10 @@ export async function zweiFaktorBestaetigen(factorId: string, eingabe: string): 
     return { error: "Der Code stimmt nicht. Bitte den aktuellen Code aus der App eingeben – er wechselt alle 30 Sekunden." };
   }
   await protokolliere(supabase, "anmeldung", "Zwei-Faktor-Anmeldung eingerichtet");
+  if (merken) {
+    const { data: nutzer } = await supabase.auth.getUser();
+    await geraetMerken(nutzer.user?.id ?? null);
+  }
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -130,6 +168,7 @@ export async function zweiFaktorPruefen(_prev: FormState, formData: FormData): P
     // Zähler ist Beiwerk.
   }
   await protokolliere(supabase, "anmeldung", `mit Zwei-Faktor-Code · ${(await geraet()) ?? "unbekanntes Gerät"}`);
+  if (formData.get("merken") === "on") await geraetMerken(userId);
   revalidatePath("/", "layout");
   redirect(weiter);
 }
@@ -148,8 +187,20 @@ export async function zweiFaktorAusschalten(): Promise<{ ok?: boolean; error?: s
     const { error: weg } = await supabase.auth.mfa.unenroll({ factorId: f.id });
     if (weg) return { error: "Das Ausschalten hat nicht geklappt. Bitte neu anmelden und noch einmal versuchen." };
   }
+  await supabase.rpc("meine_geraete_vergessen");
+  (await cookies()).delete(GERAET_COOKIE);
   await supabase.auth.refreshSession();
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Profil: alle vertrauten Geräte vergessen – beim nächsten Anmelden überall wieder der Code. */
+export async function meineGeraeteVergessen(): Promise<{ ok?: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { error: NICHT_KONFIGURIERT };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("meine_geraete_vergessen");
+  if (error) return { error: "Das hat gerade nicht geklappt. Bitte gleich noch einmal versuchen." };
+  (await cookies()).delete(GERAET_COOKIE);
   return { ok: true };
 }
 

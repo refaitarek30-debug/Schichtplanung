@@ -9,6 +9,7 @@ export default async function zweiFaktor() {
       await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle", timeout: 120_000 });
       pruefe(new URL(seite.url()).pathname === "/zwei-faktor", `Code offen: Weiterleitung zur Code-Eingabe (ist ${seite.url()})`);
       pruefe(await seite.getByRole("heading", { name: "Code eingeben" }).isVisible(), "Code-Eingabe sichtbar");
+      pruefe((await seite.locator("[data-geraet-merken]").isChecked()) === true, "Code-Eingabe: „Diesem Gerät vertrauen“ ist angehakt");
     } finally {
       await browser.close();
     }

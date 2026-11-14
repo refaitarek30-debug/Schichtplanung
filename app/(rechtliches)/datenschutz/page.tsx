@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="13. November 2026"
+      updated="14. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -247,7 +247,14 @@ export default function DatenschutzPage() {
             und ob er bestätigt ist – keine Telefonnummer und keine Daten der App. Die
             Administration sieht, ob die Zwei-Faktor-Anmeldung bei einer Person eingeschaltet ist,
             und kann sie zurücksetzen (zum Beispiel bei einem neuen Handy); das wird im
-            Änderungsprotokoll festgehalten. Mit dem Konto wird alles gelöscht
+            Änderungsprotokoll festgehalten. Mit dem Konto wird alles gelöscht. Wer nach dem Code
+            „Diesem Gerät vertrauen“ wählt, braucht auf diesem Gerät bis zu 30 Tage nur das Passwort
+            (nach 7 Tagen ohne Anmeldung wieder den Code; die Betreiber-Seite verlangt ihn immer).
+            Dafür wird auf dem Gerät ein zufälliges Merkzeichen als technisch notwendiges Cookie
+            gespeichert und beim Anmeldedienst ein Prüfwert (SHA-256) davon, der grobe Gerätetyp (z. B.
+            „iPhone · Safari“) sowie die Zeitpunkte der Einrichtung und der letzten Nutzung. Die
+            Person kann unter Profil → Zwei-Faktor-Anmeldung jederzeit alle Geräte vergessen; das
+            Zurücksetzen durch die Administration löscht sie ebenfalls
           </li>
           <li>
             Sperre nach Fehlversuchen: Gezählt werden falsche Passwörter und falsche Codes je Konto

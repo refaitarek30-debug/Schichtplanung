@@ -44,6 +44,7 @@ export function Einrichten({ weiter }: { weiter: string }) {
   const [laeuft, setLaeuft] = useState(false);
   const [fertig, setFertig] = useState(false);
   const [zeigeSchluessel, setZeigeSchluessel] = useState(false);
+  const [merken, setMerken] = useState(true);
 
   useEffect(() => {
     let weg = false;
@@ -67,7 +68,7 @@ export function Einrichten({ weiter }: { weiter: string }) {
     if (!start?.factorId) return;
     setLaeuft(true);
     setFehler(null);
-    const r = await zweiFaktorBestaetigen(start.factorId, code);
+    const r = await zweiFaktorBestaetigen(start.factorId, code, merken);
     setLaeuft(false);
     if (r.error) {
       setFehler(r.error);
@@ -144,6 +145,18 @@ export function Einrichten({ weiter }: { weiter: string }) {
             className="text-center text-[22px] tracking-[0.3em]"
           />
         </Field>
+        <label className="flex items-start gap-2.5 text-[14px] leading-snug">
+          <input
+            type="checkbox"
+            checked={merken}
+            onChange={(e) => setMerken(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            Diesem Gerät 30 Tage vertrauen
+            <span className="block text-[12.5px] text-ink-muted">Nicht auf fremden oder geteilten Geräten.</span>
+          </span>
+        </label>
         {fehler ? <Alert tone="error">{fehler}</Alert> : null}
         <Button type="submit" className="w-full" disabled={laeuft}>
           {laeuft ? "Wird geprüft …" : "Bestätigen und einschalten"}

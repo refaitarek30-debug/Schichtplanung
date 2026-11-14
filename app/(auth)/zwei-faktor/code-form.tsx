@@ -35,6 +35,16 @@ export function CodeForm({ weiter }: { weiter: string }) {
           className="text-center text-[22px] tracking-[0.3em]"
         />
       </Field>
+      <label className="flex items-start gap-2.5 text-[14px] leading-snug">
+        <input type="checkbox" name="merken" defaultChecked className="mt-0.5 h-4 w-4" data-geraet-merken />
+        <span>
+          Diesem Gerät 30 Tage vertrauen
+          <span className="block text-[12.5px] text-ink-muted">
+            Danach reicht hier das Passwort. Nach 7 Tagen ohne Anmeldung fragt ShiftNexo wieder. Nicht auf fremden oder
+            geteilten Geräten.
+          </span>
+        </span>
+      </label>
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
       <Absenden />
     </form>

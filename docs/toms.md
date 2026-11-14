@@ -26,7 +26,10 @@ was noch fehlt.
   Anmeldedienst). Neue Passwörter: mindestens 10 Zeichen; häufige Passwörter
   (z. B. „Passwort123“, „Sommer2026“), Zahlenreihen und Passwörter mit dem eigenen
   Namen oder der E-Mail-Adresse werden abgelehnt.
-- **Zwei-Faktor-Anmeldung** (6-stelliger Code aus einer Authenticator-App, TOTP):
+- **Zwei-Faktor-Anmeldung** (6-stelliger Code aus einer Authenticator-App, TOTP). Auf
+  Wunsch „Diesem Gerät vertrauen“: höchstens 30 Tage, nach 7 Tagen ohne Anmeldung verfällt
+  es; Merkzeichen nur als Prüfwert gespeichert, jederzeit widerrufbar; nie für die
+  Betreiber-Seite.
   **Pflicht für Administration, Schichtleitung und Betreiber**, freiwillig für alle
   anderen. Die Pflicht setzt die Datenbank selbst durch: Wer einen zweiten Faktor hat,
   bekommt ohne bestätigten Code keine Firmendaten – auch nicht über direkte
