@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-14T17:00:00+01:00",
+    titel: "Zwei-Faktor: Gerät merken",
+    text: "Nach dem Code kannst du „Diesem Gerät 30 Tage vertrauen“ anhaken. Dann reicht auf diesem Gerät das Passwort – nach 7 Tagen ohne Anmeldung fragt ShiftNexo wieder. Alle Geräte vergessen: Profil → Zwei-Faktor-Anmeldung.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-13T21:00:00+01:00",
     titel: "Meine Daten herunterladen",
     text: "Alles, was ShiftNexo über dich gespeichert hat, als eine Datei – jederzeit und ohne Nachfrage. Betrieb: Profil → Datenschutz. Privat: Mehr.",

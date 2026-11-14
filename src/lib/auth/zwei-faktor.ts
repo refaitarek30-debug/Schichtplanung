@@ -23,6 +23,48 @@ export async function zweiterFaktorOffen(supabase: Client): Promise<boolean> {
   }
 }
 
+/**
+ * Muss die Person jetzt den Code eingeben? Wie zweiterFaktorOffen, aber eine
+ * Sitzung von einem vertrauten Gerät (Migration 0222, „Diesem Gerät
+ * vertrauen“) braucht keinen Code. Nur für Betrieb und Privat – die
+ * Betreiber-Seite prüft streng mit zweiterFaktorOffen.
+ */
+export async function zweiterFaktorNoetig(supabase: Client): Promise<boolean> {
+  if (!(await zweiterFaktorOffen(supabase))) return false;
+  try {
+    const { data, error } = await supabase.rpc("sitzung_vertraut");
+    return error ? true : data !== true;
+  } catch {
+    return true;
+  }
+}
+
+/** Hat die Person überhaupt einen eingerichteten zweiten Faktor? */
+export async function hatZweitenFaktor(supabase: Client): Promise<boolean> {
+  try {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    return data?.nextLevel === "aal2";
+  } catch {
+    return false;
+  }
+}
+
+/** Cookie mit dem Merkzeichen für „Diesem Gerät vertrauen“ (nur der Server liest es). */
+export const GERAET_COOKIE = "sn_geraet";
+export const GERAET_TAGE = 30;
+
+/** Sitzungs-Kennung aus dem Zugangs-Token (für vertraute Sitzungen). */
+export function sitzungAusToken(token: string | null | undefined): string | null {
+  try {
+    const teil = (token ?? "").split(".")[1];
+    if (!teil) return null;
+    const inhalt = JSON.parse(Buffer.from(teil, "base64url").toString("utf8")) as { session_id?: unknown };
+    return typeof inhalt.session_id === "string" ? inhalt.session_id : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Hat die Sitzung einen bestätigten zweiten Faktor (aal2)? */
 export async function zweiterFaktorBestaetigt(supabase: Client): Promise<boolean> {
   try {

@@ -15,7 +15,8 @@ import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/ra
 import { PASSWORT_MAX, passwortProblem } from "./password-policy";
 import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, mitFrist, protokolliere } from "./protokoll-server";
-import { GESPERRT_TEXT, zielMitWeiter, zweiterFaktorOffen } from "./zwei-faktor";
+import { GERAET_COOKIE, GESPERRT_TEXT, sitzungAusToken, zielMitWeiter, zweiterFaktorOffen } from "./zwei-faktor";
+import { createHash } from "node:crypto";
 
 export type { FormState } from "./form-state";
 
@@ -60,6 +61,31 @@ async function sperreFrage(funktion: "anmeldung_gesperrt" | "anmeldung_fehlversu
   }
 }
 
+/**
+ * „Diesem Gerät vertrauen“ (Migration 0222): Liegt ein gültiges Merkzeichen
+ * im Cookie, wird die neue Sitzung als vertraut eingetragen – dann reicht das
+ * Passwort. Ohne Service-Schlüssel oder bei Fehlern: immer der Code.
+ */
+async function vertrautesGeraet(userId: string | undefined, zugang: string | undefined): Promise<boolean> {
+  const merkzeichen = (await cookies()).get(GERAET_COOKIE)?.value;
+  const sitzung = sitzungAusToken(zugang);
+  if (!merkzeichen || !userId || !sitzung || merkzeichen.length > 200) return false;
+  try {
+    const antwort = await mitFrist(
+      Promise.resolve(
+        createAdminClient().rpc("geraet_einloesen", {
+          p_user: userId,
+          p_session: sitzung,
+          p_token_hash: createHash("sha256").update(merkzeichen).digest("hex"),
+        }),
+      ),
+    );
+    return antwort?.data === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
 
@@ -98,8 +124,9 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   // Die Frist für die automatische Abmeldung beginnt jetzt (auch während der Code-Eingabe).
   await merkeAnmeldung();
 
-  // Zwei-Faktor-Anmeldung eingerichtet: erst noch der Code aus der App.
-  if (await zweiterFaktorOffen(supabase)) {
+  // Zwei-Faktor-Anmeldung eingerichtet: erst noch der Code aus der App –
+  // außer auf einem vertrauten Gerät (Migration 0222).
+  if ((await zweiterFaktorOffen(supabase)) && !(await vertrautesGeraet(angemeldet.user?.id, angemeldet.session?.access_token))) {
     revalidatePath("/", "layout");
     redirect(zielMitWeiter("/zwei-faktor", safeInternalPath(next, "")));
   }

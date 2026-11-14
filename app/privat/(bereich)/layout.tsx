@@ -9,7 +9,7 @@ import { getPrivatKonto } from "@/lib/privat/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { signOut } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
-import { zweiterFaktorOffen } from "@/lib/auth/zwei-faktor";
+import { zweiterFaktorNoetig } from "@/lib/auth/zwei-faktor";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export const metadata = { title: "Mein Schichtkalender – ShiftNexo", robots: {
 export default async function PrivatLayout({ children }: { children: ReactNode }) {
   if (!isSupabaseConfigured) redirect("/login");
   // Zwei-Faktor-Anmeldung eingerichtet: auch hier erst der Code (Migration 0219).
-  if (await zweiterFaktorOffen(await createClient())) redirect("/zwei-faktor?weiter=/privat");
+  if (await zweiterFaktorNoetig(await createClient())) redirect("/zwei-faktor?weiter=/privat");
   const [konto, session] = await Promise.all([getPrivatKonto(), getAppSession()]);
   // Nach dem Austritt erst die Frage „Privat weitermachen?“ (Migration 0194).
   if (session && !session.profile.active && !session.profile.austrittErledigt) redirect("/privat-weiter");

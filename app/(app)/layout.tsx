@@ -7,7 +7,7 @@ import { fristFuer } from "@/lib/auth/idle";
 import { SessionProvider } from "@/context/session";
 import { getAppSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { zweiFaktorPflicht, zweiterFaktorBestaetigt, zweiterFaktorOffen } from "@/lib/auth/zwei-faktor";
+import { hatZweitenFaktor, zweiFaktorPflicht, zweiterFaktorNoetig } from "@/lib/auth/zwei-faktor";
 import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/config";
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
@@ -33,7 +33,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Zwei-Faktor-Anmeldung (Migration 0219): Passwort allein reicht nicht.
   // Vor dem Laden des Profils – ohne Code liefert die Datenbank keins.
   const supabase = await createClient();
-  if (await zweiterFaktorOffen(supabase)) redirect("/zwei-faktor");
+  if (await zweiterFaktorNoetig(supabase)) redirect("/zwei-faktor");
 
   const session = await getAppSession();
   if (!session) {
@@ -49,7 +49,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (
     session.profile.active &&
     zweiFaktorPflicht(session.profile.role, session.company.isDemo === true) &&
-    !(await zweiterFaktorBestaetigt(supabase))
+    !(await hatZweitenFaktor(supabase))
   ) {
     redirect("/zwei-faktor/einrichten?pflicht=1");
   }
