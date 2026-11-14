@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Sparkles, X } from "lucide-react";
-import { nurMonat, rechne, type StatTag, type Zahlen } from "@/lib/statistik";
+import { rechne, type StatTag, type Zahlen, type Zeitraum } from "@/lib/statistik";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,6 +21,22 @@ const MON = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "Augu
 const WT = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 const zahl = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 const std = (n: number) => `${zahl(Math.round(n))} Std.`;
+const zwei = (n: number) => String(n).padStart(2, "0");
+const isoVon = (d: Date) => `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
+const datum = (iso: string) => `${Number(iso.slice(8, 10))}. ${MON[Number(iso.slice(5, 7)) - 1]}`;
+
+/** Zeitraum eines Jahres oder Monats – gezählt wird höchstens bis heute. */
+function zeitraumVon(jahr: number, monat: number | null, heute: string): Zeitraum & { ende: string } {
+  const von = monat === null ? `${jahr}-01-01` : `${jahr}-${zwei(monat + 1)}-01`;
+  const ende = monat === null ? `${jahr}-12-31` : isoVon(new Date(jahr, monat + 1, 0));
+  return { von, ende, bis: ende < heute ? ende : heute };
+}
+
+/** Gleicher Abschnitt im Vorjahr – damit der Vergleich fair bleibt. */
+function vorjahrVon(z: Zeitraum & { ende: string }): Zeitraum {
+  const ein = (iso: string) => `${Number(iso.slice(0, 4)) - 1}${iso.slice(4) === "-02-29" ? "-02-28" : iso.slice(4)}`;
+  return { von: ein(z.von), bis: ein(z.bis) };
+}
 
 export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise<JahrDaten>; zurueck?: () => void }) {
   const heute = new Date();
@@ -51,9 +67,14 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
 
   const d = daten[jahr];
   const dVor = daten[jahr - 1];
-  const z = useMemo(() => (d ? rechne(reiter === "monat" ? nurMonat(d.tage, jahr, monat) : d.tage, d.feiertage) : null), [d, reiter, jahr, monat]);
-  const zJahr = useMemo(() => (d ? rechne(d.tage, d.feiertage) : null), [d]);
-  const zVor = useMemo(() => (dVor ? rechne(dVor.tage, dVor.feiertage) : null), [dVor]);
+  const [heuteIso] = useState(() => isoVon(new Date()));
+  const zr = useMemo(() => zeitraumVon(jahr, reiter === "monat" ? monat : null, heuteIso), [jahr, reiter, monat, heuteIso]);
+  const zrJahr = useMemo(() => zeitraumVon(jahr, null, heuteIso), [jahr, heuteIso]);
+  const z = useMemo(() => (d ? rechne(d.tage, d.feiertage, zr) : null), [d, zr]);
+  const zJahr = useMemo(() => (d ? rechne(d.tage, d.feiertage, zrJahr) : null), [d, zrJahr]);
+  const zVor = useMemo(() => (dVor ? rechne(dVor.tage, dVor.feiertage, vorjahrVon(zrJahr)) : null), [dVor, zrJahr]);
+  const begonnen = zr.bis >= zr.von;
+  const ganz = zr.bis === zr.ende;
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-3 px-3.5 pb-6 sm:px-0" data-meine-zahlen>
@@ -119,29 +140,43 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
       {fehler ? <p className="glas rounded-[16px] px-4 py-3 text-[14px] text-crit-fg">{fehler}</p> : null}
       {!z && !fehler ? <p className="px-1 text-[14px] text-ink-muted">Zahlen werden gerechnet …</p> : null}
 
+      {z && reiter !== "vergleich" ? (
+        <p className="px-1 text-[13px] leading-snug text-ink-muted" data-zeitraum>
+          {begonnen ? (
+            <>
+              Gezählt: <b className="font-semibold text-ink">{datum(zr.von)} – {ganz ? datum(zr.ende) : `heute (${datum(zr.bis)})`}</b>
+            </>
+          ) : (
+            "Dieser Zeitraum hat noch nicht angefangen."
+          )}
+          {z.geplant > 0 ? <span data-geplant> · danach schon {zahl(z.geplant)} Arbeitstage geplant</span> : null}
+        </p>
+      ) : null}
+
       {z && z.tageMitDaten === 0 ? (
-        <p className="glas rounded-[16px] px-4 py-4 text-[14px] text-ink-muted">Für diesen Zeitraum steht noch nichts im Plan.</p>
+        <p className="glas rounded-[16px] px-4 py-4 text-[14px] text-ink-muted">{begonnen ? "Für diesen Zeitraum steht bis heute noch nichts im Plan." : "Sobald der Zeitraum anfängt, wird hier gezählt."}</p>
       ) : null}
 
       {z && z.tageMitDaten > 0 && reiter !== "vergleich" ? (
         <>
           <div className="grid grid-cols-2 gap-2.5">
-            <Kachel n={z.arbeitstage} titel="Arbeitstage" unter={std(z.stunden)} farbe="#DDEBE0" />
-            <Kachel n={z.sonntage} titel="Sonntage gearbeitet" unter={std(z.sonntagStunden)} farbe="#FBE9C8" />
-            <Kachel n={z.feiertage} titel="Feiertage gearbeitet" unter={std(z.feiertagStunden)} farbe="#F3D6DC" />
-            <Kachel n={z.naechte} titel="Nachtschichten" unter={z.naechte ? `${std(z.nachtStunden)} wach, wenn andere schlafen` : "keine"} farbe="#D9DEEE" />
-            <Kachel n={z.laengsteSerie} titel="längste Serie" unter="Arbeitstage am Stück" farbe="#E6F0FA" />
-            <Kachel n={z.laengsteFrei} titel="längste Pause" unter="freie Tage am Stück" farbe="#E0F4F1" />
-            <Kachel n={z.freieWochenenden} titel="freie Wochenenden" unter={`von ${z.wochenenden}`} farbe="#EEE1F1" />
-            <Kachel n={z.urlaub} titel="Urlaubstage" unter={z.freieTage ? `dazu ${z.freieTage} freie Tage` : ""} farbe="#FCE9DB" />
+            <Kachel n={z.arbeitstage} titel="Arbeitstage" unter={`zusammen ${std(z.stunden)}`} farbe="#DDEBE0" />
+            <Kachel n={z.freieWochenenden} titel="Freie Wochenenden" unter={`Samstag und Sonntag frei – von ${zahl(z.wochenenden)}`} farbe="#EEE1F1" />
+            <Kachel n={z.sonntage} titel="Sonntage gearbeitet" unter={z.sonntage ? `zusammen ${std(z.sonntagStunden)}` : "keinen"} farbe="#FBE9C8" />
+            <Kachel n={z.feiertage} titel="Feiertage gearbeitet" unter={z.feiertage ? `zusammen ${std(z.feiertagStunden)}` : "keinen"} farbe="#F3D6DC" />
+            <Kachel n={z.naechte} titel="Nachtschichten" unter={z.naechte ? `zusammen ${std(z.nachtStunden)}` : "keine"} farbe="#D9DEEE" />
+            <Kachel n={z.urlaub} titel="Urlaubstage" unter="genommen oder eingetragen" farbe="#FCE9DB" />
+            <Kachel n={z.laengsteSerie} titel="Längste Serie" unter="so viele Tage am Stück gearbeitet" farbe="#E6F0FA" />
+            <Kachel n={z.laengsteFrei} titel="Längste Pause" unter="so viele Tage am Stück ohne Arbeit (Urlaub zählt mit)" farbe="#E0F4F1" />
           </div>
 
           <div className="glas divide-y divide-line rounded-[18px] text-[14px]">
+            <Zeile name="Freie Tage" hilfe="ohne Urlaub und Krank" wert={zahl(z.freieTage)} />
             <Zeile name="Samstage gearbeitet" wert={zahl(z.samstage)} />
-            <Zeile name="Wechsel zwischen Schichten" wert={zahl(z.wechsel)} />
+            <Zeile name="Schichtwechsel" hilfe="z. B. von Früh auf Nacht" wert={zahl(z.wechsel)} />
             <Zeile name="Am häufigsten frei" wert={z.freiTag === null ? "–" : WT[z.freiTag]} />
-            {reiter === "jahr" ? <Zeile name="Fleißigster Monat" wert={z.fleissigsterMonat === null ? "–" : MON[z.fleissigsterMonat]} /> : null}
-            <Zeile name="Anteil deiner Zeit bei der Arbeit" wert={`${zahl(z.anteilArbeit)} %`} />
+            {reiter === "jahr" ? <Zeile name="Meiste Arbeitstage" hilfe="Monat" wert={z.fleissigsterMonat === null ? "–" : MON[z.fleissigsterMonat]} /> : null}
+            <Zeile name="Zeit bei der Arbeit" hilfe="Anteil an allen Stunden, auch Nächten" wert={`${zahl(z.anteilArbeit)} %`} />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <span>Kranktage</span>
               {krankZeigen ? (
@@ -167,7 +202,7 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
               <i className="mr-1 inline-block h-2.5 w-2.5 rounded-[3px] bg-brand-500 align-[-1px]" />
               {jahr}
               <i className="ml-3 mr-1 inline-block h-2.5 w-2.5 rounded-[3px] bg-ink/25 align-[-1px]" />
-              {jahr - 1} · nur deine eigenen Zahlen
+              {jahr - 1} · jeweils {datum(zrJahr.von)} – {datum(zrJahr.bis)}
             </p>
             {(
               [
@@ -212,10 +247,13 @@ function Kachel({ n, titel, unter, farbe }: { n: number; titel: string; unter: s
   );
 }
 
-function Zeile({ name, wert }: { name: string; wert: string }) {
+function Zeile({ name, wert, hilfe }: { name: string; wert: string; hilfe?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <span>{name}</span>
+      <span>
+        {name}
+        {hilfe ? <small className="block text-[12px] text-ink-muted">{hilfe}</small> : null}
+      </span>
       <span className="font-semibold">{wert}</span>
     </div>
   );
@@ -255,7 +293,7 @@ function Rueckblick({ z, jahr, onZu }: { z: Zahlen; jahr: number; onZu: () => vo
           [z.naechte, "Nächte durchgearbeitet", `${std(z.nachtStunden)} wach, wenn andere schlafen.`],
           [z.laengsteSerie, "Tage am Stück", "Deine längste Serie ohne freien Tag."],
           [z.laengsteFrei, "freie Tage am Stück", "Deine längste Pause – hoffentlich mit Sonne."],
-          [z.freieWochenenden, "freie Wochenenden", `Von ${zahl(z.wochenenden)} Wochenenden im Plan.${z.freiTag !== null ? ` Am häufigsten frei: ${WT[z.freiTag]}.` : ""}`],
+          [z.freieWochenenden, "freie Wochenenden", `Samstag und Sonntag frei – von ${zahl(z.wochenenden)} Wochenenden.${z.freiTag !== null ? ` Am häufigsten frei: ${WT[z.freiTag]}.` : ""}`],
           [z.wechsel, "Schichtwechsel", z.fleissigsterMonat !== null ? `Dein fleißigster Monat war der ${MON[z.fleissigsterMonat]}.` : "So oft hat dein Rhythmus gewechselt."],
         ] as [number, string, string][]
       ).filter(([n]) => n > 0),
