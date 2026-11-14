@@ -11,10 +11,39 @@ export interface LiveNotification {
   body: string;
   readAt: string | null;
   createdAt: string;
+  /** Wohin ein Tippen führt – null, wenn es keine passende Seite gibt. */
+  ziel: string | null;
+}
+
+/** Seite zur Benachrichtigung – dieselben Ziele wie die Mitteilung aufs Handy (0159). */
+export function benachrichtigungZiel(typ: string | null | undefined): string | null {
+  switch (typ) {
+    case "leave_submitted":
+    case "leave_withdrawn":
+      return "/urlaubsantraege";
+    case "leave_approved":
+    case "leave_rejected":
+      return "/urlaub";
+    case "replacement_requested":
+      return "/dashboard";
+    case "replacement_accepted":
+      return "/besetzung";
+    case "fehlzeit":
+      return "/meine-schichten";
+    default:
+      return null;
+  }
 }
 
 function mapNotification(row: NotificationRow): LiveNotification {
-  return { id: row.id, title: row.title, body: row.body, readAt: row.read_at, createdAt: row.created_at };
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    readAt: row.read_at,
+    createdAt: row.created_at,
+    ziel: benachrichtigungZiel(row.type as string | null),
+  };
 }
 
 /**

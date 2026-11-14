@@ -27,9 +27,15 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-15T09:00:00+01:00",
+    titel: "Profil aufgeräumt",
+    text: "Auf dem Handy: Profil-Fenster mit klaren Gruppen, Glocke oben, Abmelden unten. Am Computer: dunkle Seitenleiste, dein Konto-Menü unten links. Benachrichtigungen führen beim Antippen direkt zur passenden Seite.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-14T23:30:00+01:00",
     titel: "Schichtplan drucken wie auf Papier",
-    text: "Schichtplan → „Plan drucken oder als PDF teilen“: je Monat ein Blatt in A4 oder A3 quer – Wochenenden, Feiertage und Ferien farbig, die Gruppe mit F/S/N obendrüber. Abwesenheiten stehen nur als U, V oder A da.",
+    text: "Schichtplan → unter „Plan ändern“: „Plan drucken oder als PDF teilen“. Je Monat ein Blatt, passt quer auf A4 oder A3 – Wochenenden, Feiertage und Ferien farbig, die Gruppe mit F/S/N obendrüber. Bei den Personen steht nur der Urlaub, ohne Legende.",
     bereich: "betrieb",
   },
   {

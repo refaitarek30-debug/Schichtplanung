@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { NeuMarke } from "./neu-marke";
 import { useOffeneEntscheidungen } from "./urlaub-reiter";
 import { useBegriffe } from "@/lib/begriffe";
+import { KontoMenue } from "./konto-menue";
 
 export function Sidebar() {
   const t = useBegriffe();
@@ -48,7 +49,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden shrink-0 border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col",
+        // Entwurf B: dunkle Leiste in hellem und dunklem Farbschema gleich.
+        "hidden shrink-0 border-r border-white/5 bg-[#18181b] text-zinc-300 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col",
         eingeklappt ? "w-16" : "w-64",
       )}
     >
@@ -56,7 +58,7 @@ export function Sidebar() {
         href="/dashboard"
         aria-label="ShiftNexo – Startseite"
         className={cn(
-          "flex h-16 items-center gap-2.5 border-b border-line hover:bg-surface-muted",
+          "flex h-16 items-center gap-2.5 border-b border-white/10 hover:bg-white/5",
           eingeklappt ? "justify-center px-2" : "px-5",
         )}
       >
@@ -65,8 +67,8 @@ export function Sidebar() {
         </span>
         {eingeklappt ? null : (
           <span className="min-w-0 leading-tight">
-            <span className="block text-sm font-semibold tracking-tight">ShiftNexo</span>
-            <span className="block truncate text-[11px] text-ink-faint">{company.name}</span>
+            <span className="block text-sm font-semibold tracking-tight text-white">ShiftNexo</span>
+            <span className="block truncate text-[11px] text-zinc-400">{company.name}</span>
           </span>
         )}
       </Link>
@@ -75,13 +77,13 @@ export function Sidebar() {
         {groups.map((group, i) => (
           <div key={group.label ?? `g${i}`} className="mb-5 last:mb-0">
             {eingeklappt ? (
-              i > 0 ? <div className="mx-2 mb-2 border-t border-line" aria-hidden /> : null
+              i > 0 ? <div className="mx-2 mb-2 border-t border-white/10" aria-hidden /> : null
             ) : group.label ? (
-              <p className="px-2.5 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+              <p className="px-2.5 pb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                 {group.label}
               </p>
             ) : i > 0 ? (
-              <div className="mx-2.5 mb-3 border-t border-line" aria-hidden />
+              <div className="mx-2.5 mb-3 border-t border-white/10" aria-hidden />
             ) : null}
             <ul className="space-y-0.5">
               {group.eintraege.map((item) => {
@@ -100,18 +102,18 @@ export function Sidebar() {
                         "relative flex gap-2.5 rounded-xl px-2.5 py-2 transition-colors",
                         eingeklappt ? "items-center justify-center" : "items-start",
                         active
-                          ? "bg-brand-50 text-brand-700"
-                          : "text-ink-muted hover:bg-surface-muted hover:text-ink",
+                          ? "bg-[#27272a] text-white"
+                          : "text-zinc-400 hover:bg-white/5 hover:text-white",
                       )}
                     >
                       <Icon className={cn("h-[18px] w-[18px] shrink-0", !eingeklappt && "mt-0.5")} strokeWidth={1.8} />
                       {eingeklappt ? null : (
                         <span className="min-w-0 flex-1">
-                          <span className={cn("flex items-center gap-1.5 text-sm", active ? "font-semibold" : "font-medium text-ink")}>
+                          <span className={cn("flex items-center gap-1.5 text-sm", active ? "font-semibold" : "font-medium text-zinc-200")}>
                             {t(item.label)}
                             {item.neu ? <NeuMarke name={item.neu} /> : null}
                           </span>
-                          <span className="mt-0.5 block text-[11.5px] leading-snug text-ink-faint">{t(item.unter)}</span>
+                          <span className="mt-0.5 block text-[11.5px] leading-snug text-zinc-500">{t(item.unter)}</span>
                         </span>
                       )}
                       {zahl > 0 ? (
@@ -137,21 +139,15 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {eingeklappt ? null : (
-        <div className="border-t border-line px-5 py-3">
-          <p className="truncate text-[12px] font-medium">{company.name}</p>
-          <p className="text-[11px] text-ink-faint">
-            {mode === "demo" ? "Demo-Modus – ohne Backend" : "Angemeldet"}
-          </p>
-        </div>
-      )}
+      {mode === "demo" && !eingeklappt ? <p className="px-5 pb-2 text-[11px] text-zinc-500">Demo-Modus – ohne Backend</p> : null}
+      <KontoMenue eingeklappt={eingeklappt} />
       <button
         type="button"
         onClick={umschalten}
         aria-label={eingeklappt ? "Menü ausklappen" : "Menü einklappen"}
         title={eingeklappt ? "Menü ausklappen" : "Menü einklappen"}
         className={cn(
-          "flex items-center gap-2 border-t border-line py-2.5 text-[12px] text-ink-muted hover:bg-surface-muted hover:text-ink",
+          "flex items-center gap-2 border-t border-white/10 py-2.5 text-[12px] text-zinc-400 hover:bg-white/5 hover:text-white",
           eingeklappt ? "justify-center px-2" : "px-5",
         )}
       >
