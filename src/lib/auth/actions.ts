@@ -1,5 +1,6 @@
 "use server";
 
+import { istKonsolenKonto } from "@/lib/auth/konsole";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -124,11 +125,15 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   // Die Frist für die automatische Abmeldung beginnt jetzt (auch während der Code-Eingabe).
   await merkeAnmeldung();
 
+  // Reines Betreiber-Konto (ohne Betrieb): Ziel ist die Konsole, nicht der Kalender.
+  const konsole = angemeldet.user?.id ? await istKonsolenKonto(angemeldet.user.id) : false;
+  const standardZiel = konsole ? "/plattform" : "/start";
+
   // Zwei-Faktor-Anmeldung eingerichtet: erst noch der Code aus der App –
   // außer auf einem vertrauten Gerät (Migration 0222).
   if ((await zweiterFaktorOffen(supabase)) && !(await vertrautesGeraet(angemeldet.user?.id, angemeldet.session?.access_token))) {
     revalidatePath("/", "layout");
-    redirect(zielMitWeiter("/zwei-faktor", safeInternalPath(next, "")));
+    redirect(zielMitWeiter("/zwei-faktor", safeInternalPath(next, konsole ? "/plattform" : "")));
   }
 
   try {
@@ -139,7 +144,7 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   await protokolliere(supabase, "anmeldung", await geraet());
 
   revalidatePath("/", "layout");
-  redirect(safeInternalPath(next, "/start"));
+  redirect(safeInternalPath(next, standardZiel));
 }
 
 export async function signOut() {

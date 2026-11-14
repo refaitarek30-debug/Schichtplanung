@@ -40,6 +40,8 @@ Der private Kalender einer Person gehört nur ihr. Der Betrieb – auch die Admi
 ## Betreiber
 Der Betreiber von ShiftNexo hat technischen Zugriff für Betrieb, Sicherung und Fehlersuche (AV-Vertrag). Zugriffe erfolgen nur dafür und nur auf Weisung. Die Betreiber-Seite zeigt nur Zählwerte je Firma und verlangt die Zwei-Faktor-Anmeldung. Ein Notfallzugang darf nur lesen; jede Öffnung wird festgehalten (`docs/notfallplan.md`).
 
+**Betreiber-Konsole (ab 0223):** eigener Bereich unter `/plattform`, getrennt von Betrieb und Privat. Ein reines Betreiber-Konto (ohne eigenen Betrieb) landet nach der Anmeldung direkt dort. Weitere Personen nimmt nur jemand mit vollem Zugriff ins Team auf – mit dem Recht „voller Zugriff“ oder „nur lesen“. Es bleibt immer mindestens eine Person mit vollem Zugriff, und niemand ändert das eigene Recht. Jede Aktion aus der Konsole (Aufnehmen, Entfernen, Rechte, Entsperren, Zwei-Faktor zurücksetzen, Passwort-Code, Löschen) steht im Betreiber-Protokoll mit Zeitpunkt und ausführender Person – ohne Inhalte und ohne betroffene Personen.
+
 ## Kontrolle
 - Jede Änderung an Plan, Anträgen, Zugängen und Regeln steht im Änderungsprotokoll (24 Monate).
 - Rechte werden bei Rollenwechsel oder Austritt sofort wirksam; ab dem Tag nach dem Austritt gibt es keinen Zugang mehr.

@@ -50,7 +50,7 @@ export async function firmenInPapierkorb(firmen: string[], bestaetigung: string)
     if (error) probleme.push(error.message);
     else geschafft += 1;
   }
-  revalidatePath("/plattform");
+  revalidatePath("/plattform", "layout");
   if (probleme.length) {
     return { fehler: `${geschafft} in den Papierkorb gelegt. Nicht möglich: ${[...new Set(probleme)].join(" ")}` };
   }
@@ -62,7 +62,7 @@ export async function firmaZurueckholen(firma: string): Promise<LoeschErgebnis> 
   if (!b) return { fehler: "Keine Berechtigung." };
   if (!UUID.test(firma)) return { fehler: "Ungültige Firma." };
   const { error } = await b.admin.rpc("plattform_firma_papierkorb", { p_company: firma, p_in: false });
-  revalidatePath("/plattform");
+  revalidatePath("/plattform", "layout");
   if (error) return { fehler: "Das Zurückholen hat nicht geklappt." };
   return { ok: "Die Firma ist wieder da, die Zugänge sind freigeschaltet." };
 }
@@ -74,7 +74,7 @@ export async function firmaEndgueltig(firma: string, bestaetigung: string): Prom
   if (!UUID.test(firma)) return { fehler: "Ungültige Firma." };
   if (!freigegeben(bestaetigung)) return { fehler: "Bitte zur Bestätigung LÖSCHEN eintippen." };
   const { error } = await b.admin.rpc("firma_endgueltig_loeschen", { p_company: firma });
-  revalidatePath("/plattform");
+  revalidatePath("/plattform", "layout");
   if (error) return { fehler: "Endgültiges Löschen geht nur für Firmen im Papierkorb." };
   return { ok: "Die Firma und alle ihre Daten sind endgültig gelöscht." };
 }
@@ -108,7 +108,7 @@ export async function privatkontenLoeschen(konten: string[], bestaetigung: strin
     await b.admin.from("plattform_protokoll").insert({ aktion: "endgueltig", art: "privat" });
     geschafft += 1;
   }
-  revalidatePath("/plattform");
+  revalidatePath("/plattform", "layout");
   if (uebersprungen) return { fehler: `${geschafft} gelöscht, ${uebersprungen} nicht (eigenes Konto, Betreiber oder kein Privatkonto).` };
   return { ok: `${geschafft} ${geschafft === 1 ? "Privatkonto" : "Privatkonten"} gelöscht.` };
 }

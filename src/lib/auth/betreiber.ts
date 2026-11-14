@@ -35,3 +35,18 @@ export async function betreiberPruefen({ aendern }: { aendern: boolean }): Promi
   const { data } = await admin.rpc("is_platform_admin", { p_user_id: user.id });
   return data === true ? { admin, userId: user.id } : null;
 }
+
+/**
+ * Eintrag ins Betreiber-Protokoll (plattform_protokoll): nur Aktion, Art
+ * und wer aus dem Betreiber-Team – nie Inhalte oder betroffene Personen.
+ * Ohne Migration 0223 fehlt die Spalte „wer“; dann ohne sie. Ein Fehler
+ * beim Protokollieren hält die Aktion nicht auf.
+ */
+export async function betreiberProtokoll(b: Betreiber, aktion: string, art: string): Promise<void> {
+  try {
+    const { error } = await b.admin.from("plattform_protokoll").insert({ aktion, art, wer: b.userId });
+    if (error) await b.admin.from("plattform_protokoll").insert({ aktion, art });
+  } catch {
+    // bewusst still
+  }
+}
