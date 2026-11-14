@@ -66,6 +66,12 @@ export default async function startseite() {
     await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle" });
     await warte(1000);
     pruefe((await seite.locator('details[data-gruppe="Kacheln auf der Startseite"]').count()) === 1, "Einstellungen: Gruppe „Kacheln auf der Startseite“ (aufklappbar)");
+    // Druckansicht des Schichtplans: ein Blatt je Monat, A4/A3 umschaltbar.
+    await seite.goto(`${APP}/schichtplan/druck?team=all`, { waitUntil: "networkidle" });
+    await warte(1500);
+    pruefe((await seite.locator("[data-plan-blatt]").count()) === 1, "Druckansicht: ein Blatt für den Monat");
+    await seite.getByRole("button", { name: "A3" }).click();
+    pruefe(await seite.locator("[data-plan-drucken]").isEnabled(), "Druckansicht: Drucken-Knopf bereit");
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 
