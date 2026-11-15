@@ -305,9 +305,9 @@ function Held({
     <section id={id} className="scroll-mt-16 overflow-x-clip pb-16 pt-10 sm:pb-24 sm:pt-16">
       <div className="mx-auto w-full max-w-6xl px-4 text-center sm:px-6">
         <p className="text-[14px] font-medium text-ink-muted sm:text-[15px]">{hinweis}</p>
-        <h1 className="mx-auto mt-3 max-w-3xl text-balance text-[42px] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-[62px] lg:text-[72px]">
+        <h1 className="mx-auto mt-3 max-w-3xl text-balance text-[44px] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[68px] lg:text-[80px]">
           {titel}
-          {zweite ? <span className="block text-ink-faint">{zweite}</span> : null}
+          <span className="block text-ink-faint">{zweite}</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[20px]">{text}</p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">{knoepfe}</div>
