@@ -72,7 +72,7 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
           <div className="py-1">
             <Eintrag href="/profil" onClick={zu} icon={<UserRound className={ICON} strokeWidth={1.7} />} text="Profil & Stammdaten" />
             <Eintrag
-              href="/profil"
+              href="/profil?bereich=sicherheit"
               onClick={zu}
               icon={<ShieldCheck className={ICON} strokeWidth={1.7} />}
               text="Sicherheit"

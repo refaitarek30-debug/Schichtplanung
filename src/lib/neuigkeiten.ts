@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-15T20:00:00+01:00",
+    titel: "Neues Logo, aufgeräumtes Profil",
+    text: "ShiftNexo hat ein neues Zeichen – auch als App-Symbol (am Handy ggf. die App einmal neu zum Startbildschirm hinzufügen). Das Profil ist jetzt in Daten, Sicherheit und Datenschutz aufgeteilt.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-15T18:00:00+01:00",
     titel: "Berufsschule im Plan",
     text: "Berufsschule (BS) gibt es jetzt als eigene Abwesenheit. Die Leitung trägt sie unter „Plan ändern“ ein, Azubis auch selbst: Profil → Berufsschule eintragen, z. B. jeden Montag. Die Kachel „Nächste Schicht“ zeigt dann, wann es wieder zur Schule geht.",

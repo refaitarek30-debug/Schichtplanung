@@ -6,7 +6,7 @@ const gesetzt = () => fetch(`${DB}/__test/passwort`).then((r) => r.json());
 export default async function passwort() {
   const { browser, seite, seitenFehler } = await neuerBrowser();
   try {
-    await seite.goto(`${APP}/profil`, { waitUntil: "networkidle", timeout: 120_000 });
+    await seite.goto(`${APP}/profil?bereich=sicherheit`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1000);
     const form = seite.locator("[data-passwort-aendern]");
     pruefe(await form.isVisible(), "Profil: Karte „Passwort ändern“ ist da");
@@ -50,7 +50,7 @@ export default async function passwort() {
       (await form.locator('input[name="current_password"]').inputValue()) === "",
       "… die Felder sind danach leer",
     );
-    pruefe(/\/profil$/.test(seite.url()), "… man bleibt angemeldet auf dem Profil");
+    pruefe(/\/profil(\?|$)/.test(seite.url()), "… man bleibt angemeldet auf dem Profil");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));

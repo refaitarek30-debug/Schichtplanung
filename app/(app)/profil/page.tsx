@@ -1,9 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/context/session";
 import { roleLabels } from "@/lib/nav";
 import { ProfileForm } from "./profile-form";
@@ -12,101 +12,72 @@ import { StammdatenForm } from "./stammdaten-form";
 import { PasswortAendernForm } from "./passwort-aendern-form";
 import { WiederherstellungsCodeKarte } from "./wiederherstellungs-code-karte";
 import { ZweiFaktorKarte } from "./zwei-faktor-karte";
+import { ProfilRahmen } from "./rahmen";
+
+type Bereich = "daten" | "sicherheit";
 
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={null}>
+      <ProfilInhalt />
+    </Suspense>
+  );
+}
+
+/**
+ * Profil (Entwurf B): oben wer man ist, links die Bereiche, rechts der Inhalt.
+ * Auf dem Handy stehen die Bereiche als Reiter oben.
+ */
+function ProfilInhalt() {
   const { profile, company, mode } = useSession();
 
   const details = [
-    { label: "E-Mail", value: profile.email, note: "Änderung nur durch die Administration" },
-    { label: "Rolle", value: roleLabels[profile.role], note: "wird von der Administration vergeben" },
+    { label: "E-Mail", value: profile.email },
+    { label: "Rolle", value: roleLabels[profile.role] },
     { label: "Unternehmen", value: company.name },
     { label: "Schicht", value: profile.shiftName ?? "keine Zuordnung" },
   ];
 
+  const bereich: Bereich = useSearchParams().get("bereich") === "sicherheit" ? "sicherheit" : "daten";
+
   return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="Mein Konto"
-        title="Profil"
-       
-      />
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <ProfileForm profile={profile} readOnly={mode === "demo"} />
-        {/* Geburtsdatum – freiwillig, nur selbst pflegbar. War importiert,
-            stand aber nie auf der Seite; deshalb konnte es niemand eintragen. */}
-        <div className="lg:col-start-1">
-          <PersonalDetailsForm readOnly={mode === "demo"} istAdmin={profile.role === "admin"} />
+    <div>
+      <ProfilRahmen aktiv={bereich}>
+        <div className="min-w-0 space-y-4">
+          {bereich === "daten" ? (
+            <>
+              <ProfileForm profile={profile} readOnly={mode === "demo"} />
+              <PersonalDetailsForm readOnly={mode === "demo"} istAdmin={profile.role === "admin"} />
+              {profile.employeeId ? (
+                <StammdatenForm
+                  personalnummer={profile.personnelNumber ?? null}
+                  abteilung={profile.department ?? null}
+                  readOnly={mode === "demo"}
+                />
+              ) : null}
+              <Card>
+                <CardHeader title="Vom Betrieb vergeben" />
+                <CardBody className="py-0">
+                  <dl className="divide-y divide-line">
+                    {details.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between gap-4 py-3">
+                        <dt className="text-[13.5px] text-ink-muted">{item.label}</dt>
+                        <dd className="min-w-0 truncate text-right text-[14px] font-medium">{item.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </CardBody>
+              </Card>
+            </>
+          ) : (
+            <>
+              <PasswortAendernForm readOnly={mode === "demo"} />
+              {mode === "live" && !company.isDemo ? <ZweiFaktorKarte /> : null}
+              {mode === "live" ? <WiederherstellungsCodeKarte /> : null}
+            </>
+          )}
         </div>
-        {profile.employeeId ? (
-          <div className="lg:col-start-1">
-            <StammdatenForm
-              personalnummer={profile.personnelNumber ?? null}
-              abteilung={profile.department ?? null}
-              readOnly={mode === "demo"}
-            />
-          </div>
-        ) : null}
-        <div className="lg:col-start-1">
-          <PasswortAendernForm readOnly={mode === "demo"} />
-        </div>
-        {mode === "live" && !company.isDemo ? (
-          <div className="lg:col-start-1">
-            <ZweiFaktorKarte />
-          </div>
-        ) : null}
-        {mode === "live" ? (
-          <div className="lg:col-start-1">
-            <WiederherstellungsCodeKarte />
-          </div>
-        ) : null}
-        <div className="lg:col-span-2">
-          <a
-            href="/profil/datenschutz"
-            className="inline-flex rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm font-medium text-ink hover:bg-surface-muted"
-          >
-            Datenschutz, Sichtbarkeit &amp; meine Daten
-          </a>
-        </div>
-
-        <Card className="h-fit">
-          <CardHeader title="Stammdaten" />
-          <CardBody className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Avatar employee={profile} className="h-12 w-12 text-base" />
-              <div>
-                <p className="text-sm font-medium">
-                  {profile.firstName} {profile.lastName}
-                </p>
-                <p className="text-[12px] text-ink-muted">{profile.email}</p>
-              </div>
-            </div>
-
-            <dl className="space-y-2">
-              {details.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-start justify-between gap-3 rounded-xl bg-surface-muted px-3 py-2.5"
-                >
-                  <dt className="text-[12px] text-ink-muted">{item.label}</dt>
-                  <dd className="text-right">
-                    <span className="block text-[13px] font-medium">{item.value}</span>
-                    {item.note ? (
-                      <span className="block text-[11px] text-ink-faint">{item.note}</span>
-                    ) : null}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-
-            <p>
-              <Badge tone={profile.active ? "ok" : "critical"}>
-                {profile.active ? "Konto aktiv" : "Konto deaktiviert"}
-              </Badge>
-            </p>
-          </CardBody>
-        </Card>
-      </div>
+      </ProfilRahmen>
     </div>
   );
 }

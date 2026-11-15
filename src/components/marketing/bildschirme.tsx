@@ -1,3 +1,4 @@
+import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import type { CSSProperties, ReactNode } from "react";
 import {
   BarChart3,
@@ -484,7 +485,7 @@ export function BetriebKalender() {
     <Handy glas={false} className="relative">
       {/* Mitteilung von oben */}
       <div className="absolute left-2.5 right-2.5 top-[46px] z-10 flex items-center gap-2.5 rounded-[18px] bg-surface/95 p-2.5 shadow-[0_10px_30px_-8px_rgba(17,24,39,0.35)]">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-brand-500 text-[11px] font-bold text-white">SN</span>
+        <LogoZeichen className="h-9 w-9 text-[12px]" />
         <div className="min-w-0 flex-1">
           <p className="flex justify-between text-[12.5px] font-semibold">
             Urlaub genehmigt <span className="font-normal text-ink-faint">jetzt</span>
@@ -762,7 +763,7 @@ function Fenster({ menue, children, aktiv }: { menue: { icon: ReactNode; text: s
           <span className="h-[9px] w-[9px] rounded-full bg-[#28c840]" />
         </div>
         <p className="mb-2 flex items-center gap-1.5 px-1 text-[13px] font-semibold">
-          <span className="flex h-5 w-5 items-center justify-center rounded-[5px] bg-brand-500 text-[8px] font-bold text-white">SN</span>
+          <LogoZeichen className="h-5 w-5 text-[8px]" />
           ShiftNexo
         </p>
         {menue.map((m, i) => (

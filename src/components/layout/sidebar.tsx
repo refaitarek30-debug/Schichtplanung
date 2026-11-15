@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -62,9 +63,7 @@ export function Sidebar() {
           eingeklappt ? "justify-center px-2" : "px-5",
         )}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold text-white">
-          SN
-        </span>
+        <LogoZeichen />
         {eingeklappt ? null : (
           <span className="min-w-0 leading-tight">
             <span className="block text-sm font-semibold tracking-tight text-white">ShiftNexo</span>

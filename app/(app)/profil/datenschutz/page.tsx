@@ -1,6 +1,6 @@
 import { getAppSession } from "@/lib/auth/session";
 import { PrivacySettingsForm } from "@/components/privacy/privacy-settings-form";
-import { PageHeader } from "@/components/ui/page-header";
+import { ProfilRahmen } from "../rahmen";
 import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -20,26 +20,14 @@ export default async function PrivacySettingsPage() {
 
   if (error || !data) {
     return (
-      <div className="space-y-5">
-        <PageHeader
-          eyebrow="Mein Konto"
-          title="Datenschutz"
-         
-        />
-        <p className="text-sm text-crit-fg">
-          Die Datenschutzeinstellungen konnten nicht geladen werden.
-        </p>
-      </div>
+      <ProfilRahmen aktiv="datenschutz">
+        <p className="text-sm text-crit-fg">Die Datenschutzeinstellungen konnten nicht geladen werden.</p>
+      </ProfilRahmen>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        eyebrow="Mein Konto"
-        title="Datenschutz"
-       
-      />
+    <ProfilRahmen aktiv="datenschutz">
       <PrivacySettingsForm
         absenceVisibility={data.absence_visibility}
         sicknessVisibility={data.sickness_visibility}
@@ -48,6 +36,6 @@ export default async function PrivacySettingsPage() {
       <div className="overflow-hidden rounded-2xl border border-line bg-surface">
         <MeineDatenKnopf />
       </div>
-    </div>
+    </ProfilRahmen>
   );
 }
