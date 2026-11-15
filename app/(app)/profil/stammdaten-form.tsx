@@ -54,7 +54,7 @@ export function StammdatenForm({
 
   return (
     <Card>
-      <CardHeader title="Personalnummer und Abteilung" hint="Kannst du selbst eintragen oder ändern. Die Administration sieht es und kann es ebenfalls ändern." />
+      <CardHeader title="Personalnummer und Abteilung" />
       <CardBody className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">

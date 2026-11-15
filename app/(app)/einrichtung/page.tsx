@@ -119,7 +119,7 @@ export default function EinrichtungPage() {
       <PageHeader
         eyebrow="Verwaltung"
         title={`${company.name} einrichten`}
-        description="Vier Schritte, danach ist die Anwendung einsatzbereit. Du kannst jederzeit abbrechen und später hier weitermachen."
+        description="Vier Schritte – jederzeit unterbrechbar."
         action={
           <Button variant="ghost" onClick={() => router.push("/dashboard")}>
             Später

@@ -72,7 +72,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-7">
-      <PageHeader title="Einstellungen" description={istAdmin ? "Deine Einstellungen und der Betrieb." : "Deine persönlichen Einstellungen."} />
+      <PageHeader title="Einstellungen" />
 
       <Gruppe>
         <Link
@@ -92,7 +92,6 @@ export default function SettingsPage() {
         </Link>
       </Gruppe>
 
-      <p className="-mt-3 px-1 text-[13px] text-ink-muted">Tippe auf einen Bereich, um ihn aufzuklappen.</p>
       <GruppenAufklappen.Provider value>
       <div className="space-y-2.5">
       <Gruppe titel="Konto & Sicherheit" offen>

@@ -141,7 +141,7 @@ export default function AuswertungPage() {
       <PageHeader
         eyebrow="Verwaltung"
         title="Auswertung"
-        description="Ausfall, Anwesenheit und Gesundheitsrate – gerechnet aus denselben Daten wie der Schichtplan und die Urlaubskonten."
+        description="Ausfall, Anwesenheit und Gesundheitsrate."
       />
 
       {fehler ? <Alert tone="error">{fehler}</Alert> : null}

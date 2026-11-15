@@ -111,7 +111,7 @@ export function PersonalDetailsForm({ readOnly, istAdmin = false }: { readOnly?:
     <Card>
       <CardHeader
         title="Persönliche Angaben"
-        hint="Freiwillig und jederzeit änderbar. Ab dem Jahr nach deinem 55. Geburtstag gibt es 4 Tage Sonderurlaub im Jahr – sobald die Administration das Datum bestätigt hat."
+        hint="Freiwillig. Ab 55 gibt es Sonderurlaub (nach Bestätigung)."
       />
       <CardBody className="space-y-4">
         <div className="max-w-sm">

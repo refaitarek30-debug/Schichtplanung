@@ -4,7 +4,8 @@ import { PushAnstoss } from "./erinnerungen";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, ChevronRight, CircleHelp, Cog, LockKeyhole, LogOut, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, CircleHelp, Cog, LockKeyhole, LogOut, School, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { BerufsschuleBlatt, useIstAzubi } from "./berufsschule";
 import { usePrivatWechsel } from "@/components/layout/bereich";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { Blatt } from "@/components/privat/blatt";
@@ -89,6 +90,8 @@ export function ProfilBlatt({
   const ungelesen = (items ?? []).filter((n) => !n.readAt).length;
   const [mitteilungenOffen, setMitteilungenOffen] = useState(ungelesen > 0);
   const [zweiFaktor, setZweiFaktor] = useState<boolean | null>(null);
+  const azubi = useIstAzubi();
+  const [schule, setSchule] = useState(false);
 
   useEffect(() => {
     let aktiv = true;
@@ -204,7 +207,15 @@ export function ProfilBlatt({
           </div>
         ) : null}
         <ZeileLink href="/meine-zahlen" onClick={onClose} icon={<TrendingUp className={ICON} strokeWidth={1.7} />} text="Meine Zahlen" />
+        {azubi ? (
+          <button type="button" onClick={() => setSchule(true)} className={ZEILE} data-berufsschule-zeile>
+            <School className={ICON} strokeWidth={1.7} />
+            <span className="min-w-0 flex-1 truncate">Berufsschule eintragen</span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+          </button>
+        ) : null}
       </Gruppe>
+      {schule ? <BerufsschuleBlatt onClose={() => setSchule(false)} /> : null}
 
       <Gruppe titel="Konto">
         <ZeileLink href="/profil" onClick={onClose} icon={<UserRound className={ICON} strokeWidth={1.7} />} text="Profil & Stammdaten" />

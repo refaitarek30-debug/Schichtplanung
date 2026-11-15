@@ -70,7 +70,7 @@ export function QualificationsCard({ canManage }: { canManage: boolean }) {
     <Card>
       <CardHeader
         title="Qualifikationen"
-        hint="Funktionen und Befähigungen, die euer Betrieb führt. Sie steuern später die Besetzungsprüfung und die Ersatzsuche."
+        hint="Steuern Besetzungsprüfung und Ersatzsuche."
       />
       <CardBody className="space-y-4">
         {katalog === null ? (

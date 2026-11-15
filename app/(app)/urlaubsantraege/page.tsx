@@ -39,7 +39,7 @@ export default function RequestsPage() {
       <PageHeader
         eyebrow="Führung"
         title="Urlaubsanträge"
-        description="Jeder Antrag wird gegen die Mindestbesetzung der betroffenen Schicht geprüft, bevor du entscheidest."
+        description="Mit Blick auf die Besetzung entscheiden."
       />
       <UrlaubReiter />
       {mode === "live" ? (

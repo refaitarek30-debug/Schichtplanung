@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronUp, CircleHelp, Cog, Home, LockKeyhole, LogOut, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { ChevronUp, CircleHelp, Cog, Home, LockKeyhole, LogOut, School, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { BerufsschuleBlatt, useIstAzubi } from "@/components/kalender/berufsschule";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
 import { signOut } from "@/lib/auth/actions";
@@ -31,6 +32,8 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
   const [offen, setOffen] = useState(false);
   const [zweiFaktor, setZweiFaktor] = useState<boolean | null>(null);
   const wurzel = useRef<HTMLDivElement>(null);
+  const azubi = useIstAzubi();
+  const [schule, setSchule] = useState(false);
   const privat = usePrivatWechsel(profile.hatPrivat === true);
   const ansichten = ROLLEN.filter((r) => r !== echteRolle && ROLLEN.indexOf(r) < ROLLEN.indexOf(echteRolle));
 
@@ -77,6 +80,12 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
             />
             <Eintrag href="/einstellungen" onClick={zu} icon={<Cog className={ICON} strokeWidth={1.7} />} text="Einstellungen" />
             <Eintrag href="/meine-zahlen" onClick={zu} icon={<TrendingUp className={ICON} strokeWidth={1.7} />} text="Meine Zahlen" />
+            {azubi ? (
+              <button type="button" onClick={() => (zu(), setSchule(true))} className={ZEILE}>
+                <School className={ICON} strokeWidth={1.7} />
+                <span className="min-w-0 flex-1 truncate">Berufsschule eintragen</span>
+              </button>
+            ) : null}
             <Eintrag href="/profil/datenschutz" onClick={zu} icon={<LockKeyhole className={ICON} strokeWidth={1.7} />} text="Datenschutz & meine Daten" />
             <Eintrag href="/hilfe" onClick={zu} icon={<CircleHelp className={ICON} strokeWidth={1.7} />} text="Hilfe" />
             <BetreiberLink onClick={zu} className={cn(ZEILE, "[&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-zinc-400")} />
@@ -164,6 +173,7 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
         )}
       </button>
       {privat.fenster}
+      {schule ? <BerufsschuleBlatt onClose={() => setSchule(false)} /> : null}
     </div>
   );
 }

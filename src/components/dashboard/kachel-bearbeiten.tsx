@@ -28,6 +28,7 @@ export function KachelBearbeitung({
   onChange,
   aktiv,
   children,
+  danach,
 }: {
   profileId: string;
   optionen: TileOption[];
@@ -36,6 +37,8 @@ export function KachelBearbeitung({
   /** Nur im echten Betrieb – in der Vorschau gibt es nichts zu speichern. */
   aktiv: boolean;
   children: ReactNode;
+  /** Was nach dem Kachel-Raster kommt, aber auch Kacheln enthält (z. B. „Nächster Urlaub“). */
+  danach?: ReactNode;
 }) {
   const [bearbeiten, setBearbeiten] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -135,6 +138,7 @@ export function KachelBearbeitung({
         </div>
       ) : null}
       {fehler ? <p className="text-[12.5px] text-crit-fg">{fehler}</p> : null}
+      {danach}
     </Kontext.Provider>
   );
 }

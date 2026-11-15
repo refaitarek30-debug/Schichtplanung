@@ -360,123 +360,8 @@ export default function DashboardPage() {
         <ProfilInline />
       </header>
 
-      <KachelBearbeitung profileId={profile.id} optionen={kachelOptionen} versteckt={versteckt} onChange={setVersteckt} aktiv={mode === "live"}>
-      <div
-        className={
-          kompakt
-            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]"
-            : "grid grid-cols-2 gap-3 lg:grid-cols-5"
-        }
-        data-kachel-raster
-      >
-        {zeige("urlaub") ? (
-        <KachelHuelle id="urlaub" name="Urlaubstage">
-        <KpiCard
-          label="Urlaubstage verfügbar"
-          kompakt={kompakt}
-          kurz="Urlaub"
-          kurzEinheit={`/${formatDays(totalLeave)}`}
-          href="/urlaub"
-          value={formatDays(availableLeave)}
-          unit="Tage"
-          hint={`von ${formatDays(totalLeave)} übrig`}
-          accent="plan"
-          ton="gruen"
-          icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
-        />
-        </KachelHuelle>
-        ) : null}
-        {zeige("antraege") ? (
-        <KachelHuelle id="antraege" name="Offene Anträge">
-        <KpiCard
-          label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
-          kompakt={kompakt}
-          kurz="Anträge"
-          kurzEinheit="offen"
-          href={role === "employee" ? "/urlaub" : "/urlaubsantraege"}
-          value={role === "employee" ? ownPendingAnzahl : pendingCount}
-          hint={
-            role === "employee"
-              ? ownPendingAnzahl > 0
-                ? "warten auf Entscheidung"
-                : "alles entschieden"
-              : "warten auf deine Entscheidung"
-          }
-          accent="neutral"
-          ton="blau"
-          icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
-        />
-        </KachelHuelle>
-        ) : null}
-        {role === "employee" || !zeige("kritisch") ? null : (
-          <KachelHuelle id="kritisch" name="Kritische Tage">
-        <KpiCard
-            label="Kritische Tage (14 T.)"
-            kompakt={kompakt}
-            kurz="Kritisch"
-            kurzEinheit="Tage"
-            href="/besetzung"
-            value={criticalDays.length}
-            hint={
-              criticalDays.length > 0
-                ? `nächster: ${formatDE(criticalDays[0])}`
-                : "keine Engpässe erkannt"
-            }
-            accent={criticalDays.length > 0 ? "critical" : "ok"}
-            ton={criticalDays.length > 0 ? "rot" : "neutral"}
-            icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
-          />
-        </KachelHuelle>
-        )}
-        {zeige("krank") ? (
-        <KachelHuelle id="krank" name="Krank gesamt">
-        <KpiCard
-          label="Krank gesamt"
-          kompakt={kompakt}
-          kurz="Krank"
-          href="/krank"
-          value={sickDays}
-          unit={sickDays === 1 ? "Tag" : "Tage"}
-          hint={`im Jahr ${year}`}
-          accent={sickDays > 0 ? "warn" : "ok"}
-          ton="orange"
-          icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
-        />
-        </KachelHuelle>
-        ) : null}
-        {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
-            offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
-            selbst aus. */}
-        <LeadershipKpis
-          zeigeRate={zeige("gesundheit")}
-          zeigeAnfragen={zeige("ersatz")}
-          kompakt={kompakt}
-        />
-
-        {hatVKonto && zeige("vtage") ? (
-          <KachelHuelle id="vtage" name="V-Tage">
-        <KpiCard
-            label={t("V-Tage gesamt")}
-            kompakt={kompakt}
-            kurz={t("V-Tage")}
-            href="/urlaub"
-            value={formatDays(vRemaining)}
-            unit="Tage"
-            hint={`von ${formatDays(vEntitlement)} übrig · ${vTageInStunden(vRemaining)}`}
-            accent="plan"
-            ton="lila"
-            icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
-          />
-        </KachelHuelle>
-        ) : null}
-
-        {mode === "live" && profile.employeeId && zeige(NAECHSTE_KEY) ? (
-          <KachelHuelle id={NAECHSTE_KEY} name="Nächste Schicht">
-            <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={kompakt} />
-          </KachelHuelle>
-        ) : null}
-      </div>
-      </KachelBearbeitung>
+      <KachelBearbeitung profileId={profile.id} optionen={kachelOptionen} versteckt={versteckt} onChange={setVersteckt} aktiv={mode === "live"} danach={
+      <>
 
       {/* Der eigene nächste Urlaub, direkt über dem Knopf zum Beantragen:
           erst sehen, was schon steht, dann den nächsten planen.
@@ -484,7 +369,9 @@ export default function DashboardPage() {
       <Raster an={kompakt}>
       {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
         <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-2">
-          <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
+          <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
+            <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
+          </KachelHuelle>
         </Fach>
       ) : null}
 
@@ -616,6 +503,124 @@ export default function DashboardPage() {
         </Fach>
       ) : null}
       </Raster>
+      </>
+      }>
+      <div
+        className={
+          kompakt
+            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]"
+            : "grid grid-cols-2 gap-3 lg:grid-cols-5"
+        }
+        data-kachel-raster
+      >
+        {zeige("urlaub") ? (
+        <KachelHuelle id="urlaub" name="Urlaubstage">
+        <KpiCard
+          label="Urlaubstage verfügbar"
+          kompakt={kompakt}
+          kurz="Urlaub"
+          kurzEinheit={`/${formatDays(totalLeave)}`}
+          href="/urlaub"
+          value={formatDays(availableLeave)}
+          unit="Tage"
+          hint={`von ${formatDays(totalLeave)} übrig`}
+          accent="plan"
+          ton="gruen"
+          icon={<Palmtree className="h-4 w-4" strokeWidth={1.8} />}
+        />
+        </KachelHuelle>
+        ) : null}
+        {zeige("antraege") ? (
+        <KachelHuelle id="antraege" name="Offene Anträge">
+        <KpiCard
+          label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
+          kompakt={kompakt}
+          kurz="Anträge"
+          kurzEinheit="offen"
+          href={role === "employee" ? "/urlaub" : "/urlaubsantraege"}
+          value={role === "employee" ? ownPendingAnzahl : pendingCount}
+          hint={
+            role === "employee"
+              ? ownPendingAnzahl > 0
+                ? "warten auf Entscheidung"
+                : "alles entschieden"
+              : "warten auf deine Entscheidung"
+          }
+          accent="neutral"
+          ton="blau"
+          icon={<ClipboardList className="h-4 w-4" strokeWidth={1.8} />}
+        />
+        </KachelHuelle>
+        ) : null}
+        {role === "employee" || !zeige("kritisch") ? null : (
+          <KachelHuelle id="kritisch" name="Kritische Tage">
+        <KpiCard
+            label="Kritische Tage (14 T.)"
+            kompakt={kompakt}
+            kurz="Kritisch"
+            kurzEinheit="Tage"
+            href="/besetzung"
+            value={criticalDays.length}
+            hint={
+              criticalDays.length > 0
+                ? `nächster: ${formatDE(criticalDays[0])}`
+                : "keine Engpässe erkannt"
+            }
+            accent={criticalDays.length > 0 ? "critical" : "ok"}
+            ton={criticalDays.length > 0 ? "rot" : "neutral"}
+            icon={<CalendarCheck className="h-4 w-4" strokeWidth={1.8} />}
+          />
+        </KachelHuelle>
+        )}
+        {zeige("krank") ? (
+        <KachelHuelle id="krank" name="Krank gesamt">
+        <KpiCard
+          label="Krank gesamt"
+          kompakt={kompakt}
+          kurz="Krank"
+          href="/krank"
+          value={sickDays}
+          unit={sickDays === 1 ? "Tag" : "Tage"}
+          hint={`im Jahr ${year}`}
+          accent={sickDays > 0 ? "warn" : "ok"}
+          ton="orange"
+          icon={<Thermometer className="h-4 w-4" strokeWidth={1.8} />}
+        />
+        </KachelHuelle>
+        ) : null}
+        {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
+            offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
+            selbst aus. */}
+        <LeadershipKpis
+          zeigeRate={zeige("gesundheit")}
+          zeigeAnfragen={zeige("ersatz")}
+          kompakt={kompakt}
+        />
+
+        {hatVKonto && zeige("vtage") ? (
+          <KachelHuelle id="vtage" name="V-Tage">
+        <KpiCard
+            label={t("V-Tage gesamt")}
+            kompakt={kompakt}
+            kurz={t("V-Tage")}
+            href="/urlaub"
+            value={formatDays(vRemaining)}
+            unit="Tage"
+            hint={`von ${formatDays(vEntitlement)} übrig · ${vTageInStunden(vRemaining)}`}
+            accent="plan"
+            ton="lila"
+            icon={<CalendarClock className="h-4 w-4" strokeWidth={1.8} />}
+          />
+        </KachelHuelle>
+        ) : null}
+
+        {mode === "live" && profile.employeeId && zeige(NAECHSTE_KEY) ? (
+          <KachelHuelle id={NAECHSTE_KEY} name="Nächste Schicht">
+            <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={kompakt} mitPrivat={profile.hatPrivat === true} />
+          </KachelHuelle>
+        ) : null}
+      </div>
+      </KachelBearbeitung>
     </div>
   );
 }

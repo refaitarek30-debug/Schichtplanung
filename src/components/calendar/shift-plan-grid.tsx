@@ -103,6 +103,7 @@ const cellStyles: Record<string, string> = {
   g: "bg-shift-gewerkschaft/50 text-shift-gewerkschaft-ink ring-1 ring-inset ring-shift-gewerkschaft-ink/40",
   K: "bg-shift-krank text-shift-krank-ink",
   FB: "bg-shift-schulung text-shift-schulung-ink",
+  BS: "bg-[#e0e7ff] text-[#3730a3] dark:bg-[#312e81] dark:text-[#c7d2fe]",
   A: "bg-surface-sunken text-ink-muted",
   // Freier Tag laut Rotationsmuster – bleibt weiß. Ein freier Tag ist nichts
   // Kritisches; die Farbe war irreführend und hat wie "Krank" ausgesehen.
@@ -232,6 +233,7 @@ const legend = [
   { code: "G", label: "Gewerkschaftstag" },
   { code: "K", label: "Krank" },
   { code: "FB", label: "Schulung" },
+  { code: "BS", label: "Berufsschule" },
   // "A" steht heute für jede weitere Abwesenheit und zugleich für eine
   // Abwesenheit, deren Grund nicht freigegeben ist. Der Text sagt genau
   // das – "Altersfreizeit" wäre an dieser Stelle falsch, solange dasselbe
@@ -1764,6 +1766,18 @@ export function ShiftPlanGrid({
                   <span className="text-[14px] font-bold">FB</span>
                   <span className="text-[10px] font-normal opacity-90">Schulung</span>
                 </button>
+                {selected.isApprentice ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => applyChange("absence", "berufsschule")}
+                    className={cn(bearbeitKnopf, "flex-col gap-0 py-1.5 leading-tight", cellStyles.BS)}
+                    data-berufsschule-knopf
+                  >
+                    <span className="text-[14px] font-bold">BS</span>
+                    <span className="text-[10px] font-normal opacity-90">Berufsschule</span>
+                  </button>
+                ) : null}
               </div>
             </Abschnitt>
           </div>

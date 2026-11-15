@@ -13,6 +13,7 @@ const NOT_CONFIGURED: FormState = {
 const TYPE_LABELS: Record<string, string> = {
   krank: "Krankheit",
   schulung: "Schulung",
+  berufsschule: "Berufsschule",
   sonstiges: "Sonstiges",
 };
 
@@ -72,7 +73,7 @@ export async function createAbsence(_prev: FormState, formData: FormData): Promi
     success:
       tage === 1
         ? `${art} für einen Tag erfasst.`
-        : `${art} für ${tage} ${type === "schulung" ? "Tage" : "Arbeitstage"} erfasst.`,
+        : `${art} für ${tage} ${type === "schulung" || type === "berufsschule" ? "Tage" : "Arbeitstage"} erfasst.`,
   };
 }
 

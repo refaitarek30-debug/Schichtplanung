@@ -112,7 +112,7 @@ export default function HelpPage() {
       <PageHeader
         eyebrow="Hilfe"
         title="Schritt-für-Schritt-Anleitung"
-        description="Ganz einfach erklärt. Wähle oben, was du tun möchtest."
+       
       />
 
       <div className="flex flex-wrap gap-2">

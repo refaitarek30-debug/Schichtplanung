@@ -159,7 +159,7 @@ export default function AusbildungPage() {
       <PageHeader
         eyebrow="Führung"
         title="Ausbildungsplanung"
-        description="Abschnitte und Einsätze der Auszubildenden. Getrennt vom Schichtplan – dort ändert sich dadurch nichts."
+        description="Abschnitte und Einsätze der Auszubildenden."
         action={
           <div className="flex items-center gap-2">
             <select
@@ -275,7 +275,7 @@ export default function AusbildungPage() {
       <Card>
         <CardHeader
           title={`Jahresübersicht ${jahr}`}
-          hint="Ein Balken je Abschnitt. Ein Ausbildungsabschnitt dauert Wochen bis Monate – ein Tagesraster wäre auf dem Bildschirm nicht lesbar."
+          hint="Ein Balken je Abschnitt."
         />
         <CardBody className="px-0 sm:px-0">
           {abschnitte === null ? (
