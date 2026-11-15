@@ -220,7 +220,7 @@ export function ProfilBlatt({
       <Gruppe titel="Konto">
         <ZeileLink href="/profil" onClick={onClose} icon={<UserRound className={ICON} strokeWidth={1.7} />} text="Profil & Stammdaten" />
         <ZeileLink
-          href="/profil"
+          href="/profil?bereich=sicherheit"
           onClick={onClose}
           icon={<ShieldCheck className={ICON} strokeWidth={1.7} />}
           text="Sicherheit"

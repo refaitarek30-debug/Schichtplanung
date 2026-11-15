@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, Building2, ClipboardList, KeyRound, LogOut, MessageSquareText, Trash2, Users } from "lucide-react";
@@ -27,9 +28,12 @@ export function KonsoleRahmen({ email, nurLesen, children }: { email: string; nu
   return (
     <div className="min-h-screen bg-surface-sunken lg:pl-[248px]" data-konsole>
       <aside className="fixed inset-y-0 left-0 hidden w-[248px] flex-col border-r border-white/5 bg-[#18181b] px-3 pb-3 pt-5 text-[#e4e4e7] lg:flex">
-        <div className="px-2.5 pb-4">
-          <p className="text-[16px] font-semibold tracking-tight text-white">ShiftNexo</p>
-          <p className="text-[12px] text-[#a1a1aa]">Betreiber-Konsole</p>
+        <div className="flex items-center gap-2.5 px-2.5 pb-4">
+          <LogoZeichen />
+          <div>
+            <p className="text-[16px] font-semibold tracking-tight text-white">ShiftNexo</p>
+            <p className="text-[12px] text-[#a1a1aa]">Betreiber-Konsole</p>
+          </div>
         </div>
         <nav aria-label="Konsole" className="flex flex-col gap-0.5">
           {BEREICHE.map(({ pfad: p, text, icon: Icon }) => (

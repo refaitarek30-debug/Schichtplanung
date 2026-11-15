@@ -95,8 +95,8 @@ export default function SettingsPage() {
       <GruppenAufklappen.Provider value>
       <div className="space-y-2.5">
       <Gruppe titel="Konto & Sicherheit" offen>
-        <LinkZeile href="/profil" titel="Profil & Stammdaten" text="Name, Kontakt, Passwort" />
-        <LinkZeile href="/profil" titel="Zwei-Faktor-Anmeldung" text="Code aus der Authenticator-App, vertraute Geräte" />
+        <LinkZeile href="/profil" titel="Profil & Stammdaten" text="Name, Geburtsdatum, Personalnummer" />
+        <LinkZeile href="/profil?bereich=sicherheit" titel="Zwei-Faktor-Anmeldung" text="Code aus der App, vertraute Geräte" />
         <LinkZeile href="/profil/datenschutz" titel="Datenschutz & meine Daten" text="Einwilligungen, alles herunterladen" />
         <LinkZeile href="/meine-zahlen" titel="Meine Zahlen" text="Deine eigene Statistik – nur für dich" />
       </Gruppe>

@@ -1,3 +1,4 @@
+import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -52,9 +53,7 @@ export const ZIELE = {
 export function Logo({ className, nurZeichen = false }: { className?: string; nurZeichen?: boolean }) {
   return (
     <span className={cn("flex items-center gap-2", className)}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-brand-500 text-[12.5px] font-bold tracking-tight text-white">
-        SN
-      </span>
+      <LogoZeichen />
       {nurZeichen ? null : <span className="text-[16px] font-semibold tracking-tight">ShiftNexo</span>}
     </span>
   );

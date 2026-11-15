@@ -1,3 +1,4 @@
+import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LegalFooter } from "@/components/layout/legal-footer";
@@ -13,9 +14,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-surface-muted [background-image:var(--glas-hinter)]" />
       <header className="flex justify-center px-5 pt-8 sm:pt-12">
         <Link href="/" aria-label="ShiftNexo – Startseite" className="flex items-center gap-2 rounded-lg hover:opacity-80">
-          <span className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-brand-500 text-[12.5px] font-bold tracking-tight text-white">
-            SN
-          </span>
+          <LogoZeichen />
           <span className="text-[16px] font-semibold tracking-tight">ShiftNexo</span>
         </Link>
       </header>
