@@ -8,6 +8,7 @@ import { BereichKnopf, BereichSchalter } from "./bereich";
 const NAV = [
   { href: "/#funktionen", label: "Funktionen" },
   { href: "/#preise", label: "Preise" },
+  { href: "/#sicherheit", label: "Sicherheit" },
   { href: "/#faq", label: "Fragen" },
   { href: ZIELE.demo, label: "Demo" },
 ];

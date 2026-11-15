@@ -15,12 +15,14 @@ const KOPF = { "Cache-Control": "private, no-store" };
  * Der Plan selbst: Kalender-Apps (Apple, Google, Outlook) fragen den Link von
  * sich aus in kurzen Abständen ab – das war mit Abstand die teuerste Abfrage
  * der Datenbank (rund 0,4 s je Aufruf). Ein kurzer Zwischenspeicher am Rand
- * des Netzes fängt die Wiederholungen ab: höchstens alle 10 Minuten kommt
- * eine Anfrage bis zur Datenbank. Ein beendeter Link gilt damit bis zu 10
+ * des Netzes fängt die Wiederholungen ab: nur selten kommt
+ * eine Anfrage bis zur Datenbank – seit 15.11.2026 höchstens alle 30 Minuten
+ * (vorher 10), und Kalender-Apps sollen selbst nur alle 2 Stunden fragen
+ * (REFRESH-INTERVAL in ics.ts). Ein beendeter Link gilt damit bis zu 30
  * Minuten nach; der Schlüssel im Link bleibt Teil der Adresse, andere
  * Links teilen sich nichts.
  */
-const KOPF_PLAN = { "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300" };
+const KOPF_PLAN = { "Cache-Control": "public, max-age=900, s-maxage=1800, stale-while-revalidate=1800" };
 const TAGE_PRO_ABFRAGE = 62;
 
 function plusTage(tag: string, n: number): string {

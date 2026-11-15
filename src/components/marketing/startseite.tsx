@@ -15,13 +15,9 @@ import {
   FileDown,
   Gauge,
   GraduationCap,
-  History,
   Lock,
   KeyRound,
   ListChecks,
-  LogOut,
-  MonitorSmartphone,
-  Moon,
   Palette,
   Plane,
   Repeat,
@@ -30,12 +26,14 @@ import {
   Smartphone,
   Thermometer,
   Trash2,
-  Upload,
   UserCog,
   Users,
   Wallet,
   Check,
   Info,
+  FileCheck2,
+  RefreshCw,
+  MapPin,
 } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
 import { WischShow, type Folie } from "@/components/marketing/wisch-show";
@@ -61,7 +59,19 @@ import {
 /* Inhalte – nur Funktionen, die es in der Anwendung gibt.             */
 /* ------------------------------------------------------------------ */
 
-type Punkt = { icon: ReactNode; titel: string; text: string };
+type Ton = "blau" | "gruen" | "orange" | "lila" | "rosa" | "tuerkis" | "gelb";
+type Punkt = { icon: ReactNode; titel: string; text: string; ton?: Ton };
+
+/** Farbe der Symbolfläche je Karte – hell im Hintergrund, kräftig im Symbol. */
+const TOENE: Record<Ton, string> = {
+  blau: "bg-[#e6efff] text-[#2563eb] dark:bg-[#1e3a8a]/40 dark:text-[#93b4ff]",
+  gruen: "bg-[#e3f6ea] text-[#16a34a] dark:bg-[#14532d]/40 dark:text-[#86efac]",
+  orange: "bg-[#fff0e0] text-[#ea7a0c] dark:bg-[#7c2d12]/40 dark:text-[#fdba74]",
+  lila: "bg-[#f1eafe] text-[#7c3aed] dark:bg-[#4c1d95]/40 dark:text-[#c4b5fd]",
+  rosa: "bg-[#fde8f0] text-[#db2777] dark:bg-[#831843]/40 dark:text-[#f9a8d4]",
+  tuerkis: "bg-[#e0f5f4] text-[#0d9488] dark:bg-[#134e4a]/40 dark:text-[#5eead4]",
+  gelb: "bg-[#fdf5d8] text-[#ca8a04] dark:bg-[#713f12]/40 dark:text-[#fde047]",
+};
 const i = "h-[22px] w-[22px]";
 
 const FOLIEN_PRIVAT: Folie[] = [
@@ -83,37 +93,35 @@ const FOLIEN_BETRIEB: Folie[] = [
 ];
 
 const FUNKTIONEN_PRIVAT: Punkt[] = [
-  { icon: <Repeat className={i} />, titel: "Schichtfolge", text: "Einmal eintragen, das ganze Jahr ist gefüllt. Einzelne Tage änderst du mit einem Tipp." },
-  { icon: <CalendarDays className={i} />, titel: "Woche, Monat, Jahr", text: "Mit den Feiertagen deines Bundeslands." },
-  { icon: <Palette className={i} />, titel: "Deine Schichten", text: "Namen, Uhrzeiten und Farben, wie du sie brauchst." },
-  { icon: <Bell className={i} />, titel: "Termine und Erinnerungen", text: "Mit Wiederholung und Erinnerung aufs Handy." },
-  { icon: <ListChecks className={i} />, titel: "To-dos", text: "Kleine Aufgaben direkt am Tag." },
-  { icon: <Cake className={i} />, titel: "Geburtstage", text: "Mit Alter und Erinnerung." },
-  { icon: <Users className={i} />, titel: "Partner und Familie", text: "Gegenseitig Schichten sehen und gemeinsame freie Tage finden." },
-  { icon: <Smartphone className={i} />, titel: "Im Handy-Kalender", text: "Als Abo im iPhone- oder Google-Kalender und als Widget." },
-  { icon: <BarChart3 className={i} />, titel: "Auswertung", text: "Schichten zählen, Soll und Ist, Überstunden." },
-  { icon: <Upload className={i} />, titel: "Umziehen leicht gemacht", text: "Schichten aus einer anderen App übernehmen – per Datei oder Screenshot." },
-  { icon: <MonitorSmartphone className={i} />, titel: "Handy und PC", text: "Im Browser, auf dem Startbildschirm wie eine App." },
-  { icon: <Moon className={i} />, titel: "Dunkelmodus", text: "Hell oder dunkel, passend zu deinem Gerät." },
+  { icon: <Repeat className={i} />, ton: "blau", titel: "Schichtfolge", text: "Einmal eintragen, das ganze Jahr ist gefüllt. Einzelne Tage änderst du mit einem Tipp." },
+  { icon: <CalendarDays className={i} />, ton: "gruen", titel: "Ansichten", text: "Woche, Monat und Jahr – mit den Feiertagen deines Bundeslands." },
+  { icon: <Palette className={i} />, ton: "lila", titel: "Deine Schichten", text: "Namen, Uhrzeiten und Farben, wie du sie brauchst. Auf einen Blick sehen, was kommt." },
+  { icon: <Bell className={i} />, ton: "orange", titel: "Termine", text: "Mit Wiederholung und Erinnerung aufs Handy." },
+  { icon: <ListChecks className={i} />, ton: "gruen", titel: "To-dos", text: "Kleine Aufgaben direkt am Tag." },
+  { icon: <Cake className={i} />, ton: "rosa", titel: "Geburtstage", text: "Mit Alter und Erinnerung – nie wieder einen wichtigen Tag vergessen." },
+  { icon: <Users className={i} />, ton: "lila", titel: "Partner und Familie", text: "Gegenseitig Schichten sehen und gemeinsame freie Tage finden." },
+  { icon: <RefreshCw className={i} />, ton: "blau", titel: "Im Handy-Kalender", text: "Als Abo im iPhone- oder Google-Kalender und als Widget." },
+  { icon: <BarChart3 className={i} />, ton: "tuerkis", titel: "Auswertung", text: "Schichten zählen, Soll und Ist, Überstunden." },
 ];
 
+const AUSSERDEM_PRIVAT = ["Umziehen aus einer anderen App – per Datei oder Screenshot", "Handy und PC, auf dem Startbildschirm wie eine App", "Hell oder dunkel"];
+
 const FUNKTIONEN_BETRIEB: Punkt[] = [
-  { icon: <CalendarRange className={i} />, titel: "Schichtplan", text: "Woche und Monat für alle Gruppen auf einen Blick." },
-  { icon: <Repeat className={i} />, titel: "Rotation A bis E", text: "Muster einmal festlegen, der Plan füllt sich." },
-  { icon: <Gauge className={i} />, titel: "Besetzung", text: "Mindest- und Sollbesetzung je Schicht, mit Ampel für jeden Tag." },
-  { icon: <BadgeCheck className={i} />, titel: "Qualifikationen", text: "Mindestanzahl je Schicht, jeden Tag geprüft." },
-  { icon: <Plane className={i} />, titel: "Urlaub digital", text: "Beantragen und genehmigen – mit Blick auf die Besetzung." },
-  { icon: <Wallet className={i} />, titel: "Konten", text: "Urlaub, V-Tage und Altersfreizeit laufen automatisch mit." },
-  { icon: <Thermometer className={i} />, titel: "Krank und Abwesenheiten", text: "Eintragen und sofort sehen, wo es eng wird." },
-  { icon: <Bell className={i} />, titel: "Mitteilungen", text: "Benachrichtigung aufs Handy, wenn sich etwas ändert." },
-  { icon: <Smartphone className={i} />, titel: "Mein Kalender", text: "Für jeden im Team, auch im Kalender des Handys." },
-  { icon: <UserCog className={i} />, titel: "Rollen und Rechte", text: "Leitung, Schichtleitung und Mitarbeiter sehen, was sie brauchen." },
-  { icon: <GraduationCap className={i} />, titel: "Ausbildung", text: "Auszubildende im Plan mitführen." },
-  { icon: <BarChart3 className={i} />, titel: "Auswertung", text: "Ausfall und Anwesenheit für Monat und Jahr." },
-  { icon: <FileDown className={i} />, titel: "Export", text: "Den Plan als Datei weitergeben." },
-  { icon: <History className={i} />, titel: "Änderungsprotokoll", text: "Nachvollziehen, wer wann was geändert hat." },
-  { icon: <LogOut className={i} />, titel: "Automatische Abmeldung", text: "Je nach Rolle nach einer festen Zeit." },
+  { icon: <CalendarRange className={i} />, ton: "blau", titel: "Schichtplan", text: "Woche und Monat für alle Gruppen auf einen Blick – auch zum Ausdrucken." },
+  { icon: <Repeat className={i} />, ton: "lila", titel: "Rotation A bis E", text: "Muster einmal festlegen, der Plan füllt sich." },
+  { icon: <Gauge className={i} />, ton: "gruen", titel: "Besetzung", text: "Mindest- und Sollbesetzung je Schicht, mit Ampel für jeden Tag." },
+  { icon: <BadgeCheck className={i} />, ton: "tuerkis", titel: "Qualifikationen", text: "Mindestanzahl je Schicht, jeden Tag geprüft." },
+  { icon: <Plane className={i} />, ton: "orange", titel: "Urlaub digital", text: "Beantragen und genehmigen – mit Blick auf die Besetzung." },
+  { icon: <Wallet className={i} />, ton: "gelb", titel: "Konten", text: "Urlaub, V-Tage und Altersfreizeit laufen automatisch mit." },
+  { icon: <Thermometer className={i} />, ton: "rosa", titel: "Krank und Abwesenheiten", text: "Eintragen und sofort sehen, wo es eng wird." },
+  { icon: <Bell className={i} />, ton: "orange", titel: "Mitteilungen", text: "Benachrichtigung aufs Handy, wenn sich etwas ändert." },
+  { icon: <Smartphone className={i} />, ton: "blau", titel: "Mein Kalender", text: "Für jeden im Team, auch im Kalender des Handys." },
+  { icon: <UserCog className={i} />, ton: "lila", titel: "Rollen und Rechte", text: "Leitung, Schichtleitung und Mitarbeiter sehen, was sie brauchen." },
+  { icon: <GraduationCap className={i} />, ton: "gruen", titel: "Ausbildung", text: "Auszubildende im Plan mitführen – mit Kachel „Nächste Berufsschule“." },
+  { icon: <BarChart3 className={i} />, ton: "tuerkis", titel: "Auswertung", text: "Ausfall und Anwesenheit für Monat und Jahr." },
 ];
+
+const AUSSERDEM_BETRIEB = ["Plan als Datei oder PDF weitergeben", "Änderungsprotokoll: wer hat wann was geändert", "Automatische Abmeldung je nach Rolle"];
 
 const ROLLEN = [
   {
@@ -149,6 +157,22 @@ const SICHER_BETRIEB: Punkt[] = [
   { icon: <ShieldCheck className={i} />, titel: "Keine Leistungskontrolle", text: "Keine Auswertung je Person, keine Lesebestätigung. Krankheit ist standardmäßig privat." },
   { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter. Über Anträge entscheidet immer ein Mensch." },
   { icon: <FileDown className={i} />, titel: "AV-Vertrag und Datenkopie", text: "AV-Vertrag mit TOMs. Jede Person lädt ihre Daten selbst als Datei herunter." },
+];
+
+/** Kurz und knapp: die Zeile unter „Deine Daten gehören dir.“ */
+const SICHER_KURZ_PRIVAT = [
+  { icon: <MapPin className={i} />, text: "Server in der EU (Irland)" },
+  { icon: <Lock className={i} />, text: "Verschlüsselt (HTTPS)" },
+  { icon: <EyeOff className={i} />, text: "Keine KI, keine Werbung, kein Tracking" },
+  { icon: <FileCheck2 className={i} />, text: "Nach DSGVO gebaut" },
+  { icon: <ShieldCheck className={i} />, text: "Entwickelt in Deutschland" },
+];
+const SICHER_KURZ_BETRIEB = [
+  { icon: <MapPin className={i} />, text: "Server in der EU (Irland)" },
+  { icon: <KeyRound className={i} />, text: "Zwei-Faktor-Anmeldung" },
+  { icon: <EyeOff className={i} />, text: "Keine KI, keine Werbung, kein Tracking" },
+  { icon: <FileCheck2 className={i} />, text: "AV-Vertrag nach DSGVO" },
+  { icon: <ShieldCheck className={i} />, text: "Entwickelt in Deutschland" },
 ];
 
 type Frage = { frage: string; antwort: ReactNode };
@@ -278,9 +302,23 @@ function Abschnitt({ id, children, className }: { id?: string; grau?: boolean; c
 function Ueberschrift({ titel, text }: { titel: ReactNode; text?: string }) {
   return (
     <div className="mx-auto max-w-2xl text-center">
-      <h2 className="text-balance text-[32px] font-semibold leading-[1.08] tracking-[-0.02em] sm:text-[48px]">{titel}</h2>
+      <h2 className="text-balance text-[34px] font-bold leading-[1.08] tracking-[-0.025em] text-[#0f1d3d] dark:text-ink sm:text-[52px]">{titel}</h2>
       {text ? <p className="mx-auto mt-4 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[19px]">{text}</p> : null}
     </div>
+  );
+}
+
+/** Kleine Zeile über der Überschrift: Punkte mit Trennern. */
+function Hinweise({ teile }: { teile: string[] }) {
+  return (
+    <>
+      {teile.map((t, n) => (
+        <span key={t} className="flex items-center gap-2.5">
+          {n > 0 ? <span aria-hidden className="h-1 w-1 rounded-full bg-ink-faint" /> : null}
+          {t}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -294,22 +332,22 @@ function Held({
   show,
 }: {
   id: string;
-  hinweis: string;
+  hinweis: ReactNode;
   titel: string;
   zweite: string;
-  text: string;
+  text: ReactNode;
   knoepfe: ReactNode;
   show: ReactNode;
 }) {
   return (
     <section id={id} className="scroll-mt-16 overflow-x-clip pb-16 pt-10 sm:pb-24 sm:pt-16">
       <div className="mx-auto w-full max-w-6xl px-4 text-center sm:px-6">
-        <p className="text-[14px] font-medium text-ink-muted sm:text-[15px]">{hinweis}</p>
-        <h1 className="mx-auto mt-3 max-w-3xl text-balance text-[44px] font-semibold leading-[1.02] tracking-[-0.03em] sm:text-[68px] lg:text-[80px]">
+        <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-[13.5px] font-medium text-ink-muted sm:text-[15px]">{hinweis}</div>
+        <h1 className="mx-auto mt-4 max-w-4xl text-balance text-[44px] font-bold leading-[1.02] tracking-[-0.035em] text-[#0f1d3d] dark:text-ink sm:text-[68px] lg:text-[80px]">
           {titel}
-          <span className="block text-ink-faint">{zweite}</span>
+          <span className="block">{zweite}</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[20px]">{text}</p>
+        <p className="mx-auto mt-5 max-w-2xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[20px]">{text}</p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">{knoepfe}</div>
         <div className="mt-12 sm:mt-16">{show}</div>
       </div>
@@ -317,11 +355,36 @@ function Held({
   );
 }
 
+function Karten({ punkte, ausserdem }: { punkte: Punkt[]; ausserdem?: string[] }) {
+  return (
+    <>
+      <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {punkte.map((p) => (
+          <li key={p.titel} className="glas flex flex-col items-center rounded-[24px] px-6 pb-7 pt-7 text-center">
+            <span className={`flex h-14 w-14 items-center justify-center rounded-[18px] [&_svg]:h-7 [&_svg]:w-7 ${TOENE[p.ton ?? "blau"]}`} aria-hidden>
+              {p.icon}
+            </span>
+            <h3 className="mt-4 text-balance text-[19px] font-bold tracking-tight">{p.titel}</h3>
+            <p className="mt-1.5 text-pretty text-[15px] leading-relaxed text-ink-muted">{p.text}</p>
+          </li>
+        ))}
+      </ul>
+      {ausserdem?.length ? (
+        <p className="mx-auto mt-8 max-w-3xl text-balance text-center text-[15px] leading-relaxed text-ink-muted">
+          <span className="font-semibold text-ink">Außerdem: </span>
+          {ausserdem.join(" · ")}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** Ausführliche Liste (z. B. Sicherheit im Detail). */
 function Liste({ punkte }: { punkte: Punkt[] }) {
   return (
-    <ul className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
       {punkte.map((p) => (
-        <li key={p.titel} className="flex gap-4">
+        <li key={p.titel} className="flex gap-4 text-left">
           <span className="mt-0.5 shrink-0 text-brand-600" aria-hidden>
             {p.icon}
           </span>
@@ -356,12 +419,63 @@ function Fragen({ id, fragen, titel }: { id: string; fragen: Frage[]; titel: str
   );
 }
 
-function Sicherheit({ id, punkte, titel }: { id: string; punkte: Punkt[]; titel: string }) {
+function Sicherheit({
+  id,
+  punkte,
+  kurz,
+  titel,
+  unten,
+  ihr = false,
+}: {
+  id: string;
+  punkte: Punkt[];
+  kurz: { icon: ReactNode; text: string }[];
+  titel: string;
+  unten?: ReactNode;
+  /** „du“ (Privat) oder „ihr“ (Betrieb). */
+  ihr?: boolean;
+}) {
   return (
     <Abschnitt id={id}>
-      <Ueberschrift titel={titel} text="Datenschutz ist bei uns keine Fußnote. Das gilt von Anfang an." />
-      <Liste punkte={punkte} />
-      <p className="mt-12 text-center">
+      <div className="mx-auto max-w-2xl text-center">
+        <h2 className="text-balance text-[34px] font-bold leading-[1.08] tracking-[-0.025em] text-[#0f1d3d] dark:text-ink sm:text-[52px]">{titel}</h2>
+        <div className="mx-auto mt-5 flex w-44 items-center gap-2" aria-hidden>
+          <span className="h-px flex-1 bg-brand-500/30" />
+          <span className="h-2 w-2 rounded-full bg-brand-500" />
+          <span className="h-px flex-1 bg-brand-500/30" />
+        </div>
+        <p className="mx-auto mt-5 max-w-xl text-pretty text-[17px] leading-relaxed text-ink-muted sm:text-[19px]">
+          {ihr
+            ? "Datenschutz ist bei uns keine Fußnote – damit ihr euch ganz auf eure Schichtplanung konzentrieren könnt."
+            : "Datenschutz ist bei uns keine Fußnote – damit du dich ganz auf deine Schichten konzentrieren kannst."}
+        </p>
+      </div>
+      <ul className="glas mx-auto mt-12 grid max-w-5xl grid-cols-2 overflow-hidden rounded-[28px] sm:grid-cols-3 lg:grid-cols-5" data-sicher-kurz>
+        {kurz.map((k, n) => (
+          <li
+            key={k.text}
+            className={`flex flex-col items-center gap-3 px-4 py-7 text-center ${n > 0 ? "lg:border-l lg:border-[var(--glas-linie)]" : ""} ${n === kurz.length - 1 && kurz.length % 2 === 1 ? "col-span-2 sm:col-span-1" : ""}`}
+          >
+            <span className="text-brand-600 [&_svg]:h-9 [&_svg]:w-9 [&_svg]:stroke-[1.4]" aria-hidden>
+              {k.icon}
+            </span>
+            <span className="text-balance text-[15px] font-medium leading-snug">{k.text}</span>
+          </li>
+        ))}
+      </ul>
+      {unten ? <div className="mt-8 flex justify-center">{unten}</div> : null}
+      <details className="group mx-auto mt-10 max-w-5xl">
+        <summary className="mx-auto flex w-fit cursor-pointer list-none items-center gap-2 rounded-full px-4 py-2 text-[15px] font-medium text-brand-600 hover:bg-brand-500/10 [&::-webkit-details-marker]:hidden">
+          Alles zur Sicherheit im Detail
+          <span aria-hidden className="text-[20px] font-light leading-none transition-transform group-open:rotate-45">
+            +
+          </span>
+        </summary>
+        <div className="mt-8">
+          <Liste punkte={punkte} />
+        </div>
+      </details>
+      <p className="mt-8 text-center">
         <Link href="/datenschutz" className="text-[15px] font-medium text-brand-600 hover:underline">
           Zur Datenschutzerklärung
         </Link>
@@ -479,10 +593,15 @@ export function PrivatSeite() {
     <>
       <Held
         id="kalender"
-        hinweis="Kostenlos · ohne Werbung · ohne E-Mail"
-        titel="Dein Dienstplan. Dein Kalender."
-        zweite="Deine Daten."
-        text="Schichtfolge einmal eintragen – der Kalender füllt sich von selbst. Auf dem Handy, am PC und im Kalender deines Handys."
+        hinweis={<Hinweise teile={["Kostenlos", "Ohne Werbung", "Ohne E-Mail"]} />}
+        titel="Dein Dienstplan."
+        zweite="Einfach. Privat."
+        text={
+          <>
+            Schichtfolge einmal eintragen – der Kalender füllt sich von selbst.{" "}
+            <span className="sm:block">Auf dem Handy, am PC und im Kalender deines Handys.</span>
+          </>
+        }
         knoepfe={
           <>
             <CtaLink href={ZIELE.privat} size="lg">
@@ -498,7 +617,7 @@ export function PrivatSeite() {
 
       <Abschnitt id="funktionen-privat" grau>
         <Ueberschrift titel="Alles, was du brauchst." text="Gemacht für Schichtarbeit – nicht für Büro-Termine." />
-        <Liste punkte={FUNKTIONEN_PRIVAT} />
+        <Karten punkte={FUNKTIONEN_PRIVAT} ausserdem={AUSSERDEM_PRIVAT} />
       </Abschnitt>
 
       <Abschnitt>
@@ -523,7 +642,7 @@ export function PrivatSeite() {
         </div>
       </Abschnitt>
 
-      <Sicherheit id="sicherheit-privat" punkte={SICHER_PRIVAT} titel="Deine Schichten gehören dir." />
+      <Sicherheit id="sicherheit-privat" punkte={SICHER_PRIVAT} kurz={SICHER_KURZ_PRIVAT} titel="Deine Daten gehören dir." />
       <Fragen id="faq-privat" fragen={FRAGEN_PRIVAT} titel="Fragen zum Schichtkalender" />
       <Schluss
         titel="Probier es aus. Es kostet nichts."
@@ -547,10 +666,15 @@ export function BetriebSeite() {
     <>
       <Held
         id="unternehmen"
-        hinweis="Für Schichtbetriebe · 3 Monate kostenlos testen"
+        hinweis={<Hinweise teile={["Für Schichtbetriebe", "3 Monate kostenlos testen", "Server in der EU"]} />}
         titel="Der ganze Betrieb."
         zweite="Ein Plan."
-        text="Schichtplan, Urlaub und Besetzung an einem Ort. Am PC planen – auf dem Handy für jeden im Team."
+        text={
+          <>
+            Schichtplan, Urlaub und Besetzung an einem Ort.{" "}
+            <span className="sm:block">Am PC planen – auf dem Handy für jeden im Team.</span>
+          </>
+        }
         knoepfe={
           <>
             <CtaLink href={ZIELE.testen} size="lg">
@@ -568,7 +692,7 @@ export function BetriebSeite() {
 
       <Abschnitt id="funktionen-betrieb" grau>
         <Ueberschrift titel="Alles für den Schichtbetrieb." text="Vom Rotationsmuster bis zum Urlaubskonto – ohne Tabellen und Zettel." />
-        <Liste punkte={FUNKTIONEN_BETRIEB} />
+        <Karten punkte={FUNKTIONEN_BETRIEB} ausserdem={AUSSERDEM_BETRIEB} />
       </Abschnitt>
 
       <Abschnitt id="rollen">
@@ -598,7 +722,21 @@ export function BetriebSeite() {
         </div>
       </Abschnitt>
 
-      <Sicherheit id="sicherheit-betrieb" punkte={SICHER_BETRIEB} titel="Sicher. Und in der EU." />
+      <Sicherheit
+        id="sicherheit-betrieb"
+        punkte={SICHER_BETRIEB}
+        kurz={SICHER_KURZ_BETRIEB}
+        titel="Eure Daten gehören euch."
+        ihr
+        unten={
+          <a href="#pilot" className="glas inline-flex items-center gap-3 rounded-full py-2 pl-2 pr-5 text-[15px]">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/10 text-brand-600" aria-hidden>
+              <Users className="h-[18px] w-[18px]" />
+            </span>
+            Pilotphase: drei Monate kostenlos im echten Betrieb testen
+          </a>
+        }
+      />
       <Fragen id="faq-betrieb" fragen={FRAGEN_BETRIEB} titel="Fragen von Betrieben" />
       <Schluss
         titel="In 10 Sekunden im eigenen Demo-Betrieb."

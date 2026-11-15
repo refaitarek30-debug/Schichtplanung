@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-15T15:00:00+01:00",
+    titel: "Kalender-Abo: seltener abgefragt",
+    text: "Der Schichtplan im Handy-Kalender (Abo) wird jetzt etwa alle 1–2 Stunden aktualisiert statt ständig. Das schont den Akku und die Server – Änderungen im Plan kommen dadurch etwas später im Handy-Kalender an.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-15T09:00:00+01:00",
     titel: "Profil aufgeräumt",
     text: "Auf dem Handy: Profil-Fenster mit klaren Gruppen, Glocke oben, Abmelden unten. Am Computer: dunkle Seitenleiste, dein Konto-Menü unten links. Benachrichtigungen führen beim Antippen direkt zur passenden Seite.",

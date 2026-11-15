@@ -191,8 +191,8 @@ export function baueIcs(
     `NAME:${icsText(kopf.name)}`,
     `X-APPLE-CALENDAR-COLOR:${kopf.farbe}`,
     `COLOR:${kopf.css}`,
-    "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
-    "X-PUBLISHED-TTL:PT1H",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT2H",
+    "X-PUBLISHED-TTL:PT2H",
   ];
   const stempel = zeitStempel(jetzt);
   const gleich = new Set<string>();
