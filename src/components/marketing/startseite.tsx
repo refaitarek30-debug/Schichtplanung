@@ -359,3 +359,261 @@ function Fragen({ id, fragen, titel }: { id: string; fragen: Frage[]; titel: str
 function Sicherheit({ id, punkte, titel }: { id: string; punkte: Punkt[]; titel: string }) {
   return (
     <Abschnitt id={id}>
+      <Ueberschrift titel={titel} text="Datenschutz ist bei uns keine Fußnote. Das gilt von Anfang an." />
+      <Liste punkte={punkte} />
+      <p className="mt-12 text-center">
+        <Link href="/datenschutz" className="text-[15px] font-medium text-brand-600 hover:underline">
+          Zur Datenschutzerklärung
+        </Link>
+      </p>
+    </Abschnitt>
+  );
+}
+
+function Schluss({ titel, knoepfe }: { titel: string; knoepfe: ReactNode }) {
+  return (
+    <section className="py-24 sm:py-32">
+      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+        <h2 className="text-balance text-[36px] font-semibold leading-[1.05] tracking-[-0.02em] sm:text-[56px]">{titel}</h2>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">{knoepfe}</div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Pilotphase für Betriebe                                             */
+/* ------------------------------------------------------------------ */
+
+const PILOT_SCHRITTE = [
+  { titel: "Registrieren", text: "Fünf kurze Fragen, eine Minute. Ihr bekommt einen eigenen, getrennten Bereich." },
+  { titel: "Einrichten", text: "Ein Assistent führt durch Feiertage, Schichtsystem und Mitarbeiter. Auf Wunsch helfen wir dabei." },
+  { titel: "Testen", text: "Am besten mit einer Schichtgruppe, parallel zum bisherigen Plan. Nichts muss sofort umgestellt werden." },
+  { titel: "Entscheiden", text: "Nach drei Monaten gemeinsam auswerten: weitermachen, anpassen oder beenden. Ohne Verpflichtung." },
+];
+
+const PILOT_ENTHALTEN = [
+  "Voller Funktionsumfang, ohne Begrenzung der Personen",
+  "Drei Monate, keine Zahlungsdaten, keine Vertragslaufzeit",
+  "Hilfe bei der Einrichtung, wenn ihr wollt",
+  "Eure Wünsche fließen direkt in die Entwicklung ein",
+];
+
+const PILOT_OFFEN = [
+  "Rotierende Gruppen: bis zu fünf (A bis E).",
+  "Mitarbeiter werden einzeln angelegt; einen Datei-Import gibt es noch nicht.",
+  "Gibt es bei euch einen Betriebsrat, sollte er vor dem Echtbetrieb eingebunden werden. Wir stellen die App gern vor.",
+];
+
+function Pilot() {
+  return (
+    <Abschnitt id="pilot">
+      <Ueberschrift
+        titel={
+          <>
+            Die Pilotphase.
+            <span className="block text-ink-faint">Drei Monate kostenlos.</span>
+          </>
+        }
+        text="Testet ShiftNexo drei Monate im echten Betrieb, bevor ihr euch festlegt. Die Pilotphase endet von selbst – ohne Kündigung und ohne Kosten."
+      />
+      <ol className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PILOT_SCHRITTE.map((p, n) => (
+          <li key={p.titel} className="glas rounded-[24px] p-6">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-[15px] font-bold text-white">
+              {n + 1}
+            </span>
+            <h3 className="mt-4 text-[18px] font-semibold tracking-tight">{p.titel}</h3>
+            <p className="mt-1.5 text-[15px] leading-relaxed text-ink-muted">{p.text}</p>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="glas rounded-[24px] p-6 sm:p-7">
+          <h3 className="text-[18px] font-semibold tracking-tight">Was die Pilotphase enthält</h3>
+          <ul className="mt-4 space-y-3">
+            {PILOT_ENTHALTEN.map((t) => (
+              <li key={t} className="flex gap-3 text-[15px] leading-snug">
+                <Check className="mt-0.5 h-[18px] w-[18px] shrink-0 text-ok-dot" aria-hidden />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="glas rounded-[24px] p-6 sm:p-7">
+          <h3 className="text-[18px] font-semibold tracking-tight">Gut zu wissen</h3>
+          <ul className="mt-4 space-y-3">
+            {PILOT_OFFEN.map((t) => (
+              <li key={t} className="flex gap-3 text-[15px] leading-snug text-ink-muted">
+                <Info className="mt-0.5 h-[18px] w-[18px] shrink-0 text-ink-faint" aria-hidden />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <CtaLink href={ZIELE.testen} size="lg">
+          Pilot starten
+        </CtaLink>
+        <CtaLink href={ZIELE.demo} size="lg" variant="secondary">
+          Erst die Live-Demo ansehen
+        </CtaLink>
+      </div>
+      <p className="mt-6 text-center text-[15px] text-ink-muted">
+        Fragen vorab? Schreibt an{" "}
+        <a href="mailto:shiftfornexo@gmail.com" className="font-medium text-brand-600 hover:underline">
+          shiftfornexo@gmail.com
+        </a>
+      </p>
+    </Abschnitt>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Die zwei Hälften                                                    */
+/* ------------------------------------------------------------------ */
+
+export function PrivatSeite() {
+  return (
+    <>
+      <Held
+        id="kalender"
+        hinweis="Kostenlos · ohne Werbung · ohne E-Mail"
+        titel="Dein Dienstplan. Dein Kalender."
+        zweite="Deine Daten."
+        text="Schichtfolge einmal eintragen – der Kalender füllt sich von selbst. Auf dem Handy, am PC und im Kalender deines Handys."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.privat} size="lg">
+              Kostenlos starten
+            </CtaLink>
+            <CtaLink href={ZIELE.anmelden} size="lg" variant="secondary">
+              Anmelden
+            </CtaLink>
+          </>
+        }
+        show={<WischShow name="Schichtkalender" pc={<PcPrivat />} folien={FOLIEN_PRIVAT} />}
+      />
+
+      <Abschnitt id="funktionen-privat" grau>
+        <Ueberschrift titel="Alles, was du brauchst." text="Gemacht für Schichtarbeit – nicht für Büro-Termine." />
+        <Liste punkte={FUNKTIONEN_PRIVAT} />
+      </Abschnitt>
+
+      <Abschnitt>
+        <Ueberschrift titel="In 30 Sekunden startklar." />
+        <ol className="mx-auto mt-14 grid max-w-4xl gap-4 sm:grid-cols-3">
+          {[
+            ["Konto anlegen", "Spitzname und Passwort – mehr nicht."],
+            ["Schichtfolge eintippen", "Oder aus deiner bisherigen App übernehmen."],
+            ["Aufs Handy legen", "Zum Startbildschirm hinzufügen, fertig."],
+          ].map(([t, x], n) => (
+            <li key={t} className="glas rounded-[24px] p-6">
+              <span className="tnum text-[15px] font-semibold text-brand-600">{n + 1}</span>
+              <p className="mt-2 text-[19px] font-semibold tracking-tight">{t}</p>
+              <p className="mt-1 text-[15px] leading-relaxed text-ink-muted">{x}</p>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-10 flex justify-center">
+          <CtaLink href={ZIELE.privat} size="lg">
+            Kostenlos starten
+          </CtaLink>
+        </div>
+      </Abschnitt>
+
+      <Sicherheit id="sicherheit-privat" punkte={SICHER_PRIVAT} titel="Deine Schichten gehören dir." />
+      <Fragen id="faq-privat" fragen={FRAGEN_PRIVAT} titel="Fragen zum Schichtkalender" />
+      <Schluss
+        titel="Probier es aus. Es kostet nichts."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.privat} size="lg">
+              Kostenlos starten
+            </CtaLink>
+            <CtaLink href="/#betrieb" size="lg" variant="secondary">
+              Für Betriebe
+            </CtaLink>
+          </>
+        }
+      />
+    </>
+  );
+}
+
+export function BetriebSeite() {
+  return (
+    <>
+      <Held
+        id="unternehmen"
+        hinweis="Für Schichtbetriebe · 3 Monate kostenlos testen"
+        titel="Der ganze Betrieb."
+        zweite="Ein Plan."
+        text="Schichtplan, Urlaub und Besetzung an einem Ort. Am PC planen – auf dem Handy für jeden im Team."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.testen} size="lg">
+              Pilot kostenlos starten
+            </CtaLink>
+            <CtaLink href={ZIELE.demo} size="lg" variant="secondary">
+              Live-Demo ansehen
+            </CtaLink>
+          </>
+        }
+        show={<WischShow name="Schichtplanung" pc={<PcBetrieb />} folien={FOLIEN_BETRIEB} />}
+      />
+
+      <Pilot />
+
+      <Abschnitt id="funktionen-betrieb" grau>
+        <Ueberschrift titel="Alles für den Schichtbetrieb." text="Vom Rotationsmuster bis zum Urlaubskonto – ohne Tabellen und Zettel." />
+        <Liste punkte={FUNKTIONEN_BETRIEB} />
+      </Abschnitt>
+
+      <Abschnitt id="rollen">
+        <Ueberschrift titel="Jeder sieht, was er braucht." />
+        <div className="mt-14 grid gap-4 md:grid-cols-3">
+          {ROLLEN.map((r) => (
+            <div key={r.name} className="glas rounded-[28px] p-7">
+              <p className="text-[14px] font-semibold text-brand-600">{r.name}</p>
+              <p className="mt-2 text-[21px] font-semibold leading-snug tracking-tight">{r.satz}</p>
+              <ul className="mt-5 space-y-2.5">
+                {r.punkte.map((p) => (
+                  <li key={p} className="flex gap-2.5 text-[15px] leading-snug text-ink-muted">
+                    <span className="mt-[9px] h-1 w-1 shrink-0 rounded-full bg-ink-faint" aria-hidden />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Abschnitt>
+
+      <Abschnitt id="preise" grau>
+        <Ueberschrift titel="Preise, die man versteht." text="Alle Funktionen für alle. Ihr zahlt nur nach der Größe eures Teams." />
+        <div className="mx-auto mt-12 max-w-5xl">
+          <Preise />
+        </div>
+      </Abschnitt>
+
+      <Sicherheit id="sicherheit-betrieb" punkte={SICHER_BETRIEB} titel="Sicher. Und in der EU." />
+      <Fragen id="faq-betrieb" fragen={FRAGEN_BETRIEB} titel="Fragen von Betrieben" />
+      <Schluss
+        titel="In 10 Sekunden im eigenen Demo-Betrieb."
+        knoepfe={
+          <>
+            <CtaLink href={ZIELE.demo} size="lg">
+              Live-Demo starten
+            </CtaLink>
+            <CtaLink href={ZIELE.testen} size="lg" variant="secondary">
+              Betrieb registrieren
+            </CtaLink>
+          </>
+        }
+      />
+    </>
+  );
+}
+
