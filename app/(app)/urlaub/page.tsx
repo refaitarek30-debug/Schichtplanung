@@ -117,7 +117,7 @@ export default function LeavePage() {
       <PageHeader
         eyebrow="Mein Urlaub"
         title="Urlaub"
-        description="Dein Urlaubskonto und deine Anträge. Beantragen geht im Schichtplan über „Urlaub beantragen“."
+        description="Dein Konto und deine Anträge."
       />
       <UrlaubReiter />
 

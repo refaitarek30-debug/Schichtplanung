@@ -94,7 +94,7 @@ export function SchrittProfil({
     <Card>
       <CardHeader
         title="Schritt 1 · Deine eigenen Angaben"
-        hint="Voreingestellt ist nichts – erfundene Zahlen sähen aus wie gepflegte Daten. Alles hier lässt sich später unter Verwaltung ändern."
+        hint="Später unter Verwaltung änderbar."
       />
       <CardBody>
         <form action={absenden} className="space-y-4">

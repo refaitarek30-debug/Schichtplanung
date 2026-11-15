@@ -17,6 +17,7 @@ export interface ProtokollZeile {
 
 const ABWESENHEIT: Record<string, string> = {
   schulung: "Schulung",
+  berufsschule: "Berufsschule",
   sonstiges: "Sonstige Abwesenheit",
   urlaub: "Urlaub",
   sonderurlaub: "Sonderurlaub",
@@ -30,6 +31,16 @@ const KONTOFELD: Record<string, string> = {
   v_entitlement: "V-Tage",
   v_carried_over: "V-Tage Vorjahr",
 };
+
+const REGELN: Record<string, string> = {
+  state: "Bundesland",
+  work_on_holidays: "Arbeit an Feiertagen",
+  gruende_fuer_kollegen: "Gründe für Kollegen",
+  hinweis_standard: "Hinweise",
+  leitung_eigene_antraege: "eigene Anträge der Leitung",
+  notify_leave_email: "Mail bei Anträgen",
+};
+const regelName = (k: string) => REGELN[k] ?? k;
 
 function text(wert: unknown): string | null {
   if (wert === null || wert === undefined || wert === "") return null;
@@ -276,6 +287,36 @@ export function beschreibe(e: ProtokollEintrag): ProtokollZeile {
       );
     case "plan.excel_abgleich":
       return aenderung("hat den Plan mit der Excel-Datei abgeglichen", text(d.datei));
+
+    // --- Betrieb einrichten (0225) ----------------------------------------
+    case "schicht.angelegt":
+      return aenderung(`hat die Schicht „${text(d.name) ?? "?"}“ angelegt`);
+    case "schicht.geaendert":
+      return aenderung(`hat die Schicht „${text(d.name) ?? "?"}“ geändert`);
+    case "schicht.geloescht":
+      return aenderung(`hat die Schicht „${text(d.name) ?? "?"}“ gelöscht`);
+    case "muster.angelegt":
+      return aenderung(`hat das Schichtmuster „${text(d.name) ?? "?"}“ angelegt`);
+    case "muster.geaendert":
+      return aenderung(`hat das Schichtmuster „${text(d.name) ?? "?"}“ geändert`);
+    case "muster.geloescht":
+      return aenderung(`hat das Schichtmuster „${text(d.name) ?? "?"}“ gelöscht`);
+    case "qualifikation.angelegt":
+      return aenderung(`hat die Qualifikation „${text(d.name) ?? "?"}“ angelegt`);
+    case "qualifikation.geaendert":
+      return aenderung(`hat die Qualifikation „${text(d.name) ?? "?"}“ geändert`);
+    case "qualifikation.geloescht":
+      return aenderung(`hat die Qualifikation „${text(d.name) ?? "?"}“ gelöscht`);
+    case "regeln.geaendert":
+      return aenderung("hat Betriebsregeln geändert", Object.keys(d).length ? Object.keys(d).map(regelName).join(", ") : null);
+    case "feiertage.hinzugefuegt":
+      return aenderung(`hat ${zahl(d.anzahl)} Feiertag(e) hinzugefügt`, zeitraum(d.von, d.bis));
+    case "feiertage.entfernt":
+      return aenderung(`hat ${zahl(d.anzahl)} Feiertag(e) entfernt`, zeitraum(d.von, d.bis));
+    case "hinweis.gesendet":
+      return aenderung(`hat einen Hinweis${fuer(e)} gesendet`);
+    case "hinweis.zurueckgezogen":
+      return aenderung(`hat einen Hinweis${fuer(e)} zurückgezogen`);
 
     default:
       return aenderung(e.aktion);

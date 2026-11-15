@@ -39,7 +39,7 @@ export function HinweisStandardSetting({ canManage }: { canManage: boolean }) {
     <Card>
       <CardHeader
         title="Hinweise an Mitarbeiter"
-        hint="Was beim Senden vorausgewählt ist. Für einen einzelnen Hinweis lässt es sich trotzdem ändern."
+        hint="Vorauswahl beim Senden."
       />
       <CardBody className="space-y-3">
         <div className="space-y-1.5" role="radiogroup" aria-label="Vorgabe für Hinweise">

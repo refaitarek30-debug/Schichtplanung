@@ -27,9 +27,12 @@ const ABWESENHEIT: Record<string, string> = {
   BU: "Bildungsurlaub",
   G: "Gewerkschaftstag",
   FB: "Schulung",
+  BS: "Berufsschule",
 };
 
 type Tag = { tag: string; schicht: string | null; abwesenheit: string | null };
+/** Ein Tag mit fertigem Namen – aus dem Betriebsplan oder dem eigenen Privatkalender. */
+type Eintrag = { tag: string; name: string };
 
 const zwei = (n: number) => String(n).padStart(2, "0");
 const heuteIso = () => {
@@ -38,39 +41,67 @@ const heuteIso = () => {
 };
 const nameVon = (t: Tag): string | null => t.schicht ?? (t.abwesenheit ? (ABWESENHEIT[t.abwesenheit] ?? null) : null);
 
-async function ladeJahr(jahr: number): Promise<Tag[]> {
+async function ladeJahr(jahr: number): Promise<Eintrag[]> {
   const { data, error } = await createClient().rpc("meine_statistik_tage", { p_jahr: jahr });
   if (error) throw error;
-  return (data ?? []) as Tag[];
+  return ((data ?? []) as Tag[]).flatMap((t) => {
+    const name = nameVon(t);
+    return name ? [{ tag: t.tag, name }] : [];
+  });
+}
+
+/**
+ * Eigener Privatkalender derselben Person (gleiche Anmeldung, nur eigene
+ * Zeilen – die Datenbank gibt fremde nicht heraus). Name mit „(privat)“, damit
+ * er sich vom Betriebsplan unterscheidet. Fehlt der Privatbereich: leer.
+ */
+async function ladePrivat(von: string, bis: string): Promise<Eintrag[]> {
+  const { ladeSchichtarten, ladeTage, idsVon } = await import("@/lib/privat/daten");
+  const [arten, tage] = await Promise.all([ladeSchichtarten(), ladeTage(von, bis)]);
+  const nameNach = new Map(arten.map((a) => [a.id, a.name]));
+  return Object.entries(tage).flatMap(([tag, e]) =>
+    idsVon(e)
+      .map((id) => nameNach.get(id))
+      .filter((n): n is string => !!n)
+      .map((n) => ({ tag, name: `${n} (privat)` })),
+  );
 }
 
 export function NaechsteSchichtKachel({
   wahl,
   onWahl,
   kompakt,
+  mitPrivat = false,
 }: {
   wahl: string | null;
   onWahl: (name: string) => void;
   kompakt: boolean;
+  /** Auch Schichten aus dem eigenen Privatkalender zur Wahl stellen. */
+  mitPrivat?: boolean;
 }) {
-  const [tage, setTage] = useState<Tag[] | null>(null);
+  const [tage, setTage] = useState<Eintrag[] | null>(null);
   const [fehler, setFehler] = useState(false);
 
   useEffect(() => {
     let aktiv = true;
     const jahr = new Date().getFullYear();
-    Promise.all([ladeJahr(jahr), ladeJahr(jahr + 1).catch(() => [] as Tag[])])
-      .then(([a, b]) => aktiv && setTage([...a, ...b]))
+    const heute = heuteIso();
+    Promise.all([
+      ladeJahr(jahr),
+      ladeJahr(jahr + 1).catch(() => [] as Eintrag[]),
+      mitPrivat ? ladePrivat(heute, `${jahr + 1}-12-31`).catch(() => [] as Eintrag[]) : Promise.resolve([] as Eintrag[]),
+    ])
+      .then(([a, b, c]) => aktiv && setTage([...a, ...b, ...c]))
       .catch(() => aktiv && setFehler(true));
     return () => {
       aktiv = false;
     };
-  }, []);
+  }, [mitPrivat]);
 
   const heute = heuteIso();
   const kommend = useMemo(() => (tage ?? []).filter((t) => t.tag >= heute).sort((a, b) => a.tag.localeCompare(b.tag)), [tage, heute]);
-  const auswahl = useMemo(() => [...new Set(kommend.map(nameVon).filter((n): n is string => !!n))].sort((a, b) => a.localeCompare(b, "de")), [kommend]);
-  const treffer = wahl ? kommend.find((t) => nameVon(t) === wahl) : undefined;
+  const auswahl = useMemo(() => [...new Set(kommend.map((t) => t.name))].sort((a, b) => a.localeCompare(b, "de")), [kommend]);
+  const treffer = wahl ? kommend.find((t) => t.name === wahl) : undefined;
 
   if (!wahl) {
     return (

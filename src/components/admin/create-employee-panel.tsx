@@ -36,7 +36,7 @@ export function CreateEmployeePanel({
     <Card>
       <CardHeader
         title="Neuer Mitarbeiter"
-        hint="Mit E-Mail-Adresse wird der Zugang gleich mit eingerichtet – die Einladung geht raus, der Link zum Weitergeben erscheint darüber."
+        hint="Mit E-Mail wird der Zugang gleich eingerichtet."
       />
       <CardBody>
         <form action={formAction} className="space-y-4">
@@ -130,7 +130,7 @@ export function CreateEmployeePanel({
             <Field label="Eintritt" hint="Erster Arbeitstag. Leer = keine Grenze.">
               <Input name="entry_date" type="date" />
             </Field>
-            <Field label="Austritt" hint="Letzter Arbeitstag. Ab dem Tag danach endet der Zugang zum Betrieb automatisch. Leer = unbefristet.">
+            <Field label="Austritt" hint="Danach endet der Zugang. Leer = unbefristet.">
               <Input name="exit_date" type="date" />
             </Field>
           </div>

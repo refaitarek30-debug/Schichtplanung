@@ -6,7 +6,7 @@ export type ShiftCode = "FRUEH" | "SPAET" | "NACHT" | "FREI";
 
 export type LeaveStatus = "pending" | "approved" | "rejected" | "withdrawn";
 
-export type AbsenceType = "urlaub" | "krank" | "schulung" | "sonstiges";
+export type AbsenceType = "urlaub" | "krank" | "schulung" | "berufsschule" | "sonstiges";
 
 export type AbsenceVisibility = "minimal" | "shift";
 export type SicknessVisibility = "private" | "shift";

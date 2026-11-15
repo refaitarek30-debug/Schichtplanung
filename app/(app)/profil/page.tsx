@@ -28,7 +28,7 @@ export default function ProfilePage() {
       <PageHeader
         eyebrow="Mein Konto"
         title="Profil"
-        description="Name, Personalnummer, Abteilung und Geburtsdatum kannst du selbst pflegen. Alles andere die Administration."
+       
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

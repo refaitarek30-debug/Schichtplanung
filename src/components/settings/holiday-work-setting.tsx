@@ -41,7 +41,7 @@ export function HolidayWorkSetting({ canManage }: { canManage: boolean }) {
     <Card>
       <CardHeader
         title="Feiertage"
-        hint="Entscheidet, ob ein Feiertag als Schichttag gilt – und damit, ob er einen Urlaubstag kostet."
+        hint="Ob ein Feiertag einen Urlaubstag kostet."
       />
       <CardBody className="space-y-4">
         <div className="flex items-center justify-between gap-4 rounded-xl border border-line px-4 py-3">

@@ -124,7 +124,7 @@ export function SchrittSchichtsystem({
     <Card>
       <CardHeader
         title="Schritt 2 · Wie wird gearbeitet?"
-        hint="Ein kompletter Durchlauf des Musters – das System setzt ihn fort und verteilt die Gruppen versetzt."
+        hint="Ein Durchlauf – der Rest füllt sich von selbst."
       />
       <CardBody className="space-y-5">
         <div className="grid gap-2 sm:grid-cols-2">

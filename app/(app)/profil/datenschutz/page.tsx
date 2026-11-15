@@ -24,7 +24,7 @@ export default async function PrivacySettingsPage() {
         <PageHeader
           eyebrow="Mein Konto"
           title="Datenschutz"
-          description="Deine persönlichen Sichtbarkeitseinstellungen."
+         
         />
         <p className="text-sm text-crit-fg">
           Die Datenschutzeinstellungen konnten nicht geladen werden.
@@ -38,7 +38,7 @@ export default async function PrivacySettingsPage() {
       <PageHeader
         eyebrow="Mein Konto"
         title="Datenschutz"
-        description="Du kannst diese Einstellungen jederzeit ändern. Änderungen wirken sofort im Schichtplan."
+       
       />
       <PrivacySettingsForm
         absenceVisibility={data.absence_visibility}

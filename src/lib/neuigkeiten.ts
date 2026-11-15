@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-15T18:00:00+01:00",
+    titel: "Berufsschule im Plan",
+    text: "Berufsschule (BS) gibt es jetzt als eigene Abwesenheit. Die Leitung trägt sie unter „Plan ändern“ ein, Azubis auch selbst: Profil → Berufsschule eintragen, z. B. jeden Montag. Die Kachel „Nächste Schicht“ zeigt dann, wann es wieder zur Schule geht.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-15T15:00:00+01:00",
     titel: "Kalender-Abo: seltener abgefragt",
     text: "Der Schichtplan im Handy-Kalender (Abo) wird jetzt etwa alle 1–2 Stunden aktualisiert statt ständig. Das schont den Akku und die Server – Änderungen im Plan kommen dadurch etwas später im Handy-Kalender an.",
