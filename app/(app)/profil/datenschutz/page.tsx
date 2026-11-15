@@ -10,6 +10,8 @@ export default async function PrivacySettingsPage() {
   if (!session) redirect("/login");
 
   const supabase = await createClient();
+  // Betriebsschalter „Gründe für Kollegen“: nur wenn er aus ist, steht oben der Hinweis.
+  const { data: freigabe } = await supabase.rpc("gruende_fuer_kollegen_erlaubt");
   const { data, error } = await supabase
     .from("privacy_settings")
     .select(
@@ -32,6 +34,7 @@ export default async function PrivacySettingsPage() {
         absenceVisibility={data.absence_visibility}
         sicknessVisibility={data.sickness_visibility}
         acknowledged={Boolean(data.accepted_at)}
+        freigabeAktiv={freigabe === true}
       />
       <div className="overflow-hidden rounded-2xl border border-line bg-surface">
         <MeineDatenKnopf />
