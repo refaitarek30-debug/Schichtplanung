@@ -19,7 +19,9 @@ export default function MeineZahlenSeite() {
     ]);
     if (error) throw new Error("Die Zahlen konnten nicht geladen werden.");
     const tage: StatTag[] = ((data ?? []) as { tag: string; schicht: string | null; kuerzel: string | null; abwesenheit: string | null; stunden: number }[]).map((z) => {
-      const art: TagArt = z.abwesenheit === "K" ? "krank" : z.abwesenheit === "U" ? "urlaub" : z.abwesenheit ? "sonst" : z.schicht ? "arbeit" : "frei";
+      // Arbeitstag nur ohne jede Abwesenheit (Urlaub, V-Tag, Krank, Gewerkschaft, Sonderurlaub …).
+      const art: TagArt =
+        z.abwesenheit === "K" ? "krank" : z.abwesenheit === "U" ? "urlaub" : z.abwesenheit === "V" ? "vtag" : z.abwesenheit ? "sonst" : z.schicht ? "arbeit" : "frei";
       return {
         iso: z.tag,
         art,

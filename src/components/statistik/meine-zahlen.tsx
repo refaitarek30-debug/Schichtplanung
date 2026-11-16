@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Sparkles, X } from "lucide-react";
 import { rechne, type StatTag, type Zahlen, type Zeitraum } from "@/lib/statistik";
@@ -160,13 +161,13 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
       {z && z.tageMitDaten > 0 && reiter !== "vergleich" ? (
         <>
           <div className="grid grid-cols-2 gap-2.5">
-            <Kachel n={z.arbeitstage} titel="Arbeitstage" unter={`zusammen ${std(z.stunden)}`} farbe="#DDEBE0" />
-            <Kachel n={z.freieWochenenden} titel="Freie Wochenenden" unter={`Samstag und Sonntag frei – von ${zahl(z.wochenenden)}`} farbe="#EEE1F1" />
+            <Kachel n={z.arbeitstage} titel="Arbeitstage" unter={`zusammen ${std(z.stunden)} · ohne Urlaub, Krank & Co.`} farbe="#DDEBE0" />
+            <Kachel n={z.freieWochenenden} titel="Freie Wochenenden" unter="Sa + So mit Urlaub oder V-Tag frei genommen" farbe="#EEE1F1" />
             <Kachel n={z.sonntage} titel="Sonntage gearbeitet" unter={z.sonntage ? `zusammen ${std(z.sonntagStunden)}` : "keinen"} farbe="#FBE9C8" />
             <Kachel n={z.feiertage} titel="Feiertage gearbeitet" unter={z.feiertage ? `zusammen ${std(z.feiertagStunden)}` : "keinen"} farbe="#F3D6DC" />
             <Kachel n={z.naechte} titel="Nachtschichten" unter={z.naechte ? `zusammen ${std(z.nachtStunden)}` : "keine"} farbe="#D9DEEE" />
-            <Kachel n={z.urlaub} titel="Urlaubstage" unter="genommen oder eingetragen" farbe="#FCE9DB" />
-            <Kachel n={z.laengsteSerie} titel="Längste Serie" unter="so viele Tage am Stück gearbeitet" farbe="#E6F0FA" />
+            <Kachel n={z.urlaub} titel="Urlaubstage" unter={z.vtage ? `dazu ${zahl(z.vtage)} V-Tage` : "genommen oder eingetragen"} farbe="#FCE9DB" />
+            <Kachel n={z.laengsteSerie} titel="Längste Serie" unter="Arbeitstage am Stück – nur Urlaub, V-Tag oder Krank unterbrechen" farbe="#E6F0FA" />
             <Kachel n={z.laengsteFrei} titel="Längste Pause" unter="so viele Tage am Stück ohne Arbeit (Urlaub zählt mit)" farbe="#E0F4F1" />
           </div>
 
@@ -176,7 +177,11 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
             <Zeile name="Schichtwechsel" hilfe="z. B. von Früh auf Nacht" wert={zahl(z.wechsel)} />
             <Zeile name="Am häufigsten frei" wert={z.freiTag === null ? "–" : WT[z.freiTag]} />
             {reiter === "jahr" ? <Zeile name="Meiste Arbeitstage" hilfe="Monat" wert={z.fleissigsterMonat === null ? "–" : MON[z.fleissigsterMonat]} /> : null}
-            <Zeile name="Zeit bei der Arbeit" hilfe="Anteil an allen Stunden, auch Nächten" wert={`${zahl(z.anteilArbeit)} %`} />
+            <Zeile
+              name="Zeit bei der Arbeit"
+              hilfe={`${std(z.stunden)} von ${std(z.stundenGesamt)} – so viel deiner ganzen Zeit (Tag und Nacht) warst du bei der Arbeit`}
+              wert={`${zahl(z.anteilArbeit)} %`}
+            />
             <div className="flex items-center justify-between gap-3 px-4 py-3">
               <span>Kranktage</span>
               {krankZeigen ? (
@@ -291,9 +296,9 @@ function Rueckblick({ z, jahr, onZu }: { z: Zahlen; jahr: number; onZu: () => vo
           [z.sonntage, "Sonntage gearbeitet", `${std(z.sonntagStunden)}, während andere frühstücken.${z.samstage ? ` Dazu ${zahl(z.samstage)} Samstage.` : ""}`],
           [z.feiertage, "Feiertage gearbeitet", `${std(z.feiertagStunden)} an Tagen, an denen der Kalender rot ist.`],
           [z.naechte, "Nächte durchgearbeitet", `${std(z.nachtStunden)} wach, wenn andere schlafen.`],
-          [z.laengsteSerie, "Tage am Stück", "Deine längste Serie ohne freien Tag."],
+          [z.laengsteSerie, "Arbeitstage am Stück", "Deine längste Serie – freie Tage zählen nicht als Pause, erst Urlaub, V-Tag oder Krank."],
           [z.laengsteFrei, "freie Tage am Stück", "Deine längste Pause – hoffentlich mit Sonne."],
-          [z.freieWochenenden, "freie Wochenenden", `Samstag und Sonntag frei – von ${zahl(z.wochenenden)} Wochenenden.${z.freiTag !== null ? ` Am häufigsten frei: ${WT[z.freiTag]}.` : ""}`],
+          [z.freieWochenenden, "freie Wochenenden", `Samstag und Sonntag mit Urlaub oder V-Tag frei genommen.${z.freiTag !== null ? ` Am häufigsten frei: ${WT[z.freiTag]}.` : ""}`],
           [z.wechsel, "Schichtwechsel", z.fleissigsterMonat !== null ? `Dein fleißigster Monat war der ${MON[z.fleissigsterMonat]}.` : "So oft hat dein Rhythmus gewechselt."],
         ] as [number, string, string][]
       ).filter(([n]) => n > 0),
@@ -308,8 +313,9 @@ function Rueckblick({ z, jahr, onZu }: { z: Zahlen; jahr: number; onZu: () => vo
   const s = seiten[Math.min(i, seiten.length - 1)];
   if (!s) return null;
   const letzte = i >= seiten.length - 1;
-  return (
-    <div className="privat-schrift fixed inset-0 z-[80] flex flex-col justify-center bg-[linear-gradient(160deg,#1b2350,#0e1330)] px-7 text-white" role="dialog" aria-label={`Mein Jahr ${jahr}`} data-rueckblick>
+  // Direkt in <body>: sonst liegen Kopfleiste und Profilbild der App über dem Rückblick.
+  return createPortal(
+    <div className="privat-schrift fixed inset-0 z-[200] flex flex-col justify-center bg-[linear-gradient(160deg,#1b2350,#0e1330)] px-7 text-white" role="dialog" aria-label={`Mein Jahr ${jahr}`} data-rueckblick>
       <button type="button" onClick={onZu} aria-label="Schließen" className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
         <X className="h-5 w-5" />
       </button>
@@ -334,6 +340,7 @@ function Rueckblick({ z, jahr, onZu }: { z: Zahlen; jahr: number; onZu: () => vo
           {letzte ? "Fertig" : "Weiter"}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

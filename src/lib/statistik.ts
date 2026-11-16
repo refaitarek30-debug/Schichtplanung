@@ -3,7 +3,8 @@
  * Speicher. Eingabe ist je Tag, was die Person selbst im Kalender sieht.
  */
 
-export type TagArt = "arbeit" | "frei" | "urlaub" | "krank" | "sonst";
+/** „vtag“: V-Tag (Freischicht) – wie Urlaub frei genommen, aber nicht vom Urlaub abgezogen. */
+export type TagArt = "arbeit" | "frei" | "urlaub" | "vtag" | "krank" | "sonst";
 
 export interface StatTag {
   /** "YYYY-MM-DD" */
@@ -26,6 +27,7 @@ export interface Zahlen {
   naechte: number;
   nachtStunden: number;
   urlaub: number;
+  vtage: number;
   krank: number;
   freieTage: number;
   freieWochenenden: number;
@@ -39,6 +41,8 @@ export interface Zahlen {
   fleissigsterMonat: number | null;
   /** Anteil der Stunden des Zeitraums, der Arbeit war (0–100). */
   anteilArbeit: number;
+  /** Alle Stunden des Zeitraums (Tage × 24) – Grundlage für den Anteil. */
+  stundenGesamt: number;
   /** Tage mit Eintrag – 0 heißt: für den Zeitraum gibt es nichts. */
   tageMitDaten: number;
   /** Arbeitstage nach dem gezählten Zeitraum, die schon im Plan stehen. */
@@ -75,13 +79,13 @@ export function rechne(tage: StatTag[], feiertage: ReadonlySet<string>, zeitraum
   }
   const z: Zahlen = {
     arbeitstage: 0, stunden: 0, sonntage: 0, sonntagStunden: 0, feiertage: 0, feiertagStunden: 0, samstage: 0,
-    naechte: 0, nachtStunden: 0, urlaub: 0, krank: 0, freieTage: 0, freieWochenenden: 0, wochenenden: 0,
-    laengsteSerie: 0, laengsteFrei: 0, wechsel: 0, freiTag: null, fleissigsterMonat: null, anteilArbeit: 0,
+    naechte: 0, nachtStunden: 0, urlaub: 0, vtage: 0, krank: 0, freieTage: 0, freieWochenenden: 0, wochenenden: 0,
+    laengsteSerie: 0, laengsteFrei: 0, wechsel: 0, freiTag: null, fleissigsterMonat: null, anteilArbeit: 0, stundenGesamt: 0,
     tageMitDaten: drin.length, geplant,
   };
   const freiJeWt = [0, 0, 0, 0, 0, 0, 0];
   const jeMonat = new Array<number>(12).fill(0);
-  const arbeit = new Map<string, boolean>();
+  const artAm = new Map<string, TagArt>();
   let serie = 0;
   let frei = 0;
   let letzteSchicht: string | undefined;
@@ -89,7 +93,7 @@ export function rechne(tage: StatTag[], feiertage: ReadonlySet<string>, zeitraum
   for (const t of sortiert) {
     const w = wt(t.iso);
     const istArbeit = t.art === "arbeit";
-    arbeit.set(t.iso, istArbeit);
+    artAm.set(t.iso, t.art);
     if (istArbeit) {
       z.arbeitstage++;
       z.stunden += t.stunden;
@@ -113,31 +117,36 @@ export function rechne(tage: StatTag[], feiertage: ReadonlySet<string>, zeitraum
       frei = 0;
     } else {
       if (t.art === "urlaub") z.urlaub++;
+      else if (t.art === "vtag") z.vtage++;
       else if (t.art === "krank") z.krank++;
       else if (t.art === "frei") {
         z.freieTage++;
         freiJeWt[w]++;
       }
       frei++;
-      serie = 0;
+      // Serie: freie Tage (und sonstige Abwesenheiten) unterbrechen nicht –
+      // erst Urlaub, V-Tag oder Krank beenden sie.
+      if (t.art === "urlaub" || t.art === "vtag" || t.art === "krank") serie = 0;
     }
     z.laengsteSerie = Math.max(z.laengsteSerie, serie);
     z.laengsteFrei = Math.max(z.laengsteFrei, frei);
   }
 
-  // Wochenenden: Samstag und Sonntag beide im Zeitraum und beide ohne Arbeit.
+  // Freie Wochenenden: Samstag und Sonntag beide mit Urlaub oder V-Tag frei genommen.
+  const genommen = (a: TagArt | undefined) => a === "urlaub" || a === "vtag";
   for (const t of sortiert) {
     if (wt(t.iso) !== 6) continue;
     const so = plusTag(t.iso);
-    if (!arbeit.has(so)) continue;
+    if (!artAm.has(so)) continue;
     z.wochenenden++;
-    if (!arbeit.get(t.iso) && !arbeit.get(so)) z.freieWochenenden++;
+    if (genommen(artAm.get(t.iso)) && genommen(artAm.get(so))) z.freieWochenenden++;
   }
 
   const maxFrei = Math.max(...freiJeWt);
   z.freiTag = maxFrei > 0 ? freiJeWt.indexOf(maxFrei) : null;
   const maxMonat = Math.max(...jeMonat);
   z.fleissigsterMonat = maxMonat > 0 ? jeMonat.indexOf(maxMonat) : null;
+  z.stundenGesamt = sortiert.length * 24;
   z.anteilArbeit = sortiert.length ? Math.round((z.stunden / (sortiert.length * 24)) * 1000) / 10 : 0;
   z.stunden = Math.round(z.stunden * 10) / 10;
   return z;
