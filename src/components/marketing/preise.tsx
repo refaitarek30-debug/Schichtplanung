@@ -14,7 +14,7 @@ const EINRICHTUNG = 199;
 export const JAHRES_RABATT = 5;
 const HAEUFIG_BIS = 30;
 /** Anmeldung mit dem Firmen-Konto (SSO, SAML) – Zusatz für große Betriebe, netto. */
-export const SSO = { ab: 150, einrichtung: 490, monat: 49 };
+export const SSO = { ab: 50, einrichtung: 490, monat: 49 };
 
 /** Bis zu so vielen Personen im Monat – Preis netto pro Monat. */
 export const PAKETE: { bis: number; preis: number }[] = [
