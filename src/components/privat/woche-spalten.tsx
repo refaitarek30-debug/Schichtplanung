@@ -26,6 +26,10 @@ const minuten = (hhmm: string) => {
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const uhr = (t: string) => (t.endsWith(":00") ? t.slice(0, 2) : t.slice(0, 5));
 
+type Zug =
+  | { art: "termin"; termin: Termin; titel: string; farbe: string; iso: string; von: number; dauer: number }
+  | { art: "schicht"; schicht: { id: string; tag: string }; titel: string; farbe: string; iso: string; von: number; dauer: number };
+
 interface Block {
   key: string;
   von: number;
@@ -34,6 +38,8 @@ interface Block {
   titel: string;
   unter: string;
   termin: Termin | null;
+  /** Eigene Schicht (nicht aus dem Betrieb): Id und der Tag, an dem sie steht – zum Verschieben. */
+  schicht: { id: string; tag: string } | null;
   spur: number;
   spuren: number;
 }
@@ -76,6 +82,7 @@ export function WochenSpalten({
   onTag,
   onNeu,
   onVerschieben,
+  onSchichtVerschieben,
 }: {
   /** Montag der Woche */
   von: string;
@@ -92,10 +99,18 @@ export function WochenSpalten({
   onTag: (iso: string) => void;
   onNeu: (iso: string, zeit: string) => void;
   onVerschieben: (t: Termin, datum: string, von: string, bis: string) => void;
+  /** Eigene Schicht auf einen anderen Tag legen. */
+  onSchichtVerschieben: (id: string, von: string, nach: string) => void;
 }) {
   const raster = useRef<HTMLDivElement>(null);
-  const druck = useRef<{ uhr: number | null; x: number; y: number; termin: Termin | null; aktiv: boolean; geschluckt: number } | null>(null);
-  const [ziehen, setZiehen] = useState<{ termin: Termin; iso: string; von: number; dauer: number } | null>(null);
+  const druck = useRef<{ uhr: number | null; x: number; y: number; id: number } | null>(null);
+  // Was gerade gezogen wird – als Ref (Fingerbewegung kommt schneller als das Neuzeichnen) und als State (Anzeige).
+  const zug = useRef<Zug | null>(null);
+  const [ziehen, setZiehenState] = useState<Zug | null>(null);
+  const setZiehen = (z: Zug | null) => {
+    zug.current = z;
+    setZiehenState(z);
+  };
   const schlucken = useRef(0);
 
   const woche = Array.from({ length: 7 }, (_, i) => addDays(von, i));
@@ -121,10 +136,11 @@ export function WochenSpalten({
       }
       const ueber = e <= b;
       const titel = a.kuerzel || a.name.slice(0, 1);
-      if (imBereich) roh.get(iso)!.push({ key: `${a.id}-a`, von: b, bis: ueber ? 1440 : e, farbe: a.farbe, titel, unter: `${uhr(a.beginn)}–${uhr(a.ende)}`, termin: null });
+      const schicht = a.id.startsWith("betrieb:") ? null : { id: a.id, tag: iso };
+      if (imBereich) roh.get(iso)!.push({ key: `${a.id}-a`, von: b, bis: ueber ? 1440 : e, farbe: a.farbe, titel, unter: `${uhr(a.beginn)}–${uhr(a.ende)}`, termin: null, schicht });
       const naechster = addDays(iso, 1);
       if (ueber && e > 0 && roh.has(naechster)) {
-        roh.get(naechster)!.push({ key: `${a.id}-b-${iso}`, von: 0, bis: e, farbe: a.farbe, titel, unter: `–${uhr(a.ende)}`, termin: null });
+        roh.get(naechster)!.push({ key: `${a.id}-b-${iso}`, von: 0, bis: e, farbe: a.farbe, titel, unter: `–${uhr(a.ende)}`, termin: null, schicht });
       }
     }
   }
@@ -136,7 +152,7 @@ export function WochenSpalten({
         kopf.get(iso)!.push({ text: t.titel, farbe: "#6366f1" });
         continue;
       }
-      roh.get(iso)!.push({ key: `${t.id}-${iso}`, von: b, bis: e !== null && e > b ? e : Math.min(1440, b + 60), farbe: "#6366f1", titel: t.titel, unter: t.von, termin: t });
+      roh.get(iso)!.push({ key: `${t.id}-${iso}`, von: b, bis: e !== null && e > b ? e : Math.min(1440, b + 60), farbe: "#6366f1", titel: t.titel, unter: t.von, termin: t, schicht: null });
     }
   }
   const bloecke = new Map(woche.map((iso) => [iso, spuren(roh.get(iso)!)]));
@@ -161,12 +177,15 @@ export function WochenSpalten({
   const rasterGriffe = {
     onPointerDown: (e: React.PointerEvent) => {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      const terminEl = (e.target as Element).closest<HTMLElement>("[data-termin-id]");
+      const ziel = e.target as Element;
+      const terminEl = ziel.closest<HTMLElement>("[data-termin-id]");
       const termin = terminEl ? (termineAm(terminEl.dataset.tag!).find((t) => t.id === terminEl.dataset.terminId) ?? null) : null;
-      // Auf einer Schicht: nichts (Tippen öffnet den Tag). Frei oder Termin: halten.
-      if (!termin && (e.target as Element).closest("[data-schicht-block]")) return;
+      const schichtEl = terminEl ? null : ziel.closest<HTMLElement>("[data-schicht-block]");
+      const schicht = schichtEl?.dataset.schichtId ? { id: schichtEl.dataset.schichtId, tag: schichtEl.dataset.tag! } : null;
+      const art = schicht ? artNach.get(schicht.id) : undefined;
       loslassen();
-      const d = { uhr: null as number | null, x: e.clientX, y: e.clientY, termin, aktiv: false, geschluckt: 0 };
+      const d = { uhr: null as number | null, x: e.clientX, y: e.clientY, id: e.pointerId };
+      const flaeche = e.currentTarget as HTMLElement;
       d.uhr = window.setTimeout(() => {
         d.uhr = null;
         if (druck.current !== d) return;
@@ -177,15 +196,27 @@ export function WochenSpalten({
         }
         const s = stelle(d.x, d.y);
         if (!s) return;
-        if (termin && darfVerschieben(termin)) {
-          d.aktiv = true;
+        // Ab jetzt gehört der Finger dem Ziehen – auch wenn er die Spalte verlässt.
+        try {
+          flaeche.setPointerCapture(d.id);
+        } catch {
+          // egal
+        }
+        if (termin) {
+          if (!darfVerschieben(termin)) return loslassen();
           const b = minuten(termin.von) ?? 0;
           const ende = minuten(termin.bis);
-          setZiehen({ termin, iso: s.iso, von: b, dauer: ende !== null && ende > b ? ende - b : 60 });
-        } else if (!termin) {
+          setZiehen({ art: "termin", termin, titel: termin.titel, farbe: "#6366f1", iso: s.iso, von: b, dauer: ende !== null && ende > b ? ende - b : 60 });
+        } else if (schicht && art) {
+          const b = minuten(art.beginn) ?? 0;
+          const ende = minuten(art.ende) ?? b + 480;
+          setZiehen({ art: "schicht", schicht, titel: art.kuerzel || art.name, farbe: art.farbe, iso: schicht.tag, von: b, dauer: ende > b ? ende - b : ende + 1440 - b });
+        } else if (!schichtEl) {
           druck.current = null;
           schlucken.current = Date.now();
           onNeu(s.iso, hhmm(Math.floor(s.min / 30) * 30));
+        } else {
+          loslassen();
         }
       }, HALTEN_MS);
       druck.current = d;
@@ -193,24 +224,32 @@ export function WochenSpalten({
     onPointerMove: (e: React.PointerEvent) => {
       const d = druck.current;
       if (!d) return;
-      if (d.aktiv && ziehen) {
+      const z = zug.current;
+      if (z) {
         e.preventDefault();
+        e.stopPropagation();
         const s = stelle(e.clientX, e.clientY);
-        // Der Finger hält den Termin in der Mitte.
-        if (s) setZiehen((z) => (z ? { ...z, iso: s.iso, von: Math.max(0, Math.min(s.min - Math.round(z.dauer / 30) * 15, 1440 - z.dauer)) } : z));
+        if (!s) return;
+        // Schichten wechseln nur den Tag (die Uhrzeit gehört zur Schicht), Termine auch die Uhrzeit.
+        setZiehen(z.art === "schicht" ? { ...z, iso: s.iso } : { ...z, iso: s.iso, von: Math.max(0, Math.min(s.min - Math.round(z.dauer / 30) * 15, 1440 - Math.min(z.dauer, 1440))) });
         return;
       }
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) loslassen();
     },
-    onPointerUp: () => {
-      const d = druck.current;
-      if (d?.aktiv && ziehen) {
+    onPointerUp: (e: React.PointerEvent) => {
+      const z = zug.current;
+      if (z) {
+        // Nicht als Wischen zur nächsten Woche weiterreichen.
+        e.stopPropagation();
         schlucken.current = Date.now();
-        const z = ziehen;
         setZiehen(null);
         druck.current = null;
-        const neuVon = Math.max(0, Math.min(z.von, 1440 - 15));
-        onVerschieben(z.termin, z.iso, hhmm(neuVon), hhmm(Math.min(1439, neuVon + z.dauer)));
+        if (z.art === "termin") {
+          const neuVon = Math.max(0, Math.min(z.von, 1440 - 15));
+          onVerschieben(z.termin, z.iso, hhmm(neuVon), hhmm(Math.min(1439, neuVon + z.dauer)));
+        } else if (z.iso !== z.schicht.tag) {
+          onSchichtVerschieben(z.schicht.id, z.schicht.tag, z.iso);
+        }
         return;
       }
       loslassen();
@@ -227,7 +266,7 @@ export function WochenSpalten({
   };
 
   return (
-    <div className={cn("flex h-full min-h-0 flex-col", ziehen && "touch-none")} data-woche-spalten>
+    <div className="flex h-full min-h-0 select-none flex-col [-webkit-touch-callout:none]" data-woche-spalten>
       <section className="glas flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] pb-2">
         {/* Kopf: Tag, Datum, ganztägige Einträge */}
         <div className="grid grid-cols-[26px_repeat(7,minmax(0,1fr))] gap-x-0.5 px-1 pt-2">
@@ -265,7 +304,7 @@ export function WochenSpalten({
               <span className="absolute left-[26px] right-0 border-t border-line/70" />
             </div>
           ))}
-          <div ref={raster} className="absolute bottom-0 left-[26px] right-0 top-0 grid grid-cols-7 gap-x-0.5" {...(pinsel ? {} : rasterGriffe)}>
+          <div ref={raster} className="absolute bottom-0 left-[26px] right-0 top-0 grid grid-cols-7 gap-x-0.5 touch-none" {...(pinsel ? {} : rasterGriffe)}>
             {woche.map((iso) => (
               <button
                 key={iso}
@@ -280,13 +319,17 @@ export function WochenSpalten({
                 )}
               >
                 {bloecke.get(iso)!.map((b) => {
-                  const wirdGezogen = ziehen && b.termin && ziehen.termin.id === b.termin.id;
+                  const wirdGezogen =
+                    !!ziehen &&
+                    ((ziehen.art === "termin" && b.termin?.id === ziehen.termin.id) ||
+                      (ziehen.art === "schicht" && b.schicht?.id === ziehen.schicht.id && b.schicht.tag === ziehen.schicht.tag));
                   return (
                     <span
                       key={b.key}
                       data-schicht-block={b.termin ? undefined : ""}
+                      data-schicht-id={b.schicht?.id}
+                      data-tag={b.termin ? iso : b.schicht?.tag}
                       data-termin-id={b.termin?.id}
-                      data-tag={b.termin ? iso : undefined}
                       className={cn(
                         "absolute overflow-hidden rounded-[6px] px-0.5 text-left leading-tight shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-opacity",
                         b.termin && "border-l-2",
@@ -311,11 +354,17 @@ export function WochenSpalten({
                 })}
                 {ziehen && ziehen.iso === iso ? (
                   <span
-                    className="pointer-events-none absolute inset-x-0 z-10 rounded-[6px] border-2 border-[#6366f1] bg-[#6366f1]/25 px-0.5 text-left text-[10px] font-bold leading-tight text-ink shadow-lg"
-                    style={{ top: `${(ziehen.von / 1440) * 100}%`, height: `${(ziehen.dauer / 1440) * 100}%`, minHeight: 14 }}
+                    className="pointer-events-none absolute inset-x-0 z-10 scale-[1.04] rounded-[6px] border-2 px-0.5 text-left text-[10px] font-bold leading-tight text-ink shadow-lg transition-[top] duration-75"
+                    style={{
+                      top: `${(ziehen.von / 1440) * 100}%`,
+                      height: `${(Math.min(ziehen.dauer, 1440 - ziehen.von) / 1440) * 100}%`,
+                      minHeight: 14,
+                      borderColor: ziehen.farbe,
+                      backgroundColor: `${ziehen.farbe}40`,
+                    }}
                   >
                     <span className="tnum block">{hhmm(ziehen.von)}</span>
-                    <span className="block truncate">{ziehen.termin.titel}</span>
+                    <span className="block truncate">{ziehen.titel}</span>
                   </span>
                 ) : null}
               </button>

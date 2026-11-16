@@ -525,6 +525,19 @@ export function PrivatKalender() {
     void aendern(neu);
   }
 
+  /** Woche: eigene Schicht halten und auf einen anderen Tag ziehen. */
+  function schichtVerschieben(id: string, von: string, nach: string) {
+    if (von === nach) return;
+    const ziel = idsVon(tage[nach]).filter((x) => x !== id);
+    const neu: Record<string, TagEintrag | undefined> = {
+      [von]: eintragAus(idsVon(tage[von]).filter((x) => x !== id)),
+      [nach]: eintragAus([...ziel, id].slice(-3)),
+    };
+    setFehler(null);
+    merke([von, nach], `${artNach.get(id)?.name ?? "Schicht"} verschoben`);
+    void aendern(neu);
+  }
+
   function tagAntippen(iso: string) {
     if (pinselAn && pinsel) return pinselStrich([iso]);
     setTagBlatt(iso);
@@ -845,6 +858,7 @@ export function PrivatKalender() {
             }}
             onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
             onVerschieben={(t, datum, von, bis) => void terminVerschieben(t, von, bis, datum)}
+            onSchichtVerschieben={schichtVerschieben}
           />
         ) : (
           <JahresAnsicht

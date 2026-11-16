@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-16T21:30:00+01:00",
+    titel: "Countdown mit Fotos",
+    text: "Countdowns bekommen auf Wunsch ein Foto, das Datum wählst du mit Vorschlägen wie „1 Monat“ oder direkt im Kalender. Antippen öffnet zum Ändern. In der Woche lassen sich Schichten und Termine jetzt per Gedrückthalten auf einen anderen Tag ziehen.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-16T21:00:00+01:00",
     titel: "Countdown und neue Woche",
     text: "Neu unter Schichten → Countdown: wie lange noch bis zur nächsten Schicht, zum Urlaub oder zu gemerkten Terminen. Die Woche zeigt jetzt 7 Spalten mit Uhrzeiten – lange drücken legt einen Termin an, Termine lassen sich halten und verschieben, der Pinsel geht auch hier.",

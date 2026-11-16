@@ -77,6 +77,33 @@ export interface CountdownSpeicher {
   /** Ids gemerkter Termine */
   termine: string[];
   eigene: EigenerCountdown[];
+  /** Fotos je Eintrag (Schlüssel wie „e-…“, „t-…“, „u-…“), verkleinert als JPEG-Daten-URL. */
+  bilder: Record<string, string>;
+}
+
+const BILD_MAX = 250_000;
+const istBild = (x: unknown): x is string => typeof x === "string" && x.startsWith("data:image/jpeg;base64,") && x.length <= BILD_MAX;
+
+/** Foto auf höchstens 720 px verkleinern, als JPEG – bleibt nur auf diesem Gerät. */
+export async function bildVerkleinern(datei: File, max = 720): Promise<string> {
+  const url = URL.createObjectURL(datei);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * f));
+    c.height = Math.max(1, Math.round(img.naturalHeight * f));
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    for (const q of [0.78, 0.65, 0.5, 0.35]) {
+      const d = c.toDataURL("image/jpeg", q);
+      if (d.length <= BILD_MAX) return d;
+    }
+    throw new Error("zu groß");
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 const SCHLUESSEL = "sp_countdown";
@@ -92,23 +119,29 @@ export function ladeCountdowns(): CountdownSpeicher {
           .map((e) => ({ ...e, titel: e.titel.slice(0, 60), zeit: /^\d{2}:\d{2}$/.test(e.zeit ?? "") ? e.zeit : "", emoji: (e.emoji ?? "⏳").slice(0, 4) }))
           .slice(0, 30)
       : [];
-    return { termine, eigene };
+    const bilder: Record<string, string> = {};
+    if (roh?.bilder && typeof roh.bilder === "object") {
+      for (const [k, v] of Object.entries(roh.bilder).slice(0, 30)) if (istBild(v)) bilder[k] = v;
+    }
+    return { termine, eigene, bilder };
   } catch {
-    return { termine: [], eigene: [] };
+    return { termine: [], eigene: [], bilder: {} };
   }
 }
 
-export function speichereCountdowns(c: CountdownSpeicher): void {
+/** false = Speicher voll oder gesperrt. */
+export function speichereCountdowns(c: CountdownSpeicher): boolean {
   try {
     window.localStorage.setItem(SCHLUESSEL, JSON.stringify(c));
     window.dispatchEvent(new Event(EREIGNIS));
+    return true;
   } catch {
-    // voll oder gesperrt
+    return false;
   }
 }
 
 export function useCountdowns() {
-  const [c, setC] = useState<CountdownSpeicher>({ termine: [], eigene: [] });
+  const [c, setC] = useState<CountdownSpeicher>({ termine: [], eigene: [], bilder: {} });
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setC(ladeCountdowns());
@@ -116,6 +149,6 @@ export function useCountdowns() {
     window.addEventListener(EREIGNIS, neu);
     return () => window.removeEventListener(EREIGNIS, neu);
   }, []);
-  const setze = (f: (alt: CountdownSpeicher) => CountdownSpeicher) => speichereCountdowns(f(ladeCountdowns()));
+  const setze = (f: (alt: CountdownSpeicher) => CountdownSpeicher): boolean => speichereCountdowns(f(ladeCountdowns()));
   return { countdowns: c, setze };
 }

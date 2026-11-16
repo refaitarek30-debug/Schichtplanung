@@ -866,7 +866,7 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             Krankenkasse, feste Zulagen, die Extras des zuletzt bearbeiteten Monats sowie je
             gespeichertem Monat die geschätzten Beträge und – falls eingetragen – der tatsächlich
             ausgezahlte Betrag), für den Countdown (Kennungen der gemerkten Termine sowie selbst
-            angelegte Countdowns mit Titel, Datum, Uhrzeit und Symbol) und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
+            angelegte Countdowns mit Titel, Datum, Uhrzeit und Symbol sowie – falls gewählt – ein auf dem Gerät verkleinertes Foto je Countdown) und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
             läuft nur im Browser; diese Angaben werden weder an einen Server gesendet noch im Konto
             gespeichert. Wer ein Gerät mit anderen teilt, kann sie in den Browserdaten löschen.
           </li>
