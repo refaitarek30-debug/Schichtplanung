@@ -94,8 +94,8 @@ export function PrivatKopf({ titel, unter, rechts }: { titel: ReactNode; unter?:
   return (
     <header className="flex items-start justify-between gap-3 pb-3">
       <div className="min-w-0">
-        <h1 className="truncate text-[28px] font-bold leading-tight tracking-tight">{titel}</h1>
-        {unter ? <div className="mt-0.5 text-[14px] text-ink-muted">{unter}</div> : null}
+        <h1 className="truncate text-[24px] font-bold leading-tight tracking-tight">{titel}</h1>
+        {unter ? <div className="mt-0.5 text-[13px] text-ink-muted">{unter}</div> : null}
       </div>
       {rechts ? <div className="flex shrink-0 items-center gap-1.5 pt-1">{rechts}</div> : null}
     </header>

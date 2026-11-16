@@ -802,3 +802,61 @@ html.bereich-wechsel::view-transition-new(root) {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Ruhige, weiche Bewegungen überall:
+ * - Fenster (Dialoge, Blätter) gleiten von unten herein, der Hintergrund blendet weich ein
+ * - Seiten blenden beim Wechsel sanft ein (nur Deckkraft – feste Elemente bleiben, wo sie sind)
+ * :where() hält die Regeln schwach, eigene Animationen einzelner Elemente gewinnen.
+ * ------------------------------------------------------------------------- */
+:where([role="dialog"]) {
+  animation: fenster-rein 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+:where(.fixed.inset-0 > button.absolute.inset-0) {
+  animation: schleier-rein 0.24s ease-out backwards;
+}
+.fenster-raus {
+  animation: fenster-raus 0.22s cubic-bezier(0.4, 0, 1, 1) forwards !important;
+}
+.schleier-raus {
+  animation: schleier-raus 0.22s ease-in forwards !important;
+}
+.seite-rein {
+  animation: seite-rein 0.26s ease-out backwards;
+}
+@keyframes fenster-rein {
+  from {
+    transform: translate3d(0, 28px, 0);
+    opacity: 0;
+  }
+}
+@keyframes fenster-raus {
+  to {
+    transform: translate3d(0, 40px, 0);
+    opacity: 0;
+  }
+}
+@keyframes schleier-rein {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes schleier-raus {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes seite-rein {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where([role="dialog"]),
+  :where(.fixed.inset-0 > button.absolute.inset-0),
+  .seite-rein,
+  .fenster-raus,
+  .schleier-raus {
+    animation: none !important;
+  }
+}

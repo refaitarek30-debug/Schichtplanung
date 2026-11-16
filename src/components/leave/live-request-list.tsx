@@ -1,5 +1,6 @@
 "use client";
 
+import { nochTage } from "@/lib/countdown";
 import { useMemo, useState, useTransition } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -229,8 +230,13 @@ export function LiveRequestList({
                   >
                     <div className="flex items-start gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
                           {formatRange(request.startDate, request.endDate)}
+                          {request.status !== "rejected" && request.status !== "withdrawn" && request.startDate >= heute ? (
+                            <span className="tnum rounded-full bg-brand-500/10 px-2 py-0.5 text-[11.5px] font-semibold text-brand-600" data-noch-tage>
+                              {nochTage(request.startDate, heute)}
+                            </span>
+                          ) : null}
                         </p>
                         <p className="tnum text-[12px] text-ink-muted">
                           {formatDays(request.requestedDays)}{" "}

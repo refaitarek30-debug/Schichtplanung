@@ -1,5 +1,6 @@
 "use client";
 
+import { restBis, useCountdowns, useJetzt, zeitpunkt } from "@/lib/countdown";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Trash2, X } from "lucide-react";
@@ -404,6 +405,8 @@ export function TerminBlatt({
             {geburt ? "jedes Jahr" : ganz ? (tageAnzahl > 1 ? `${tageAnzahl} Tage` : "Ganztägig") : dauer(von, bis)}
           </span>
         </div>
+
+        {termin && !geburt ? <TerminCountdown termin={termin} /> : null}
 
         <div className="overflow-y-auto px-5">
           {mitVorschlaegen ? (
@@ -870,5 +873,41 @@ export function TerminLoeschenFrage({
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** Im Termin: wie lange noch (Tage, Stunden, Minuten) und „Countdown merken“ für die Countdown-Seite. */
+function TerminCountdown({ termin }: { termin: Termin }) {
+  const jetzt = useJetzt(30_000);
+  const { countdowns, setze } = useCountdowns();
+  if (termin.wiederholung && termin.wiederholung !== "nie") return null;
+  const r = restBis(zeitpunkt(termin.datum, termin.ganztaegig ? "00:00" : termin.von), jetzt);
+  if (r.ms <= 0) return null;
+  const gemerkt = countdowns.termine.includes(termin.id);
+  return (
+    <div className="flex items-center gap-2 px-5 pt-3" data-termin-countdown>
+      {(
+        [
+          [r.tage, "Tage"],
+          [r.std, "Std"],
+          [r.min, "Min"],
+        ] as const
+      ).map(([n, t]) => (
+        <span key={t} className="flex-1 rounded-[12px] bg-ink/[0.05] py-1.5 text-center">
+          <span className="tnum block text-[18px] font-bold leading-tight">{t === "Tage" ? n : String(n).padStart(2, "0")}</span>
+          <span className="block text-[10.5px] text-ink-muted">{t}</span>
+        </span>
+      ))}
+      <button
+        type="button"
+        onClick={() =>
+          setze((c) => ({ ...c, termine: gemerkt ? c.termine.filter((x) => x !== termin.id) : [...c.termine, termin.id] }))
+        }
+        aria-pressed={gemerkt}
+        className={cn("h-[46px] shrink-0 rounded-[12px] px-3 text-[12.5px] font-semibold", gemerkt ? "bg-brand-500 text-white" : "bg-brand-500/10 text-brand-600")}
+      >
+        {gemerkt ? "Gemerkt ✓" : "Countdown"}
+      </button>
+    </div>
   );
 }

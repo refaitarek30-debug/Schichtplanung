@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-16T21:00:00+01:00",
+    titel: "Countdown und neue Woche",
+    text: "Neu unter Schichten → Countdown: wie lange noch bis zur nächsten Schicht, zum Urlaub oder zu gemerkten Terminen. Die Woche zeigt jetzt 7 Spalten mit Uhrzeiten – lange drücken legt einen Termin an, Termine lassen sich halten und verschieben, der Pinsel geht auch hier.",
+    bereich: "privat",
+  },
+  {
+    zeit: "2026-11-16T21:00:00+01:00",
+    titel: "Einstellungen aufgeräumt",
+    text: "Die Einstellungen haben oben vier Kacheln und darunter kurze Listen – alles Weitere öffnet sich als Fenster. Beim Urlaub steht jetzt dabei, wie viele Tage es noch sind.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-16T18:00:00+01:00",
     titel: "Lohn: was am Ende ausgezahlt wird",
     text: "Unter Schichten → Lohn rechnet ShiftNexo jetzt auch die Auszahlung aus – mit Lohnsteuer und Abgaben, Zuschläge aus deinem Kalender. Monat speichern, später den echten Betrag von der Abrechnung eintragen und alles in der Jahresübersicht sehen. Bleibt nur auf deinem Gerät.",

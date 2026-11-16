@@ -1,5 +1,6 @@
 "use client";
 
+import { nochTage } from "@/lib/countdown";
 import { useEffect, useState } from "react";
 import { Palmtree } from "lucide-react";
 import { formatDE, formatDEShort, fromISO } from "@/lib/dates";
@@ -76,6 +77,11 @@ export function NextLeaveCard({
               <span className="tnum">
                 {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"} frei
               </span>
+              {!laeuft ? (
+                <span className="tnum rounded-full bg-ok-bg px-2 py-0.5 text-[11px] font-semibold text-ok-fg" data-noch-tage>
+                  {nochTage(zeitraum.von, heute)}
+                </span>
+              ) : null}
               {zeitraum.offen ? (
                 <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-medium text-warn-fg">
                   noch beantragt

@@ -20,7 +20,7 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]">
+        <h1 className="mt-1 text-[22px] font-semibold tracking-tight sm:text-[26px]">
           {title}
         </h1>
         {description ? (
