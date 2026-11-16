@@ -86,8 +86,11 @@ export default async function geld() {
     pruefe((await seite.locator("[data-gehalt-hinweis]").count()) === 1, "Monatsgehalt: Hinweis auf fehlende Wochenstunden");
     await seite.keyboard.press("Escape");
     await warte(500);
-    const gehaltKarte = await seite.locator('[data-job-karte="Tankstelle"]').innerText();
-    pruefe(/Grundgehalt/.test(gehaltKarte) && /Zuschläge fehlen/.test(gehaltKarte), "Monatsgehalt: Karte zeigt Grundgehalt und Hinweis");
+    // Normaler Job = Hauptjob: steht ganz in der Lohn-Rechnung, keine eigene Karte mehr.
+    const rechnung = await seite.locator("[data-lohn-details]").innerText();
+    pruefe(/Grundgehalt/.test(rechnung) && /\d+ Schichten/.test(rechnung) && !/^0 Schichten/m.test(rechnung), "Monatsgehalt: Rechnung zeigt Grundgehalt und die Schichten");
+    pruefe(/Zuschläge fehlen/.test(await seite.locator("[data-lohn-hinweis]").innerText()), "Lohn: Hinweis, dass Zuschläge die Wochenstunden brauchen");
+    pruefe((await seite.locator('[data-job-karte="Tankstelle"]').count()) === 0, "Hauptjob: keine doppelte Karte");
 
     // Lohn: Auszahlung nach Steuer und Abgaben, Steuerklasse, Monat speichern, Jahresübersicht.
     const zahl = (t) => Number(t.replace(/[^\d,]/g, "").replace(",", "."));

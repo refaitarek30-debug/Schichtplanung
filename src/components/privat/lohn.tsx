@@ -16,7 +16,6 @@ import {
 } from "@/lib/privat/lohn";
 import type { Steuerklasse } from "@/lib/privat/netto";
 import { cn } from "@/lib/utils";
-import { Blatt } from "./blatt";
 import { FeldZeile, Schalter, Wahl, Zahlenfeld } from "./gehalt";
 
 /**
@@ -51,11 +50,27 @@ export function useLohn(userId: string) {
 
 const schluessel = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-/** Monat: Auszahlung oben, darunter Extras und Abzüge. */
-export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; monat: Date; userId: string; bundesland: string }) {
+/**
+ * Monat in einem Stück: Auszahlung oben, darunter die ganze Rechnung wie auf
+ * einer Lohnabrechnung (Schichten und Zuschläge aus dem Kalender, Brutto,
+ * Abzüge, Auszahlung) und die Extras. Eingestellt wird alles an einer Stelle
+ * (`onEinstellungen`: Lohn, Zuschläge, Schichten und Steuer).
+ */
+export function LohnMonat({
+  re,
+  monat,
+  userId,
+  bundesland,
+  onEinstellungen,
+}: {
+  re: Rechnung;
+  monat: Date;
+  userId: string;
+  bundesland: string;
+  onEinstellungen: () => void;
+}) {
   const { lohn, setze } = useLohn(userId);
-  const [einstellen, setEinstellen] = useState(false);
-  const [details, setDetails] = useState(false);
+  const [abzOffen, setAbzOffen] = useState(false);
   const [extrasOffen, setExtrasOffen] = useState(false);
   const key = schluessel(monat);
   const extras = lohn.extras?.monat === key ? lohn.extras : null;
@@ -64,6 +79,7 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
   const gespeichert = lohn.monate[key] ?? null;
   const veraltet = gespeichert !== null && Math.abs(gespeichert.netto - aus.netto) > 0.5;
   const name = monthName(monat.getMonth());
+  const haupt = aus.haupt;
 
   const setzeExtras = (t: Partial<Omit<Extras, "monat">>) =>
     setze((l) => {
@@ -75,19 +91,12 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
       ...l,
       monate: {
         ...l.monate,
-        [key]: {
-          brutto: aus.brutto,
-          netto: aus.netto,
-          steuerfrei: aus.steuerfrei,
-          abzuege: aus.abzuege?.summe ?? 0,
-          echt: l.monate[key]?.echt ?? null,
-        },
+        [key]: { brutto: aus.brutto, netto: aus.netto, steuerfrei: aus.steuerfrei, abzuege: aus.abzuege?.summe ?? 0, echt: l.monate[key]?.echt ?? null },
       },
     }));
   const setzeEcht = (n: number | null) =>
     setze((l) => (l.monate[key] ? { ...l, monate: { ...l.monate, [key]: { ...l.monate[key]!, echt: n } } } : l));
 
-  const ohneSteuer = aus.mitSteuer && !lohn.steuer;
   const extraSumme = extras ? extras.einmal + extras.frei + extras.netto : 0;
   const abz = aus.abzuege;
   const posten = abz
@@ -101,6 +110,8 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
         ["Pflegeversicherung", abz.pv],
       ] as const).filter(([, b]) => b > 0)
     : [];
+  const ohneSchichten = haupt !== null && haupt.schichten === 0;
+  const ohneZuschlag = haupt?.geld?.ausGehalt === true && haupt.geld.stundenlohn === null;
 
   return (
     <div className="space-y-3" data-lohn-monat>
@@ -112,15 +123,15 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
               {euro(aus.netto)}
             </p>
           </div>
-          {aus.mitSteuer ? (
-            <button
-              type="button"
-              onClick={() => setEinstellen(true)}
-              className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-3 text-[13px] font-semibold"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" /> Steuerklasse {steuer.steuerklasse}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={onEinstellungen}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold"
+            style={{ backgroundColor: "rgba(255,255,255,0.16)" }}
+            data-lohn-einstellen
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" /> {aus.mitSteuer ? `Steuerklasse ${steuer.steuerklasse}` : "Einstellen"}
+          </button>
         </div>
         {aus.mitSteuer ? (
           <p className="tnum mt-1 flex flex-wrap gap-x-3 text-[12.5px] text-white/85">
@@ -133,7 +144,7 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
           type="button"
           onClick={speichern}
           disabled={gespeichert !== null && !veraltet}
-          className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] bg-white/18 text-[14px] font-semibold disabled:opacity-80"
+          className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] text-[14px] font-semibold disabled:opacity-85"
           style={{ backgroundColor: "rgba(255,255,255,0.18)" }}
           data-lohn-speichern
         >
@@ -149,19 +160,55 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
         </button>
       </section>
 
-      {ohneSteuer ? (
-        <button
-          type="button"
-          onClick={() => setEinstellen(true)}
-          className="glas flex w-full items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left"
-        >
-          <span className="text-[14px] leading-snug">
-            <span className="block font-semibold">Stimmt deine Steuerklasse?</span>
-            <span className="text-ink-muted">Gerechnet wird mit Klasse 1, ohne Kinder und Kirche.</span>
-          </span>
-          <span className="shrink-0 text-[14px] font-semibold text-brand-600">Anpassen</span>
+      {ohneSchichten || ohneZuschlag ? (
+        <button type="button" onClick={onEinstellungen} className="w-full rounded-[16px] bg-warn-bg px-4 py-3 text-left text-[13.5px] leading-snug text-warn-fg" data-lohn-hinweis>
+          {ohneSchichten ? (
+            <>
+              <b>Keine Schichten erkannt.</b> Tippen und unter „Schichten“ auswählen, welche zu deinem Job gehören.
+            </>
+          ) : (
+            <>
+              <b>Zuschläge fehlen.</b> Trag unter Mehr deine Wochenstunden ein – daraus wird der Stundenlohn für die Zuschläge.
+            </>
+          )}
         </button>
       ) : null}
+
+      <section className="glas overflow-hidden rounded-[18px]" data-lohn-details>
+        <div className="flex items-baseline justify-between gap-3 px-4 pb-1 pt-3">
+          <h3 className="text-[15px] font-semibold">Dein {name}</h3>
+          {haupt ? (
+            <span className="tnum text-[12.5px] text-ink-muted">
+              {haupt.schichten} Schichten · {std(haupt.stunden)} Std
+            </span>
+          ) : null}
+        </div>
+        <dl className="px-4 text-[14px]">
+          {aus.bausteine.map((b) => (
+            <Posten key={b.text} text={b.text} detail={b.detail} betrag={b.betrag} />
+          ))}
+          {aus.mitSteuer ? (
+            <>
+              <Posten text="Brutto" betrag={aus.brutto} fett linie />
+              <button type="button" onClick={() => setAbzOffen((o) => !o)} aria-expanded={abzOffen} className="flex w-full items-center justify-between gap-3 border-t border-line py-2 text-left">
+                <span className="flex items-center gap-1.5">
+                  Steuer und Abgaben
+                  <ChevronDown className={cn("h-4 w-4 text-ink-muted transition-transform", abzOffen && "rotate-180")} />
+                </span>
+                <span className="tnum text-crit-fg">−{euro(abz?.summe ?? 0)}</span>
+              </button>
+              {abzOffen ? (
+                <div className="pb-1 pl-3 text-[13px] text-ink-muted">
+                  {posten.map(([t, b]) => (
+                    <Posten key={t} text={t} betrag={-b} klein />
+                  ))}
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          <Posten text="Auszahlung" betrag={aus.netto} fett linie />
+        </dl>
+      </section>
 
       {gespeichert ? (
         <section className="glas rounded-[18px] px-4" data-lohn-echt>
@@ -176,26 +223,6 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
           >
             <Zahlenfeld id="lohn-echt" wert={gespeichert.echt} min={0} max={100000} einheit="€" breite="w-[110px]" platzhalter="–" onWert={setzeEcht} />
           </FeldZeile>
-        </section>
-      ) : null}
-
-      {aus.mitSteuer ? (
-        <section className="glas overflow-hidden rounded-[18px]">
-          <button type="button" onClick={() => setDetails((d) => !d)} aria-expanded={details} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-            <span className="text-[15px] font-semibold">So setzt sich das zusammen</span>
-            <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-muted transition-transform", details && "rotate-180")} />
-          </button>
-          {details ? (
-            <dl className="divide-y divide-line border-t border-line px-4 text-[14px]" data-lohn-details>
-              {aus.bausteine.map((b) => (
-                <Posten key={b.text} text={b.text} betrag={b.betrag} />
-              ))}
-              {posten.map(([t, b]) => (
-                <Posten key={t} text={t} betrag={-b} />
-              ))}
-              <Posten text="Auszahlung" betrag={aus.netto} fett />
-            </dl>
-          ) : null}
         </section>
       ) : null}
 
@@ -223,57 +250,72 @@ export function LohnMonat({ re, monat, userId, bundesland }: { re: Rechnung; mon
           </div>
         ) : null}
       </section>
-
-      {einstellen ? <SteuerBlatt steuer={steuer} setze={(s) => setze((l) => ({ ...l, steuer: s }))} onClose={() => setEinstellen(false)} /> : null}
     </div>
   );
 }
 
-function Posten({ text, betrag, fett = false }: { text: string; betrag: number; fett?: boolean }) {
+const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+
+function Posten({
+  text,
+  detail,
+  betrag,
+  fett = false,
+  linie = false,
+  klein = false,
+}: {
+  text: string;
+  detail?: string;
+  betrag: number;
+  fett?: boolean;
+  linie?: boolean;
+  klein?: boolean;
+}) {
   return (
-    <div className={cn("flex items-center justify-between gap-3 py-2", fett && "font-bold")}>
-      <dt className="min-w-0">{text}</dt>
-      <dd className={cn("tnum shrink-0", betrag < 0 && "text-crit-fg")}>{betrag < 0 ? `−${euro(-betrag)}` : euro(betrag)}</dd>
+    <div className={cn("flex items-center justify-between gap-3", klein ? "py-1" : "py-2", fett && "font-bold", linie && "border-t border-line")}>
+      <dt className="min-w-0">
+        {text}
+        {detail ? <span className="ml-1.5 text-[12.5px] font-normal text-ink-muted">{detail}</span> : null}
+      </dt>
+      <dd className={cn("tnum shrink-0", betrag < 0 && !klein && "text-crit-fg")}>{betrag < 0 ? `−${euro(-betrag)}` : euro(betrag)}</dd>
     </div>
   );
 }
 
 const KLASSEN: { id: string; name: string }[] = [1, 2, 3, 4, 5, 6].map((k) => ({ id: String(k), name: String(k) }));
 
-function SteuerBlatt({ steuer, setze, onClose }: { steuer: SteuerDaten; setze: (s: SteuerDaten) => void; onClose: () => void }) {
-  const aendere = (t: Partial<SteuerDaten>) => setze({ ...steuer, ...t });
+/** Steuer und Abgaben – Teil der Lohn-Einstellungen des Hauptjobs. */
+export function SteuerAbschnitt({ userId }: { userId: string }) {
+  const { lohn, setze } = useLohn(userId);
+  const steuer = lohn.steuer ?? STEUER_STANDARD;
+  const aendere = (t: Partial<SteuerDaten>) => setze((l) => ({ ...l, steuer: { ...(l.steuer ?? STEUER_STANDARD), ...t } }));
   return (
-    <Blatt titel="Steuer & Abgaben" unter="Steht oben auf deiner Lohnabrechnung" onClose={onClose}>
-      <div className="space-y-3" data-steuer-blatt>
-        <div>
-          <p className="pb-1.5 text-[13px] font-semibold text-ink-muted">Steuerklasse</p>
-          <Wahl label="Steuerklasse" wert={String(steuer.steuerklasse)} optionen={KLASSEN} onWahl={(w) => aendere({ steuerklasse: Number(w) as Steuerklasse })} />
-        </div>
-        <div className="divide-y divide-line">
-          <FeldZeile id="steuer-kinder" name="Kinder" hinweis="Kinderfreibeträge und Pflegeversicherung">
-            <Zahlenfeld id="steuer-kinder" wert={steuer.kinder} min={0} max={12} einheit="" kommastellen={0} onWert={(n) => aendere({ kinder: Math.round(n ?? 0) })} />
+    <div className="space-y-2" data-steuer-blatt>
+      <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Steuer und Abgaben</p>
+      <Wahl label="Steuerklasse" wert={String(steuer.steuerklasse)} optionen={KLASSEN} onWahl={(w) => aendere({ steuerklasse: Number(w) as Steuerklasse })} />
+      <div className="divide-y divide-line">
+        <FeldZeile id="steuer-kinder" name="Kinder" hinweis="Kinderfreibeträge und Pflegeversicherung">
+          <Zahlenfeld id="steuer-kinder" wert={steuer.kinder} min={0} max={12} einheit="" kommastellen={0} onWert={(n) => aendere({ kinder: Math.round(n ?? 0) })} />
+        </FeldZeile>
+        <FeldZeile id="steuer-kirche" name="Kirchensteuer">
+          <Schalter an={steuer.kirche} onChange={(an) => aendere({ kirche: an })} labelId="steuer-kirche" />
+        </FeldZeile>
+        {steuer.kinder === 0 ? (
+          <FeldZeile id="steuer-kinderlos" name="23 Jahre oder älter" hinweis="Ohne Kinder: etwas mehr Pflegeversicherung">
+            <Schalter an={steuer.kinderlosZuschlag} onChange={(an) => aendere({ kinderlosZuschlag: an })} labelId="steuer-kinderlos" />
           </FeldZeile>
-          <FeldZeile id="steuer-kirche" name="Kirchensteuer">
-            <Schalter an={steuer.kirche} onChange={(an) => aendere({ kirche: an })} labelId="steuer-kirche" />
-          </FeldZeile>
-          {steuer.kinder === 0 ? (
-            <FeldZeile id="steuer-kinderlos" name="23 Jahre oder älter" hinweis="Ohne Kinder: etwas mehr Pflegeversicherung">
-              <Schalter an={steuer.kinderlosZuschlag} onChange={(an) => aendere({ kinderlosZuschlag: an })} labelId="steuer-kinderlos" />
-            </FeldZeile>
-          ) : null}
-          <FeldZeile id="steuer-kv" name="Zusatzbeitrag Krankenkasse" hinweis="Im Schnitt 2,9 %">
-            <Zahlenfeld id="steuer-kv" wert={steuer.kvZusatz} min={0} max={6} einheit="%" onWert={(n) => aendere({ kvZusatz: n ?? STEUER_STANDARD.kvZusatz })} />
-          </FeldZeile>
-          <FeldZeile id="steuer-zulagen" name="Feste Zulagen im Monat" hinweis="Schichtzulage, Erschwernis … (brutto)">
-            <Zahlenfeld id="steuer-zulagen" wert={steuer.zulagen || null} min={0} max={100000} einheit="€" breite="w-[96px]" platzhalter="0" onWert={(n) => aendere({ zulagen: n ?? 0 })} />
-          </FeldZeile>
-        </div>
-        <p className="text-[12px] leading-snug text-ink-faint">
-          Schätzung nach den Regeln für 2026, gesetzlich versichert, ohne Freibeträge. Keine Lohnabrechnung – ein paar Euro Abweichung sind normal. Die
-          Angaben bleiben nur auf diesem Gerät.
-        </p>
+        ) : null}
+        <FeldZeile id="steuer-kv" name="Zusatzbeitrag Krankenkasse" hinweis="Im Schnitt 2,9 %">
+          <Zahlenfeld id="steuer-kv" wert={steuer.kvZusatz} min={0} max={6} einheit="%" onWert={(n) => aendere({ kvZusatz: n ?? STEUER_STANDARD.kvZusatz })} />
+        </FeldZeile>
+        <FeldZeile id="steuer-zulagen" name="Feste Zulagen im Monat" hinweis="Schichtzulage, Erschwernis … (brutto)">
+          <Zahlenfeld id="steuer-zulagen" wert={steuer.zulagen || null} min={0} max={100000} einheit="€" breite="w-[96px]" platzhalter="0" onWert={(n) => aendere({ zulagen: n ?? 0 })} />
+        </FeldZeile>
       </div>
-    </Blatt>
+      <p className="text-[12px] leading-snug text-ink-faint">
+        Schätzung nach den Regeln für 2026, gesetzlich versichert, ohne Freibeträge. Keine Lohnabrechnung – ein paar Euro Abweichung sind normal.
+      </p>
+    </div>
   );
 }
 

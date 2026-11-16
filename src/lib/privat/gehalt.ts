@@ -172,7 +172,13 @@ export function bereinigeGehalt(roh: unknown): GehaltEinstellungen {
         if (typeof job === "string" && ids.has(job)) zuordnung[art] = job;
       }
     }
-    const haupt = typeof r.hauptjob === "string" && ids.has(r.hauptjob) ? r.hauptjob : null;
+    // Ohne ausdrücklichen Hauptjob: der erste normale Job (sonst „ohne Geld“). Minijobs nicht –
+    // deren Schichten werden ausdrücklich gewählt. Sonst bekäme ein Job, der im Assistenten als
+    // Minijob begann und dann auf „Normal“ umgestellt wurde, keine einzige Schicht.
+    const haupt =
+      typeof r.hauptjob === "string" && ids.has(r.hauptjob)
+        ? r.hauptjob
+        : (jobs.find((j) => j.art === "brutto") ?? jobs.find((j) => j.art === "ohne"))?.id ?? null;
     return { jobs, hauptjob: haupt, zuordnung, eingerichtet: r.eingerichtet === true || jobs.length > 0 };
   }
   // Alter Stand: ein Lohn, ein Schalter „in Schicht“.
