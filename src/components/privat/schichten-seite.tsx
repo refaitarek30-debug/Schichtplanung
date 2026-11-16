@@ -6,11 +6,13 @@ import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, 
 import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
+import { STEUER_STANDARD, rechneAuszahlung } from "@/lib/privat/lohn";
 import type { Reiter } from "@/lib/privat/reiter";
 import { cn } from "@/lib/utils";
 import { PrivatAuswertung } from "./auswertung";
 import { PrivatGemeinsam } from "./gemeinsam";
 import { PrivatGeld, useGehalt, useMonatsDaten } from "./gehalt";
+import { useLohn } from "./lohn";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
 import { PrivatSchichten } from "./schichten";
@@ -64,6 +66,7 @@ function Startliste() {
   const heute = heuteInBerlin();
   const [monat, setMonat] = useState(() => new Date(Number(heute.slice(0, 4)), Number(heute.slice(5, 7)) - 1, 1));
   const { einst } = useGehalt(konto.userId);
+  const { lohn } = useLohn(konto.userId);
   const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
   const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
   const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
@@ -90,12 +93,10 @@ function Startliste() {
   }, [konto.userId]);
 
   const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
-  const geldUnter =
-    mitGeld.length > 1
-      ? `${mitGeld.length} Jobs zusammen`
-      : mitGeld[0]
-        ? `${mitGeld[0].job.name}, ${mitGeld[0].job.art === "minijob" ? "ausgezahlt" : "brutto"}`
-        : "Lohn je Job einrichten";
+  const auszahlung = re && mitGeld.length ? rechneAuszahlung(re, lohn.steuer ?? STEUER_STANDARD, null, konto.bundesland) : null;
+  const geldUnter = !auszahlung
+    ? "Lohn einrichten"
+    : `${auszahlung.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"} · ${monthName(monat.getMonth())}`;
   // Erst Text zeigen, wenn alles geladen ist: Safari malt sich ändernden Text
   // unter Glasflächen sonst übereinander (alter Text bleibt stehen).
   const bereit = re !== null;
@@ -175,9 +176,9 @@ function Startliste() {
           href="/privat/schichten?reiter=geld"
           icon={<Wallet className="h-[18px] w-[18px]" />}
           farbe="bg-ok-bg text-ok-fg"
-          name="Geld"
+          name="Lohn"
           unter={bereit ? geldUnter : ""}
-          wert={re?.summe != null ? euroGanz(re.summe) : undefined}
+          wert={auszahlung ? euroGanz(auszahlung.netto) : undefined}
         />
         <Eintrag
           href="/privat/schichten?reiter=urlaub"

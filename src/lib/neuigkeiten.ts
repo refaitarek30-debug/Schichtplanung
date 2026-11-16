@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-16T18:00:00+01:00",
+    titel: "Lohn: was am Ende ausgezahlt wird",
+    text: "Unter Schichten → Lohn rechnet ShiftNexo jetzt auch die Auszahlung aus – mit Lohnsteuer und Abgaben, Zuschläge aus deinem Kalender. Monat speichern, später den echten Betrag von der Abrechnung eintragen und alles in der Jahresübersicht sehen. Bleibt nur auf deinem Gerät.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-15T20:00:00+01:00",
     titel: "Neues Logo, aufgeräumtes Profil",
     text: "ShiftNexo hat ein neues Zeichen – auch als App-Symbol (am Handy ggf. die App einmal neu zum Startbildschirm hinzufügen). Das Profil ist jetzt in Daten, Sicherheit und Datenschutz aufgeteilt.",
