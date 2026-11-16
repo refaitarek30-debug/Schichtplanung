@@ -64,13 +64,13 @@ type Punkt = { icon: ReactNode; titel: string; text: string; ton?: Ton };
 
 /** Farbe der Symbolfläche je Karte – hell im Hintergrund, kräftig im Symbol. */
 const TOENE: Record<Ton, string> = {
-  blau: "bg-[#e6efff] text-[#2563eb] dark:bg-[#1e3a8a]/40 dark:text-[#93b4ff]",
-  gruen: "bg-[#e3f6ea] text-[#16a34a] dark:bg-[#14532d]/40 dark:text-[#86efac]",
-  orange: "bg-[#fff0e0] text-[#ea7a0c] dark:bg-[#7c2d12]/40 dark:text-[#fdba74]",
-  lila: "bg-[#f1eafe] text-[#7c3aed] dark:bg-[#4c1d95]/40 dark:text-[#c4b5fd]",
-  rosa: "bg-[#fde8f0] text-[#db2777] dark:bg-[#831843]/40 dark:text-[#f9a8d4]",
-  tuerkis: "bg-[#e0f5f4] text-[#0d9488] dark:bg-[#134e4a]/40 dark:text-[#5eead4]",
-  gelb: "bg-[#fdf5d8] text-[#ca8a04] dark:bg-[#713f12]/40 dark:text-[#fde047]",
+  blau: "bg-[#d6e4ff] text-[#1d4ed8] dark:bg-[#1e3a8a]/60 dark:text-[#bfd2ff]",
+  gruen: "bg-[#cdeedb] text-[#15803d] dark:bg-[#14532d]/60 dark:text-[#a7f3c4]",
+  orange: "bg-[#ffdfbf] text-[#c2410c] dark:bg-[#7c2d12]/60 dark:text-[#fed7aa]",
+  lila: "bg-[#e4d8fd] text-[#6d28d9] dark:bg-[#4c1d95]/60 dark:text-[#ddd0ff]",
+  rosa: "bg-[#fcd3e3] text-[#be185d] dark:bg-[#831843]/60 dark:text-[#fbcfe8]",
+  tuerkis: "bg-[#c6ece8] text-[#0f766e] dark:bg-[#134e4a]/60 dark:text-[#99f6e4]",
+  gelb: "bg-[#fae7a5] text-[#a16207] dark:bg-[#713f12]/60 dark:text-[#fef08a]",
 };
 const i = "h-[22px] w-[22px]";
 
@@ -361,7 +361,7 @@ function Karten({ punkte, ausserdem }: { punkte: Punkt[]; ausserdem?: string[] }
       <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {punkte.map((p) => (
           <li key={p.titel} className="glas flex flex-col items-center rounded-[24px] px-6 pb-7 pt-7 text-center">
-            <span className={`flex h-14 w-14 items-center justify-center rounded-[18px] [&_svg]:h-7 [&_svg]:w-7 ${TOENE[p.ton ?? "blau"]}`} aria-hidden>
+            <span className={`flex h-16 w-16 items-center justify-center rounded-[20px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] [&_svg]:h-8 [&_svg]:w-8 [&_svg]:stroke-[2.1] ${TOENE[p.ton ?? "blau"]}`} aria-hidden>
               {p.icon}
             </span>
             <h3 className="mt-4 text-balance text-[19px] font-bold tracking-tight">{p.titel}</h3>
@@ -456,7 +456,7 @@ function Sicherheit({
             key={k.text}
             className={`flex flex-col items-center gap-3 px-4 py-7 text-center ${n > 0 ? "lg:border-l lg:border-[var(--glas-linie)]" : ""} ${n === kurz.length - 1 && kurz.length % 2 === 1 ? "col-span-2 sm:col-span-1" : ""}`}
           >
-            <span className="text-brand-600 [&_svg]:h-9 [&_svg]:w-9 [&_svg]:stroke-[1.4]" aria-hidden>
+            <span className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-[#d6e4ff] text-[#1d4ed8] dark:bg-[#1e3a8a]/60 dark:text-[#bfd2ff] [&_svg]:h-7 [&_svg]:w-7 [&_svg]:stroke-[2]" aria-hidden>
               {k.icon}
             </span>
             <span className="text-balance text-[15px] font-medium leading-snug">{k.text}</span>

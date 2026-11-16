@@ -51,6 +51,9 @@ function gehe(anker: string) {
   gewaehlt = b;
   ziel = a === "" ? null : GETEILT.has(a) ? `${a}-${b}` : a;
   melden();
+  // Bleibt die Hälfte gleich, zeichnet React nichts neu – dann direkt scrollen.
+  // Zwei Bilder warten, damit eine umgeschaltete Hälfte schon sichtbar ist.
+  if (typeof window !== "undefined") requestAnimationFrame(() => requestAnimationFrame(scrolleZumZiel));
 }
 
 export function useBereich(): Bereich {
