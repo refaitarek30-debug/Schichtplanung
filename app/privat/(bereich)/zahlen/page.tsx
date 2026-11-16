@@ -23,9 +23,18 @@ export default function Seite() {
           .map((id) => artNach.get(id))
           .filter((a): a is Schichtart => !!a);
         if (!arten.length) continue;
-        const arbeit = arten.filter((a) => a.art === "arbeit");
-        const erste = arbeit[0] ?? arten[0];
-        const art: TagArt = arbeit.length ? "arbeit" : erste.art === "urlaub" ? "urlaub" : erste.art === "krank" ? "krank" : "frei";
+        // Urlaub, V-Tag und Krank ersetzen die Schicht des Tages – dann ist es kein Arbeitstag.
+        const abw = arten.find((a) => a.art === "urlaub" || a.art === "krank");
+        const arbeit = abw ? [] : arten.filter((a) => a.art === "arbeit");
+        const art: TagArt = abw
+          ? abw.art === "krank"
+            ? "krank"
+            : /^v\b|v-?tag|freischicht/i.test(`${abw.kuerzel} ${abw.name}`)
+              ? "vtag"
+              : "urlaub"
+          : arbeit.length
+            ? "arbeit"
+            : "frei";
         liste.push({
           iso,
           art,
