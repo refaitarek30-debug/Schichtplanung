@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImagePlus, Plus } from "lucide-react";
 import { fetchMeineTermine, type Termin } from "@/lib/data/partner";
-import { addDays, formatDE, heuteInBerlin } from "@/lib/dates";
-import { restBis, restText, useCountdowns, useJetzt, zeitpunkt, type EigenerCountdown } from "@/lib/countdown";
+import { addDays, formatDE, heuteInBerlin, monthGrid, monthName, weekdayLong } from "@/lib/dates";
+import { bildVerkleinern, restBis, restText, tageBis, useCountdowns, useJetzt, zeitpunkt, type EigenerCountdown } from "@/lib/countdown";
 import { idsVon, istAbwesenheit, type Schichtart } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
@@ -26,6 +26,7 @@ interface Eintrag {
   ziel: Date;
   farbe: string;
   eigen?: string;
+  termin?: string;
 }
 
 const FENSTER_TAGE = 60;
@@ -39,7 +40,8 @@ export function PrivatCountdown() {
   const jetzt = useJetzt(15_000);
   const { countdowns, setze } = useCountdowns();
   const [termine, setTermine] = useState<Termin[]>([]);
-  const [neu, setNeu] = useState(false);
+  /** offenes Blatt: "neu" oder der Schlüssel des Eintrags */
+  const [offen, setOffen] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMeineTermine()
@@ -98,6 +100,7 @@ export function PrivatCountdown() {
         wann: `${formatDE(t.datum)}${t.ganztaegig ? "" : ` · ${t.von}`}`,
         ziel: zeitpunkt(t.datum, t.ganztaegig ? "00:00" : t.von),
         farbe: "#6366f1",
+        termin: t.id,
       })),
     ...countdowns.eigene.map((e) => ({
       key: `e-${e.id}`,
@@ -115,6 +118,9 @@ export function PrivatCountdown() {
   const rest = naechste ? restBis(naechste.start, jetzt) : null;
   // Ring: wie viel der letzten 24 Stunden bis zur Schicht schon um ist.
   const anteil = rest ? Math.max(0.02, Math.min(1, 1 - rest.ms / 864e5)) : 0;
+
+  const aktiv = offen && offen !== "neu" ? eintraege.find((e) => e.key === offen) : undefined;
+  const eigenAktiv = aktiv?.eigen ? countdowns.eigene.find((x) => x.id === aktiv.eigen) : undefined;
 
   return (
     <div className="space-y-4" data-countdown>
@@ -146,18 +152,53 @@ export function PrivatCountdown() {
 
       <div className="flex items-center justify-between px-1">
         <p className="text-[12.5px] font-semibold text-ink-muted">Worauf du wartest</p>
-        <button type="button" onClick={() => setNeu(true)} className="flex items-center gap-1 text-[13.5px] font-semibold text-brand-600" data-countdown-neu>
+        <button type="button" onClick={() => setOffen("neu")} className="flex items-center gap-1 text-[13.5px] font-semibold text-brand-600" data-countdown-neu>
           <Plus className="h-4 w-4" /> Hinzufügen
         </button>
       </div>
 
       {eintraege.length ? (
-        <section className="glas divide-y divide-line overflow-hidden rounded-[20px]">
+        <div className="space-y-2">
           {eintraege.map((e) => {
             const r = restBis(e.ziel, jetzt);
             const p = Math.max(0.03, Math.min(1, 1 - r.ms / (FENSTER_TAGE * 864e5)));
+            const bild = countdowns.bilder[e.key];
+            if (bild) {
+              return (
+                <button
+                  key={e.key}
+                  type="button"
+                  onClick={() => setOffen(e.key)}
+                  className="relative block h-[148px] w-full overflow-hidden rounded-[22px] text-left text-white active:scale-[0.99] transition-transform"
+                  data-countdown-eintrag
+                  data-countdown-foto
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={bild} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/0" />
+                  <span className="absolute inset-x-4 bottom-3 flex items-end gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[16px] font-bold">
+                        {e.emoji} {e.titel}
+                      </span>
+                      <span className="block truncate text-[12.5px] opacity-85">{e.wann}</span>
+                    </span>
+                    <span className="tnum shrink-0 text-[22px] font-bold leading-none">{restText(r)}</span>
+                  </span>
+                  <span className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+                    <span className="block h-full bg-white/90 transition-[width] duration-700" style={{ width: `${p * 100}%` }} />
+                  </span>
+                </button>
+              );
+            }
             return (
-              <div key={e.key} className="flex items-center gap-3 px-4 py-3" data-countdown-eintrag>
+              <button
+                key={e.key}
+                type="button"
+                onClick={() => setOffen(e.key)}
+                className="glas flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-left active:scale-[0.99] transition-transform"
+                data-countdown-eintrag
+              >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[18px]" style={{ backgroundColor: `${e.farbe}22` }}>
                   {e.emoji}
                 </span>
@@ -169,74 +210,261 @@ export function PrivatCountdown() {
                   </span>
                 </span>
                 <span className="tnum shrink-0 text-right text-[16px] font-bold">{restText(r)}</span>
-                {e.eigen ? (
-                  <button
-                    type="button"
-                    aria-label={`${e.titel} entfernen`}
-                    onClick={() => setze((c) => ({ ...c, eigene: c.eigene.filter((x) => x.id !== e.eigen) }))}
-                    className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-faint"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                ) : null}
-              </div>
+              </button>
             );
           })}
-        </section>
+        </div>
       ) : (
         <p className="glas rounded-[20px] px-4 py-5 text-center text-[14px] text-ink-muted">
           Urlaub erscheint hier von selbst. Termine merkst du im Termin mit „Countdown“ – oder du fügst etwas hinzu.
         </p>
       )}
 
-      {neu ? (
-        <NeuerCountdown
+      {offen === "neu" || aktiv ? (
+        <CountdownBlatt
+          key={offen}
           heute={heute}
-          onFertig={(e) => {
-            setze((c) => ({ ...c, eigene: [...c.eigene, e] }));
-            setNeu(false);
+          start={offen === "neu" ? undefined : eigenAktiv}
+          fest={aktiv && !aktiv.eigen ? { titel: `${aktiv.emoji} ${aktiv.titel}`, wann: aktiv.wann } : undefined}
+          bild={aktiv ? countdowns.bilder[aktiv.key] : undefined}
+          onSpeichern={(e, bild) => {
+            const key = e ? `e-${e.id}` : aktiv!.key;
+            const ok = setze((c) => {
+              const bilder = { ...c.bilder };
+              if (bild) bilder[key] = bild;
+              else delete bilder[key];
+              const eigene = e ? (c.eigene.some((x) => x.id === e.id) ? c.eigene.map((x) => (x.id === e.id ? e : x)) : [...c.eigene, e]) : c.eigene;
+              return { ...c, eigene, bilder };
+            });
+            if (ok) setOffen(null);
+            return ok;
           }}
-          onClose={() => setNeu(false)}
+          onEntfernen={
+            aktiv?.eigen || aktiv?.termin
+              ? () => {
+                  setze((c) => {
+                    const bilder = { ...c.bilder };
+                    delete bilder[aktiv.key];
+                    return {
+                      termine: c.termine.filter((x) => x !== aktiv.termin),
+                      eigene: c.eigene.filter((x) => x.id !== aktiv.eigen),
+                      bilder,
+                    };
+                  });
+                  setOffen(null);
+                }
+              : undefined
+          }
+          onClose={() => setOffen(null)}
         />
       ) : null}
     </div>
   );
 }
 
-const EMOJIS = ["⏳", "🎉", "✈️", "🎂", "🏖️", "🎄", "💪", "❤️"];
+const EMOJIS = ["⏳", "🎉", "✈️", "🎂", "🏖️", "🎄", "💪", "❤️", "🎓", "🏠", "🎵", "⚽"];
 
-function NeuerCountdown({ heute, onFertig, onClose }: { heute: string; onFertig: (e: EigenerCountdown) => void; onClose: () => void }) {
-  const [titel, setTitel] = useState("");
-  const [datum, setDatum] = useState(addDays(heute, 7));
-  const [zeit, setZeit] = useState("");
-  const [emoji, setEmoji] = useState(EMOJIS[0]!);
+function CountdownBlatt({
+  heute,
+  start,
+  fest,
+  bild: bildStart,
+  onSpeichern,
+  onEntfernen,
+  onClose,
+}: {
+  heute: string;
+  start?: EigenerCountdown;
+  /** Urlaub oder Termin: nur das Foto lässt sich ändern. */
+  fest?: { titel: string; wann: string };
+  bild?: string;
+  onSpeichern: (e: EigenerCountdown | null, bild: string | null) => boolean;
+  onEntfernen?: () => void;
+  onClose: () => void;
+}) {
+  const [titel, setTitel] = useState(start?.titel ?? "");
+  const [datum, setDatum] = useState(start?.datum ?? addDays(heute, 7));
+  const [zeit, setZeit] = useState(start?.zeit ?? "");
+  const [emoji, setEmoji] = useState(start?.emoji ?? EMOJIS[0]!);
+  const [bild, setBild] = useState<string | null>(bildStart ?? null);
+  const [laedt, setLaedt] = useState(false);
+  const [fehler, setFehler] = useState<string | null>(null);
   const feld = "h-11 w-full min-w-0 rounded-[12px] bg-ink/[0.06] px-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40";
+
+  async function fotoWahl(datei: File | undefined) {
+    if (!datei) return;
+    setFehler(null);
+    setLaedt(true);
+    try {
+      setBild(await bildVerkleinern(datei));
+    } catch {
+      setFehler("Dieses Foto lässt sich nicht öffnen. Versuch ein anderes.");
+    } finally {
+      setLaedt(false);
+    }
+  }
+
+  const fotoKnopf = (
+    <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[13px] font-semibold text-white backdrop-blur">
+      <ImagePlus className="h-4 w-4" /> Foto ändern
+      <input type="file" accept="image/*" className="sr-only" onChange={(e) => void fotoWahl(e.target.files?.[0])} />
+    </label>
+  );
+
   return (
-    <Blatt titel="Neuer Countdown" onClose={onClose} wischZu="kopf">
+    <Blatt titel={fest ? fest.titel : start ? "Countdown bearbeiten" : "Neuer Countdown"} onClose={onClose} wischZu="kopf">
       <form
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!titel.trim() || datum < heute) return;
-          onFertig({ id: `c-${Date.now().toString(36)}`, titel: titel.trim(), datum, zeit, emoji });
+          if (!fest && (!titel.trim() || datum < heute)) return;
+          const eintrag = fest ? null : { id: start?.id ?? `c-${Date.now().toString(36)}`, titel: titel.trim(), datum, zeit, emoji };
+          if (!onSpeichern(eintrag, bild)) setFehler("Auf diesem Gerät ist kein Platz mehr. Nimm ein Foto bei einem anderen Countdown heraus.");
         }}
       >
-        <div className="flex flex-wrap gap-1.5">
-          {EMOJIS.map((x) => (
-            <button key={x} type="button" onClick={() => setEmoji(x)} aria-pressed={emoji === x} className={cn("h-10 w-10 rounded-full text-[18px]", emoji === x ? "bg-brand-500/15 ring-2 ring-brand-500" : "bg-ink/[0.05]")}>
-              {x}
-            </button>
-          ))}
-        </div>
-        <input aria-label="Titel" placeholder="Worauf wartest du?" value={titel} maxLength={60} onChange={(e) => setTitel(e.target.value)} className={feld} autoFocus />
-        <div className="grid grid-cols-2 gap-2">
-          <input aria-label="Datum" type="date" min={heute} value={datum} onChange={(e) => setDatum(e.target.value)} className={feld} />
-          <input aria-label="Uhrzeit" type="time" value={zeit} onChange={(e) => setZeit(e.target.value)} className={feld} />
-        </div>
-        <button type="submit" disabled={!titel.trim()} className="h-12 w-full rounded-[14px] bg-brand-500 text-[15px] font-semibold text-white disabled:opacity-40">
-          Countdown starten
+        {fest ? <p className="text-[13px] text-ink-muted">{fest.wann}</p> : null}
+
+        {bild ? (
+          <div className="relative h-[150px] overflow-hidden rounded-[18px]" data-countdown-vorschau>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={bild} alt="Gewähltes Foto" className="h-full w-full object-cover" />
+            <div className="absolute inset-x-2 bottom-2 flex justify-between">
+              {fotoKnopf}
+              <button type="button" onClick={() => setBild(null)} className="rounded-full bg-black/45 px-3 py-1.5 text-[13px] font-semibold text-white backdrop-blur">
+                Entfernen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="flex h-[72px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-dashed border-line text-[14px] font-semibold text-ink-muted">
+            <ImagePlus className="h-5 w-5" /> {laedt ? "Foto wird geladen …" : "Foto hinzufügen"}
+            <input type="file" accept="image/*" className="sr-only" aria-label="Foto hinzufügen" onChange={(e) => void fotoWahl(e.target.files?.[0])} />
+          </label>
+        )}
+
+        {fest ? null : (
+          <>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+              {EMOJIS.map((x) => (
+                <button key={x} type="button" onClick={() => setEmoji(x)} aria-pressed={emoji === x} className={cn("h-10 w-10 shrink-0 rounded-full text-[18px]", emoji === x ? "bg-brand-500/15 ring-2 ring-brand-500" : "bg-ink/[0.05]")}>
+                  {x}
+                </button>
+              ))}
+            </div>
+            <input aria-label="Titel" placeholder="Worauf wartest du?" value={titel} maxLength={60} onChange={(e) => setTitel(e.target.value)} className={feld} autoFocus={!start} />
+            <DatumWahl heute={heute} wert={datum} onWahl={setDatum} />
+            <label className="flex items-center justify-between gap-3 rounded-[12px] bg-ink/[0.06] px-3">
+              <span className="text-[14px] text-ink-muted">Uhrzeit (frei lassen = ganzer Tag)</span>
+              <input aria-label="Uhrzeit" type="time" value={zeit} onChange={(e) => setZeit(e.target.value)} className="h-11 bg-transparent text-[15px] outline-none" />
+            </label>
+          </>
+        )}
+
+        {fehler ? <p className="text-[13px] text-crit-fg">{fehler}</p> : null}
+
+        <button type="submit" disabled={laedt || (!fest && !titel.trim())} className="h-12 w-full rounded-[14px] bg-brand-500 text-[15px] font-semibold text-white disabled:opacity-40">
+          {fest || start ? "Speichern" : "Countdown starten"}
         </button>
+        {onEntfernen ? (
+          <button type="button" onClick={onEntfernen} className="h-11 w-full rounded-[14px] text-[14.5px] font-semibold text-crit-fg">
+            {start ? "Countdown löschen" : "Nicht mehr merken"}
+          </button>
+        ) : null}
       </form>
     </Blatt>
+  );
+}
+
+const KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+/** Datum wählen: schnelle Vorschläge und ein kleiner Monatskalender. */
+function DatumWahl({ heute, wert, onWahl }: { heute: string; wert: string; onWahl: (iso: string) => void }) {
+  const [blatt, setBlatt] = useState(() => ({ j: Number(wert.slice(0, 4)), m: Number(wert.slice(5, 7)) - 1 }));
+  const plusMonate = (n: number) => {
+    const d = new Date(Number(heute.slice(0, 4)), Number(heute.slice(5, 7)) - 1 + n, Number(heute.slice(8)));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const samstag = addDays(heute, ((6 - new Date(`${heute}T12:00:00`).getDay() + 7) % 7) || 7);
+  const vorschlaege: [string, string][] = [
+    ["Morgen", addDays(heute, 1)],
+    ["Wochenende", samstag],
+    ["1 Woche", addDays(heute, 7)],
+    ["1 Monat", plusMonate(1)],
+    ["3 Monate", plusMonate(3)],
+    ["100 Tage", addDays(heute, 100)],
+  ];
+  const waehle = (iso: string) => {
+    onWahl(iso);
+    setBlatt({ j: Number(iso.slice(0, 4)), m: Number(iso.slice(5, 7)) - 1 });
+  };
+  const blaettern = (n: number) =>
+    setBlatt((b) => {
+      const m = b.m + n;
+      return { j: b.j + Math.floor(m / 12), m: ((m % 12) + 12) % 12 };
+    });
+  const n = tageBis(wert, heute);
+  const istVorher = blatt.j * 12 + blatt.m <= Number(heute.slice(0, 4)) * 12 + Number(heute.slice(5, 7)) - 1;
+
+  return (
+    <div className="space-y-2" data-datum-wahl>
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+        {vorschlaege.map(([t, iso]) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => waehle(iso)}
+            className={cn("h-8 shrink-0 rounded-full px-3 text-[13px] font-semibold", wert === iso ? "bg-brand-500 text-white" : "bg-ink/[0.06]")}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <div className="rounded-[16px] bg-ink/[0.04] p-2">
+        <div className="mb-1 flex items-center justify-between px-1">
+          <button type="button" aria-label="Monat zurück" disabled={istVorher} onClick={() => blaettern(-1)} className="flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-25">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="text-[14px] font-semibold" data-datum-monat>
+            {monthName(blatt.m)} {blatt.j}
+          </span>
+          <button type="button" aria-label="Monat vor" onClick={() => blaettern(1)} className="flex h-8 w-8 items-center justify-center rounded-full">
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-7 text-center">
+          {KURZ.map((k) => (
+            <span key={k} className="pb-1 text-[11px] font-medium text-ink-faint">
+              {k}
+            </span>
+          ))}
+          {monthGrid(blatt.j, blatt.m).map((iso) => {
+            const drin = Number(iso.slice(5, 7)) - 1 === blatt.m;
+            const vorbei = iso < heute;
+            const gewaehlt = iso === wert;
+            return (
+              <button
+                key={iso}
+                type="button"
+                disabled={vorbei || !drin}
+                onClick={() => onWahl(iso)}
+                data-datum={iso}
+                className={cn(
+                  "tnum mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[14px]",
+                  !drin && "invisible",
+                  vorbei && "text-ink-faint/60",
+                  iso === heute && !gewaehlt && "ring-1 ring-ink/30",
+                  gewaehlt && "bg-brand-500 font-bold text-white",
+                )}
+              >
+                {Number(iso.slice(8))}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <p className="px-1 text-[13px] text-ink-muted" data-datum-text>
+        {weekdayLong(wert)}, {formatDE(wert)} · {n === 0 ? "heute" : n === 1 ? "morgen" : `in ${n} Tagen`}
+      </p>
+    </div>
   );
 }

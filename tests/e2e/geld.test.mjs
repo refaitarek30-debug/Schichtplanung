@@ -164,6 +164,34 @@ export default async function geld() {
     pruefe((await seite.locator('[aria-label="Neuer Termin"]').count()) >= 1, "Woche: lange drücken öffnet „Neuer Termin“");
     await seite.getByRole("button", { name: "Schließen", exact: true }).last().click();
     await warte(500);
+    // Schicht und Termin per Gedrückthalten auf einen anderen Tag ziehen.
+    const wTage = await seite.locator("[data-woche-tag]").evaluateAll((els) => els.map((e) => e.getAttribute("data-woche-tag")));
+    await fetch(`${DB}/rest/v1/privat_tage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify([{ tag: wTage[0], ebene: 3, schichtart_id: frueh.id }]) });
+    await fetch(`${DB}/rest/v1/rpc/termin_sichern`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ p_id: null, p_datum: wTage[1], p_bis_datum: null, p_titel: "Ziehtest", p_ganztaegig: false, p_beginn: "13:00", p_ende: "14:00", p_wiederholung: "nie", p_notiz: "", p_ort: "", p_erinnerung: null }),
+    });
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1200);
+    const ziehe = async (quelle, zielIso) => {
+      const q = await quelle.boundingBox();
+      const z = await seite.locator(`button[data-iso="${zielIso}"][aria-label$="öffnen"]`).boundingBox();
+      await seite.mouse.move(q.x + q.width / 2, q.y + 6);
+      await seite.mouse.down();
+      await warte(700);
+      await seite.mouse.move(z.x + z.width / 2, q.y + 6, { steps: 8 });
+      await seite.mouse.up();
+      await warte(900);
+    };
+    await ziehe(seite.locator(`[data-schicht-id="${frueh.id}"][data-tag="${wTage[0]}"]`).first(), wTage[2]);
+    const nachZug = await (await fetch(`${DB}/rest/v1/privat_tage`)).json();
+    pruefe(nachZug.some((r) => r.tag === wTage[2] && r.schichtart_id === frueh.id) && !nachZug.some((r) => r.tag === wTage[0] && r.schichtart_id === frueh.id), "Woche: Schicht lässt sich auf einen anderen Tag ziehen");
+    const tblock = seite.locator('[data-termin-id]', { hasText: "Ziehtest" }).first();
+    await ziehe(tblock, wTage[4]);
+    const termineNach = await (await fetch(`${DB}/rest/v1/rpc/meine_termine`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).json();
+    pruefe(termineNach.find((t) => t.titel === "Ziehtest")?.datum === wTage[4], `Woche: Termin lässt sich verschieben (${termineNach.find((t) => t.titel === "Ziehtest")?.datum})`);
+
     // Pinsel auch in der Woche.
     pruefe((await seite.locator("[data-pinsel-knopf], button[aria-label*='Pinsel']").count()) >= 1, "Woche: Pinsel-Knopf da");
     pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: Zeitraster mit 7 Spalten");
@@ -188,9 +216,28 @@ export default async function geld() {
     await seite.locator("[data-countdown-neu]").click();
     await warte(500);
     await seite.getByLabel("Titel").fill("Konzert");
+    await seite.getByRole("button", { name: "1 Monat" }).click();
+    pruefe(/in (2[89]|3[01]) Tagen/.test(await seite.locator("[data-datum-text]").innerText()), "Countdown: Vorschlag „1 Monat“ setzt das Datum");
+    await seite.getByRole("button", { name: "Monat vor" }).click();
+    const tagWahl = seite.locator("[data-datum-wahl] button[data-datum]:not([disabled])").nth(9);
+    const tagIso = await tagWahl.getAttribute("data-datum");
+    await tagWahl.click();
+    pruefe((await seite.locator("[data-datum-text]").innerText()).includes(`${tagIso.slice(8)}.${tagIso.slice(5, 7)}.`), "Countdown: Tag im Kalender wählen");
+    // Foto (ein kleines PNG) – wird verkleinert und als Bild gezeigt.
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVR42mP8z8DwnwEJMDKgARQBAKuEB/0nJKcRAAAAAElFTkSuQmCC", "base64");
+    await seite.locator('input[type="file"]').setInputFiles({ name: "foto.png", mimeType: "image/png", buffer: png });
+    await warte(600);
+    pruefe((await seite.locator("[data-countdown-vorschau]").count()) === 1, "Countdown: Foto-Vorschau");
     await seite.getByRole("button", { name: "Countdown starten" }).click();
     await warte(600);
     pruefe(/Konzert/.test(await seite.locator("[data-countdown]").innerText()), "Countdown: eigener Countdown erscheint");
+    pruefe((await seite.locator("[data-countdown-foto]").count()) === 1, "Countdown: mit Foto als Karte");
+    await seite.locator("[data-countdown-foto]").click();
+    await warte(500);
+    pruefe((await seite.getByLabel("Titel").inputValue()) === "Konzert", "Countdown: Antippen öffnet zum Bearbeiten");
+    await seite.getByRole("button", { name: "Countdown löschen" }).click();
+    await warte(500);
+    pruefe(!/Konzert/.test(await seite.locator("[data-countdown]").innerText()), "Countdown: löschen");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
