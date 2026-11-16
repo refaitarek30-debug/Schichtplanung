@@ -856,7 +856,8 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             Nutzung abmelden.
           </li>
           <li>
-            <code className={kode}>sp_gehalt:…</code>, <code className={kode}>sp_lohn:…</code> und <code className={kode}>sp_urlaub:…</code>{" "}
+            <code className={kode}>sp_gehalt:…</code>, <code className={kode}>sp_lohn:…</code>, <code className={kode}>sp_urlaub:…</code> und{" "}
+            <code className={kode}>sp_countdown</code>{" "}
             (lokaler Speicher, bis zum Löschen der Browserdaten; mit der Benutzer-Kennung, nur für
             diese Person gültig) – bei Privatkonten die freiwillig eingetragenen Angaben für die
             Gehalts-Rechnung je Job (Name des Jobs, Art wie Minijob, Stundenlohn, Zuschläge in
@@ -864,7 +865,8 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             Lohn-Rechner (Steuerklasse, Zahl der Kinder, Kirchensteuer ja/nein, Zusatzbeitrag der
             Krankenkasse, feste Zulagen, die Extras des zuletzt bearbeiteten Monats sowie je
             gespeichertem Monat die geschätzten Beträge und – falls eingetragen – der tatsächlich
-            ausgezahlte Betrag) und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
+            ausgezahlte Betrag), für den Countdown (Kennungen der gemerkten Termine sowie selbst
+            angelegte Countdowns mit Titel, Datum, Uhrzeit und Symbol) und für den Urlaubs-Planer (übrige Urlaubstage, gewählte Arbeitsweise). Die Berechnung
             läuft nur im Browser; diese Angaben werden weder an einen Server gesendet noch im Konto
             gespeichert. Wer ein Gerät mit anderen teilt, kann sie in den Browserdaten löschen.
           </li>

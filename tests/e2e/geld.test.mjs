@@ -181,6 +181,17 @@ export default async function geld() {
     pruefe(danach !== vorher && zurueck === vorher, `Kalender erneut antippen: zurück zu heute (${vorher} → ${danach} → ${zurueck})`);
     await seite.evaluate(() => localStorage.setItem("schichtplan.privat-ansicht", "monat"));
 
+    // Countdown: nächste Schicht und eigene Countdowns.
+    await seite.goto(`${APP}/privat/countdown`, { waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe((await seite.locator("[data-countdown-schicht]").count()) === 1, "Countdown: nächste Schicht");
+    await seite.locator("[data-countdown-neu]").click();
+    await warte(500);
+    await seite.getByLabel("Titel").fill("Konzert");
+    await seite.getByRole("button", { name: "Countdown starten" }).click();
+    await warte(600);
+    pruefe(/Konzert/.test(await seite.locator("[data-countdown]").innerText()), "Countdown: eigener Countdown erscheint");
+
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
   } finally {

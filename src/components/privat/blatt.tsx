@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { halteSeiteFest } from "@/lib/seite-fest";
+import { cn } from "@/lib/utils";
 
 export type WischModus = boolean | "kopf";
 
@@ -130,27 +131,35 @@ export function Blatt({
   wischZu?: WischModus;
 }) {
   const blatt = useRef<HTMLDivElement>(null);
+  // Zu: erst weich nach unten gleiten, dann schließen (Wischen schließt selbst schon mit Bewegung).
+  const [geht, setGeht] = useState(false);
+  const schliessen = useCallback(() => {
+    const ruhig = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (ruhig) return onClose();
+    setGeht(true);
+    window.setTimeout(onClose, 200);
+  }, [onClose]);
   useWischZu(blatt, wischZu, onClose);
   useSeiteFest();
   useEffect(() => {
-    const taste = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const taste = (e: KeyboardEvent) => e.key === "Escape" && schliessen();
     window.addEventListener("keydown", taste);
     return () => window.removeEventListener("keydown", taste);
-  }, [onClose]);
+  }, [schliessen]);
 
   return createPortal(
     <div className="privat-schrift fixed inset-0 z-50 flex items-end justify-center overscroll-none px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center">
       <button
         type="button"
         aria-label="Schließen"
-        className="absolute inset-0 cursor-default touch-none bg-black/20"
-        onClick={onClose}
+        className={cn("absolute inset-0 cursor-default touch-none bg-black/20", geht && "schleier-raus")}
+        onClick={schliessen}
       />
       <div
         ref={blatt}
         role="dialog"
         aria-modal="true"
-        className="glas-dicht relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-[30px]"
+        className={cn("glas-dicht relative flex max-h-[88dvh] w-full max-w-lg flex-col overflow-hidden rounded-[30px]", geht && "fenster-raus")}
       >
         <span aria-hidden data-wisch-kopf className="mx-auto mt-2 block h-1.5 w-10 shrink-0 rounded-full bg-ink/15" />
         <div data-wisch-kopf className="flex items-start justify-between gap-3 px-5 pb-2 pt-2">
@@ -160,7 +169,7 @@ export function Blatt({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={schliessen}
             aria-label="Schließen"
             className="-mr-1 flex h-8 w-8 items-center justify-center rounded-full bg-ink/[0.07] text-ink-muted"
           >
