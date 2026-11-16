@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   BarChart3,
   Bell,
+  Building2,
   Cake,
   CalendarDays,
   CalendarRange,
@@ -37,7 +38,7 @@ import {
 } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
 import { WischShow, type Folie } from "@/components/marketing/wisch-show";
-import { JAHRES_RABATT, PAKETE, Preise } from "@/components/marketing/preise";
+import { JAHRES_RABATT, PAKETE, Preise, SSO } from "@/components/marketing/preise";
 import {
   BetriebAntrag,
   BetriebBesetzung,
@@ -157,6 +158,11 @@ const SICHER_BETRIEB: Punkt[] = [
   { icon: <ShieldCheck className={i} />, titel: "Keine Leistungskontrolle", text: "Keine Auswertung je Person, keine Lesebestätigung. Krankheit ist standardmäßig privat." },
   { icon: <EyeOff className={i} />, titel: "Ohne KI, Werbung und Tracking", text: "Keine Weitergabe an KI-Anbieter. Über Anträge entscheidet immer ein Mensch." },
   { icon: <FileDown className={i} />, titel: "AV-Vertrag und Datenkopie", text: "AV-Vertrag mit TOMs. Jede Person lädt ihre Daten selbst als Datei herunter." },
+  {
+    icon: <Building2 className={i} />,
+    titel: "Anmeldung mit dem Firmen-Konto",
+    text: "Auf Wunsch per Single Sign-on (SSO) über Microsoft Entra ID, Google Workspace oder Okta. Eure IT verwaltet die Zugänge: Wer das Unternehmen verlässt, kommt nicht mehr hinein.",
+  },
 ];
 
 /** Kurz und knapp: die Zeile unter „Deine Daten gehören dir.“ */
@@ -255,6 +261,17 @@ const FRAGEN_BETRIEB: Frage[] = [
     frage: "Wie kommen unsere Mitarbeiter hinein?",
     antwort:
       "Ihr legt die Mitarbeiter an und schickt ihnen eine Einladung. Ein Datei-Import ist derzeit nicht vorhanden; ein Einrichtungsassistent führt nach der Registrierung durch die ersten Schritte. Auf Wunsch übernehmen wir die Einrichtung.",
+  },
+  {
+    frage: "Können wir uns mit unserem Firmen-Konto anmelden (SSO)?",
+    antwort: (
+      <>
+        Ja, für Betriebe ab {SSO.ab} Personen. Euer Team meldet sich dann mit dem vorhandenen Firmen-Konto an – über Microsoft Entra ID
+        (Azure AD), Google Workspace, Okta oder einen anderen Anbieter mit SAML 2.0. Passwörter und Zwei-Faktor regelt eure IT wie gewohnt, und
+        wer das Unternehmen verlässt, kommt nicht mehr hinein. Die Daten bleiben dabei in der EU. Die Einrichtung machen wir gemeinsam mit
+        eurer IT: einmalig {SSO.einrichtung} € netto, danach {SSO.monat} € netto im Monat zusätzlich zum Paket.
+      </>
+    ),
   },
   {
     frage: "Gibt es eine Demo?",

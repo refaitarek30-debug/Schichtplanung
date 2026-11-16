@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Building2, Check } from "lucide-react";
 import { CtaLink, ZIELE } from "./cta";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,8 @@ const EINRICHTUNG = 199;
 /** Bei Jahreszahlung so viel Prozent günstiger – weiter monatlich kündbar. */
 export const JAHRES_RABATT = 5;
 const HAEUFIG_BIS = 30;
+/** Anmeldung mit dem Firmen-Konto (SSO, SAML) – Zusatz für große Betriebe, netto. */
+export const SSO = { ab: 150, einrichtung: 490, monat: 49 };
 
 /** Bis zu so vielen Personen im Monat – Preis netto pro Monat. */
 export const PAKETE: { bis: number; preis: number }[] = [
@@ -149,6 +151,23 @@ export function Preise() {
             <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink-muted">{x.text}</p>
           </div>
         ))}
+      </div>
+
+      <div className="glas mt-3 flex flex-col gap-3 rounded-[22px] p-5 sm:flex-row sm:items-center sm:gap-4" data-sso>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-500/10 text-brand-600" aria-hidden>
+          <Building2 className="h-[22px] w-[22px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold">Zusatz ab {SSO.ab} Personen: Anmeldung mit dem Firmen-Konto (SSO)</p>
+          <p className="mt-1 text-[13.5px] leading-relaxed text-ink-muted">
+            Euer Team meldet sich mit dem vorhandenen Firmen-Konto an (Microsoft Entra ID, Google Workspace, Okta). Eure IT verwaltet die Zugänge;
+            wer geht, kommt nicht mehr hinein. Einrichtung gemeinsam mit eurer IT.
+          </p>
+        </div>
+        <div className="shrink-0 sm:text-right">
+          <p className="tnum text-[15px] font-semibold">{euro(SSO.einrichtung, 0)} einmalig</p>
+          <p className="tnum text-[13px] text-ink-muted">+ {euro(SSO.monat, 0)} pro Monat, netto</p>
+        </div>
       </div>
 
       <p className="mt-5 text-center text-[12.5px] leading-relaxed text-ink-muted">
