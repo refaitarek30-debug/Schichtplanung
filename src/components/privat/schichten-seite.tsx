@@ -11,7 +11,7 @@ import type { Reiter } from "@/lib/privat/reiter";
 import { cn } from "@/lib/utils";
 import { PrivatAuswertung } from "./auswertung";
 import { PrivatGemeinsam } from "./gemeinsam";
-import { PrivatGeld, useGehalt, useMonatsDaten } from "./gehalt";
+import { PrivatGeld, useGehalt, useLohnDaten } from "./gehalt";
 import { useLohn } from "./lohn";
 import { usePrivat } from "./kontext";
 import { PrivatKopf } from "./rahmen";
@@ -69,21 +69,21 @@ function Startliste() {
   const { lohn } = useLohn(konto.userId);
   const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
   const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
-  const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
+  const { tage, arten: lohnArten, zeiten, feiertage } = useLohnDaten(von, bis, einst);
 
   const re = useMemo(() => {
-    if (!tage || !schichtarten) return null;
-    return rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten });
-  }, [tage, zeiten, schichtarten, feiertage, konto.wochenstunden, einst, von, bis]);
+    if (!tage || !lohnArten) return null;
+    return rechne({ tage, von, bis, arten: lohnArten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten });
+  }, [tage, zeiten, lohnArten, feiertage, konto.wochenstunden, einst, von, bis]);
 
   // Anzahl der Arbeitsschichten im Monat.
   const anzahl = useMemo(() => {
-    if (!tage || !schichtarten) return null;
-    const arbeit = new Set(schichtarten.filter((a) => a.art === "arbeit").map((a) => a.id));
+    if (!tage || !lohnArten) return null;
+    const arbeit = new Set(lohnArten.filter((a) => a.art === "arbeit").map((a) => a.id));
     let n = 0;
     for (const e of Object.values(tage)) for (const id of [e.schicht, e.zusatz, e.dritte]) if (id && arbeit.has(id)) n += 1;
     return n;
-  }, [tage, schichtarten]);
+  }, [tage, lohnArten]);
 
   // Übrige Urlaubstage stehen nur auf diesem Gerät.
   const [urlaubTage, setUrlaubTage] = useState<number | null>(null);

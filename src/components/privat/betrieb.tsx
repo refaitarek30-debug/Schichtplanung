@@ -6,7 +6,7 @@ import { addDays } from "@/lib/dates";
 import { ladeFarben } from "@/lib/data/kalender-eigene";
 import { farbeFuer, schichtSchluessel } from "@/lib/kalender-farben";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
-import { eintragAus, idsVon, type Schichtart, type TagEintrag } from "@/lib/privat/daten";
+import { dauerStunden, eintragAus, idsVon, type Schichtart, type TagEintrag } from "@/lib/privat/daten";
 
 /**
  * Schichten aus dem Betrieb im Privatbereich (Migration 0194): nur die
@@ -17,6 +17,14 @@ import { eintragAus, idsVon, type Schichtart, type TagEintrag } from "@/lib/priv
 interface BetriebTag {
   name: string;
   kuerzel: string | null;
+}
+
+/** Uhrzeiten der Schichten im Betrieb – damit Lohn und Zuschläge im Privatbereich rechnen können. */
+interface BetriebZeit {
+  name: string;
+  kuerzel: string | null;
+  beginn: string;
+  ende: string;
 }
 
 /** Ohne „schicht“ am Ende, wie im Betriebskalender („Frühschicht“ → „Früh“). */
@@ -36,6 +44,7 @@ export function istBetriebsArt(id: string): boolean {
 export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: string, bis: string) {
   const [tage, setTage] = useState<Record<string, BetriebTag>>({});
   const [farben, setFarben] = useState<Record<string, string>>({});
+  const [zeiten, setZeiten] = useState<BetriebZeit[]>([]);
   const geladen = useRef(new Set<string>());
 
   useEffect(() => {
@@ -50,6 +59,21 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
       .then((neu) => {
         setFarben(neu);
         aufGeraet(`${benutzer}:privat:betrieb-farben`, neu);
+      })
+      .catch(() => undefined);
+    const z = ausGeraet<BetriebZeit[]>(`${benutzer}:privat:betrieb-zeiten`);
+    if (z) setZeiten((alt) => (alt.length ? alt : z));
+    void Promise.resolve(createClient().from("shifts").select("name, short_name, start_time, end_time"))
+      .then(({ data }) => {
+        if (!data) return;
+        const neu = (data as { name: string; short_name: string | null; start_time: string | null; end_time: string | null }[]).map((r) => ({
+          name: r.name,
+          kuerzel: r.short_name,
+          beginn: r.start_time?.slice(0, 5) ?? "",
+          ende: r.end_time?.slice(0, 5) ?? "",
+        }));
+        setZeiten(neu);
+        aufGeraet(`${benutzer}:privat:betrieb-zeiten`, neu);
       })
       .catch(() => undefined);
   }, [aktiv, benutzer]);
@@ -87,6 +111,9 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
     for (const t of Object.values(tage)) {
       const id = `${BETRIEB_PREFIX}${t.kuerzel ?? ""}:${t.name}`;
       if (m.has(id)) continue;
+      const frei = t.kuerzel === "FREI";
+      const z = frei ? undefined : (zeiten.find((x) => x.kuerzel && x.kuerzel === t.kuerzel && x.name === t.name) ?? zeiten.find((x) => x.name === t.name));
+      const dauer = z ? dauerStunden(z.beginn, z.ende) : null;
       m.set(id, {
         id,
         name: kurz(t.name),
@@ -96,15 +123,15 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
           t.kuerzel === "FREI"
             ? (farben.frei ?? FREI_NEUTRAL)
             : (farbeFuer(schichtSchluessel(t.kuerzel, t.name), farben) ?? "#12A594"),
-        art: "arbeit",
-        beginn: "",
-        ende: "",
-        stunden: 0,
+        art: frei ? "frei" : "arbeit",
+        beginn: z?.beginn ?? "",
+        ende: z?.ende ?? "",
+        stunden: dauer ?? 0,
         reihenfolge: -1,
       });
     }
     return m;
-  }, [aktiv, tage, farben]);
+  }, [aktiv, tage, farben, zeiten]);
 
   /** Die Betriebsschicht eines Tages (oder nichts). */
   const am = (iso: string): Schichtart[] => {

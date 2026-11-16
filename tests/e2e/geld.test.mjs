@@ -77,19 +77,24 @@ export default async function geld() {
     await warte(500);
     pruefe((await seite.locator("[data-job-blatt]").count()) === 1, "Job-Einstellungen öffnen");
 
-    // Festes Monatsgehalt: Grundgehalt brutto, Zuschläge brauchen die Wochenstunden.
+    // Festes Monatsgehalt: Stundenlohn für Zuschläge von selbst (37,5 Std), Zuschläge auch in € je Stunde.
     await seite.getByRole("radiogroup", { name: "Art des Jobs" }).getByRole("radio", { name: "Normal" }).click();
     await seite.getByRole("radiogroup", { name: "Bezahlung" }).getByRole("radio", { name: "Monatsgehalt" }).click();
     await seite.locator("#job-gehalt").fill("3989");
     await seite.locator("#job-gehalt").press("Tab");
     await warte(300);
-    pruefe((await seite.locator("[data-gehalt-hinweis]").count()) === 1, "Monatsgehalt: Hinweis auf fehlende Wochenstunden");
+    pruefe((await seite.locator("#job-stundenwert").getAttribute("placeholder")) === "24,55", "Monatsgehalt: Stundenlohn für Zuschläge ohne Wochenstunden (3.989 € ÷ 162,5 Std)");
+    await seite.getByRole("radiogroup", { name: "Zuschläge" }).getByRole("radio", { name: "€ je Stunde" }).click();
+    await seite.locator("#job-nacht").fill("5,25");
+    await seite.locator("#job-nacht").press("Tab");
+    await warte(300);
     await seite.keyboard.press("Escape");
     await warte(500);
     // Normaler Job = Hauptjob: steht ganz in der Lohn-Rechnung, keine eigene Karte mehr.
     const rechnung = await seite.locator("[data-lohn-details]").innerText();
     pruefe(/Grundgehalt/.test(rechnung) && /\d+ Schichten/.test(rechnung) && !/^0 Schichten/m.test(rechnung), "Monatsgehalt: Rechnung zeigt Grundgehalt und die Schichten");
-    pruefe(/Zuschläge fehlen/.test(await seite.locator("[data-lohn-hinweis]").innerText()), "Lohn: Hinweis, dass Zuschläge die Wochenstunden brauchen");
+    pruefe(/Nacht 5,25\s€\/Std/.test(rechnung), "Lohn: Nachtzuschlag in € je Stunde wie auf der Abrechnung");
+    pruefe((await seite.locator("[data-lohn-hinweis]").count()) === 0, "Lohn: kein Hinweis auf Wochenstunden mehr nötig");
     pruefe((await seite.locator('[data-job-karte="Tankstelle"]').count()) === 0, "Hauptjob: keine doppelte Karte");
 
     // Lohn: Auszahlung nach Steuer und Abgaben, Steuerklasse, Monat speichern, Jahresübersicht.

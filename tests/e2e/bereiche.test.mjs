@@ -1,6 +1,6 @@
 // Ein Konto, zwei Bereiche (Migration 0194): Wechsel Betrieb ↔ Privat, Betriebsschichten
 // im Privatbereich, Glühbirne im Privatbereich, Austritt direkt in den Privatbereich.
-import { APP, DB, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
+import { NUTZER, APP, DB, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 export default async function bereiche() {
   const { browser, seite, seitenFehler } = await neuerBrowser();
@@ -50,6 +50,18 @@ export default async function bereiche() {
       (await seite.evaluate(() => document.documentElement.style.overflow + document.body.style.overflow)) === "",
       "Nach dem Wechsel: Seite lässt sich scrollen",
     );
+
+    // Lohn rechnet mit den Betriebsschichten (Uhrzeiten aus dem Betrieb), ohne Wochenstunden.
+    await seite.evaluate((u) => {
+      const job = { id: "j1", name: "Chemikant", art: "brutto", stundenlohn: null, bezahlung: "monat", grundgehalt: 3870, nacht: 25, sonntag: 50, feiertag: 125, ueber: 25, nachtVon: 22, nachtBis: 6, grenze: null };
+      localStorage.setItem("sp_gehalt:" + u, JSON.stringify({ jobs: [job], hauptjob: null, zuordnung: {}, eingerichtet: true }));
+    }, NUTZER);
+    await seite.goto(`${APP}/privat/schichten?reiter=geld`, { waitUntil: "networkidle" });
+    await warte(1500);
+    const lohn = await seite.locator("[data-lohn-details]").innerText();
+    const m = /(\d+) Schichten · ([\d,]+) Std/.exec(lohn);
+    pruefe(!!m && Number(m[1]) > 5 && Number(m[2].replace(",", ".")) >= Number(m[1]) * 8 - 0.01, `Lohn: Betriebsschichten mit Uhrzeit gezählt (${m?.[0]})`);
+    pruefe((await seite.locator("[data-lohn-hinweis]").count()) === 0, "Lohn: kein Hinweis „keine Schichten“");
 
     // Zurück in den Betrieb – über „Mehr“.
     await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
