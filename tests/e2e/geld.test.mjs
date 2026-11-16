@@ -153,6 +153,19 @@ export default async function geld() {
     await warte(1200);
     pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: 7 Spalten");
     pruefe((await seite.locator("[data-woche-summe]").count()) === 1, "Woche: Summe der Woche");
+    pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: Zeitraster mit 7 Spalten");
+    // Nächste Woche, dann unten noch mal „Kalender“: zurück zu heute.
+    const vorher = await seite.locator("[data-woche-tag]").first().getAttribute("data-woche-tag");
+    await seite.mouse.move(300, 500);
+    await seite.mouse.down();
+    await seite.mouse.move(80, 505, { steps: 6 });
+    await seite.mouse.up();
+    await warte(700);
+    const danach = await seite.locator("[data-woche-tag]").first().getAttribute("data-woche-tag");
+    await seite.getByRole("link", { name: "Kalender" }).click();
+    await warte(700);
+    const zurueck = await seite.locator("[data-woche-tag]").first().getAttribute("data-woche-tag");
+    pruefe(danach !== vorher && zurueck === vorher, `Kalender erneut antippen: zurück zu heute (${vorher} → ${danach} → ${zurueck})`);
     await seite.evaluate(() => localStorage.setItem("schichtplan.privat-ansicht", "monat"));
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);

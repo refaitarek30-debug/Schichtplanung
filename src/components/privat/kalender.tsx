@@ -56,6 +56,7 @@ import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
+import { KALENDER_HEUTE } from "./rahmen";
 import { WochenSpalten } from "./woche-spalten";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
@@ -166,6 +167,16 @@ export function PrivatKalender() {
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
   /** Tagesansicht mit Zeitleiste */
   const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
+
+  // Unten noch mal „Kalender“ getippt: zurück zu heute (offene Tagesansicht zu).
+  useEffect(() => {
+    const zuHeute = () => {
+      setTagAnsicht(null);
+      setAnker(heuteInBerlin());
+    };
+    window.addEventListener(KALENDER_HEUTE, zuHeute);
+    return () => window.removeEventListener(KALENDER_HEUTE, zuHeute);
+  }, []);
   /** To-do-Liste; datum = vorgeschlagener Tag für neue */
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
