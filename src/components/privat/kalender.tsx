@@ -325,18 +325,18 @@ export function PrivatKalender() {
     }
   }
 
-  async function terminVerschieben(t: Termin, von: string, bis: string) {
+  async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum) {
     if (istWartend(t)) {
-      offline.merken({ ...t, von, bis }, t);
+      offline.merken({ ...t, datum, von, bis }, t);
       return;
     }
     if (istOffline()) {
       setFehler(OHNE_NETZ);
       return;
     }
-    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, von, bis } : x)));
     try {
-      await speichereTermin({ ...t, von, bis });
+      await speichereTermin({ ...t, datum, von, bis });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
     }
@@ -538,8 +538,8 @@ export function PrivatKalender() {
   }
   function waehleAnsicht(a: Ansicht) {
     setAnsicht(a);
-    // Der Pinsel gehört zum Monat.
-    if (a !== "monat") setPinselAn(false);
+    // Der Pinsel gehört zu Monat und Woche.
+    if (a === "jahr") setPinselAn(false);
     try {
       window.localStorage.setItem(ANSICHT_SCHLUESSEL, a);
     } catch {
@@ -600,6 +600,16 @@ export function PrivatKalender() {
   });
   // Pinsel: kurz halten und über mehrere Tage wischen; normales Wischen blättert weiter.
   const strich = usePinselStrich(pinselStrich, monatGriffe);
+  // In der Woche genauso: halten und über die Spalten ziehen; sonst wischt man zur nächsten Woche.
+  const wocheGriffe = {
+    onPointerDown: wischStart,
+    onPointerMove: () => undefined,
+    onPointerUp: wischEnde,
+    onPointerCancel: () => {
+      wisch.current = null;
+    },
+  };
+  const wocheStrich = usePinselStrich(pinselStrich, wocheGriffe);
   function tippen(iso: string) {
     if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
     if (pinselAn && strich.geschluckt()) return;
@@ -782,7 +792,11 @@ export function PrivatKalender() {
           ? pinselAn
             ? strich.griffe
             : monatGriffe
-          : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
+          : ansicht === "woche"
+            ? pinselAn
+              ? wocheStrich.griffe
+              : wocheGriffe
+            : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
         aria-busy={laedt || !schichtarten}
       >
         {ansicht === "monat" ? (
@@ -817,11 +831,20 @@ export function PrivatKalender() {
             artNach={anzeigeArtNach}
             termineAm={(iso) => termineAm(sichtbareTermine, iso)}
             feiertagVon={feiertagVon}
+            markiert={wocheStrich.markiert}
+            pinsel={pinselAn}
+            darfVerschieben={(t) => t.wiederholung === "nie" && !t.bisDatum && darfTerminLoeschen(t)}
             onTag={(iso) => {
               if (gewischt.current) return;
+              if (pinselAn) {
+                if (!wocheStrich.geschluckt()) tagAntippen(iso);
+                return;
+              }
               setAnker(iso);
               setTagAnsicht(iso);
             }}
+            onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
+            onVerschieben={(t, datum, von, bis) => void terminVerschieben(t, von, bis, datum)}
           />
         ) : (
           <JahresAnsicht
@@ -837,7 +860,7 @@ export function PrivatKalender() {
             }}
           />
         )}
-        {ansicht === "monat" && !pinselAn && schichtarten?.length ? (
+        {(ansicht === "monat" || ansicht === "woche") && !pinselAn && schichtarten?.length ? (
           <PinselKnopf
             onClick={() => {
               setPinselAn(true);

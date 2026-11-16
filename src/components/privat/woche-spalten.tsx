@@ -1,25 +1,30 @@
 "use client";
 
+import { useRef, useState } from "react";
 import type { Termin } from "@/components/kalender/termine";
 import { addDays } from "@/lib/dates";
 import { idsVon, istAbwesenheit, textFarbe, type Schichtart, type TagEintrag } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
 /**
- * Woche als Zeitraster (Entwurf A): 7 Spalten, 0–24 Uhr. Schichten als farbige
- * Blöcke an ihrer Uhrzeit (Nachtschichten laufen in den nächsten Tag), Termine
- * als kleine Blöcke, Tage ohne Uhrzeit (Frei, Urlaub, ganztägig) oben im Kopf.
- * Ein Tipp auf eine Spalte öffnet den Tag mit Zeitleiste.
+ * Woche als Zeitraster: 7 Spalten, 0–24 Uhr, füllt die ganze Höhe. Schichten
+ * als farbige Blöcke an ihrer Uhrzeit (Nachtschichten laufen in den nächsten
+ * Tag), Termine als kleine Blöcke; was sich überschneidet, steht nebeneinander.
+ * Tage ohne Uhrzeit (Frei, Urlaub, ganztägig) stehen oben im Kopf.
+ *
+ * - Tippen: Tag öffnen (mit Pinsel: Schicht eintragen; halten und ziehen: mehrere Tage)
+ * - Lange in ein freies Feld drücken: neuer Termin zu dieser Uhrzeit
+ * - Termin halten und ziehen: auf einen anderen Tag / eine andere Uhrzeit verschieben
  */
 
 const KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-const PX = 20; // Höhe einer Stunde
-const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+const HALTEN_MS = 450;
 const minuten = (hhmm: string) => {
   const m = /^(\d{2}):(\d{2})/.exec(hhmm);
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 };
-const uhr = (hhmm: string) => (hhmm.endsWith(":00") ? hhmm.slice(0, 2) : hhmm.slice(0, 5));
+const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+const uhr = (t: string) => (t.endsWith(":00") ? t.slice(0, 2) : t.slice(0, 5));
 
 interface Block {
   key: string;
@@ -28,7 +33,34 @@ interface Block {
   farbe: string;
   titel: string;
   unter: string;
-  termin: boolean;
+  termin: Termin | null;
+  spur: number;
+  spuren: number;
+}
+
+/** Überschneidungen nebeneinander: jeder Block bekommt eine Spur, eine Gruppe die Zahl der Spuren. */
+function spuren(liste: Omit<Block, "spur" | "spuren">[]): Block[] {
+  const s = [...liste].sort((a, b) => a.von - b.von || b.bis - a.bis);
+  const aus: Block[] = [];
+  let gruppe: Block[] = [];
+  let ende = -1;
+  const schliessen = () => {
+    const n = Math.max(1, ...gruppe.map((b) => b.spur + 1));
+    for (const b of gruppe) b.spuren = n;
+    gruppe = [];
+  };
+  for (const b of s) {
+    if (b.von >= ende) schliessen();
+    const belegt = new Set(gruppe.filter((g) => g.bis > b.von).map((g) => g.spur));
+    let spur = 0;
+    while (belegt.has(spur)) spur++;
+    const neu = { ...b, spur, spuren: 1 };
+    gruppe.push(neu);
+    aus.push(neu);
+    ende = Math.max(ende, b.bis);
+  }
+  schliessen();
+  return aus;
 }
 
 export function WochenSpalten({
@@ -38,7 +70,12 @@ export function WochenSpalten({
   artNach,
   termineAm,
   feiertagVon,
+  markiert,
+  pinsel = false,
+  darfVerschieben,
   onTag,
+  onNeu,
+  onVerschieben,
 }: {
   /** Montag der Woche */
   von: string;
@@ -47,79 +84,168 @@ export function WochenSpalten({
   artNach: Map<string, Schichtart>;
   termineAm: (iso: string) => Termin[];
   feiertagVon: (iso: string) => string | undefined;
+  /** Tage im laufenden Pinsel-Strich */
+  markiert?: ReadonlySet<string>;
+  /** Pinsel an: Halten malt (siehe Kalender), keine Termine per Halten. */
+  pinsel?: boolean;
+  darfVerschieben: (t: Termin) => boolean;
   onTag: (iso: string) => void;
+  onNeu: (iso: string, zeit: string) => void;
+  onVerschieben: (t: Termin, datum: string, von: string, bis: string) => void;
 }) {
+  const raster = useRef<HTMLDivElement>(null);
+  const druck = useRef<{ uhr: number | null; x: number; y: number; termin: Termin | null; aktiv: boolean; geschluckt: number } | null>(null);
+  const [ziehen, setZiehen] = useState<{ termin: Termin; iso: string; von: number; dauer: number } | null>(null);
+  const schlucken = useRef(0);
+
   const woche = Array.from({ length: 7 }, (_, i) => addDays(von, i));
   const artenAm = (iso: string) =>
     idsVon(tage[iso])
       .map((id) => artNach.get(id))
       .filter((a): a is Schichtart => !!a);
 
-  const bloecke = new Map<string, Block[]>(woche.map((iso) => [iso, []]));
+  const roh = new Map<string, Omit<Block, "spur" | "spuren">[]>(woche.map((iso) => [iso, []]));
   const kopf = new Map<string, { text: string; farbe: string | null }[]>(woche.map((iso) => [iso, []]));
-  let schichten = 0;
-  let stunden = 0;
-  let termine = 0;
 
   // Vortag mitnehmen: eine Nachtschicht vom Sonntag davor reicht in den Montag.
   for (const iso of [addDays(von, -1), ...woche]) {
     const arten = artenAm(iso);
     const abwesend = arten.some((a) => istAbwesenheit(a));
-    const imBereich = bloecke.has(iso);
+    const imBereich = roh.has(iso);
     for (const a of arten) {
       const b = minuten(a.beginn);
       const e = minuten(a.ende);
-      if (imBereich && a.art === "arbeit" && !abwesend) {
-        schichten += 1;
-        stunden += a.stunden;
-      }
       if (b === null || e === null || abwesend || a.art !== "arbeit") {
         if (imBereich) kopf.get(iso)!.push({ text: a.kuerzel || a.name, farbe: a.art === "frei" ? null : a.farbe });
         continue;
       }
-      const ueber = e <= b; // über Mitternacht
+      const ueber = e <= b;
       const titel = a.kuerzel || a.name.slice(0, 1);
-      const unter = `${uhr(a.beginn)}–${uhr(a.ende)}`;
-      if (imBereich) bloecke.get(iso)!.push({ key: `${a.id}-a`, von: b, bis: ueber ? 1440 : e, farbe: a.farbe, titel, unter, termin: false });
+      if (imBereich) roh.get(iso)!.push({ key: `${a.id}-a`, von: b, bis: ueber ? 1440 : e, farbe: a.farbe, titel, unter: `${uhr(a.beginn)}–${uhr(a.ende)}`, termin: null });
       const naechster = addDays(iso, 1);
-      if (ueber && e > 0 && bloecke.has(naechster)) {
-        bloecke.get(naechster)!.push({ key: `${a.id}-b-${iso}`, von: 0, bis: e, farbe: a.farbe, titel, unter: `–${uhr(a.ende)}`, termin: false });
+      if (ueber && e > 0 && roh.has(naechster)) {
+        roh.get(naechster)!.push({ key: `${a.id}-b-${iso}`, von: 0, bis: e, farbe: a.farbe, titel, unter: `–${uhr(a.ende)}`, termin: null });
       }
     }
   }
   for (const iso of woche) {
     for (const t of termineAm(iso)) {
-      termine += 1;
       const b = minuten(t.von);
       const e = minuten(t.bis);
       if (t.ganztaegig || b === null) {
         kopf.get(iso)!.push({ text: t.titel, farbe: "#6366f1" });
         continue;
       }
-      bloecke.get(iso)!.push({ key: `${t.id}-${iso}`, von: b, bis: e !== null && e > b ? e : Math.min(1440, b + 60), farbe: "#6366f1", titel: t.titel, unter: t.von, termin: true });
+      roh.get(iso)!.push({ key: `${t.id}-${iso}`, von: b, bis: e !== null && e > b ? e : Math.min(1440, b + 60), farbe: "#6366f1", titel: t.titel, unter: t.von, termin: t });
     }
   }
+  const bloecke = new Map(woche.map((iso) => [iso, spuren(roh.get(iso)!)]));
+
+  /** Tag und Uhrzeit (auf 15 Minuten) unter dem Finger. */
+  function stelle(x: number, y: number): { iso: string; min: number } | null {
+    const el = raster.current;
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    const spalte = Math.floor(((x - r.left) / r.width) * 7);
+    if (spalte < 0 || spalte > 6) return null;
+    const min = Math.round((Math.min(Math.max(0, y - r.top), r.height) / r.height) * 1440 / 15) * 15;
+    return { iso: woche[spalte]!, min: Math.min(min, 1425) };
+  }
+
+  function loslassen() {
+    const d = druck.current;
+    if (d?.uhr) window.clearTimeout(d.uhr);
+    druck.current = null;
+  }
+
+  const rasterGriffe = {
+    onPointerDown: (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const terminEl = (e.target as Element).closest<HTMLElement>("[data-termin-id]");
+      const termin = terminEl ? (termineAm(terminEl.dataset.tag!).find((t) => t.id === terminEl.dataset.terminId) ?? null) : null;
+      // Auf einer Schicht: nichts (Tippen öffnet den Tag). Frei oder Termin: halten.
+      if (!termin && (e.target as Element).closest("[data-schicht-block]")) return;
+      loslassen();
+      const d = { uhr: null as number | null, x: e.clientX, y: e.clientY, termin, aktiv: false, geschluckt: 0 };
+      d.uhr = window.setTimeout(() => {
+        d.uhr = null;
+        if (druck.current !== d) return;
+        try {
+          navigator.vibrate?.(10);
+        } catch {
+          // ohne Vibration
+        }
+        const s = stelle(d.x, d.y);
+        if (!s) return;
+        if (termin && darfVerschieben(termin)) {
+          d.aktiv = true;
+          const b = minuten(termin.von) ?? 0;
+          const ende = minuten(termin.bis);
+          setZiehen({ termin, iso: s.iso, von: b, dauer: ende !== null && ende > b ? ende - b : 60 });
+        } else if (!termin) {
+          druck.current = null;
+          schlucken.current = Date.now();
+          onNeu(s.iso, hhmm(Math.floor(s.min / 30) * 30));
+        }
+      }, HALTEN_MS);
+      druck.current = d;
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      const d = druck.current;
+      if (!d) return;
+      if (d.aktiv && ziehen) {
+        e.preventDefault();
+        const s = stelle(e.clientX, e.clientY);
+        // Der Finger hält den Termin in der Mitte.
+        if (s) setZiehen((z) => (z ? { ...z, iso: s.iso, von: Math.max(0, Math.min(s.min - Math.round(z.dauer / 30) * 15, 1440 - z.dauer)) } : z));
+        return;
+      }
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) loslassen();
+    },
+    onPointerUp: () => {
+      const d = druck.current;
+      if (d?.aktiv && ziehen) {
+        schlucken.current = Date.now();
+        const z = ziehen;
+        setZiehen(null);
+        druck.current = null;
+        const neuVon = Math.max(0, Math.min(z.von, 1440 - 15));
+        onVerschieben(z.termin, z.iso, hhmm(neuVon), hhmm(Math.min(1439, neuVon + z.dauer)));
+        return;
+      }
+      loslassen();
+    },
+    onPointerCancel: () => {
+      loslassen();
+      setZiehen(null);
+    },
+  };
+
+  const antippen = (iso: string) => {
+    if (Date.now() - schlucken.current < 600) return;
+    onTag(iso);
+  };
 
   return (
-    <div className="space-y-3" data-woche-spalten>
-      <section className="glas overflow-hidden rounded-[20px] pb-2">
+    <div className={cn("flex h-full min-h-0 flex-col", ziehen && "touch-none")} data-woche-spalten>
+      <section className="glas flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] pb-2">
         {/* Kopf: Tag, Datum, ganztägige Einträge */}
-        <div className="grid grid-cols-[28px_repeat(7,minmax(0,1fr))] gap-x-0.5 px-1 pt-2">
+        <div className="grid grid-cols-[26px_repeat(7,minmax(0,1fr))] gap-x-0.5 px-1 pt-2">
           <span />
           {woche.map((iso, i) => {
             const istHeute = iso === heute;
             const feiertag = feiertagVon(iso);
             return (
-              <button key={iso} type="button" onClick={() => onTag(iso)} className="flex min-w-0 flex-col items-center gap-1" data-woche-tag={iso}>
-                <span className={cn("w-full rounded-[10px] py-0.5 text-center", istHeute && "bg-ink text-surface")}>
+              <button key={iso} type="button" onClick={() => antippen(iso)} data-iso={iso} className="flex min-w-0 flex-col items-center gap-1" data-woche-tag={iso}>
+                <span className={cn("w-full rounded-[10px] py-0.5 text-center transition-colors", istHeute && "bg-ink text-surface", markiert?.has(iso) && "bg-brand-500 text-white")}>
                   <span className={cn("block text-[10.5px] font-medium", istHeute ? "opacity-80" : feiertag ? "text-crit-fg" : "text-ink-muted")}>{KURZ[i]}</span>
                   <span className="tnum block text-[15px] font-bold leading-tight">{Number(iso.slice(8))}</span>
                 </span>
-                <span className="flex min-h-[18px] w-full flex-col gap-0.5">
+                <span className="flex min-h-[16px] w-full flex-col gap-0.5">
                   {kopf.get(iso)!.slice(0, 2).map((k, j) => (
                     <span
                       key={j}
-                      className={cn("block truncate rounded-[6px] px-0.5 text-center text-[9.5px] font-bold leading-[16px]", !k.farbe && "border border-line text-ink-muted")}
+                      className={cn("block truncate rounded-[6px] px-0.5 text-center text-[9.5px] font-bold leading-[15px]", !k.farbe && "border border-line text-ink-muted")}
                       style={k.farbe ? { backgroundColor: k.farbe, color: textFarbe(k.farbe) } : undefined}
                     >
                       {k.text}
@@ -131,52 +257,71 @@ export function WochenSpalten({
           })}
         </div>
 
-        {/* Zeitraster */}
-        <div className="relative mx-1 mt-1" style={{ height: 24 * PX }}>
+        {/* Zeitraster – füllt die übrige Höhe */}
+        <div className="relative mx-1 mt-1 min-h-[260px] flex-1">
           {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
-            <div key={h} className="pointer-events-none absolute inset-x-0" style={{ top: h * PX }}>
+            <div key={h} className="pointer-events-none absolute inset-x-0" style={{ top: `${(h / 24) * 100}%` }}>
               <span className="tnum absolute left-0 -translate-y-1/2 text-[9.5px] text-ink-faint">{String(h).padStart(2, "0")}</span>
-              <span className="absolute left-[28px] right-0 border-t border-line" />
+              <span className="absolute left-[26px] right-0 border-t border-line/70" />
             </div>
           ))}
-          <div className="absolute bottom-0 left-[28px] right-0 top-0 grid grid-cols-7 gap-x-0.5">
+          <div ref={raster} className="absolute bottom-0 left-[26px] right-0 top-0 grid grid-cols-7 gap-x-0.5" {...(pinsel ? {} : rasterGriffe)}>
             {woche.map((iso) => (
               <button
                 key={iso}
                 type="button"
-                onClick={() => onTag(iso)}
+                onClick={() => antippen(iso)}
+                data-iso={iso}
                 aria-label={`${Number(iso.slice(8))}. öffnen`}
-                className={cn("relative h-full rounded-[6px]", iso === heute && "bg-brand-500/[0.06]")}
+                className={cn(
+                  "relative h-full rounded-[6px] transition-colors",
+                  iso === heute && "bg-brand-500/[0.06]",
+                  markiert?.has(iso) && "bg-brand-500/15",
+                )}
               >
-                {bloecke.get(iso)!.map((b) => (
+                {bloecke.get(iso)!.map((b) => {
+                  const wirdGezogen = ziehen && b.termin && ziehen.termin.id === b.termin.id;
+                  return (
+                    <span
+                      key={b.key}
+                      data-schicht-block={b.termin ? undefined : ""}
+                      data-termin-id={b.termin?.id}
+                      data-tag={b.termin ? iso : undefined}
+                      className={cn(
+                        "absolute overflow-hidden rounded-[6px] px-0.5 text-left leading-tight shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-opacity",
+                        b.termin && "border-l-2",
+                        wirdGezogen && "opacity-30",
+                      )}
+                      style={{
+                        top: `${(b.von / 1440) * 100}%`,
+                        height: `calc(${((b.bis - b.von) / 1440) * 100}% - 1px)`,
+                        minHeight: 12,
+                        left: `${(b.spur / b.spuren) * 100}%`,
+                        width: `calc(${100 / b.spuren}% - ${b.spuren > 1 ? 1 : 0}px)`,
+                        backgroundColor: b.termin ? `${b.farbe}26` : b.farbe,
+                        color: b.termin ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
+                        borderColor: b.termin ? b.farbe : undefined,
+                        zIndex: b.termin ? 2 : 1,
+                      }}
+                    >
+                      <span className="block truncate text-[10.5px] font-extrabold">{b.titel}</span>
+                      {(b.bis - b.von) / 60 >= 2 && b.spuren < 3 ? <span className="block truncate text-[8.5px] font-medium opacity-90">{b.unter}</span> : null}
+                    </span>
+                  );
+                })}
+                {ziehen && ziehen.iso === iso ? (
                   <span
-                    key={b.key}
-                    className={cn("absolute inset-x-0 overflow-hidden rounded-[6px] px-0.5 text-left leading-tight", b.termin ? "border-l-2" : "")}
-                    style={{
-                      top: (b.von / 60) * PX,
-                      height: Math.max(12, ((b.bis - b.von) / 60) * PX - 1),
-                      backgroundColor: b.termin ? `${b.farbe}26` : b.farbe,
-                      color: b.termin ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
-                      borderColor: b.termin ? b.farbe : undefined,
-                      zIndex: b.termin ? 2 : 1,
-                    }}
+                    className="pointer-events-none absolute inset-x-0 z-10 rounded-[6px] border-2 border-[#6366f1] bg-[#6366f1]/25 px-0.5 text-left text-[10px] font-bold leading-tight text-ink shadow-lg"
+                    style={{ top: `${(ziehen.von / 1440) * 100}%`, height: `${(ziehen.dauer / 1440) * 100}%`, minHeight: 14 }}
                   >
-                    <span className="block truncate text-[10.5px] font-extrabold">{b.titel}</span>
-                    {(b.bis - b.von) / 60 >= 2 ? <span className="block truncate text-[8.5px] font-medium opacity-90">{b.unter}</span> : null}
+                    <span className="tnum block">{hhmm(ziehen.von)}</span>
+                    <span className="block truncate">{ziehen.termin.titel}</span>
                   </span>
-                ))}
+                ) : null}
               </button>
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="glas flex items-center justify-between gap-3 rounded-[18px] px-4 py-3" data-woche-summe>
-        <span className="text-[14.5px] font-semibold">
-          {schichten} {schichten === 1 ? "Schicht" : "Schichten"}
-          {termine ? <span className="font-normal text-ink-muted"> · {termine} {termine === 1 ? "Termin" : "Termine"}</span> : null}
-        </span>
-        <span className="tnum text-[16px] font-bold">{std(stunden)} Std</span>
       </section>
     </div>
   );

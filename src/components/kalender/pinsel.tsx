@@ -178,7 +178,12 @@ const HALTEN_MS = 500;
 
 export function usePinselStrich(
   onStrich: (tage: string[]) => void,
-  monat: ReturnType<typeof useMonatWischen>["griffe"] | ReturnType<typeof useMonatKarussell>["griffe"],
+  monat: {
+    onPointerDown: (e: React.PointerEvent) => void;
+    onPointerMove: (e: React.PointerEvent) => void;
+    onPointerUp: (e: React.PointerEvent) => void;
+    onPointerCancel: () => void;
+  },
 ) {
   const strich = useRef<{ id: number; tage: string[]; aktiv: boolean; x: number; y: number; uhr: number | null } | null>(null);
   const [markiert, setMarkiert] = useState<ReadonlySet<string>>(LEER_MENGE);
