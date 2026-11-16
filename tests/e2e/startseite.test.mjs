@@ -65,7 +65,12 @@ export default async function startseite() {
     pruefe((await seite.locator("[data-kacheln-bearbeiten]").count()) === 0, "Kacheln: „Fertig“ beendet das Bearbeiten");
     await seite.goto(`${APP}/einstellungen`, { waitUntil: "networkidle" });
     await warte(1000);
-    pruefe((await seite.locator('details[data-gruppe="Kacheln auf der Startseite"]').count()) === 1, "Einstellungen: Gruppe „Kacheln auf der Startseite“ (aufklappbar)");
+    pruefe((await seite.locator("[data-einstellungen-kacheln] > *").count()) === 4, "Einstellungen: vier Kacheln oben");
+    await seite.locator("[data-einstellungen-kacheln]").getByRole("button", { name: /Startseite/ }).click();
+    await warte(600);
+    pruefe(await seite.getByText("Kacheln auf der Startseite").first().isVisible(), "Einstellungen: Kachel „Startseite“ öffnet Ansicht und Kacheln als Blatt");
+    await seite.keyboard.press("Escape");
+    await warte(400);
     // Druckansicht des Schichtplans: ein Blatt je Monat, A4/A3 umschaltbar.
     await seite.goto(`${APP}/schichtplan/druck?team=all`, { waitUntil: "networkidle" });
     await warte(1500);

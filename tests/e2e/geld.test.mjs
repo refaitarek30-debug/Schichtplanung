@@ -152,7 +152,20 @@ export default async function geld() {
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
     await warte(1200);
     pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: 7 Spalten");
-    pruefe((await seite.locator("[data-woche-summe]").count()) === 1, "Woche: Summe der Woche");
+    pruefe((await seite.locator("[data-woche-summe]").count()) === 0, "Woche: ohne Summe unten, Raster füllt die Höhe");
+    // Lange in ein freies Feld drücken: neuer Termin zu dieser Uhrzeit.
+    const spalte = seite.locator("[data-woche-spalten] [data-iso]").nth(10);
+    const box = await spalte.boundingBox();
+    await seite.mouse.move(box.x + box.width / 2, box.y + box.height * 0.75);
+    await seite.mouse.down();
+    await warte(800);
+    await seite.mouse.up();
+    await warte(800);
+    pruefe((await seite.locator('[aria-label="Neuer Termin"]').count()) >= 1, "Woche: lange drücken öffnet „Neuer Termin“");
+    await seite.getByRole("button", { name: "Schließen", exact: true }).last().click();
+    await warte(500);
+    // Pinsel auch in der Woche.
+    pruefe((await seite.locator("[data-pinsel-knopf], button[aria-label*='Pinsel']").count()) >= 1, "Woche: Pinsel-Knopf da");
     pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: Zeitraster mit 7 Spalten");
     // Nächste Woche, dann unten noch mal „Kalender“: zurück zu heute.
     const vorher = await seite.locator("[data-woche-tag]").first().getAttribute("data-woche-tag");

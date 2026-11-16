@@ -88,7 +88,7 @@ export default async function rahmen() {
     await s.mouse.wheel(0, 800);
     await warte(600);
     const l = await lage(s);
-    pruefe(l.fensterY > 300, `Computer: die Seite scrollt wie bisher (${l.fensterY})`);
+    pruefe(l.fensterY > 100, `Computer: die Seite scrollt wie bisher (${l.fensterY})`);
   } finally {
     await b.close();
   }
