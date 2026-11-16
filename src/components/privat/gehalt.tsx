@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
 import { usePrivat } from "./kontext";
+import { LohnJahr, LohnMonat } from "./lohn";
 import { AbschnittKopf, PrivatKarte, RundKnopf } from "./rahmen";
 
 /**
@@ -129,7 +130,7 @@ export function UeberstundenKarte({ re, titel = "Überstunden" }: { re: Rechnung
   );
 }
 
-function Schalter({ an, onChange, labelId }: { an: boolean; onChange: (an: boolean) => void; labelId: string }) {
+export function Schalter({ an, onChange, labelId }: { an: boolean; onChange: (an: boolean) => void; labelId: string }) {
   return (
     <button
       type="button"
@@ -147,7 +148,7 @@ function Schalter({ an, onChange, labelId }: { an: boolean; onChange: (an: boole
 }
 
 /** Zahlenfeld: tippt man etwas Ungültiges, springt es beim Verlassen zurück. */
-function Zahlenfeld({
+export function Zahlenfeld({
   id,
   wert,
   min,
@@ -223,7 +224,7 @@ const jobFarbe = (job: Job, einst: GehaltEinstellungen, arten: readonly Schichta
   schichtenVon(job, einst, arten)[0]?.farbe ?? "rgb(var(--c-brand-500))";
 
 /** Wahl aus zwei oder drei Möglichkeiten (z. B. Minijob / Normal / Ohne Geld). */
-function Wahl<T extends string>({ wert, optionen, onWahl, label }: { wert: T; optionen: { id: T; name: string }[]; onWahl: (w: T) => void; label: string }) {
+export function Wahl<T extends string>({ wert, optionen, onWahl, label }: { wert: T; optionen: { id: T; name: string }[]; onWahl: (w: T) => void; label: string }) {
   return (
     <div role="radiogroup" aria-label={label} className="grid gap-1 rounded-[14px] bg-ink/[0.07] p-1" style={{ gridTemplateColumns: `repeat(${optionen.length}, minmax(0, 1fr))` }}>
       {optionen.map((o) => (
@@ -447,7 +448,7 @@ function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: stri
 }
 
 /** Feld mit Beschriftung links und Eingabe rechts. */
-function FeldZeile({ id, name, hinweis, children, aus = false }: { id?: string; name: string; hinweis?: ReactNode; children: ReactNode; aus?: boolean }) {
+export function FeldZeile({ id, name, hinweis, children, aus = false }: { id?: string; name: string; hinweis?: ReactNode; children: ReactNode; aus?: boolean }) {
   return (
     <div className={cn("flex items-center justify-between gap-3 py-2.5", aus && "opacity-45")}>
       <label htmlFor={id} className="min-w-0">
@@ -960,6 +961,7 @@ export function PrivatGeld() {
   });
   const [offen, setOffen] = useState<string | null>(null);
   const [neuerJob, setNeuerJob] = useState(false);
+  const [ansicht, setAnsicht] = useState<"monat" | "jahr">("monat");
   const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
   const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
   const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
@@ -967,7 +969,7 @@ export function PrivatGeld() {
 
   const re =
     tage && schichtarten ? rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten }) : null;
-  const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + s, 1));
+  const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + (ansicht === "jahr" ? s * 12 : s), 1));
   const fertig = useCallback(
     (job: Job, schichten: string[], haupt: boolean) => {
       setze(jobAnlegen(einst, job, schichten, haupt));
@@ -982,25 +984,47 @@ export function PrivatGeld() {
     <div className="space-y-4">
       <AbschnittKopf
         icon={<Wallet className="h-[18px] w-[18px]" />}
-        titel={`Geld · ${monthName(monat.getMonth())}`}
-        unter={String(monat.getFullYear())}
+        titel={ansicht === "jahr" ? `Lohn · ${monat.getFullYear()}` : `Lohn · ${monthName(monat.getMonth())}`}
+        unter={ansicht === "jahr" ? "Jahresübersicht" : String(monat.getFullYear())}
         rechts={
           <>
-            <RundKnopf label="Vorheriger Monat" onClick={() => springe(-1)}>
+            <RundKnopf label={ansicht === "jahr" ? "Vorheriges Jahr" : "Vorheriger Monat"} onClick={() => springe(-1)}>
               <ChevronLeft className="h-5 w-5" />
             </RundKnopf>
-            <RundKnopf label="Nächster Monat" onClick={() => springe(1)}>
+            <RundKnopf label={ansicht === "jahr" ? "Nächstes Jahr" : "Nächster Monat"} onClick={() => springe(1)}>
               <ChevronRight className="h-5 w-5" />
             </RundKnopf>
           </>
         }
       />
-      {einst.jobs.length === 0 || neuerJob ? (
+      {einst.jobs.length > 0 && !neuerJob ? (
+        <Wahl
+          label="Ansicht"
+          wert={ansicht}
+          optionen={[
+            { id: "monat", name: "Monat" },
+            { id: "jahr", name: "Jahr" },
+          ]}
+          onWahl={setAnsicht}
+        />
+      ) : null}
+      {einst.jobs.length > 0 && !neuerJob && ansicht === "jahr" ? (
+        <LohnJahr
+          jahr={monat.getFullYear()}
+          userId={konto.userId}
+          onMonat={(m) => {
+            setMonat(new Date(monat.getFullYear(), m, 1));
+            setAnsicht("monat");
+          }}
+        />
+      ) : einst.jobs.length === 0 || neuerJob ? (
         <Assistent key={einst.jobs.length} einst={einst} arten={arten} onFertig={fertig} onAbbrechen={einst.jobs.length ? () => setNeuerJob(false) : undefined} />
       ) : !re ? (
         <p className="px-1 text-[14px] text-ink-muted">Wird berechnet …</p>
       ) : (
         <>
+          {mitGeld.length ? <LohnMonat re={re} monat={monat} userId={konto.userId} bundesland={konto.bundesland} /> : null}
+          <p className="px-1 pt-1 text-[12.5px] font-semibold text-ink-muted">Brutto je Job</p>
           {mitGeld.length > 1 && re.summe !== null ? (
             <div className="flex items-center justify-between gap-3 px-1" data-geld-summe>
               <span className="text-[14px] text-ink-muted">Alle Jobs zusammen</span>
@@ -1018,8 +1042,8 @@ export function PrivatGeld() {
             <Plus className="h-4 w-4" /> Job hinzufügen
           </button>
           <p className="px-1 text-[12px] leading-snug text-ink-faint">
-            Minijob: Betrag, wie er ausgezahlt wird. Normaler Job: Schätzung vor Steuern und Abgaben, keine Lohnabrechnung. Andere
-            Uhrzeit an einem Tag? Tag im Kalender antippen. Jobs, Lohn und Sätze bleiben nur in diesem Browser.
+            Schätzung, keine Lohnabrechnung. Andere Uhrzeit an einem Tag? Tag im Kalender antippen. Alles bleibt nur auf diesem
+            Gerät.
           </p>
         </>
       )}

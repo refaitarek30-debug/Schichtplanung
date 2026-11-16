@@ -89,6 +89,31 @@ export default async function geld() {
     const gehaltKarte = await seite.locator('[data-job-karte="Tankstelle"]').innerText();
     pruefe(/Grundgehalt/.test(gehaltKarte) && /Zuschläge fehlen/.test(gehaltKarte), "Monatsgehalt: Karte zeigt Grundgehalt und Hinweis");
 
+    // Lohn: Auszahlung nach Steuer und Abgaben, Steuerklasse, Monat speichern, Jahresübersicht.
+    const zahl = (t) => Number(t.replace(/[^\d,]/g, "").replace(",", "."));
+    const netto1 = zahl(await seite.locator("[data-lohn-netto]").innerText());
+    pruefe(netto1 > 2000 && netto1 < 3989, `Lohn: Auszahlung ca. unter Brutto (${netto1})`);
+    await seite.getByRole("button", { name: /Steuerklasse 1/ }).click();
+    await warte(400);
+    await seite.locator("[data-steuer-blatt]").getByRole("radio", { name: "3" }).click();
+    await warte(300);
+    await seite.keyboard.press("Escape");
+    await warte(500);
+    const netto3 = zahl(await seite.locator("[data-lohn-netto]").innerText());
+    pruefe(netto3 > netto1, `Lohn: Steuerklasse 3 bringt mehr netto (${netto3} > ${netto1})`);
+    await seite.locator("[data-lohn-speichern]").click();
+    await warte(300);
+    pruefe(/gespeichert/.test(await seite.locator("[data-lohn-speichern]").innerText()), "Lohn: Monat gespeichert");
+    await seite.locator("#lohn-echt").fill("2800");
+    await seite.locator("#lohn-echt").press("Tab");
+    await warte(300);
+    await seite.getByRole("radiogroup", { name: "Ansicht" }).getByRole("radio", { name: "Jahr" }).click();
+    await warte(400);
+    const jahrText = await seite.locator("[data-lohn-jahr]").first().innerText();
+    pruefe(/2\.800/.test(jahrText) && /1 von 12 Monaten/.test(jahrText), "Lohn: Jahresübersicht zeigt den Monat mit dem echten Betrag");
+    const gemerkt = await seite.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("sp_lohn:")).length);
+    pruefe(gemerkt === 1, "Lohn: bleibt nur auf dem Gerät (lokaler Speicher)");
+
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
   } finally {
