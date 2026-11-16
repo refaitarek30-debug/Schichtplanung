@@ -187,6 +187,21 @@ export default async function geld() {
     await ziehe(seite.locator(`[data-schicht-id="${frueh.id}"][data-tag="${wTage[0]}"]`).first(), wTage[2]);
     const nachZug = await (await fetch(`${DB}/rest/v1/privat_tage`)).json();
     pruefe(nachZug.some((r) => r.tag === wTage[2] && r.schichtart_id === frueh.id) && !nachZug.some((r) => r.tag === wTage[0] && r.schichtart_id === frueh.id), "Woche: Schicht lässt sich auf einen anderen Tag ziehen");
+    pruefe(!nachZug.length || !(await (await fetch(`${DB}/rest/v1/privat_tag_zeiten`)).json()).some((z) => z.tag === wTage[2]), "Woche: nur zur Seite gezogen – Uhrzeit bleibt");
+    // Dieselbe Schicht 2 Stunden nach unten: andere Uhrzeit nur an diesem Tag.
+    const fb = await seite.locator(`[data-schicht-id="${frueh.id}"][data-tag="${wTage[2]}"]`).first().boundingBox();
+    const rasterH = (await seite.locator(`button[data-iso="${wTage[2]}"][aria-label$="öffnen"]`).boundingBox()).height;
+    await seite.mouse.move(fb.x + fb.width / 2, fb.y + 6);
+    await seite.mouse.down();
+    await warte(700);
+    await seite.mouse.move(fb.x + fb.width / 2, fb.y + 6 + (rasterH * 120) / 1440, { steps: 8 });
+    await seite.mouse.up();
+    await warte(1200);
+    const zeitenNach = await (await fetch(`${DB}/rest/v1/privat_tag_zeiten`)).json();
+    const fz = zeitenNach.find((z) => z.tag === wTage[2] && z.schichtart_id === frueh.id);
+    pruefe(!!fz && fz.beginn.slice(0, 5) !== frueh.beginn.slice(0, 5), `Woche: Schicht nach unten ziehen ändert die Uhrzeit (${frueh.beginn} → ${fz?.beginn})`);
+    pruefe((await seite.locator(`[data-schicht-id="${frueh.id}"][data-tag="${wTage[2]}"]`).first().innerText()).includes(fz?.beginn.slice(0, 2) ?? "x"), "Woche: neue Uhrzeit wird angezeigt");
+    pruefe((await seite.locator("[data-woche-spalten] [data-ganz]").count()) >= 0 && (await seite.locator("[data-woche-tag] [data-ganz]").count()) === 0, "Woche: Ganztägiges nicht mehr oben im Kopf");
     const tblock = seite.locator('[data-termin-id]', { hasText: "Ziehtest" }).first();
     await ziehe(tblock, wTage[4]);
     const termineNach = await (await fetch(`${DB}/rest/v1/rpc/meine_termine`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).json();

@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-16T22:30:00+01:00",
+    titel: "Woche: Uhrzeit per Ziehen",
+    text: "Eigene Schichten kannst du in der Woche jetzt auch nach oben oder unten ziehen – die neue Uhrzeit gilt nur für diesen Tag. Ganztägiges (Urlaub, Frei, ganztägige Termine) steht nicht mehr oben, sondern als Block von 8 bis 16 Uhr im Raster.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-16T21:30:00+01:00",
     titel: "Countdown mit Fotos",
     text: "Countdowns bekommen auf Wunsch ein Foto, das Datum wählst du mit Vorschlägen wie „1 Monat“ oder direkt im Kalender. Antippen öffnet zum Ändern. In der Woche lassen sich Schichten und Termine jetzt per Gedrückthalten auf einen anderen Tag ziehen.",

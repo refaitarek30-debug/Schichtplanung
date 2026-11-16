@@ -206,6 +206,18 @@ export function PrivatKalender() {
     return { von: start, bis: addDays(start, wochen * 7 - 1) };
   }, [ansicht, anker]);
 
+  // Woche: andere Uhrzeiten an einzelnen Tagen (auch nach dem Schließen eines Tages neu laden).
+  const [wochenZeiten, setWochenZeiten] = useState<Record<string, TagZeit>>({});
+  const [zeitenStand, setZeitenStand] = useState(0);
+  useEffect(() => {
+    if (ansicht !== "woche" || tagBlatt || tagAnsicht) return;
+    let aus = false;
+    void ladeTagZeiten(addDays(bereich.von, -1), bereich.bis).then((z) => !aus && setWochenZeiten(z));
+    return () => {
+      aus = true;
+    };
+  }, [ansicht, bereich.von, bereich.bis, zeitenStand, tagBlatt, tagAnsicht]);
+
   // Mit Betriebszugang (Migration 0194): die eigenen Betriebsschichten, nur zum Ansehen.
   const betriebSchichten = useBetriebsschichten(konto.userId, !!betrieb, bereich.von, bereich.bis);
   const anzeigeTage = useMemo(() => mitBetrieb(tage, betriebSchichten), [tage, betriebSchichten]);
@@ -325,18 +337,18 @@ export function PrivatKalender() {
     }
   }
 
-  async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum) {
+  async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum, ganztaegig = t.ganztaegig) {
     if (istWartend(t)) {
-      offline.merken({ ...t, datum, von, bis }, t);
+      offline.merken({ ...t, datum, von, bis, ganztaegig }, t);
       return;
     }
     if (istOffline()) {
       setFehler(OHNE_NETZ);
       return;
     }
-    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, von, bis } : x)));
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, von, bis, ganztaegig } : x)));
     try {
-      await speichereTermin({ ...t, datum, von, bis });
+      await speichereTermin({ ...t, datum, von, bis, ganztaegig });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
     }
@@ -525,17 +537,38 @@ export function PrivatKalender() {
     void aendern(neu);
   }
 
-  /** Woche: eigene Schicht halten und auf einen anderen Tag ziehen. */
-  function schichtVerschieben(id: string, von: string, nach: string) {
-    if (von === nach) return;
-    const ziel = idsVon(tage[nach]).filter((x) => x !== id);
-    const neu: Record<string, TagEintrag | undefined> = {
-      [von]: eintragAus(idsVon(tage[von]).filter((x) => x !== id)),
-      [nach]: eintragAus([...ziel, id].slice(-3)),
-    };
+  /**
+   * Woche: eigene Schicht halten und auf einen anderen Tag / eine andere Uhrzeit
+   * ziehen. Die Uhrzeit gilt nur für diesen Tag (wie „Andere Uhrzeit“ im Tag).
+   */
+  async function schichtVerschieben(id: string, von: string, nach: string, zeit?: TagZeit) {
+    const art = artNach.get(id);
+    const alt = wochenZeiten[tagZeitSchluessel(von, id)];
+    let neueZeit: TagZeit | null = zeit ?? alt ?? null;
+    // Zurück auf die normale Uhrzeit der Schicht: keine Ausnahme mehr nötig.
+    if (neueZeit && art && neueZeit.beginn === art.beginn && neueZeit.ende === art.ende) neueZeit = null;
     setFehler(null);
-    merke([von, nach], `${artNach.get(id)?.name ?? "Schicht"} verschoben`);
-    void aendern(neu);
+    setWochenZeiten((z) => {
+      const n = { ...z };
+      delete n[tagZeitSchluessel(von, id)];
+      if (neueZeit) n[tagZeitSchluessel(nach, id)] = neueZeit;
+      return n;
+    });
+    if (von !== nach) {
+      const ziel = idsVon(tage[nach]).filter((x) => x !== id);
+      merke([von, nach], `${art?.name ?? "Schicht"} verschoben`);
+      await aendern({
+        [von]: eintragAus(idsVon(tage[von]).filter((x) => x !== id)),
+        [nach]: eintragAus([...ziel, id].slice(-3)),
+      });
+    }
+    try {
+      if (von !== nach && alt) await setzeTagZeit(von, id, null);
+      if (neueZeit || alt) await setzeTagZeit(nach, id, neueZeit);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Die Uhrzeit konnte nicht gespeichert werden.");
+    }
+    setZeitenStand((n) => n + 1);
   }
 
   function tagAntippen(iso: string) {
@@ -841,6 +874,7 @@ export function PrivatKalender() {
             von={bereich.von}
             heute={heute}
             tage={anzeigeTage}
+            zeiten={wochenZeiten}
             artNach={anzeigeArtNach}
             termineAm={(iso) => termineAm(sichtbareTermine, iso)}
             feiertagVon={feiertagVon}
@@ -857,8 +891,8 @@ export function PrivatKalender() {
               setTagAnsicht(iso);
             }}
             onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
-            onVerschieben={(t, datum, von, bis) => void terminVerschieben(t, von, bis, datum)}
-            onSchichtVerschieben={schichtVerschieben}
+            onVerschieben={(t, datum, von, bis, ganz) => void terminVerschieben(t, von, bis, datum, ganz)}
+            onSchichtVerschieben={(id, von, nach, zeit) => void schichtVerschieben(id, von, nach, zeit)}
           />
         ) : (
           <JahresAnsicht
