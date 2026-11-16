@@ -11,6 +11,9 @@ import { PrivatUmfrage } from "./umfrage";
 import { appScroller } from "@/lib/app-scroller";
 import { cn } from "@/lib/utils";
 
+/** Erneuter Tipp auf „Kalender“, während der Kalender offen ist: zurück zu heute. */
+export const KALENDER_HEUTE = "sp-kalender-heute";
+
 const NAV = [
   { href: "/privat", text: "Kalender", icon: CalendarDays },
   { href: "/privat/schichten", text: "Schichten", icon: Layers },
@@ -55,6 +58,10 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
                 <Link
                   href={n.href}
                   aria-current={aktiv ? "page" : undefined}
+                  onClick={() => {
+                    // Schon im Kalender und noch mal „Kalender“ getippt: zurück zu heute.
+                    if (aktiv && n.href === "/privat") window.dispatchEvent(new Event(KALENDER_HEUTE));
+                  }}
                   className={cn(
                     "flex flex-col items-center gap-0.5 rounded-[22px] py-1.5 text-[10.5px] font-semibold transition-colors",
                     aktiv ? "bg-surface/70 text-brand-600 shadow-[0_1px_6px_rgba(0,0,0,0.08)]" : "text-ink-muted hover:text-ink",
