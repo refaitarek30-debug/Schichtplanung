@@ -56,6 +56,7 @@ import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
+import { WochenSpalten } from "./woche-spalten";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
 import { meldeBereichBereit } from "@/lib/bereich";
@@ -566,7 +567,7 @@ export function PrivatKalender() {
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - w.t < 800) {
       gewischt.current = true;
       window.setTimeout(() => (gewischt.current = false), 80);
-      if (ansicht === "woche") setAnker(addDays(anker, dx < 0 ? 1 : -1));
+      if (ansicht === "woche") setAnker(addDays(anker, dx < 0 ? 7 : -7));
       else springe(dx < 0 ? 1 : -1);
     }
   }
@@ -798,15 +799,18 @@ export function PrivatKalender() {
             })}
           </div>
         ) : ansicht === "woche" ? (
-          <Tagesansicht
-            eingebettet
-            iso={anker}
-            {...tagesProps}
-            onIso={setAnker}
-            onTermin={(t, startZeit) => setTerminBlatt({ datum: anker, termin: t, startZeit })}
-            onTodos={() => setTodoBlatt({ datum: anker })}
-            onSchicht={() => setTagBlatt(anker)}
-            onClose={() => undefined}
+          <WochenSpalten
+            von={bereich.von}
+            heute={heute}
+            tage={anzeigeTage}
+            artNach={anzeigeArtNach}
+            termineAm={(iso) => termineAm(sichtbareTermine, iso)}
+            feiertagVon={feiertagVon}
+            onTag={(iso) => {
+              if (gewischt.current) return;
+              setAnker(iso);
+              setTagAnsicht(iso);
+            }}
           />
         ) : (
           <JahresAnsicht

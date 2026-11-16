@@ -93,7 +93,10 @@ function Startliste() {
   }, [konto.userId]);
 
   const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
-  const auszahlung = re && mitGeld.length ? rechneAuszahlung(re, lohn.steuer ?? STEUER_STANDARD, null, konto.bundesland) : null;
+  const monatKey = `${monat.getFullYear()}-${String(monat.getMonth() + 1).padStart(2, "0")}`;
+  // Genau wie auf der Lohn-Seite: derselbe Monat, mit den Extras dieses Monats.
+  const extras = lohn.extras?.monat === monatKey ? lohn.extras : null;
+  const auszahlung = re && mitGeld.length ? rechneAuszahlung(re, lohn.steuer ?? STEUER_STANDARD, extras, konto.bundesland) : null;
   const geldUnter = !auszahlung
     ? "Lohn einrichten"
     : `${auszahlung.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"} · ${monthName(monat.getMonth())}`;
@@ -173,7 +176,7 @@ function Startliste() {
           unter={bereit && anzahl !== null ? `${anzahl} Schichten im ${monthName(monat.getMonth())}` : ""}
         />
         <Eintrag
-          href="/privat/schichten?reiter=geld"
+          href={`/privat/schichten?reiter=geld&monat=${monatKey}`}
           icon={<Wallet className="h-[18px] w-[18px]" />}
           farbe="bg-ok-bg text-ok-fg"
           name="Lohn"
