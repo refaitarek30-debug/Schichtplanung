@@ -167,7 +167,9 @@ export function rechneAuszahlung(re: Rechnung, steuer: SteuerDaten, extras: Omit
       ["sonntag", g.sonntag],
       ["feiertag", g.feiertag],
     ] as const) {
-      const f = freierZuschlag(jr.zuschlag[art], lohn, jr.job[art], SFN_GRENZE[art], b);
+      // Für die Grenze zählt der Satz in Prozent – bei Euro je Stunde umgerechnet auf den Stundenlohn.
+      const prozent = jr.job.einheit === "euro" ? (lohn > 0 ? (jr.job[art] / lohn) * 100 : 0) : jr.job[art];
+      const f = freierZuschlag(jr.zuschlag[art], lohn, prozent, SFN_GRENZE[art], b);
       frei += f.steuerfrei;
       svFrei += f.svfrei;
     }
@@ -198,7 +200,8 @@ export function rechneAuszahlung(re: Rechnung, steuer: SteuerDaten, extras: Omit
         ["sonntag", "Sonntag", g.sonntag],
         ["feiertag", "Feiertag", g.feiertag],
       ] as const) {
-        if (b > 0) bausteine.push({ text: `${name} +${std(jr.job[art])} %`, betrag: b, detail: `${std(jr.zuschlag[art])} Std` });
+        const satz = jr.job.einheit === "euro" ? `${eur(jr.job[art])}/Std` : `+${std(jr.job[art])} %`;
+        if (b > 0) bausteine.push({ text: `${name} ${satz}`, betrag: b, detail: `${std(jr.zuschlag[art])} Std` });
       }
       if (g.ueber > 0) bausteine.push({ text: `Überstunden +${std(jr.job.ueber)} %`, betrag: g.ueber });
     } else {

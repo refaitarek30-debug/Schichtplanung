@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight, Plus, Settings2, Wallet } from "lucide-react";
 import { monthName, toISO } from "@/lib/dates";
-import { ladeFeiertage, ladeTage, ladeTagZeiten, type Schichtart, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
+import {
+  eintragAus,
+  idsVon,
+  istAbwesenheit,
+  ladeFeiertage,
+  ladeTage,
+  ladeTagZeiten,
+  type Schichtart,
+  type TagEintrag,
+  type TagZeit,
+} from "@/lib/privat/daten";
 import {
   bereinigeGehalt,
   rechne,
@@ -19,10 +29,13 @@ import {
   type JobArt,
   type JobRechnung,
   type Rechnung,
-  stundenlohnAusGehalt,
+  STANDARD_WOCHENSTUNDEN,
+  stundenlohnAusMonat,
   type Bezahlung,
+  type ZuschlagEinheit,
 } from "@/lib/privat/gehalt";
 import { cn } from "@/lib/utils";
+import { useBetriebsschichten } from "./betrieb";
 import { Blatt } from "./blatt";
 import { usePrivat } from "./kontext";
 import { LohnJahr, LohnMonat, SteuerAbschnitt } from "./lohn";
@@ -253,29 +266,45 @@ const BEZAHLUNG_OPTIONEN: { id: Bezahlung; name: string }[] = [
 ];
 
 /** Bei festem Gehalt: welcher Stundenlohn für die Zuschläge herauskommt – und wie. */
-function GehaltStundenlohn({ grundgehalt }: { grundgehalt: number | null }) {
+/**
+ * Monatsgehalt: Stundenlohn für die Zuschläge. Von selbst aus dem Gehalt (mit den
+ * Wochenstunden aus „Mehr“, sonst 37,5 Std) – oder so eintragen, wie er auf der
+ * Abrechnung steht.
+ */
+function GehaltStundenlohn({ job, aendere }: { job: Job; aendere?: (t: Partial<Job>) => void }) {
   const { konto } = usePrivat();
-  const ws = konto.wochenstunden;
-  if (grundgehalt === null) return null;
-  if (ws === null || ws <= 0) {
+  if (job.grundgehalt === null) return null;
+  const auto = stundenlohnAusMonat(job.grundgehalt, konto.wochenstunden);
+  const ws = konto.wochenstunden !== null && konto.wochenstunden > 0 ? konto.wochenstunden : STANDARD_WOCHENSTUNDEN;
+  if (!aendere) {
     return (
-      <p className="py-3 text-[13px] leading-snug text-warn-fg" data-gehalt-hinweis>
-        Für die Zuschläge braucht ShiftNexo deine Wochenstunden – trag sie unter{" "}
-        <Link href="/privat/mehr" className="font-semibold underline">
-          Mehr
-        </Link>{" "}
-        ein.
+      <p className="py-3 text-[13px] leading-snug text-ink-muted" data-gehalt-stundenlohn>
+        Stundenlohn für die Zuschläge: <b className="text-ink">{euro(auto)}</b> ({std(ws)} Std die Woche)
       </p>
     );
   }
   return (
-    <p className="py-3 text-[13px] leading-snug text-ink-muted" data-gehalt-stundenlohn>
-      Stundenlohn für die Zuschläge: <b className="text-ink">{euro(stundenlohnAusGehalt(grundgehalt, ws))}</b>
-      <br />
-      {euro(grundgehalt)} ÷ ({std(ws)} Std × 13 ÷ 3 Wochen im Monat)
-    </p>
+    <FeldZeile id="job-stundenwert" name="Stundenlohn für Zuschläge" hinweis={job.stundenwert === null ? `automatisch aus dem Gehalt (${std(ws)} Std/Woche)` : "wie auf deiner Abrechnung"}>
+      <Zahlenfeld
+        id="job-stundenwert"
+        wert={job.stundenwert}
+        min={0}
+        max={1000}
+        einheit="€"
+        breite="w-[92px]"
+        platzhalter={auto.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        onWert={(n) => aendere({ stundenwert: n !== null && n > 0 ? n : null })}
+      />
+    </FeldZeile>
   );
 }
+
+const EINHEIT_OPTIONEN: { id: ZuschlagEinheit; name: string }[] = [
+  { id: "prozent", name: "in %" },
+  { id: "euro", name: "€ je Stunde" },
+];
+const einheitZeichen = (job: Job) => (job.einheit === "euro" ? "€" : "%");
+const satzText = (job: Job, wert: number) => (job.einheit === "euro" ? `${euro(wert)}/Std` : `${std(wert)} %`);
 
 const ART_OPTIONEN: { id: JobArt; name: string }[] = [
   { id: "minijob", name: "Minijob" },
@@ -340,14 +369,14 @@ function JobKarte({ jr, farbe, onEinstellungen }: { jr: JobRechnung; farbe: stri
     const auf = geld.ausGehalt && geld.stundenlohn !== null ? ` · auf ${euro(geld.stundenlohn)}/Std` : "";
     if (jr.zuschlag.nacht > 0 && job.nacht > 0)
       zeilen.push({
-        text: `Nachtzuschlag ${std(job.nacht)} %`,
+        text: `Nachtzuschlag ${satzText(job, job.nacht)}`,
         detail: `${std(jr.zuschlag.nacht)} Std zwischen ${job.nachtVon} und ${job.nachtBis} Uhr${auf}`,
         betrag: geld.nacht,
       });
     if (jr.zuschlag.sonntag > 0 && job.sonntag > 0)
-      zeilen.push({ text: `Sonntagszuschlag ${std(job.sonntag)} %`, detail: `${std(jr.zuschlag.sonntag)} Std${auf}`, betrag: geld.sonntag });
+      zeilen.push({ text: `Sonntagszuschlag ${satzText(job, job.sonntag)}`, detail: `${std(jr.zuschlag.sonntag)} Std${auf}`, betrag: geld.sonntag });
     if (jr.zuschlag.feiertag > 0 && job.feiertag > 0)
-      zeilen.push({ text: `Feiertagszuschlag ${std(job.feiertag)} %`, detail: `${std(jr.zuschlag.feiertag)} Std${auf}`, betrag: geld.feiertag });
+      zeilen.push({ text: `Feiertagszuschlag ${satzText(job, job.feiertag)}`, detail: `${std(jr.zuschlag.feiertag)} Std${auf}`, betrag: geld.feiertag });
     if (geld.ueber > 0) zeilen.push({ text: `Überstundenzuschlag ${std(job.ueber)} %`, detail: `Stunden über Soll${auf}`, betrag: geld.ueber });
   }
   const ohneWochenstunden = !!geld?.ausGehalt && geld.stundenlohn === null;
@@ -466,7 +495,7 @@ function NachtFelder({ job, aendere, praefix }: { job: Job; aendere: (t: Partial
   return (
     <>
       <FeldZeile id={`${praefix}-nacht`} name="Nachtzuschlag" hinweis="0 = keiner">
-        <Zahlenfeld id={`${praefix}-nacht`} wert={job.nacht} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ nacht: n })} />
+        <Zahlenfeld id={`${praefix}-nacht`} wert={job.nacht} min={0} max={500} einheit={einheitZeichen(job)} onWert={(n) => n !== null && aendere({ nacht: n })} />
       </FeldZeile>
       <FeldZeile name="Nachtzeit" hinweis="volle Stunden, z. B. 23 bis 24 oder 20 bis 6" aus={job.nacht === 0}>
         <span className="flex shrink-0 items-center gap-1.5">
@@ -551,7 +580,8 @@ function JobBlatt({
   onClose: () => void;
 }) {
   const [loeschen, setLoeschen] = useState(false);
-  const userId = usePrivat().konto.userId;
+  const { konto: k, betrieb } = usePrivat();
+  const userId = k.userId;
   const aendere = (t: Partial<Job>) => setze({ jobs: einst.jobs.map((j) => (j.id === job.id ? { ...j, ...t } : j)) });
   const istHaupt = einst.hauptjob === job.id;
   const gewaehlt = new Set(schichtenVon(job, einst, arten).map((a) => a.id));
@@ -608,7 +638,7 @@ function JobBlatt({
                     onWert={(n) => aendere({ grundgehalt: n !== null && n > 0 ? n : null })}
                   />
                 </FeldZeile>
-                <GehaltStundenlohn grundgehalt={job.grundgehalt} />
+                <GehaltStundenlohn job={job} aendere={aendere} />
               </>
             ) : (
               <FeldZeile id="job-lohn" name="Stundenlohn" hinweis={job.art === "minijob" ? "so wie er ausgezahlt wird" : "brutto"}>
@@ -624,12 +654,18 @@ function JobBlatt({
                 />
               </FeldZeile>
             )}
+            {job.art === "brutto" ? (
+              <div className="space-y-1.5 py-3">
+                <span className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Zuschläge</span>
+                <Wahl label="Zuschläge" wert={job.einheit} optionen={EINHEIT_OPTIONEN} onWahl={(einheit) => aendere({ einheit })} />
+              </div>
+            ) : null}
             <NachtFelder job={job} aendere={aendere} praefix="job" />
             <FeldZeile id="job-sonntag" name="Sonntagszuschlag" hinweis="0 = keiner">
-              <Zahlenfeld id="job-sonntag" wert={job.sonntag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ sonntag: n })} />
+              <Zahlenfeld id="job-sonntag" wert={job.sonntag} min={0} max={500} einheit={einheitZeichen(job)} onWert={(n) => n !== null && aendere({ sonntag: n })} />
             </FeldZeile>
             <FeldZeile id="job-feiertag" name="Feiertagszuschlag" hinweis="0 = keiner">
-              <Zahlenfeld id="job-feiertag" wert={job.feiertag} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ feiertag: n })} />
+              <Zahlenfeld id="job-feiertag" wert={job.feiertag} min={0} max={500} einheit={einheitZeichen(job)} onWert={(n) => n !== null && aendere({ feiertag: n })} />
             </FeldZeile>
             {job.art === "minijob" ? (
               <FeldZeile id="job-grenze" name="Minijob-Grenze im Monat" hinweis={`leer = gesetzlich (${jahr}: ${minijobGrenze(jahr)} €)`}>
@@ -671,6 +707,11 @@ function JobBlatt({
 
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Schichten von {job.name}</p>
+          {istHaupt && betrieb ? (
+            <p className="mt-1 text-[12.5px] leading-snug text-ink-muted" data-betrieb-schichten>
+              Deine Schichten aus dem Betrieb zählen automatisch dazu – mit ihren Uhrzeiten.
+            </p>
+          ) : null}
           <SchichtWahl job={job} einst={einst} arten={arten} gewaehlt={gewaehlt} onTipp={tipp} />
         </div>
 
@@ -839,7 +880,7 @@ function Assistent({
             />
           )}
         </div>
-        {monat ? <GehaltStundenlohn grundgehalt={job.grundgehalt} /> : null}
+        {monat ? <GehaltStundenlohn job={job} /> : null}
       </div>
     );
   } else if (aktuell === "schichten") {
@@ -955,6 +996,41 @@ export function useMonatsDaten(von: string, bis: string, neuLaden: unknown = nul
   return { tage, zeiten, feiertage };
 }
 
+/**
+ * Tage und Schichtarten für Lohn und Stunden: die eigenen Einträge plus – mit
+ * Betriebszugang – die Schichten aus dem Betrieb (mit ihren Uhrzeiten). An
+ * einem Tag mit Betriebsschicht zählen von den eigenen Einträgen nur
+ * Urlaub/Krank und Schichten, die ausdrücklich einem anderen Job gehören –
+ * sonst stünde dieselbe Schicht doppelt drin.
+ */
+export function useLohnDaten(von: string, bis: string, einst: GehaltEinstellungen) {
+  const { konto, schichtarten, betrieb } = usePrivat();
+  const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
+  const bs = useBetriebsschichten(konto.userId, !!betrieb, von, bis);
+  return useMemo(() => {
+    if (!tage || !schichtarten) return { tage: null, arten: null, zeiten, feiertage, ausBetrieb: false };
+    if (!bs.aktiv || !Object.keys(bs.tage).length) return { tage, arten: schichtarten, zeiten, feiertage, ausBetrieb: false };
+    const nach = new Map(schichtarten.map((a) => [a.id, a]));
+    const alle: Record<string, TagEintrag> = { ...tage };
+    for (const iso of Object.keys(bs.tage)) {
+      if (iso < von || iso > bis) continue;
+      const betriebIds = bs.am(iso).map((a) => a.id);
+      const eigene = idsVon(tage[iso]).filter((id) => {
+        const a = nach.get(id);
+        if (!a) return false;
+        if (istAbwesenheit(a)) return true;
+        const job = einst.zuordnung[id];
+        return !!job && job !== einst.hauptjob;
+      });
+      const e = eintragAus([...betriebIds, ...eigene].slice(0, 3));
+      if (e) alle[iso] = e;
+    }
+    return { tage: alle, arten: [...schichtarten, ...bs.arten.values()], zeiten, feiertage, ausBetrieb: true };
+    // bs.am hängt an bs.tage/bs.arten
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tage, schichtarten, zeiten, feiertage, bs.aktiv, bs.tage, bs.arten, einst, von, bis]);
+}
+
 /** Der Monat mit Geld je Job – für den Bereich „Geld“ unter den Kacheln. */
 export function PrivatGeld() {
   const { konto, schichtarten } = usePrivat();
@@ -968,11 +1044,10 @@ export function PrivatGeld() {
   const [ansicht, setAnsicht] = useState<"monat" | "jahr">("monat");
   const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
   const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
-  const { tage, zeiten, feiertage } = useMonatsDaten(von, bis);
+  const { tage, arten: lohnArten, zeiten, feiertage } = useLohnDaten(von, bis, einst);
   const arten = schichtarten ?? [];
 
-  const re =
-    tage && schichtarten ? rechne({ tage, von, bis, arten: schichtarten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten }) : null;
+  const re = tage && lohnArten ? rechne({ tage, von, bis, arten: lohnArten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten }) : null;
   const springe = (s: number) => setMonat((m) => new Date(m.getFullYear(), m.getMonth() + (ansicht === "jahr" ? s * 12 : s), 1));
   const fertig = useCallback(
     (job: Job, schichten: string[], haupt: boolean) => {

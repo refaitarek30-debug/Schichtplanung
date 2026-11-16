@@ -39,7 +39,7 @@ export interface Job {
   bezahlung: Bezahlung;
   /** Festes Grundgehalt brutto im Monat (bei bezahlung = "monat"); null = noch nicht eingetragen. */
   grundgehalt: number | null;
-  /** Zuschläge in Prozent auf den Stundenlohn; 0 = keiner. */
+  /** Zuschläge für Nacht, Sonntag, Feiertag: in Prozent auf den Stundenlohn oder in € je Stunde (`einheit`); 0 = keiner. */
   nacht: number;
   sonntag: number;
   feiertag: number;
@@ -50,7 +50,16 @@ export interface Job {
   nachtBis: number;
   /** Minijob-Grenze im Monat; null = gesetzliche Grenze des Jahres. */
   grenze: number | null;
+  /** Nacht-, Sonntags- und Feiertagszuschlag in Prozent oder als fester Betrag je Stunde (wie auf der Abrechnung). */
+  einheit: ZuschlagEinheit;
+  /** Nur Monatsgehalt: Stundenlohn für die Zuschläge, wenn er anders gerechnet wird; null = aus dem Gehalt. */
+  stundenwert: number | null;
 }
+
+export type ZuschlagEinheit = "prozent" | "euro";
+
+/** Ohne eingetragene Wochenstunden: so viele Stunden gelten für den Stundenlohn aus dem Monatsgehalt. */
+export const STANDARD_WOCHENSTUNDEN = 37.5;
 
 export interface GehaltEinstellungen {
   jobs: Job[];
@@ -75,6 +84,8 @@ export const JOB_STANDARD: Omit<Job, "id" | "name" | "art"> = {
   nachtVon: 20,
   nachtBis: 6,
   grenze: null,
+  einheit: "prozent",
+  stundenwert: null,
 };
 
 /**
@@ -108,12 +119,23 @@ export function stundenlohnAusGehalt(grundgehalt: number, wochenstunden: number)
 /** Bezahlt dieser Job ein festes Monatsgehalt (und ist es eingetragen)? */
 export const mitGehalt = (job: Job) => job.art === "brutto" && job.bezahlung === "monat" && job.grundgehalt !== null;
 
+/** Stundenlohn aus dem Monatsgehalt – mit den eigenen Wochenstunden, sonst mit 37,5 Std. */
+export function stundenlohnAusMonat(grundgehalt: number, wochenstunden: number | null): number {
+  return stundenlohnAusGehalt(grundgehalt, wochenstunden !== null && wochenstunden > 0 ? wochenstunden : STANDARD_WOCHENSTUNDEN);
+}
+
 /** Stundenlohn, auf den die Zuschläge gerechnet werden; null = (noch) nicht bekannt. */
 export function wirksamerStundenlohn(job: Job, wochenstunden: number | null): number | null {
   if (job.art === "brutto" && job.bezahlung === "monat") {
-    return job.grundgehalt !== null && wochenstunden !== null && wochenstunden > 0 ? stundenlohnAusGehalt(job.grundgehalt, wochenstunden) : null;
+    if (job.stundenwert !== null) return job.stundenwert;
+    return job.grundgehalt !== null ? stundenlohnAusMonat(job.grundgehalt, wochenstunden) : null;
   }
   return job.stundenlohn;
+}
+
+/** Zuschlag in Euro: Prozent auf den Stundenlohn oder fester Betrag je Stunde. */
+export function zuschlagBetrag(stunden: number, stundenlohn: number, wert: number, einheit: ZuschlagEinheit): number {
+  return einheit === "euro" ? stunden * wert : (stunden * stundenlohn * wert) / 100;
 }
 
 /** Anteil voller Monate im Zeitraum (ein ganzer Monat = 1, halber Monat ≈ 0,5). */
@@ -153,6 +175,8 @@ function bereinigeJob(roh: unknown): Job | null {
     nachtVon: Math.round(zahlOder(r.nachtVon, JOB_STANDARD.nachtVon, 0, 24)),
     nachtBis: Math.round(zahlOder(r.nachtBis, JOB_STANDARD.nachtBis, 0, 24)),
     grenze: typeof grenze === "number" && Number.isFinite(grenze) && grenze > 0 && grenze <= 10000 ? grenze : null,
+    einheit: r.einheit === "euro" ? "euro" : "prozent",
+    stundenwert: lohnOder(r.stundenwert),
   };
 }
 
@@ -199,6 +223,8 @@ export function bereinigeGehalt(roh: unknown): GehaltEinstellungen {
     nachtVon: Math.round(zahlOder(r.nachtVon, JOB_STANDARD.nachtVon, 0, 24)),
     nachtBis: Math.round(zahlOder(r.nachtBis, JOB_STANDARD.nachtBis, 0, 24)),
     grenze: null,
+    einheit: "prozent",
+    stundenwert: null,
   };
   return { jobs: [job], hauptjob: job.id, zuordnung: {}, eingerichtet: true };
 }
@@ -496,9 +522,9 @@ export function rechne(args: {
       const lohn = wirksamerStundenlohn(job, wochenstunden);
       const z = lohn ?? 0;
       const grundlohn = ausGehalt ? rund(job.grundgehalt! * monatsAnteil(von, bis)) : rund(stunden * z);
-      const nacht = rund((zuschlag.nacht * z * job.nacht) / 100);
-      const sonntag = rund((zuschlag.sonntag * z * job.sonntag) / 100);
-      const feiertag = rund((zuschlag.feiertag * z * job.feiertag) / 100);
+      const nacht = rund(zuschlagBetrag(zuschlag.nacht, z, job.nacht, job.einheit));
+      const sonntag = rund(zuschlagBetrag(zuschlag.sonntag, z, job.sonntag, job.einheit));
+      const feiertag = rund(zuschlagBetrag(zuschlag.feiertag, z, job.feiertag, job.einheit));
       const ueber = istHaupt && differenz !== null && differenz > 0 ? rund((differenz * z * job.ueber) / 100) : 0;
       geld = { ausGehalt, stundenlohn: lohn, grundlohn, nacht, sonntag, feiertag, ueber, summe: rund(grundlohn + nacht + sonntag + feiertag + ueber) };
     }

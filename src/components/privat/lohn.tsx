@@ -111,7 +111,6 @@ export function LohnMonat({
       ] as const).filter(([, b]) => b > 0)
     : [];
   const ohneSchichten = haupt !== null && haupt.schichten === 0;
-  const ohneZuschlag = haupt?.geld?.ausGehalt === true && haupt.geld.stundenlohn === null;
 
   return (
     <div className="space-y-3" data-lohn-monat>
@@ -160,17 +159,9 @@ export function LohnMonat({
         </button>
       </section>
 
-      {ohneSchichten || ohneZuschlag ? (
+      {ohneSchichten ? (
         <button type="button" onClick={onEinstellungen} className="w-full rounded-[16px] bg-warn-bg px-4 py-3 text-left text-[13.5px] leading-snug text-warn-fg" data-lohn-hinweis>
-          {ohneSchichten ? (
-            <>
-              <b>Keine Schichten erkannt.</b> Tippen und unter „Schichten“ auswählen, welche zu deinem Job gehören.
-            </>
-          ) : (
-            <>
-              <b>Zuschläge fehlen.</b> Trag unter Mehr deine Wochenstunden ein – daraus wird der Stundenlohn für die Zuschläge.
-            </>
-          )}
+          <b>Keine Schichten erkannt.</b> Tippen und unter „Schichten“ auswählen, welche zu deinem Job gehören.
         </button>
       ) : null}
 
