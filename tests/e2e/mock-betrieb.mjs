@@ -263,9 +263,10 @@ http.createServer((req, res) => {
         const folge = ["F", "F", "S", "S", "N", "N", null, null, null, null];
         const name = { F: "Frühschicht", S: "Spätschicht", N: "Nachtschicht" };
         return send(200, namen.map((n, i) => ({ employee_id: "e" + i, employee_name: n, rotation_team: gruppen[i % 3], personnel_number: String(100 + i), is_me: i === 0, is_apprentice: i === 7,
-          tage: Array.from({ length: body.p_days }, (_, d) => { const t = add(body.p_from, d); const c = folge[(d + (i % 3) * 3) % 10]; const abw = i === 2 && d > 3 && d < 8 ? "U" : i === 4 && d === 6 ? "u" : i === 5 && d === 9 ? "K" : null; return [t, c ? name[c] : null, c, abw]; }) })));
+          tage: Array.from({ length: body.p_days }, (_, d) => { const t = add(body.p_from, d); const c = folge[(d + (i % 3) * 3) % 10]; const abw = i === 2 && d > 3 && d < 8 ? "U" : i === 4 && d === 6 ? "u" : i === 5 && d === 9 ? "K" : i === 6 && (d === 10 || d === 11) ? "V" : null; return [t, c ? name[c] : null, c, abw, i === 6 && d === 10]; }) })));
       }
-      if (f === "blocked_days" || f === "school_holidays_for_range") return send(200, []);
+      if (f === "blocked_days") return send(200, body.p_from?.endsWith("-01-01") ? [12, 13, 14].map((n) => ({ day: `${body.p_from.slice(0, 4)}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${n}`, reason: "Stillstand" })) : []);
+      if (f === "school_holidays_for_range") return send(200, []);
       // Besetzung: 14 Tage, drei Schichten; am zweiten Tag ist die Nacht zu knapp.
       if (f === "staffing_range") {
         const zeilen = [];

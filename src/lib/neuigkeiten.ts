@@ -27,6 +27,11 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-17T09:00:00+01:00",
+    titel: "VJ-Tage ab 2027 und neuer Druckplan",
+    text: "Ab 2027 sind 75 % der V-Tage VJ-Tage (Jahresplanung, aufgerundet) und 25 % V-Tage. Die automatische Verteilung nimmt erst VJ, solange da, dann V – im Plan steht „VJ“ oder „V“. Der gedruckte Plan zeigt jetzt U, VJ und V, markiert Karneval und Urlaubssperren (z. B. Abstellung), hat eine kleine Legende und lässt Azubis weg.",
+  },
+  {
     zeit: "2026-11-16T22:30:00+01:00",
     titel: "Woche: Uhrzeit per Ziehen",
     text: "Eigene Schichten kannst du in der Woche jetzt auch nach oben oder unten ziehen – die neue Uhrzeit gilt nur für diesen Tag. Ganztägiges (Urlaub, Frei, ganztägige Termine) steht nicht mehr oben, sondern als Block von 8 bis 16 Uhr im Raster.",
