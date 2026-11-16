@@ -5,7 +5,10 @@ import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Building2, ChevronRight, KeyRound, LogOut, Repeat, Trash2 } from "lucide-react";
+import { Bell, Building2, CalendarArrowDown, ChevronRight, Clock, Contrast, KeyRound, LogOut, Repeat, Star, Trash2 } from "lucide-react";
+import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
+import { cn } from "@/lib/utils";
+import { Blatt } from "./blatt";
 import { wechsleBereich } from "@/lib/bereich";
 import { CodeAnzeige } from "@/components/ui/code-anzeige";
 import { meinWiederherstellungscode } from "@/lib/auth/passwort-code";
@@ -35,6 +38,7 @@ export function PrivatMehr() {
   const [laeuft, starte] = useTransition();
   const [loeschen, setLoeschen] = useState(false);
   const [schichtfolge, setSchichtfolge] = useState(false);
+  const [blatt, setBlatt] = useState<null | "mitteilungen" | "abo" | "darstellung" | "feiertage" | "stunden" | "konto">(null);
   const [loeschStand, loeschAktion] = useActionState(loeschePrivatkonto, {} as FormState);
   const [emailStand, emailAktion, emailLaeuft] = useActionState(speicherePrivatEmail, {} as FormState);
 
@@ -52,90 +56,145 @@ export function PrivatMehr() {
 
   const feld = "w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40";
 
+  const land = BUNDESLAENDER.find((x) => x.code === konto.bundesland)?.name ?? konto.bundesland;
+  const kachel = "glas flex min-h-[96px] flex-col items-start justify-between gap-2 rounded-[20px] p-3.5 text-left";
+  const symbol = (farbe: string) => cn("flex h-9 w-9 items-center justify-center rounded-[11px] text-white", farbe);
+
   return (
     <div className="space-y-4">
-      <PrivatKopf titel="Mehr" unter="Einstellungen und Konto" />
+      <PrivatKopf titel="Mehr" unter={`${konto.name} · Privat`} />
 
-      {/* Ein Login, zwei Bereiche (Migration 0194). */}
-      <PrivatKarte titel="Betrieb">
+      {/* Das Wichtigste als Kacheln (Entwurf B), der Rest als kurze Liste. */}
+      <div className="grid grid-cols-2 gap-3" data-mehr-kacheln>
+        <button type="button" onClick={() => setSchichtfolge(true)} disabled={!schichtarten} className={cn(kachel, "disabled:opacity-50")}>
+          <span className={symbol("bg-brand-500")}>
+            <Repeat className="h-[18px] w-[18px]" />
+          </span>
+          <span>
+            <span className="block text-[15px] font-semibold">Schichtfolge</span>
+            <span className="block text-[12px] text-ink-muted">Muster eintragen</span>
+          </span>
+        </button>
+        {/* Ein Login, zwei Bereiche (Migration 0194). */}
         {betrieb ? (
-          <button
-            type="button"
-            data-zum-betrieb
-            onClick={() => wechsleBereich("betrieb", router)}
-            className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <Building2 className="h-5 w-5" />
+          <button type="button" data-zum-betrieb onClick={() => wechsleBereich("betrieb", router)} className={kachel}>
+            <span className={symbol("bg-[#1d4ed8]")}>
+              <Building2 className="h-[18px] w-[18px]" />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">Zum Betrieb wechseln</span>
-              <span className="block truncate text-[13px] text-ink-muted">{betrieb.firma}</span>
+            <span className="min-w-0 max-w-full">
+              <span className="block text-[15px] font-semibold">Zum Betrieb</span>
+              <span className="block truncate text-[12px] text-ink-muted">{betrieb.firma}</span>
             </span>
-            <ChevronRight className="h-5 w-5 text-ink-faint" />
           </button>
         ) : (
-          <Link href="/beitreten" className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <Building2 className="h-5 w-5" />
+          <Link href="/beitreten" className={kachel}>
+            <span className={symbol("bg-[#1d4ed8]")}>
+              <Building2 className="h-[18px] w-[18px]" />
             </span>
-            <span className="min-w-0 flex-1">
+            <span>
               <span className="block text-[15px] font-semibold">Einem Betrieb beitreten</span>
-              <span className="block text-[13px] text-ink-muted">Mit dem Code aus deinem Betrieb – dein Kalender bleibt.</span>
+              <span className="block text-[12px] text-ink-muted">Mit dem Code</span>
             </span>
-            <ChevronRight className="h-5 w-5 text-ink-faint" />
           </Link>
         )}
+        <button type="button" onClick={() => setBlatt("mitteilungen")} className={kachel}>
+          <span className={symbol("bg-[#f59e0b]")}>
+            <Bell className="h-[18px] w-[18px]" />
+          </span>
+          <span>
+            <span className="block text-[15px] font-semibold">Mitteilungen</span>
+            <span className="block text-[12px] text-ink-muted">Erinnerungen, Vorschläge</span>
+          </span>
+        </button>
+        <button type="button" onClick={() => setBlatt("abo")} className={kachel}>
+          <span className={symbol("bg-[#14b8a6]")}>
+            <CalendarArrowDown className="h-[18px] w-[18px]" />
+          </span>
+          <span>
+            <span className="block text-[15px] font-semibold">Kalender-Abo</span>
+            <span className="block text-[12px] text-ink-muted">Im Handy-Kalender</span>
+          </span>
+        </button>
+      </div>
+
+      <PrivatKarte>
+        <p className="px-4 pt-3 text-[12.5px] font-semibold text-ink-muted">Einstellungen</p>
+        <div className="divide-y divide-line">
+          <Zeile icon={<Star className="h-4 w-4" />} farbe="bg-[#ef4444]" text="Feiertage" wert={konto.feiertageZeigen ? land : "aus"} onClick={() => setBlatt("feiertage")} />
+          <Zeile
+            icon={<Clock className="h-4 w-4" />}
+            farbe="bg-[#0ea5e9]"
+            text="Wochenstunden"
+            wert={konto.wochenstunden === null ? "–" : String(konto.wochenstunden).replace(".", ",")}
+            onClick={() => setBlatt("stunden")}
+          />
+          <Zeile icon={<Contrast className="h-4 w-4" />} farbe="bg-[#334155]" text="Darstellung" onClick={() => setBlatt("darstellung")} />
+        </div>
       </PrivatKarte>
 
-      <PrivatKarte titel="Kalender">
+      <PrivatKarte>
+        <p className="px-4 pt-3 text-[12.5px] font-semibold text-ink-muted">Konto</p>
         <div className="divide-y divide-line">
-          <button
-            type="button"
-            onClick={() => setSchichtfolge(true)}
-            disabled={!schichtarten}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left disabled:opacity-50"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-brand-500/12 text-brand-600">
-              <Repeat className="h-[18px] w-[18px]" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">Schichtfolge eintragen</span>
-              <span className="block truncate text-[12.5px] text-ink-muted">Muster einmal wählen, der Kalender füllt sich</span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
-          </button>
-          <label className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="min-w-0">
-              <span className="block text-[15px] font-semibold">Feiertage anzeigen</span>
-              <span className="block text-[12.5px] text-ink-muted">Im Kalender rot hervorgehoben</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={konto.feiertageZeigen}
-              onChange={(e) => speichere({ feiertageZeigen: e.target.checked })}
-              disabled={laeuft}
-              className="h-5 w-5 shrink-0 accent-brand-500"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 px-4 py-3">
-            <span className="text-[15px] font-semibold">Bundesland</span>
-            <select
-              id="privat-bundesland"
-              value={konto.bundesland}
-              onChange={(e) => speichere({ bundesland: e.target.value })}
-              disabled={laeuft}
-              className="max-w-[58%] rounded-xl bg-ink/[0.06] px-3 py-2 text-[14px] font-semibold"
-            >
-              {BUNDESLAENDER.map((b) => (
-                <option key={b.code} value={b.code}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Zeile icon={<KeyRound className="h-4 w-4" />} farbe="bg-[#64748b]" text="Name & Sicherheit" wert={konto.name} onClick={() => setBlatt("konto")} />
+        </div>
+        <MeineDatenKnopf />
+        {/* Nur für Betreiber-Konten sichtbar (z. B. den Notfallzugang, der ein reines Privatkonto ist). */}
+        <BetreiberLink className="glas-linie flex w-full items-center gap-3 border-t px-4 py-3.5 text-left text-[15px] font-medium" />
+      </PrivatKarte>
+
+      {blatt === "mitteilungen" ? (
+        <Blatt titel="Mitteilungen" onClose={() => setBlatt(null)}>
+          <KalenderVorliebenInhalt />
+        </Blatt>
+      ) : null}
+      {blatt === "abo" ? (
+        <Blatt titel="Kalender-Abo" unter="Deine Schichten im Kalender deines Handys" onClose={() => setBlatt(null)}>
+          <KalenderAboCard />
+        </Blatt>
+      ) : null}
+      {blatt === "darstellung" ? (
+        <Blatt titel="Darstellung" onClose={() => setBlatt(null)}>
+          <ThemeToggle />
+        </Blatt>
+      ) : null}
+      {blatt === "feiertage" ? (
+        <Blatt titel="Feiertage" onClose={() => setBlatt(null)}>
+          <div className="divide-y divide-line">
+            <label className="flex items-center justify-between gap-3 py-3">
+              <span className="min-w-0">
+                <span className="block text-[15px] font-semibold">Feiertage anzeigen</span>
+                <span className="block text-[12.5px] text-ink-muted">Im Kalender rot hervorgehoben</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={konto.feiertageZeigen}
+                onChange={(e) => speichere({ feiertageZeigen: e.target.checked })}
+                disabled={laeuft}
+                className="h-5 w-5 shrink-0 accent-brand-500"
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 py-3">
+              <span className="text-[15px] font-semibold">Bundesland</span>
+              <select
+                id="privat-bundesland"
+                value={konto.bundesland}
+                onChange={(e) => speichere({ bundesland: e.target.value })}
+                disabled={laeuft}
+                className="max-w-[58%] rounded-xl bg-ink/[0.06] px-3 py-2 text-[14px] font-semibold"
+              >
+                {BUNDESLAENDER.map((x) => (
+                  <option key={x.code} value={x.code}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </Blatt>
+      ) : null}
+      {blatt === "stunden" ? (
+        <Blatt titel="Wochenstunden" unter="Für Soll und Überstunden" onClose={() => setBlatt(null)}>
           <form
-            className="px-4 py-3"
             onSubmit={(e) => {
               e.preventDefault();
               const t = stunden.trim().replace(",", ".");
@@ -145,100 +204,72 @@ export function PrivatMehr() {
                 return;
               }
               speichere({ wochenstunden: n });
+              setBlatt(null);
             }}
+            className="flex items-center gap-2"
           >
-            <div className="flex items-center justify-between gap-3">
-              <label htmlFor="privat-wochenstunden" className="min-w-0">
-                <span className="block text-[15px] font-semibold">Wochenstunden</span>
-                <span className="block text-[12.5px] text-ink-muted">Für Soll und Überstunden</span>
-              </label>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <input
-                  id="privat-wochenstunden"
-                  inputMode="decimal"
-                  value={stunden}
-                  onChange={(e) => setStunden(e.target.value)}
-                  placeholder="37,5"
-                  className="h-10 w-20 rounded-xl bg-ink/[0.06] px-3 text-right text-[15px] font-semibold outline-none focus:ring-2 focus:ring-brand-500/40"
-                />
-                <button type="submit" disabled={laeuft} className="h-10 rounded-xl bg-brand-500 px-3 text-[13.5px] font-semibold text-white">
-                  OK
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </PrivatKarte>
-
-      <PrivatKarte titel="Mitteilungen & Vorschläge">
-        <div className="px-4 py-4">
-          <KalenderVorliebenInhalt />
-        </div>
-      </PrivatKarte>
-
-      <PrivatKarte titel="Profil">
-        <div className="space-y-4 px-4 py-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              speichere({ name });
-            }}
-          >
-            <label htmlFor="privat-name" className="mb-1 block text-[13px] font-semibold text-ink-muted">
-              Name
-            </label>
-            <div className="flex gap-2">
-              <input id="privat-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className={feld} />
-              <button
-                type="submit"
-                disabled={laeuft || name === konto.name}
-                className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white disabled:opacity-40"
-              >
-                Speichern
-              </button>
-            </div>
-            <span className="mt-1 block text-[12px] text-ink-faint">Dein Vorname erscheint bei den Leuten, mit denen du teilst.</span>
-          </form>
-          <div>
-            <span className="mb-1.5 block text-[13px] font-semibold text-ink-muted">Darstellung</span>
-            <ThemeToggle />
-          </div>
-        </div>
-      </PrivatKarte>
-
-      <PrivatKarte titel="Sicherheit">
-        <WiederherstellungsCode />
-        <form action={emailAktion} className="glas-linie space-y-2 border-t px-4 py-4">
-          <p className="text-[13px] text-ink-muted">
-            {konto.email
-              ? `Hinterlegt: ${konto.email}. Darüber erkennt dich der Support, falls du deinen Code verlierst.`
-              : "Freiwillig: Mit einer E-Mail-Adresse erkennt dich der Support leichter, falls du deinen Code verlierst."}
-          </p>
-          <div className="flex gap-2">
             <input
-              type="email"
-              name="email"
-              autoComplete="email"
-              required
-              placeholder="du@beispiel.de"
+              id="privat-wochenstunden"
+              inputMode="decimal"
+              value={stunden}
+              onChange={(e) => setStunden(e.target.value)}
+              placeholder="37,5"
+              aria-label="Wochenstunden"
               className={feld}
             />
-            <button type="submit" disabled={emailLaeuft} className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white">
-              {konto.email ? "Ändern" : "Speichern"}
+            <button type="submit" disabled={laeuft} className="h-12 shrink-0 rounded-xl bg-brand-500 px-5 text-[15px] font-semibold text-white">
+              Speichern
             </button>
+          </form>
+        </Blatt>
+      ) : null}
+      {blatt === "konto" ? (
+        <Blatt titel="Name & Sicherheit" onClose={() => setBlatt(null)}>
+          <div className="space-y-5">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                speichere({ name });
+              }}
+            >
+              <label htmlFor="privat-name" className="mb-1 block text-[13px] font-semibold text-ink-muted">
+                Name
+              </label>
+              <div className="flex gap-2">
+                <input id="privat-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} className={feld} />
+                <button
+                  type="submit"
+                  disabled={laeuft || name === konto.name}
+                  className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white disabled:opacity-40"
+                >
+                  Speichern
+                </button>
+              </div>
+              <span className="mt-1 block text-[12px] text-ink-faint">Dein Vorname erscheint bei den Leuten, mit denen du teilst.</span>
+            </form>
+            <div className="-mx-4">
+              <WiederherstellungsCode />
+            </div>
+            <form action={emailAktion} className="space-y-2">
+              <p className="text-[13px] text-ink-muted">
+                {konto.email
+                  ? `Hinterlegt: ${konto.email}. Darüber erkennt dich der Support, falls du deinen Code verlierst.`
+                  : "Freiwillig: Mit einer E-Mail-Adresse erkennt dich der Support leichter, falls du deinen Code verlierst."}
+              </p>
+              <div className="flex gap-2">
+                <input type="email" name="email" autoComplete="email" required placeholder="du@beispiel.de" className={feld} />
+                <button type="submit" disabled={emailLaeuft} className="shrink-0 rounded-xl bg-brand-500 px-4 text-[14px] font-semibold text-white">
+                  {konto.email ? "Ändern" : "Speichern"}
+                </button>
+              </div>
+              {emailStand.error ? <Alert tone="error">{emailStand.error}</Alert> : null}
+              {emailStand.success ? <Alert tone="success">{emailStand.success}</Alert> : null}
+            </form>
           </div>
-          {emailStand.error ? <Alert tone="error">{emailStand.error}</Alert> : null}
-          {emailStand.success ? <Alert tone="success">{emailStand.success}</Alert> : null}
-        </form>
-      </PrivatKarte>
+        </Blatt>
+      ) : null}
 
       {meldung ? <Alert tone={meldung.ok ? "success" : "error"}>{meldung.text}</Alert> : null}
-
-      <PrivatKarte>
-        <MeineDatenKnopf />
-        {/* Nur für Betreiber-Konten sichtbar (z. B. den Notfallzugang, der ein reines Privatkonto ist). */}
-        <BetreiberLink className="glas-linie flex w-full items-center gap-3 border-t px-4 py-3.5 text-left text-[15px] font-medium" />
-      </PrivatKarte>
 
       <PrivatKarte>
         <form
@@ -401,5 +432,16 @@ export function WiederherstellungsCode() {
       )}
       {fehler ? <Alert tone="error">{fehler}</Alert> : null}
     </div>
+  );
+}
+
+function Zeile({ icon, farbe, text, wert, onClick }: { icon: React.ReactNode; farbe: string; text: string; wert?: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-white", farbe)}>{icon}</span>
+      <span className="min-w-0 flex-1 text-[15px] font-medium">{text}</span>
+      {wert ? <span className="max-w-[45%] shrink-0 truncate text-[13.5px] text-ink-muted">{wert}</span> : null}
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+    </button>
   );
 }

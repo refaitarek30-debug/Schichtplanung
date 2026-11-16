@@ -1042,6 +1042,12 @@ export function PrivatGeld() {
   const [offen, setOffen] = useState<string | null>(null);
   const [neuerJob, setNeuerJob] = useState(false);
   const [ansicht, setAnsicht] = useState<"monat" | "jahr">("monat");
+  // Aus der Kachel: denselben Monat öffnen, der dort gezeigt wurde (?monat=JJJJ-MM).
+  useEffect(() => {
+    const m = /^(\d{4})-(\d{2})$/.exec(new URLSearchParams(window.location.search).get("monat") ?? "");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (m) setMonat(new Date(Number(m[1]), Number(m[2]) - 1, 1));
+  }, []);
   const von = toISO(new Date(monat.getFullYear(), monat.getMonth(), 1));
   const bis = toISO(new Date(monat.getFullYear(), monat.getMonth() + 1, 0));
   const { tage, arten: lohnArten, zeiten, feiertage } = useLohnDaten(von, bis, einst);

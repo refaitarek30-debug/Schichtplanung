@@ -122,6 +122,39 @@ export default async function geld() {
     const gemerkt = await seite.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("sp_lohn:")).length);
     pruefe(gemerkt === 1, "Lohn: bleibt nur auf dem Gerät (lokaler Speicher)");
 
+    // Kachel „Lohn“ und Lohn-Seite: derselbe Monat (vorheriger Monat über ?monat=).
+    await seite.goto(`${APP}/privat/schichten`, { waitUntil: "networkidle" });
+    await warte(1200);
+    await seite.getByRole("button", { name: "Vorheriger Monat" }).first().click().catch(() => {});
+    await warte(1200);
+    const lohnLink = seite.locator('a[href*="reiter=geld"]').first();
+    const href = (await lohnLink.getAttribute("href")) ?? "";
+    pruefe(/monat=\d{4}-\d{2}/.test(href), `Kachel Lohn: Link mit Monat (${href})`);
+    const kachelBetrag = (await lohnLink.innerText()).match(/[\d.]+\s€/)?.[0] ?? "";
+    await lohnLink.click();
+    await seite.waitForURL(/reiter=geld/);
+    await warte(1500);
+    const seiteBetrag = Math.round(zahl(await seite.locator("[data-lohn-netto]").innerText()));
+    pruefe(kachelBetrag !== "" && zahl(kachelBetrag.replace(".", "")) === seiteBetrag, `Kachel und Lohn-Seite gleich (${kachelBetrag} / ${seiteBetrag})`);
+
+    // „Mehr“ (Entwurf B): Kacheln oben, Einstellungen öffnen als Blatt.
+    await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
+    await warte(800);
+    pruefe((await seite.locator("[data-mehr-kacheln] > *").count()) === 4, "Mehr: vier Kacheln oben");
+    await seite.getByRole("button", { name: /Feiertage/ }).click();
+    await warte(500);
+    pruefe(await seite.locator("#privat-bundesland").isVisible(), "Mehr: Feiertage öffnen Bundesland im Blatt");
+    await seite.keyboard.press("Escape");
+    await warte(400);
+
+    // Woche in 7 Spalten.
+    await seite.evaluate(() => localStorage.setItem("schichtplan.privat-ansicht", "woche"));
+    await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: 7 Spalten");
+    pruefe((await seite.locator("[data-woche-summe]").count()) === 1, "Woche: Summe der Woche");
+    await seite.evaluate(() => localStorage.setItem("schichtplan.privat-ansicht", "monat"));
+
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
   } finally {
