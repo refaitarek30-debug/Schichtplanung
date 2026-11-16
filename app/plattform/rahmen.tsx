@@ -3,7 +3,7 @@
 import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Building2, ClipboardList, KeyRound, LogOut, MessageSquareText, Trash2, Users } from "lucide-react";
+import { BarChart3, Building2, ClipboardList, KeyRound, LogOut, MessageSquareText, TrendingUp, Trash2, Users } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const BEREICHE = [
   { pfad: "/plattform", text: "Übersicht", icon: BarChart3 },
   { pfad: "/plattform/firmen", text: "Firmen & Konten", icon: Building2 },
   { pfad: "/plattform/zugang", text: "Zugänge & Support", icon: KeyRound },
+  { pfad: "/plattform/nutzung", text: "Nutzung", icon: TrendingUp },
   { pfad: "/plattform/umfrage", text: "Umfrage", icon: MessageSquareText },
   { pfad: "/plattform/loeschen", text: "Löschen", icon: Trash2 },
   { pfad: "/plattform/protokoll", text: "Protokoll", icon: ClipboardList },

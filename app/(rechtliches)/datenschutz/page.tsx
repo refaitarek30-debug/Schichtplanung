@@ -423,7 +423,8 @@ export default function DatenschutzPage() {
             Beschäftigtendaten. Technischer Zugriff auf die Datenbank ist möglich und erfolgt
             nur zu Wartung, Support und Fehleranalyse auf Weisung des Kunden. Die
             Betreiber-Übersicht zeigt je Unternehmen Name, Anlagezeitpunkt, Stand der
-            Zustimmungen und Zählwerte (z. B. Anzahl Mitarbeiter und Anträge) – keine
+            Zustimmungen, Zählwerte (z. B. Anzahl Mitarbeiter und Anträge) und wann sich zuletzt
+            jemand aus dem Unternehmen angemeldet hat – keine
             Namen von Beschäftigten und keine Abwesenheitsinhalte
           </li>
         </Liste>
@@ -643,6 +644,19 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
           zusammengefasst und ohne Namen, E-Mail-Adresse oder Konto angezeigt. Rechtsgrundlage ist
           das berechtigte Interesse an der Verbesserung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO).
           Die Antworten werden mit dem Privatbereich gelöscht.
+        </Absatz>
+        <Absatz>
+          Zählwerte für den Betreiber: Um den Dienst zu betreiben, zu planen und zu verbessern,
+          sieht der Betreiber zusammengezählte Zahlen über alle Privatkonten – zum Beispiel wie
+          viele Konten es gibt, wie viele sich in den letzten 7 oder 30 Tagen angemeldet haben, wie
+          viele neu dazugekommen sind und wie viele Konten eine Funktion (etwa Termine, To-dos,
+          Teilen, Kalender-Abo, Mitteilungen aufs Handy) überhaupt nutzen. Dazu wird je Tag eine
+          Zeile mit diesen Summen gespeichert. Die Zahlen enthalten keine Namen, keine
+          E-Mail-Adressen und keine Inhalte und werden nicht je Person ausgewertet; es wird nicht
+          erfasst, was jemand in der App öffnet oder antippt. Rechtsgrundlage ist das berechtigte
+          Interesse am Betrieb und an der Verbesserung des Dienstes (Art. 6 Abs. 1 lit. f DSGVO).
+          Für Konten, die zu einem Unternehmen gehören, gibt es keine solche Auswertung der
+          Funktionen; dort bleibt es bei den in Abschnitt 6 genannten Zählwerten je Unternehmen.
         </Absatz>
       </Abschnitt>
 

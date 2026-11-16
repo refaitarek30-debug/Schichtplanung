@@ -184,6 +184,9 @@ export function NeueKonten({ dashboard }: { dashboard: Dashboard }) {
   );
 }
 
+/** Seit 14 Tagen hat sich niemand aus der Firma angemeldet – Anlass, einmal nachzufragen. */
+const eingeschlafen = (letzte: string | null) => !!letzte && Date.now() - new Date(letzte).getTime() > 14 * 864e5;
+
 /** Alle Firmen mit Kennzahlen – keine Inhalte. */
 export function FirmenListe({ firmen }: { firmen: FirmaKennzahlen[] }) {
   const ohneAvv = firmen.filter((f) => !f.avvAkzeptiertAm).length;
@@ -232,7 +235,14 @@ export function FirmenListe({ firmen }: { firmen: FirmaKennzahlen[] }) {
                     {f.urlaubsantraege}
                     {f.offeneAntraege > 0 ? <span className="text-warn-fg"> ({f.offeneAntraege} offen)</span> : null}
                   </td>
-                  <td className="border-t border-line px-3 py-3 text-ink-muted">{seitdem(f.letzteAktivitaet)}</td>
+                  <td className="border-t border-line px-3 py-3 text-ink-muted">
+                    {seitdem(f.letzteAktivitaet)}
+                    {f.aktiv && eingeschlafen(f.letzteAktivitaet) ? (
+                      <span className="ml-1.5 inline-block align-middle" data-eingeschlafen>
+                        <Badge tone="warn">eingeschlafen</Badge>
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="border-t border-line px-3 py-3 pr-5">
                     <span className="flex flex-wrap gap-1.5">
                       <Badge tone={f.avvAkzeptiertAm ? "ok" : "warn"}>{f.avvAkzeptiertAm ? "AVV" : "AVV fehlt"}</Badge>

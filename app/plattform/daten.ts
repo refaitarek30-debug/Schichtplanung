@@ -30,3 +30,28 @@ export async function ladeUmfrage(k: Konsole): Promise<Umfrage | null> {
   const { data } = await k.admin.rpc("platform_umfrage");
   return (data as Umfrage | null) ?? null;
 }
+
+/** Seite „Nutzung“ (Migration 0229): nur zusammengezählte Werte. */
+export interface Nutzung {
+  wochen: { woche: string; privat: number; betrieb: number }[];
+  verlauf: { tag: string; konten: number; privat: number; aktiv_7: number; aktiv_30: number; privat_aktiv_7: number }[];
+  privat: {
+    konten: number;
+    aktiv_7: number;
+    aktiv_30: number;
+    mit_schichten: number;
+    plant_voraus: number;
+    wiederkehr_basis: number;
+    wiederkehr: number;
+    funktionen: { schichtarten: number; termine: number; todos: number; teilen: number; kalender_abo: number; push: number };
+  };
+  technik: { push_gesendet_24h: number; push_haengt: number; mail_fehler_7: number };
+}
+
+/** Fehlt die Migration noch, bleibt die Seite mit einem Hinweis stehen. */
+export async function ladeNutzung(k: Konsole): Promise<Nutzung | null> {
+  const { data, error } = await k.admin.rpc("platform_nutzung");
+  if (error || !data) return null;
+  const n = data as Nutzung;
+  return n.privat && Array.isArray(n.wochen) ? n : null;
+}
