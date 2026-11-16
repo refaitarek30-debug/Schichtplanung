@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { CtaLink, ZIELE } from "@/components/marketing/cta";
 import { WischShow, type Folie } from "@/components/marketing/wisch-show";
-import { PAKETE, PILOT_RABATT_MONATE, PILOT_RABATT_PROZENT, Preise } from "@/components/marketing/preise";
+import { JAHRES_RABATT, PAKETE, Preise } from "@/components/marketing/preise";
 import {
   BetriebAntrag,
   BetriebBesetzung,
@@ -227,8 +227,7 @@ const FRAGEN_BETRIEB: Frage[] = [
         <a href="#preise" className="font-medium text-brand-600 hover:underline">
           Preise
         </a>
-        . In der dreimonatigen Pilotphase ist der volle Umfang kostenlos, danach gibt es für Pilotbetriebe {PILOT_RABATT_MONATE} Monate lang{" "}
-        {PILOT_RABATT_PROZENT} % Rabatt.
+        . Die dreimonatige Pilotphase ist kostenlos, danach ist ShiftNexo monatlich kündbar. Bei Jahreszahlung {JAHRES_RABATT} % günstiger.
       </>
     ),
   },

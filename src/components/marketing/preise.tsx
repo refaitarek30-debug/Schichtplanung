@@ -9,29 +9,28 @@ import { cn } from "@/lib/utils";
  * Stelle: PAKETE und ENTHALTEN.
  */
 const UST = 1.19;
-const EINRICHTUNG = 99;
-/** Bei Jahreszahlung: 2 Monate geschenkt – 10 statt 12 Monate. */
-const JAHRES_MONATE = 10;
-/** Pilotbetriebe: nach den drei Gratis-Monaten so viele Monate mit Rabatt. */
-export const PILOT_RABATT_MONATE = 12;
-export const PILOT_RABATT_PROZENT = 20;
+const EINRICHTUNG = 199;
+/** Bei Jahreszahlung so viel Prozent günstiger – weiter monatlich kündbar. */
+export const JAHRES_RABATT = 5;
 const HAEUFIG_BIS = 30;
 
 /** Bis zu so vielen Personen im Monat – Preis netto pro Monat. */
 export const PAKETE: { bis: number; preis: number }[] = [
-  { bis: 10, preis: 59 },
-  { bis: 15, preis: 79 },
-  { bis: 20, preis: 99 },
-  { bis: 30, preis: 139 },
-  { bis: 40, preis: 179 },
-  { bis: 50, preis: 215 },
-  { bis: 75, preis: 299 },
-  { bis: 100, preis: 379 },
+  // Je Stufe wird die Person etwa 5–7 % günstiger.
+  { bis: 15, preis: 59 },
+  { bis: 30, preis: 109 },
+  { bis: 50, preis: 169 },
+  { bis: 75, preis: 239 },
+  { bis: 100, preis: 299 },
+  { bis: 150, preis: 419 },
+  { bis: 200, preis: 519 },
+  { bis: 300, preis: 729 },
+  { bis: 500, preis: 1149 },
 ];
 
 const euro = (n: number, nachkomma = 2) =>
   `${n.toLocaleString("de-DE", { minimumFractionDigits: nachkomma, maximumFractionDigits: nachkomma })} €`;
-const pilotPreis = (preis: number) => Math.round(preis * (1 - PILOT_RABATT_PROZENT / 100));
+const jahresPreis = (preis: number) => Math.round(preis * 12 * (1 - JAHRES_RABATT / 100) * 100) / 100;
 
 const ENTHALTEN: { titel: string; punkte: string[] }[] = [
   {
@@ -129,20 +128,20 @@ export function Preise() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           {
-            titel: "Pilotbetriebe",
-            text: `Drei Monate kostenlos, danach ${PILOT_RABATT_MONATE} Monate lang ${PILOT_RABATT_PROZENT} % Rabatt. Beispiel bis ${beispiel.bis} Personen: statt ${euro(beispiel.preis, 0)} nur ${euro(pilotPreis(beispiel.preis), 0)} im Monat.`,
+            titel: "Pilotphase",
+            text: "Drei Monate kostenlos und unverbindlich. Danach monatlich kündbar – ohne Mindestlaufzeit.",
           },
           {
-            titel: "Wächst dein Team?",
-            text: "Gezählt wird der Monat mit den meisten Personen. Wird es mehr, gilt automatisch das nächste Paket. Monatlich kündbar.",
+            titel: "Wächst euer Team?",
+            text: "Gezählt wird der Monat mit den meisten Personen. Wird es mehr, gilt automatisch das nächste Paket.",
           },
           {
             titel: "Einrichtung",
-            text: `Selbst einrichten ist kostenlos. Auf Wunsch übernehmen wir das für einmalig ${euro(EINRICHTUNG, 0)} netto: Mitarbeiter anlegen, Plan übernehmen, kurze Einweisung.`,
+            text: `Selbst einrichten ist kostenlos. Auf Wunsch übernehmen wir das für einmalig ${euro(EINRICHTUNG, 0)} netto – für Pilotbetriebe, die weitermachen, kostenlos.`,
           },
           {
             titel: "Jahreszahlung",
-            text: `Bei Zahlung für ein Jahr im Voraus schenken wir dir 2 Monate. Du zahlst ${JAHRES_MONATE} statt 12.`,
+            text: `${JAHRES_RABATT} % günstiger, trotzdem monatlich kündbar – der Rest wird anteilig erstattet. Beispiel bis ${beispiel.bis} Personen: ${euro(jahresPreis(beispiel.preis))} statt ${euro(beispiel.preis * 12, 0)} im Jahr.`,
           },
         ].map((x) => (
           <div key={x.titel} className="glas rounded-[22px] p-5">
