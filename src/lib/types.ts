@@ -325,6 +325,8 @@ export interface LiveShiftPlanCell {
   isMe: boolean;
   /** Azubi – steht im Plan, zählt aber nicht zur Besetzung. */
   isApprentice: boolean;
+  /** V-Tag aus der Jahresplanung (VJ, ab 2027) – nur wo „V“ sichtbar ist. */
+  isVj?: boolean;
 }
 
 /**

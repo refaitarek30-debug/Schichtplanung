@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ChevronLeft, Printer } from "lucide-react";
-import { DataError, fetchShiftPlanGrid } from "@/lib/data/rotation";
+import { DataError, fetchBlockedDays, fetchShiftPlanGrid } from "@/lib/data/rotation";
 import { fetchHolidays, fetchSchoolHolidays, type SchoolHolidayRange } from "@/lib/data/holidays";
 import { monthName } from "@/lib/dates";
 import { ROTATION_TEAMS } from "@/lib/qualifications";
@@ -18,9 +18,12 @@ import { cn } from "@/lib/utils";
  * F/S/N und unten die Legende. „Drucken“ öffnet den Druckdialog – dort
  * lässt sich der Plan auch als PDF sichern und teilen.
  *
- * In den Zeilen der Personen steht nur Urlaub (beantragt oder genehmigt) –
- * der Rest wird wie auf Papier von Hand ergänzt, und ein ausgehängter Plan
- * verrät keine Krankheit oder andere Gründe. Ohne Legende; das Blatt passt
+ * In den Zeilen der Personen stehen nur Urlaub, VJ- und V-Tage (beantragt
+ * oder genehmigt, soweit im Plan sichtbar) – der Rest wird wie auf Papier
+ * von Hand ergänzt, und ein ausgehängter Plan verrät keine Krankheit oder
+ * andere Gründe. Azubis stehen nicht auf dem Blatt. Über den Tagen ein Band
+ * für Karneval (Weiberfastnacht bis Veilchendienstag) und Urlaubssperren
+ * (z. B. Abstellung/Stillstand), unten eine kleine Legende. Das Blatt passt
  * immer auf eine Seite quer (Zeilenhöhe und Schrift passen sich an), und am
  * Bildschirm wird es auf die Breite verkleinert.
  */
@@ -37,18 +40,63 @@ const SA = "#ecdccb";
 const SO = "#e3c3a3";
 const FEIERTAG = "#c0392b";
 const FERIEN = "#9fbfe5";
+const VJ = "#b6d7a8";
+const V = "#d5c4ea";
+const KARNEVAL = "#f6b26b";
+const SPERRE = "#a64d79";
 
-/** Urlaub: „U“ genehmigt, „u“ beantragt (Kleinbuchstaben = noch offen). Alles andere bleibt leer. */
-function urlaub(code: string | null | undefined): "genehmigt" | "beantragt" | null {
-  if (code === "U") return "genehmigt";
-  if (code === "u") return "beantragt";
+/**
+ * Was in der Zeile einer Person steht: Urlaub, VJ- oder V-Tag. Großbuchstabe
+ * = genehmigt (Feld farbig), Kleinbuchstabe = beantragt (nur farbige Schrift).
+ * Alles andere (Krankheit, Schulung …) bleibt leer.
+ */
+function eintrag(z: LiveShiftPlanCell | undefined): { text: string; farbe: string; genehmigt: boolean; titel: string } | null {
+  const c = z?.absenceCode;
+  if (!c) return null;
+  const genehmigt = c === c.toUpperCase();
+  if (c === "U" || c === "u") return { text: "U", farbe: URLAUB, genehmigt, titel: "Urlaub" };
+  if (c === "V" || c === "v") {
+    return z?.isVj
+      ? { text: "VJ", farbe: VJ, genehmigt, titel: "VJ-Tag (Jahresplanung)" }
+      : { text: "V", farbe: V, genehmigt, titel: "V-Tag" };
+  }
   return null;
 }
 
+/** Ostersonntag (gregorianisch, Gauß/Meeus). */
+function ostern(j: number): Date {
+  const a = j % 19;
+  const b = Math.floor(j / 100);
+  const c = j % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(j, monat - 1, tag);
+}
+
+/** Karneval: Weiberfastnacht (Ostern − 52) bis Veilchendienstag (Ostern − 47). */
+export function karnevalTage(j: number): Set<string> {
+  const o = ostern(j);
+  const aus = new Set<string>();
+  for (let n = 52; n >= 47; n--) {
+    const d = new Date(o.getFullYear(), o.getMonth(), o.getDate() - n);
+    aus.add(`${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`);
+  }
+  return aus;
+}
+
 /** Druckbare Fläche quer (Seite minus 8 mm Rand), in mm. */
-const SEITE: Record<"A4" | "A3", { b: number; h: number; schrift: number; zeile: number; kopf: number; name: number }> = {
-  A4: { b: 280, h: 192, schrift: 2.9, zeile: 9, kopf: 26, name: 34 },
-  A3: { b: 403, h: 279, schrift: 3.9, zeile: 13, kopf: 34, name: 48 },
+const SEITE: Record<"A4" | "A3", { b: number; h: number; schrift: number; zeile: number; kopf: number; name: number; band: number; legende: number }> = {
+  A4: { b: 280, h: 192, schrift: 2.9, zeile: 9, kopf: 29, name: 34, band: 3, legende: 7 },
+  A3: { b: 403, h: 279, schrift: 3.9, zeile: 13, kopf: 38, name: 48, band: 4, legende: 9 },
 };
 const PX_JE_MM = 96 / 25.4;
 
@@ -73,6 +121,7 @@ export function PlanDruck({
   const [daten, setDaten] = useState<Monat[] | null>(null);
   const [feiertage, setFeiertage] = useState<Map<string, string>>(new Map());
   const [ferien, setFerien] = useState<SchoolHolidayRange[]>([]);
+  const [sperren, setSperren] = useState<Map<string, string>>(new Map());
   const [fehler, setFehler] = useState<string | null>(null);
   const [da, setDa] = useState(false);
 
@@ -101,10 +150,12 @@ export function PlanDruck({
       ),
       fetchHolidays().catch(() => []),
       fetchSchoolHolidays(`${jahr}-01-01`, `${jahr}-12-31`).catch(() => []),
+      fetchBlockedDays(`${jahr}-01-01`, `${jahr}-12-31`).catch(() => new Map<string, string>()),
     ])
-      .then(([m, f, s]) => {
+      .then(([m, f, s, sp]) => {
         if (!aktiv) return;
         setDaten(m);
+        setSperren(sp);
         setFeiertage(new Map(f.filter((h) => h.date.startsWith(`${jahr}-`)).map((h) => [h.date, h.name])));
         setFerien(s);
       })
@@ -119,7 +170,8 @@ export function PlanDruck({
   const blaetter = useMemo(
     () =>
       (daten ?? []).map((m) => {
-        const zellen = team === "all" ? m.zellen : m.zellen.filter((z) => z.rotationTeam === team);
+        // Azubis stehen nicht auf dem ausgedruckten Plan.
+        const zellen = m.zellen.filter((z) => !z.isApprentice && (team === "all" || z.rotationTeam === team));
         return { ...m, zellen };
       }),
     [daten, team],
@@ -185,7 +237,7 @@ export function PlanDruck({
 
       <div className="plan-druck-blaetter flex flex-col items-center gap-6 py-6">
         {blaetter.map((b) => (
-          <Blatt key={`${b.jahr}-${b.monat}`} {...b} format={format} team={team} zoom={zoom} feiertage={feiertage} istFerien={istFerien} />
+          <Blatt key={`${b.jahr}-${b.monat}`} {...b} format={format} team={team} zoom={zoom} feiertage={feiertage} istFerien={istFerien} sperren={sperren} />
         ))}
       </div>
     </div>
@@ -205,23 +257,25 @@ function Blatt({
   zoom,
   feiertage,
   istFerien,
+  sperren,
 }: Monat & {
   format: Format;
   team: string;
   zoom: number;
   feiertage: Map<string, string>;
   istFerien: (iso: string) => boolean;
+  sperren: Map<string, string>;
 }) {
   const n = tageIm(jahr, monat);
   const tage = Array.from({ length: n }, (_, i) => `${jahr}-${zwei(monat + 1)}-${zwei(i + 1)}`);
   const wt = (iso: string) => new Date(`${iso}T12:00:00`).getDay();
 
   // Personen je Gruppe, in Planreihenfolge.
-  const personen = new Map<string, { name: string; team: string | null; azubi: boolean; tage: Map<string, LiveShiftPlanCell> }>();
+  const personen = new Map<string, { name: string; team: string | null; tage: Map<string, LiveShiftPlanCell> }>();
   for (const z of zellen) {
     let p = personen.get(z.employeeId);
     if (!p) {
-      p = { name: z.employeeName, team: z.rotationTeam, azubi: !!z.isApprentice, tage: new Map() };
+      p = { name: z.employeeName, team: z.rotationTeam, tage: new Map() };
       personen.set(z.employeeId, p);
     }
     p.tage.set(z.day, z);
@@ -254,12 +308,32 @@ function Blatt({
     return undefined;
   };
 
+  // Band über den Tagen: Urlaubssperre (Abstellung) vor Karneval. Gleiche Nachbartage werden ein Feld mit Text.
+  const karneval = karnevalTage(jahr);
+  const bandVon = (iso: string): { text: string; farbe: string } | null =>
+    sperren.has(iso) ? { text: sperren.get(iso) || "Urlaubssperre", farbe: SPERRE } : karneval.has(iso) ? { text: "Karneval", farbe: KARNEVAL } : null;
+  const band: { text: string; farbe: string | null; tage: number; von: string }[] = [];
+  for (const t of tage) {
+    const b = bandVon(t);
+    const letzt = band[band.length - 1];
+    if (letzt && letzt.text === (b?.text ?? "") && letzt.farbe === (b?.farbe ?? null)) letzt.tage++;
+    else band.push({ text: b?.text ?? "", farbe: b?.farbe ?? null, tage: 1, von: t });
+  }
+  // Für die Legende: Sperren dieses Monats mit Zeitraum.
+  const sperrLegende = band
+    .filter((b) => b.farbe === SPERRE)
+    .map((b) => {
+      const bis = tage[tage.indexOf(b.von) + b.tage - 1]!;
+      return `${b.text} ${Number(b.von.slice(8))}.–${Number(bis.slice(8))}.`;
+    });
+  const hatKarneval = band.some((b) => b.farbe === KARNEVAL);
+
   // Alles auf eine Seite: Zeilenhöhe (und damit Schrift) nach der Zahl der Zeilen.
   const seite = SEITE[format];
   const leer = 2;
   const zeilen = personenListe.length + gruppenFolge.length + leer;
-  // Kopf (Ferienband, Wochentage, Datum) und Rand haben feste Höhe; die Zeilen teilen sich den Rest.
-  const zeileMm = Math.max(3.2, Math.min(seite.zeile, (seite.h - seite.kopf) / Math.max(1, zeilen)));
+  // Kopf (Bänder, Wochentage, Datum), Legende und Rand haben feste Höhe; die Zeilen teilen sich den Rest.
+  const zeileMm = Math.max(3.2, Math.min(seite.zeile, (seite.h - seite.kopf - seite.legende) / Math.max(1, zeilen)));
   const schriftMm = Math.min(seite.schrift, zeileMm * 0.58);
   const masse = { breite: `${seite.b}mm`, hoehe: `${seite.h}mm`, schrift: `${schriftMm}mm`, name: `${seite.name}mm`, zeile: `${zeileMm}mm` };
 
@@ -278,7 +352,7 @@ function Blatt({
         </colgroup>
         <thead>
           <tr>
-            <th rowSpan={3} className="pb-[2mm] pr-[2mm] text-left align-top">
+            <th rowSpan={4} className="pb-[2mm] pr-[2mm] text-left align-top">
               <span className="block font-bold" style={{ fontSize: "1.9em", lineHeight: 1.05 }}>
                 {jahr}
               </span>
@@ -289,6 +363,20 @@ function Blatt({
             </th>
             {tage.map((t) => (
               <th key={t} className="h-[2.2mm] p-0" style={{ background: istFerien(t) ? FERIEN : undefined }} title={istFerien(t) ? "Ferien" : undefined} />
+            ))}
+          </tr>
+          <tr data-plan-band>
+            {band.map((b) => (
+              <th
+                key={b.von}
+                colSpan={b.tage}
+                className="overflow-hidden whitespace-nowrap p-0 text-center font-semibold"
+                style={{ height: `${seite.band}mm`, background: b.farbe ?? undefined, color: b.farbe === SPERRE ? "#fff" : "#000", fontSize: "0.72em", lineHeight: 1 }}
+                title={b.text || undefined}
+                data-plan-band-text={b.text || undefined}
+              >
+                {b.text}
+              </th>
             ))}
           </tr>
           <tr>
@@ -336,18 +424,22 @@ function Blatt({
                 <tr key={`${g}-${i}`}>
                   <th className="truncate border border-black/70 px-[1.5mm] text-left font-normal" style={{ height: masse.zeile }}>
                     {p.name}
-                    {p.azubi ? <span style={{ color: "#666" }}> (Azubi)</span> : null}
                   </th>
                   {tage.map((t) => {
-                    const u = urlaub(p.tage.get(t)?.absenceCode);
+                    const e = eintrag(p.tage.get(t));
                     return (
                       <td
                         key={t}
                         className="border border-black/70 text-center font-semibold"
-                        style={{ background: u === "genehmigt" ? URLAUB : hinterTag(t), color: u === "beantragt" ? "#8a6d1f" : undefined }}
-                        title={u === "beantragt" ? "Urlaub beantragt" : u === "genehmigt" ? "Urlaub" : undefined}
+                        style={{
+                          background: e?.genehmigt ? e.farbe : hinterTag(t),
+                          color: e && !e.genehmigt ? "#6b4f9e" : undefined,
+                          fontSize: e?.text === "VJ" ? "0.85em" : undefined,
+                        }}
+                        title={e ? `${e.titel}${e.genehmigt ? "" : " (beantragt)"}` : undefined}
+                        data-plan-eintrag={e?.text}
                       >
-                        {u ? "U" : ""}
+                        {e ? (e.genehmigt ? e.text : e.text.toLowerCase()) : ""}
                       </td>
                     );
                   })}
@@ -366,6 +458,41 @@ function Blatt({
         </tbody>
       </table>
 
+      <Legende hoehe={seite.legende} karneval={hatKarneval} sperren={sperrLegende} />
     </section>
+  );
+}
+
+/** Kleine Legende unten auf dem Blatt. */
+function Legende({ hoehe, karneval, sperren }: { hoehe: number; karneval: boolean; sperren: string[] }) {
+  const feld = (farbe: string, text?: string, schrift?: string) => (
+    <span className="inline-flex items-center justify-center border border-black/60 font-bold" style={{ width: "1.9em", height: "1.25em", background: farbe, color: schrift }}>
+      {text}
+    </span>
+  );
+  const punkt = (inhalt: React.ReactNode, text: string) => (
+    <span className="inline-flex items-center gap-[1mm] whitespace-nowrap">
+      {inhalt}
+      {text}
+    </span>
+  );
+  return (
+    <div className="mt-auto flex flex-wrap items-center gap-x-[3mm] gap-y-[0.6mm] pt-[1.5mm]" style={{ minHeight: `${hoehe - 1.5}mm`, fontSize: "0.85em" }} data-plan-legende>
+      {punkt(feld(SCHICHT_VOLL.F!, "F"), "Früh")}
+      {punkt(feld(SCHICHT_VOLL.S!, "S", "#fff"), "Spät")}
+      {punkt(feld(SCHICHT_VOLL.N!, "N", "#fff"), "Nacht")}
+      {punkt(feld(URLAUB, "U"), "Urlaub")}
+      {punkt(feld(VJ, "VJ"), "VJ-Tag (Jahresplanung)")}
+      {punkt(feld(V, "V"), "V-Tag (widerrufbar)")}
+      {punkt(feld("#fff", "u", "#6b4f9e"), "klein = beantragt")}
+      {punkt(feld(SA), "Sa")}
+      {punkt(feld(SO), "So")}
+      {punkt(feld(FEIERTAG), "Feiertag")}
+      {punkt(feld(FERIEN), "Ferien")}
+      {karneval ? punkt(feld(KARNEVAL), "Karneval") : null}
+      {sperren.map((t) => (
+        <span key={t}>{punkt(feld(SPERRE), `${t} (Urlaubssperre)`)}</span>
+      ))}
+    </div>
   );
 }

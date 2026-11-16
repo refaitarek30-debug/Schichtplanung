@@ -2270,7 +2270,7 @@ const PlanZeile = memo(function PlanZeile({
                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
               )}
             >
-              {code ? cellLabel(code) : ""}
+              {code ? (cell?.isVj && (code === "V" || code === "v") ? `${code}${code === "V" ? "J" : "j"}` : cellLabel(code)) : ""}
               {/* Kleiner roter Strich: hier steht ein Kommentar. */}
               {zellKommentare ? (
                 <span

@@ -75,6 +75,11 @@ export default async function startseite() {
     await seite.goto(`${APP}/schichtplan/druck?team=all`, { waitUntil: "networkidle" });
     await warte(1500);
     pruefe((await seite.locator("[data-plan-blatt]").count()) === 1, "Druckansicht: ein Blatt für den Monat");
+    const blattText = await seite.locator("[data-plan-blatt]").innerText();
+    pruefe(!/Ida Vogel/.test(blattText), "Druckansicht: Azubis stehen nicht auf dem Blatt");
+    pruefe((await seite.locator('[data-plan-eintrag="VJ"]').count()) === 1 && (await seite.locator('[data-plan-eintrag="V"]').count()) === 1, "Druckansicht: VJ- und V-Tage stehen drin");
+    pruefe((await seite.locator('[data-plan-band-text="Stillstand"]').count()) === 1, "Druckansicht: Abstellung (Urlaubssperre) als Band markiert");
+    pruefe(/VJ-Tag/.test(await seite.locator("[data-plan-legende]").innerText()) && /Stillstand 12\.–14\./.test(await seite.locator("[data-plan-legende]").innerText()), "Druckansicht: Legende mit VJ und Abstellung");
     await seite.getByRole("button", { name: "A3" }).click();
     pruefe(await seite.locator("[data-plan-drucken]").isEnabled(), "Druckansicht: Drucken-Knopf bereit");
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });

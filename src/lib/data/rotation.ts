@@ -123,8 +123,8 @@ interface SchichtplanKompaktZeile {
   personnel_number: string | null;
   is_me: boolean;
   is_apprentice: boolean;
-  /** Je Tag: [Tag, Schichtname, Schichtkürzel, Abwesenheitskürzel]. */
-  tage: [string, string | null, string | null, string | null][];
+  /** Je Tag: [Tag, Schichtname, Schichtkürzel, Abwesenheitskürzel, VJ (ab Migration 0231)]. */
+  tage: [string, string | null, string | null, string | null, boolean?][];
 }
 
 /** Meldung, wenn der Plan wegen einer echten Störung nicht kommt. */
@@ -164,7 +164,7 @@ export async function fetchShiftPlanGrid(
 
   const zellen: LiveShiftPlanCell[] = [];
   for (const person of (data ?? []) as SchichtplanKompaktZeile[]) {
-    for (const [day, shiftName, shiftCode, absenceCode] of person.tage ?? []) {
+    for (const [day, shiftName, shiftCode, absenceCode, vj] of person.tage ?? []) {
       zellen.push({
         employeeId: person.employee_id,
         employeeName: person.employee_name,
@@ -176,6 +176,7 @@ export async function fetchShiftPlanGrid(
         absenceCode,
         isMe: person.is_me,
         isApprentice: person.is_apprentice === true,
+        isVj: vj === true,
       });
     }
   }
