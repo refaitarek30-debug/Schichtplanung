@@ -6,6 +6,7 @@ import { Check, ChevronLeft, ChevronRight, Plus, Settings2, Wallet } from "lucid
 import { monthName, toISO } from "@/lib/dates";
 import { ladeFeiertage, ladeTage, ladeTagZeiten, type Schichtart, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
 import {
+  bereinigeGehalt,
   rechne,
   GEHALT_STANDARD,
   JOB_STANDARD,
@@ -24,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
 import { usePrivat } from "./kontext";
-import { LohnJahr, LohnMonat } from "./lohn";
+import { LohnJahr, LohnMonat, SteuerAbschnitt } from "./lohn";
 import { AbschnittKopf, PrivatKarte, RundKnopf } from "./rahmen";
 
 /**
@@ -54,7 +55,7 @@ export function useGehalt(userId: string) {
   }, [userId]);
   const setze = useCallback(
     (teil: Partial<GehaltEinstellungen>) => {
-      const neu = { ...ladeGehaltEinstellungen(userId), ...teil };
+      const neu = bereinigeGehalt({ ...ladeGehaltEinstellungen(userId), ...teil });
       speichereGehaltEinstellungen(userId, neu);
       setEinst(neu);
       window.dispatchEvent(new Event(GEHALT_EREIGNIS));
@@ -209,7 +210,7 @@ export function Zahlenfeld({
 
 const ART_TEXT: Record<JobArt, { name: string; kurz: string; unter: string }> = {
   minijob: { name: "Minijob", kurz: "Minijob · netto", unter: "Ausgezahlt wird, was du verdienst – ohne Abzüge." },
-  brutto: { name: "Normaler Job", kurz: "Brutto-Schätzung", unter: "Mit Steuern und Abgaben – ShiftNexo schätzt brutto." },
+  brutto: { name: "Normaler Job", kurz: "Normal", unter: "Lohn, Zuschläge, Schichten und Steuer – alles an einer Stelle." },
   ohne: { name: "Ohne Geld", kurz: "nur Stunden", unter: "Z. B. Ausbildung mit festem Betrag: nur Stunden zählen." },
 };
 
@@ -550,6 +551,7 @@ function JobBlatt({
   onClose: () => void;
 }) {
   const [loeschen, setLoeschen] = useState(false);
+  const userId = usePrivat().konto.userId;
   const aendere = (t: Partial<Job>) => setze({ jobs: einst.jobs.map((j) => (j.id === job.id ? { ...j, ...t } : j)) });
   const istHaupt = einst.hauptjob === job.id;
   const gewaehlt = new Set(schichtenVon(job, einst, arten).map((a) => a.id));
@@ -664,6 +666,8 @@ function JobBlatt({
             <Zahlenfeld id="job-ueber" wert={job.ueber} min={0} max={500} einheit="%" onWert={(n) => n !== null && aendere({ ueber: n })} />
           </FeldZeile>
         ) : null}
+
+        {istHaupt && job.art === "brutto" ? <SteuerAbschnitt userId={userId} /> : null}
 
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.04em] text-ink-muted">Schichten von {job.name}</p>
@@ -979,6 +983,9 @@ export function PrivatGeld() {
   );
   const offenerJob = einst.jobs.find((j) => j.id === offen) ?? null;
   const mitGeld = re ? re.jobs.filter((j) => j.geld) : [];
+  // Der Hauptjob mit Brutto steckt ganz in der Lohn-Rechnung oben; nur weitere Jobs als eigene Karte.
+  const hauptBrutto = mitGeld.find((j) => j.istHaupt && j.job.art === "brutto") ?? null;
+  const weitere = re ? re.jobs.filter((j) => j !== hauptBrutto) : [];
 
   return (
     <div className="space-y-4">
@@ -1023,23 +1030,25 @@ export function PrivatGeld() {
         <p className="px-1 text-[14px] text-ink-muted">Wird berechnet …</p>
       ) : (
         <>
-          {mitGeld.length ? <LohnMonat re={re} monat={monat} userId={konto.userId} bundesland={konto.bundesland} /> : null}
-          <p className="px-1 pt-1 text-[12.5px] font-semibold text-ink-muted">Brutto je Job</p>
-          {mitGeld.length > 1 && re.summe !== null ? (
-            <div className="flex items-center justify-between gap-3 px-1" data-geld-summe>
-              <span className="text-[14px] text-ink-muted">Alle Jobs zusammen</span>
-              <span className="tnum text-[17px] font-bold">{euro(re.summe)}</span>
-            </div>
+          {mitGeld.length ? (
+            <LohnMonat
+              re={re}
+              monat={monat}
+              userId={konto.userId}
+              bundesland={konto.bundesland}
+              onEinstellungen={() => setOffen(hauptBrutto?.job.id ?? mitGeld[0]!.job.id)}
+            />
           ) : null}
-          {re.jobs.map((jr) => (
+          {weitere.length ? <p className="px-1 pt-1 text-[12.5px] font-semibold text-ink-muted">{hauptBrutto ? "Weitere Jobs" : "Jobs"}</p> : null}
+          {weitere.map((jr) => (
             <JobKarte key={jr.job.id} jr={jr} farbe={jobFarbe(jr.job, einst, arten)} onEinstellungen={() => setOffen(jr.job.id)} />
           ))}
           <button
             type="button"
             onClick={() => setNeuerJob(true)}
-            className="flex h-12 w-full items-center justify-center gap-1.5 rounded-[16px] bg-brand-500/10 text-[15px] font-semibold text-brand-600"
+            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-[14px] text-[14.5px] font-semibold text-brand-600"
           >
-            <Plus className="h-4 w-4" /> Job hinzufügen
+            <Plus className="h-4 w-4" /> Weiteren Job hinzufügen
           </button>
           <p className="px-1 text-[12px] leading-snug text-ink-faint">
             Schätzung, keine Lohnabrechnung. Andere Uhrzeit an einem Tag? Tag im Kalender antippen. Alles bleibt nur auf diesem

@@ -1,4 +1,4 @@
-import type { Rechnung } from "@/lib/privat/gehalt";
+import type { JobRechnung, Rechnung } from "@/lib/privat/gehalt";
 import { abzuegeMonat, freierZuschlag, SFN_GRENZE, type Abzuege, type SteuerAngaben, type Steuerklasse, WERTE_2026 } from "@/lib/privat/netto";
 
 /**
@@ -127,6 +127,8 @@ export interface Auszahlung {
   bausteine: Zeile[];
   /** true, wenn ein normaler Job mit Brutto da ist (sonst nur Minijobs). */
   mitSteuer: boolean;
+  /** Der Hauptjob mit Brutto (für Schichten, Stunden und Hinweise). */
+  haupt: JobRechnung | null;
 }
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -183,7 +185,25 @@ export function rechneAuszahlung(re: Rechnung, steuer: SteuerDaten, extras: Omit
     netto += laufend + einmal - a.summe;
     abz = abz ? summiere(abz, a) : a;
     mitSteuer = true;
-    bausteine.push({ text: normale.length > 1 ? jr.job.name : "Lohn aus dem Kalender", betrag: g.summe });
+    if (istHaupt) {
+      const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+      const eur = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+      bausteine.push(
+        g.ausGehalt
+          ? { text: "Grundgehalt", betrag: g.grundlohn }
+          : { text: "Grundlohn", betrag: g.grundlohn, detail: `${std(jr.stunden)} Std × ${eur(lohn)}` },
+      );
+      for (const [art, name, b] of [
+        ["nacht", "Nacht", g.nacht],
+        ["sonntag", "Sonntag", g.sonntag],
+        ["feiertag", "Feiertag", g.feiertag],
+      ] as const) {
+        if (b > 0) bausteine.push({ text: `${name} +${std(jr.job[art])} %`, betrag: b, detail: `${std(jr.zuschlag[art])} Std` });
+      }
+      if (g.ueber > 0) bausteine.push({ text: `Überstunden +${std(jr.job.ueber)} %`, betrag: g.ueber });
+    } else {
+      bausteine.push({ text: jr.job.name, betrag: g.summe, detail: "Steuerklasse 6" });
+    }
     if (zulagen > 0) bausteine.push({ text: "Feste Zulagen", betrag: zulagen });
     if (einmal > 0) bausteine.push({ text: "Einmalzahlung", betrag: einmal });
   }
@@ -202,7 +222,7 @@ export function rechneAuszahlung(re: Rechnung, steuer: SteuerDaten, extras: Omit
     netto += ex.netto;
     bausteine.push({ text: ex.netto > 0 ? "Plus nach Abzügen" : "Abzug nach Abzügen", betrag: ex.netto });
   }
-  return { brutto: r2(brutto), steuerfrei: r2(steuerfrei), abzuege: abz, netto: r2(netto), bausteine, mitSteuer };
+  return { brutto: r2(brutto), steuerfrei: r2(steuerfrei), abzuege: abz, netto: r2(netto), bausteine, mitSteuer, haupt };
 }
 
 function summiere(a: Abzuege, b: Abzuege): Abzuege {
