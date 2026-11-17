@@ -16,6 +16,13 @@ const TEXTE: Record<string, string> = {
   "aufgenommen/team": "Person ins Betreiber-Team aufgenommen",
   "entfernt/team": "Person aus dem Betreiber-Team entfernt",
   "recht_geaendert/team": "Recht im Betreiber-Team geändert",
+  "angelegt/tresor": "Tresor angelegt",
+  "geoeffnet/tresor": "Tresor geöffnet",
+  "master_geaendert/tresor": "Master-Passwort des Tresors geändert",
+  "gespeichert/tresor": "Tresor-Eintrag gespeichert",
+  "hochgeladen/tresor": "Unterlage hochgeladen",
+  "heruntergeladen/tresor": "Unterlage geöffnet",
+  "geloescht/tresor": "Tresor-Eintrag gelöscht",
 };
 
 type Eintrag = { am: string; aktion: string; art: string; wer: string | null };
