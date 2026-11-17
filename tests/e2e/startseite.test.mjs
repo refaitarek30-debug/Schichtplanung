@@ -11,7 +11,7 @@ export default async function startseite() {
 
     // Klassisch (Stand aller bisherigen Konten): großer Knopf, große Kacheln.
     pruefe(await seite.getByText("Urlaubstage verfügbar").first().isVisible(), "Klassisch: große Kachel „Urlaubstage verfügbar“");
-    pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]').count()) === 1, "Klassisch: großer Knopf „Urlaub beantragen“");
+    pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]:visible').count()) === 1, "Klassisch: großer Knopf „Urlaub beantragen“");
 
     // Geburtsdatum bestätigen (nur Administration, nur wenn etwas offen ist).
     pruefe(await seite.getByText("Geburtsdatum bestätigen").isVisible(), "Admin: Hinweis „Geburtsdatum bestätigen“");
@@ -150,7 +150,7 @@ export default async function startseite() {
     const knopfY = (await kleinerKnopf.boundingBox())?.y ?? -1;
     const grossY = (await seite.getByRole("button", { name: "Groß" }).first().boundingBox())?.y ?? -2;
     pruefe(Math.abs(knopfY - grossY) < 4, `Kompakt: „Urlaub beantragen“, Legende und Groß in einer Zeile (${Math.round(knopfY)}/${Math.round(grossY)})`);
-    pruefe(await seite.locator("[data-urlaub-kompakt]").isVisible(), "Kompakt: neue Urlaubskarte");
+    pruefe(await seite.locator("[data-urlaub-kompakt]:visible").first().isVisible(), "Kompakt: neue Urlaubskarte");
     pruefe((await seite.locator("main a[href='/urlaub'] [data-kachel-pfeil]").count()) > 0, "Kompakt: Kacheln mit Pfeil zum Antippen");
     const meinUrlaub = seite.locator("[data-mein-urlaub]");
     pruefe(await meinUrlaub.isVisible(), "Kompakt: „Mein Urlaub“ unten auf der Startseite");

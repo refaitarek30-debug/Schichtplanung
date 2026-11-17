@@ -368,8 +368,9 @@ export default function DashboardPage() {
           Abwählbar wie die Kacheln. */}
       <Raster an={kompakt}>
       {mode === "live" && profile.employeeId && (zeige("naechsterurlaub") || !kompakt) ? (
-        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1">
-          <div className={cn(kompakt ? "space-y-4" : "space-y-6 xl:space-y-4")} data-start-urlaub>
+        // Am PC stehen „Nächster Urlaub“ und „Urlaub beantragen“ oben in der Kachelreihe.
+        <Fach an={kompakt} platz="md:col-span-2 xl:hidden">
+          <div className={cn(kompakt ? "space-y-4" : "space-y-6")} data-start-urlaub>
             {zeige("naechsterurlaub") ? (
               <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
                 <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
@@ -397,7 +398,7 @@ export default function DashboardPage() {
       {mode === "live" ? (
         // Am PC über die ganze Breite (30 Tage passen ganz drauf), darunter
         // Urlaub, Anträge/Entscheidungen und Mitteilungen nebeneinander.
-        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-3 xl:order-first">
+        <Fach an={kompakt} platz="md:col-span-2 xl:w-full xl:flex-none xl:order-first">
         <ShiftPlanGrid
           companyId={company.id}
           from={TODAY}
@@ -417,7 +418,7 @@ export default function DashboardPage() {
 
       {/* „Kompakt“: die eigenen Anträge stehen unten in „Mein Urlaub“. */}
       {kompakt && role === "employee" && mode === "live" ? null : (
-      <Fach an={kompakt} platz="xl:col-span-1">
+      <Fach an={kompakt} platz="xl:flex-1 xl:basis-0">
       {role === "employee" ? (
         <div className="grid gap-4">
           {mode === "live" ? (
@@ -462,7 +463,7 @@ export default function DashboardPage() {
       )}
       </Fach>
       )}
-      <Fach an={kompakt} platz="xl:col-span-1">
+      <Fach an={kompakt} platz="xl:flex-1 xl:basis-0">
       <Card>
         <CardHeader
           title="Mitteilungen"
@@ -498,7 +499,7 @@ export default function DashboardPage() {
       </Fach>
       {/* „Kompakt“: Mein Urlaub ganz unten – Anträge nach Unterkategorien, Konto zum Aufklappen. */}
       {kompakt && mode === "live" && profile.employeeId ? (
-        <Fach an={kompakt} platz="xl:col-span-1">
+        <Fach an={kompakt} platz="xl:flex-1 xl:basis-0">
           <MeinUrlaub
             balance={liveBalance}
             requests={liveMyRequests}
@@ -514,8 +515,8 @@ export default function DashboardPage() {
       <div
         className={
           kompakt
-            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))]"
-            : "grid grid-cols-2 gap-3 lg:grid-cols-5"
+            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(105px,1fr))]"
+            : "grid grid-cols-2 gap-3 lg:grid-cols-5 xl:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]"
         }
         data-kachel-raster
       >
@@ -625,6 +626,22 @@ export default function DashboardPage() {
             <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={kompakt} mitPrivat={profile.hatPrivat === true} />
           </KachelHuelle>
         ) : null}
+
+        {/* Nur am PC: nächster Urlaub und „Urlaub beantragen“ in der Kachelreihe. */}
+        {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
+          <div className="hidden min-w-0 xl:col-span-2 xl:block [&>*]:h-full" data-start-urlaub-pc>
+            <NextLeaveCard antraege={liveMyRequests} heute={TODAY} reihe />
+          </div>
+        ) : null}
+        {mode === "live" && profile.employeeId && !kompakt ? (
+          <Link
+            href="/schichtplan?antrag=1"
+            className="hidden items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 xl:flex"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.2} />
+            Urlaub beantragen
+          </Link>
+        ) : null}
       </div>
       </KachelBearbeitung>
     </div>
@@ -643,13 +660,13 @@ function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
   // Bildschirm wird genutzt. Handy und Tablet: untereinander wie bisher.
   if (!an) {
     return (
-      <div className="space-y-6 xl:grid xl:grid-cols-3 xl:items-start xl:gap-6 xl:space-y-0">
+      <div className="space-y-6 xl:flex xl:flex-wrap xl:items-start xl:gap-6 xl:space-y-0">
         {children}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-start">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:flex xl:flex-wrap xl:items-start xl:gap-4">
       {children}
     </div>
   );
