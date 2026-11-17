@@ -10,10 +10,13 @@ import {
   fetchLeaveDayCount,
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
+  fetchViererTage,
+  fetchVjStand,
 } from "@/lib/data/leave";
+import { viererHinweis } from "@/lib/vierer";
 import { fetchLeaveBlockReason, fetchUrlaubssperre } from "@/lib/data/staffing";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
-import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
+import type { LiveAutoDay, LiveLeaveBalance, LiveLeaveKindQuota, LiveViererTag, LiveVjStand } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
@@ -76,6 +79,9 @@ export function PlanLeaveRequest({
   const [konto, setKonto] = useState<LiveLeaveBalance | null>(null);
   const [kontingente, setKontingente] = useState<LiveLeaveKindQuota[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
+  // Ab 2027: VJ-Stand und 4er-Regel.
+  const [vjStand, setVjStand] = useState<LiveVjStand | null>(null);
+  const [viererTage, setViererTage] = useState<LiveViererTag[]>([]);
   const [sendet, startTransition] = useTransition();
 
   const jahr = Number(von.slice(0, 4));
@@ -127,6 +133,33 @@ export function PlanLeaveRequest({
       cancelled = true;
     };
   }, [employeeId, von, bis, fertig]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (bis < "2027-01-01") {
+      setVjStand(null);
+      setViererTage([]);
+      return;
+    }
+    fetchVjStand(jahr).then((v) => !cancelled && setVjStand(v)).catch(() => undefined);
+    fetchViererTage(employeeId, von, bis).then((t) => !cancelled && setViererTage(t)).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, von, bis, jahr]);
+
+  const vierer = viererHinweis(viererTage, (tag) => {
+    if (art === "auto") {
+      const d = auto?.find((x) => x.date === tag);
+      if (!d || d.kind === "keins") return null;
+      return d.kind === "urlaub" ? "U" : d.vj === false ? "V" : "VJ";
+    }
+    if (art === "urlaub") return "U";
+    if (art === "v_tag") return vjStand && vjStand.rest < (tage ?? 1) ? "V" : "VJ";
+    return null;
+  });
+  const autoVj = (auto ?? []).filter((t) => t.kind === "v_tag" && t.vj === true).length;
+  const autoVw = (auto ?? []).filter((t) => t.kind === "v_tag" && t.vj === false).length;
 
   const autoUrlaub = (auto ?? []).filter((t) => t.kind === "urlaub").length;
   const autoV = (auto ?? []).filter((t) => t.kind === "v_tag").length;
@@ -232,6 +265,7 @@ export function PlanLeaveRequest({
             {za ? (
             <option value="v_tag">
                 {t("V-Tag")}{konto ? ` · ${formatDays(konto.vRemainingDays)} übrig` : ""}
+                {vjStand ? ` (davon ${formatDays(Math.max(0, vjStand.rest))} VJ)` : ""}
               </option>
             ) : null}
             {KONTINGENT_ARTEN.map((k) => {
@@ -265,8 +299,24 @@ export function PlanLeaveRequest({
       {art === "auto" && auto && auto.length > 0 ? (
         <p className="mt-2 text-[13px] text-ink-muted">
           Automatisch: {autoUrlaub} Urlaubstag{autoUrlaub === 1 ? "" : "e"}, {autoV} {autoV === 1 ? t("V-Tag") : t("V-Tage")}
+          {autoVj + autoVw > 0 ? ` (davon ${autoVj} VJ, ${autoVw} V)` : ""}
           {autoOffen > 0 ? ` · ${autoOffen} Tag(e) nicht gedeckt` : ""}.
         </p>
+      ) : null}
+
+      {vjStand && (art === "v_tag" || (art === "auto" && autoVj + autoVw > 0)) ? (
+        <p className="mt-2 text-[12.5px] leading-snug text-ink-muted" data-vj-info>
+          VJ = fest eingeplant wie Urlaub, V = kann bei dringender Not widerrufen werden. VJ wird genommen, solange da (noch{" "}
+          {formatDays(Math.max(0, vjStand.rest))} von {formatDays(vjStand.kontingent)}).
+        </p>
+      ) : null}
+
+      {vierer.text ? (
+        <div className="mt-2">
+          <Alert tone="warning">
+            <b>4er-Regel:</b> {vierer.text} Beantragen geht trotzdem – die Leitung entscheidet.
+          </Alert>
+        </div>
       ) : null}
 
       {tage === 0 ? (

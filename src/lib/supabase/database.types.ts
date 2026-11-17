@@ -223,6 +223,8 @@ export interface LeaveRequestRow {
   withdrawn_at?: string | null;
   withdrawn_by?: string | null;
   withdrawal_reason?: string | null;
+  /** Ab 2027 bei V-Tagen: true = VJ, false = V (Migration 0231). */
+  v_jahresplanung?: boolean | null;
 }
 
 /** Antrag inklusive Name/Schicht der antragstellenden Person – für die Führungsansicht. */

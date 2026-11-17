@@ -11,6 +11,8 @@ import type {
   LiveAfKonto,
   LiveAutoDay,
   LiveTeamBalance,
+  LiveVjStand,
+  LiveViererTag,
   LiveTeamSonderKonto,
   LiveLeaveBalance,
   LiveLeaveKindQuota,
@@ -41,13 +43,14 @@ function mapRequest(row: LeaveRequestWithEmployee): LiveLeaveRequest {
     withdrawnBy: row.withdrawn_by ?? null,
     withdrawalReason: row.withdrawal_reason ?? null,
     kind: (row.kind ?? "urlaub") as LiveLeaveRequest["kind"],
+    vj: row.v_jahresplanung ?? null,
     // Klammer um die Zeilen einer Einreichung. NULL heisst: steht allein.
     groupId: row.request_group_id ?? null,
   };
 }
 
 const SELECT_WITH_EMPLOYEE =
-  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, kind, request_group_id, withdrawn_at, withdrawn_by, withdrawal_reason, employees ( first_name, last_name, shift_id, shifts ( name ) )";
+  "id, company_id, employee_id, start_date, end_date, half_day, half_day_period, requested_days, reason, status, rejection_reason, reviewed_by, reviewed_at, created_at, updated_at, kind, v_jahresplanung, request_group_id, withdrawn_at, withdrawn_by, withdrawal_reason, employees ( first_name, last_name, shift_id, shifts ( name ) )";
 
 /** Eigene Anträge – Reihenfolge neueste zuerst. */
 export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
@@ -303,6 +306,7 @@ interface AutoPreviewRow {
   tag: string;
   art: string;
   grund: string;
+  vj?: boolean | null;
 }
 
 /**
@@ -324,7 +328,32 @@ export async function fetchAutoPreview(
     date: row.tag,
     kind: row.art === "urlaub" ? "urlaub" : row.art === "v_tag" ? "v_tag" : "keins",
     reason: row.grund,
+    vj: row.vj ?? null,
   }));
+}
+
+/** VJ-Stand eines Jahres (ab 2027). Ohne Person = ich. null = vor 2027 oder noch ohne Migration 0232. */
+export async function fetchVjStand(year: number, employeeId?: string): Promise<LiveVjStand | null> {
+  if (!isSupabaseConfigured || year < 2027) return null;
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("vj_stand", { p_year: year, p_employee_id: employeeId ?? null });
+  if (error) return null;
+  const row = ((data ?? []) as { kontingent: number; belegt: number; rest: number; v_belegt: number }[])[0];
+  if (!row) return null;
+  return { kontingent: Number(row.kontingent), belegt: Number(row.belegt), rest: Number(row.rest), vBelegt: Number(row.v_belegt) };
+}
+
+/**
+ * 4er-Regel (ab 2027, nur Hinweis): je Tag, wie viele andere aus der Gruppe
+ * Urlaub/VJ/V haben und wie viele davon V. Leer = nichts zu prüfen oder
+ * Migration 0232 fehlt.
+ */
+export async function fetchViererTage(employeeId: string, von: string, bis: string): Promise<LiveViererTag[]> {
+  if (!isSupabaseConfigured || bis < "2027-01-01") return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("vierer_regel_tage", { p_employee_id: employeeId, p_von: von, p_bis: bis, p_ohne_antrag: null });
+  if (error) return [];
+  return ((data ?? []) as { tag: string; andere: number; andere_v: number }[]).map((r) => ({ tag: r.tag, andere: r.andere, andereV: r.andere_v }));
 }
 
 interface TeamBalanceRow {

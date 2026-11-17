@@ -16,8 +16,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { RowSkeleton } from "@/components/ui/skeleton";
 import { formatDays, formatRange, formatZeitpunkt, heuteInBerlin } from "@/lib/dates";
-import { decideLeaveRequestAction, zuruecknehmenAction } from "@/lib/auth/leave-actions";
-import { DataError, fetchSammelKandidaten, sicherGenehmigen } from "@/lib/data/leave";
+import { decideLeaveRequestAction, vjUmstellenAction, zuruecknehmenAction } from "@/lib/auth/leave-actions";
+import { DataError, fetchSammelKandidaten, fetchViererTage, sicherGenehmigen } from "@/lib/data/leave";
+import { viererHinweis } from "@/lib/vierer";
 import { meldeEigeneAenderung } from "@/lib/live-refresh";
 import {
   fetchLeaveImpact,
@@ -65,6 +66,8 @@ export function ReviewPanel({
   const [impacts, setImpacts] = useState<Record<string, LiveLeaveImpact | null>>({});
   /** Warum wird es knapp? Nur für die Anträge, die tatsächlich knapp sind. */
   const [details, setDetails] = useState<Record<string, LiveStaffingDetailDay[]>>({});
+  /** 4er-Regel (ab 2027): Hinweis je offenem Antrag, null = alles in Ordnung. */
+  const [vierer, setVierer] = useState<Record<string, string | null>>({});
   const [hinweis, setHinweis] = useState<string | null>(null);
   const { role, mode } = useSession();
   /** Hinweis an die Person des Antrags (z. B. „bitte noch einmal stellen“). */
@@ -138,6 +141,7 @@ export function ReviewPanel({
   useAktualisierung(["antraege", "abwesenheiten", "plan"], () => {
     setImpacts({});
     setDetails({});
+    setVierer({});
     setPruefRunde((n) => n + 1);
   });
 
@@ -148,6 +152,22 @@ export function ReviewPanel({
     if (openOnes.length === 0) return;
     let cancelled = false;
     openOnes.forEach((request) => {
+      // 4er-Regel: was nimmt die Person an welchem Tag (Urlaub, VJ oder V)?
+      if (request.endDate >= "2027-01-01" && request.kinds.some((k) => k === "urlaub" || k === "v_tag")) {
+        fetchViererTage(request.employeeId, request.startDate, request.endDate)
+          .then((tage) => {
+            if (cancelled) return;
+            const h = viererHinweis(tage, (tag) => {
+              const teil = request.parts.find((t) => tag >= t.startDate && tag <= t.endDate);
+              if (!teil) return null;
+              if (teil.kind === "urlaub") return "U";
+              if (teil.kind === "v_tag") return teil.vj === false ? "V" : "VJ";
+              return null;
+            });
+            setVierer((current) => ({ ...current, [request.id]: h.text }));
+          })
+          .catch(() => {});
+      }
       fetchLeaveImpact(request.employeeId, request.startDate, request.endDate)
         .then((result) => {
           if (cancelled) return;
@@ -492,6 +512,33 @@ export function ReviewPanel({
                 <ImpactHint impact={impacts[request.id]!} tage={details[request.id]} />
               ) : null}
 
+              {request.status === "pending" && vierer[request.id] ? (
+                <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warn-bg px-3 py-2 text-[13px] leading-snug text-warn-fg" data-vierer-hinweis>
+                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <b>4er-Regel:</b> {vierer[request.id]}
+                  </span>
+                </p>
+              ) : null}
+
+              {darfEntscheiden && (request.status === "pending" || request.status === "approved") ? (
+                <VjTeile
+                  teile={request.parts}
+                  onUmstellen={(id, vj) => {
+                    setError(null);
+                    startTransition(async () => {
+                      const r = await vjUmstellenAction(id, vj);
+                      if (r.error) setError(r.error);
+                      else {
+                        meldeEigeneAenderung(["antraege"]);
+                        onChanged();
+                      }
+                    });
+                  }}
+                  pending={pending}
+                />
+              ) : null}
+
               {request.status === "pending" ? (
                 rejecting === request.id ? (
                   <div className="mt-3 space-y-2">
@@ -675,5 +722,50 @@ function ImpactHint({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * VJ/V eines Antrags (ab 2027) – je V-Tag-Teil ein Kürzel und ein Knopf
+ * zum Umstellen. VJ = Jahresplanung, fest wie Urlaub; V = widerrufbar.
+ */
+function VjTeile({
+  teile,
+  onUmstellen,
+  pending,
+}: {
+  teile: LiveLeaveRequest[];
+  onUmstellen: (id: string, vj: boolean) => void;
+  pending: boolean;
+}) {
+  const vTeile = teile.filter((t) => t.kind === "v_tag" && t.vj !== null && t.vj !== undefined);
+  if (vTeile.length === 0) return null;
+  return (
+    <ul className="mt-2 space-y-1" data-vj-teile>
+      {vTeile.map((t) => (
+        <li key={t.id} className="flex flex-wrap items-center gap-2 text-[13px]">
+          <span
+            className={cn(
+              "rounded px-1.5 py-0.5 text-[11px] font-bold",
+              t.vj ? "bg-[#b6d7a8] text-[#274e13]" : "bg-shift-vtag text-shift-vtag-ink",
+            )}
+          >
+            {t.vj ? "VJ" : "V"}
+          </span>
+          <span className="tnum text-ink-muted">
+            {formatRange(t.startDate, t.endDate)} · {formatDays(t.requestedDays)} {t.vj ? "VJ-Tag(e) – fest wie Urlaub" : "V-Tag(e) – widerrufbar"}
+          </span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onUmstellen(t.id, !t.vj)}
+            className="font-semibold text-brand-600 hover:underline disabled:opacity-40"
+            data-vj-umstellen
+          >
+            {t.vj ? "zu V machen" : "zu VJ machen"}
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

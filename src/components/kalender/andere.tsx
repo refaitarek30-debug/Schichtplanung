@@ -18,7 +18,7 @@ import { fetchVerbindungen, fetchVerbundeneTage, fetchVerbundeneTermine, type Ve
 import { fromISO } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { PERSON_FARBEN, PersonAvatar, kuerzel, personFarbe } from "./teilen";
-import { codeFarbe, partnerText } from "./partner";
+import { codeFarbe, partnerText, PARTNER_SCHICHTEN, STANDARD_CODE_FARBE, type PartnerSchicht } from "./partner";
 import { textFarbe } from "@/lib/privat/daten";
 import { FarbWahl } from "./farb-wahl";
 
@@ -73,7 +73,10 @@ export type AnzeigeText = "kurz" | "voll";
 export interface Anzeige {
   groesse: AnzeigeGroesse;
   text: AnzeigeText;
-  /** Person → feste Schichtfarbe. Fehlt der Eintrag, gelten die Farben der Person selbst. */
+  /**
+   * Person → feste Schichtfarbe („key“ für alle Schichten, „key|F“ nur für Früh usw.).
+   * Fehlt der Eintrag, gelten die Farben der Person selbst.
+   */
   farben: Record<string, string>;
 }
 export const ANZEIGE_STANDARD: Anzeige = { groesse: "mittel", text: "kurz", farben: {} };
@@ -331,7 +334,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
               : tage[k.key]?.[iso];
           // Eigene Farben haben nur Personen mit eigenem Konto.
           const farben = k.key.startsWith("u:") ? gruppenFarben.get(k.key) : k.key.startsWith("v:") ? vTage[k.key.slice(2)]?.farben : undefined;
-          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code, schichtFarbe: anzeige.farben[k.key] ?? codeFarbe(code, farben) });
+          if (code) liste.push({ key: k.key, name: k.name, kurz: kuerzel(k.name), farbe: k.farbe, code, schichtFarbe: anzeige.farben[`${k.key}|${code}`] ?? anzeige.farben[k.key] ?? codeFarbe(code, farben) });
         }
       }
       return liste;
@@ -381,7 +384,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     anzeige,
     setzeGroesse: (groesse: AnzeigeGroesse) => setzeAnzeige((a) => ({ ...a, groesse })),
     setzeText: (text: AnzeigeText) => setzeAnzeige((a) => ({ ...a, text })),
-    /** Feste Schichtfarbe einer Person; null = wieder die eigenen Farben der Person. */
+    /** Feste Schichtfarbe einer Person (key) oder einer ihrer Schichten (key|F); null = wieder die eigenen Farben. */
     setzeFarbe: (key: string, farbe: string | null) =>
       setzeAnzeige((a) => {
         const farben = { ...a.farben };
@@ -546,19 +549,44 @@ function Auswahl<T extends string>({ wert, onWahl, optionen }: { wert: T; onWahl
   );
 }
 
-/** Die Farben zur Wahl; „Eigene“ nimmt wieder die Farben, die die Person selbst gewählt hat. */
-function FarbReihe({ farbe, onWahl }: { farbe: string | null; onWahl: (f: string | null) => void }) {
+/**
+ * Die Farben zur Wahl – für alle Schichten der Person auf einmal oder je
+ * Schicht (Früh, Spät, Nacht …). „Eigene“ nimmt wieder die Farben, die die
+ * Person selbst gewählt hat.
+ */
+function FarbReihe({ personKey, farben, onWahl }: { personKey: string; farben: Record<string, string>; onWahl: (key: string, f: string | null) => void }) {
+  const [code, setCode] = useState<PartnerSchicht | "alle">("alle");
+  const schluessel = code === "alle" ? personKey : `${personKey}|${code}`;
+  const farbe = farben[schluessel] ?? null;
   return (
-    <div className="space-y-2 rounded-[14px] bg-surface/60 px-2.5 py-2.5">
+    <div className="space-y-2 rounded-[14px] bg-surface/60 px-2.5 py-2.5" data-farb-reihe>
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]">
+        {([{ code: "alle", text: "Alle" }, ...PARTNER_SCHICHTEN] as { code: PartnerSchicht | "alle"; text: string }[]).map((c) => {
+          const f = c.code === "alle" ? farben[personKey] : (farben[`${personKey}|${c.code}`] ?? farben[personKey]);
+          return (
+            <button
+              key={c.code}
+              type="button"
+              onClick={() => setCode(c.code)}
+              aria-pressed={code === c.code}
+              className={cn("flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-semibold", code === c.code ? "bg-ink text-surface" : "bg-ink/[0.06]")}
+              data-farb-code={c.code}
+            >
+              <span className="h-3 w-3 rounded-full ring-1 ring-ink/15" style={{ background: f ?? (c.code === "alle" ? "conic-gradient(#F5A524 0 33%, #22A06B 0 66%, #2F6FDE 0)" : STANDARD_CODE_FARBE[c.code]) }} />
+              {c.text}
+            </button>
+          );
+        })}
+      </div>
       <button
         type="button"
-        onClick={() => onWahl(null)}
+        onClick={() => onWahl(schluessel, null)}
         aria-pressed={!farbe}
         className={cn("h-8 rounded-full px-3 text-[12.5px] font-semibold", !farbe ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted")}
       >
-        Ihre eigenen Farben
+        {code === "alle" ? "Ihre eigenen Farben" : "Wie bei „Alle“"}
       </button>
-      <FarbWahl wert={farbe} onWahl={onWahl} name="Schicht dieser Person" />
+      <FarbWahl wert={farbe} onWahl={(f) => onWahl(schluessel, f)} name={code === "alle" ? "Schicht dieser Person" : `Schicht ${code} dieser Person`} />
     </div>
   );
 }
@@ -811,7 +839,7 @@ export function WenSeheIch({
         </div>
         {einstellen && farbKey && farbWahl === farbKey ? (
           <div className="mb-2">
-            <FarbReihe farbe={eigeneFarbe} onWahl={(f) => andere.setzeFarbe(farbKey, f)} />
+            <FarbReihe personKey={farbKey} farben={andere.anzeige.farben} onWahl={(k, f) => andere.setzeFarbe(k, f)} />
           </div>
         ) : null}
         {einstellen && unten ? <div className="mb-2 ml-[2.4rem]">{unten}</div> : null}

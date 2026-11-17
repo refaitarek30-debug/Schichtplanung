@@ -367,31 +367,37 @@ export default function DashboardPage() {
           erst sehen, was schon steht, dann den nächsten planen.
           Abwählbar wie die Kacheln. */}
       <Raster an={kompakt}>
-      {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
-        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-2">
-          <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
-            <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
-          </KachelHuelle>
-        </Fach>
-      ) : null}
+      {mode === "live" && profile.employeeId && (zeige("naechsterurlaub") || !kompakt) ? (
+        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1">
+          <div className={cn(kompakt ? "space-y-4" : "space-y-6 xl:space-y-4")} data-start-urlaub>
+            {zeige("naechsterurlaub") ? (
+              <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
+                <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
+              </KachelHuelle>
+            ) : null}
 
-      {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
-          Ende antippt. Die Art steht dort auf „Automatisch". */}
-      {/* „Kompakt“: kleiner Knopf in der Leiste des Plans statt dieses großen. */}
-      {mode === "live" && profile.employeeId && !kompakt ? (
-        <Link
-          href="/schichtplan?antrag=1"
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 xl:col-start-2 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-        >
-          <Plus className="h-5 w-5" strokeWidth={2.2} />
-          Urlaub beantragen
-        </Link>
+            {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
+                Ende antippt. Die Art steht dort auf „Automatisch". */}
+            {/* „Kompakt“: kleiner Knopf in der Leiste des Plans statt dieses großen. */}
+            {!kompakt ? (
+              <Link
+                href="/schichtplan?antrag=1"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+              >
+                <Plus className="h-5 w-5" strokeWidth={2.2} />
+                Urlaub beantragen
+              </Link>
+            ) : null}
+          </div>
+        </Fach>
       ) : null}
 
       {/* Der Schichtplan steht für alle auf dem Dashboard – ändern darf ihn
           nur die Führung, gelesen wird er von allen. */}
       {mode === "live" ? (
-        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-1 xl:col-start-1 xl:row-span-3">
+        // Am PC über die ganze Breite (30 Tage passen ganz drauf), darunter
+        // Urlaub, Anträge/Entscheidungen und Mitteilungen nebeneinander.
+        <Fach an={kompakt} platz="md:col-span-2 xl:col-span-3 xl:order-first">
         <ShiftPlanGrid
           companyId={company.id}
           from={TODAY}
@@ -411,7 +417,7 @@ export default function DashboardPage() {
 
       {/* „Kompakt“: die eigenen Anträge stehen unten in „Mein Urlaub“. */}
       {kompakt && role === "employee" && mode === "live" ? null : (
-      <Fach an={kompakt} platz="xl:col-start-2">
+      <Fach an={kompakt} platz="xl:col-span-1">
       {role === "employee" ? (
         <div className="grid gap-4">
           {mode === "live" ? (
@@ -456,7 +462,7 @@ export default function DashboardPage() {
       )}
       </Fach>
       )}
-      <Fach an={kompakt} platz="xl:col-start-2">
+      <Fach an={kompakt} platz="xl:col-span-1">
       <Card>
         <CardHeader
           title="Mitteilungen"
@@ -492,7 +498,7 @@ export default function DashboardPage() {
       </Fach>
       {/* „Kompakt“: Mein Urlaub ganz unten – Anträge nach Unterkategorien, Konto zum Aufklappen. */}
       {kompakt && mode === "live" && profile.employeeId ? (
-        <Fach an={kompakt} platz="xl:col-start-2">
+        <Fach an={kompakt} platz="xl:col-span-1">
           <MeinUrlaub
             balance={liveBalance}
             requests={liveMyRequests}
@@ -627,8 +633,9 @@ export default function DashboardPage() {
 
 /**
  * Startseite „Kompakt“ ab Tablet: zwei Spalten (Tablet: Anträge und
- * Mitteilungen nebeneinander), am Computer links der Plan, rechts eine Spalte
- * mit Urlaub, Anträgen und Mitteilungen. „Klassisch“ bekommt keinen Rahmen –
+ * Mitteilungen nebeneinander). Am Computer oben der Plan über die ganze
+ * Breite (alle 30 Tage), darunter drei Spalten: Urlaub, Anträge bzw.
+ * Entscheidungen, Mitteilungen. „Klassisch“ bekommt keinen Rahmen –
  * dort bleibt alles wie gehabt untereinander.
  */
 function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
@@ -636,13 +643,13 @@ function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
   // Bildschirm wird genutzt. Handy und Tablet: untereinander wie bisher.
   if (!an) {
     return (
-      <div className="space-y-6 xl:grid xl:grid-flow-row-dense xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start xl:gap-6 xl:space-y-0">
+      <div className="space-y-6 xl:grid xl:grid-cols-3 xl:items-start xl:gap-6 xl:space-y-0">
         {children}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-flow-row-dense xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] xl:items-start">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-start">
       {children}
     </div>
   );

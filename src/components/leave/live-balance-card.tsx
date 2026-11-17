@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { fetchVjStand } from "@/lib/data/leave";
 import { Skeleton } from "@/components/ui/skeleton";
 import { afTageAusStand } from "@/lib/af";
 import { formatDays, V_TAG_STUNDEN, vTageInStunden } from "@/lib/dates";
-import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota } from "@/lib/types";
+import type { LiveAfKonto, LiveLeaveBalance, LiveLeaveKindQuota, LiveVjStand } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 
@@ -40,6 +42,22 @@ export function LiveBalanceCard({
   const za = useZeitausgleich();
   const jetzt = new Date().getFullYear();
   const jahre = [jetzt, jetzt + 1];
+  // Ab 2027: wie viele der V-Tage VJ (fest) und wie viele V (widerrufbar) sind.
+  const vjJahr = balance?.year ?? 0;
+  const [vj, setVj] = useState<LiveVjStand | null>(null);
+  useEffect(() => {
+    let aus = false;
+    if (vjJahr < 2027) {
+      setVj(null);
+      return;
+    }
+    fetchVjStand(vjJahr)
+      .then((v) => !aus && setVj(v))
+      .catch(() => undefined);
+    return () => {
+      aus = true;
+    };
+  }, [vjJahr, balance?.vPendingDays, balance?.vUsedDays]);
 
   if (!balance) {
     return (
@@ -140,11 +158,29 @@ export function LiveBalanceCard({
               wert: formatDays(balance.vUsedDays - balance.vFehlStunden / V_TAG_STUNDEN),
             },
             { label: "Beantragt", wert: formatDays(balance.vPendingDays) },
+            ...(vj
+              ? [
+                  { label: "VJ frei", wert: `${formatDays(Math.max(0, vj.rest))} von ${formatDays(vj.kontingent)}` },
+                  {
+                    label: "V frei",
+                    wert: formatDays(Math.max(0, balance.vEntitlement + balance.vCarriedOver + balance.vKorrektur - vj.kontingent - vj.vBelegt)),
+                  },
+                ]
+              : []),
             ...(balance.vFehlStunden > 0
               ? [{ label: "Fehlzeiten", wert: `−${formatDays(balance.vFehlStunden)} Std.` }]
               : []),
           ]}
-          fuss={`1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`}
+          fuss={
+            vj ? (
+              <span data-vj-legende>
+                1 {t("V-Tag")} = {formatDays(V_TAG_STUNDEN)} Std. · <b>VJ</b> = aus der Jahresplanung, fest wie Urlaub (75 %) ·{" "}
+                <b>V</b> = kann bei dringender betrieblicher Not widerrufen werden (25 %). VJ wird zuerst genommen.
+              </span>
+            ) : (
+              `1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`
+            )
+          }
         />
           </>
         ) : null}
