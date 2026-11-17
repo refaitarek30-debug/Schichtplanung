@@ -304,3 +304,18 @@ export async function approveSafeLeaveRequests(): Promise<
     geprueft,
   };
 }
+
+/**
+ * Leitung: einen V-Tag-Antrag (ab 2027) auf VJ (Jahresplanung) oder V
+ * (widerrufbar) umstellen. Die Datenbank prüft Rolle und Schicht.
+ */
+export async function vjUmstellenAction(requestId: string, vj: boolean): Promise<FormState> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("vj_umstellen", { p_request_id: requestId, p_vj: vj });
+  if (error) return { error: dataErrorMessage(error) ?? "Umstellen fehlgeschlagen." };
+  revalidatePath("/urlaub");
+  revalidatePath("/urlaubsantraege");
+  revalidatePath("/schichtplan");
+  return { success: vj ? "Als VJ-Tag eingetragen." : "Als V-Tag (widerrufbar) eingetragen." };
+}

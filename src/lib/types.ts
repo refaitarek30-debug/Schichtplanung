@@ -173,6 +173,8 @@ export interface LiveLeaveRequest {
   withdrawalReason: string | null;
   /** Art des Antrags. Steht seit den neuen Antragsarten in jeder Zeile. */
   kind: LeaveKind;
+  /** Ab 2027 bei V-Tagen: true = VJ (Jahresplanung), false = V (widerrufbar), sonst null. */
+  vj?: boolean | null;
   /**
    * Klammer um die Zeilen EINER Einreichung. Ein Zeitraum zerfällt in der
    * Datenbank in Blöcke je Konto (Urlaub/V-Tag); fachlich ist es trotzdem
@@ -261,6 +263,28 @@ export interface LiveAutoDay {
   date: string;
   kind: "urlaub" | "v_tag" | "keins";
   reason: string;
+  /** Ab 2027 bei V-Tagen: true = VJ (Jahresplanung), false = V (widerrufbar). */
+  vj?: boolean | null;
+}
+
+/**
+ * VJ-Stand eines Jahres (ab 2027): 75 % der V-Tage sind VJ (aufgerundet),
+ * der Rest V. `belegt` = beantragte und genehmigte VJ-Tage.
+ */
+export interface LiveVjStand {
+  kontingent: number;
+  belegt: number;
+  rest: number;
+  /** Beantragte und genehmigte V-Tage (widerrufbar). */
+  vBelegt: number;
+}
+
+/** 4er-Regel: je Tag die anderen Abwesenden (Urlaub/VJ/V) der eigenen Gruppe. */
+export interface LiveViererTag {
+  tag: string;
+  andere: number;
+  /** davon mit V-Tag (widerrufbar) */
+  andereV: number;
 }
 
 /**

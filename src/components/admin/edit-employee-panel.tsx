@@ -6,6 +6,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
+import { GruppenwechselPlanen } from "./gruppenwechsel";
 import { QualificationCheckboxes } from "@/components/leave/qualification-checkboxes";
 import { updateEmployee } from "@/lib/auth/employee-actions";
 import type { FormState } from "@/lib/auth/form-state";
@@ -249,6 +250,7 @@ export function EditEmployeePanel({
           </div>
 
         </form>
+        {employee.rotationTeam ? <GruppenwechselPlanen employeeId={employee.id} jetzt={employee.rotationTeam} /> : null}
       </CardBody>
     </Card>
   );

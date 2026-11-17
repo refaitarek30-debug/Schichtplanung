@@ -27,6 +27,11 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-17T18:00:00+01:00",
+    titel: "VJ und V überall, 4er-Regel, Gruppenwechsel",
+    text: "Ab 2027 steht überall, ob ein V-Tag VJ (fest wie Urlaub) oder V (widerrufbar) ist – im Urlaubskonto, beim Beantragen und in der automatischen Verteilung. Die Leitung kann VJ und V im Plan und bei den Entscheidungen umstellen. Neu ist ein Hinweis zur 4er-Regel (höchstens 4 gleichzeitig weg, bei 4 muss ein V dabei sein). Wechselt jemand die Schichtgruppe, lässt sich das ab einem Datum planen. Am PC zeigt die Startseite den Plan über die ganze Breite.",
+  },
+  {
     zeit: "2026-11-17T09:00:00+01:00",
     titel: "VJ-Tage ab 2027 und neuer Druckplan",
     text: "Ab 2027 sind 75 % der V-Tage VJ-Tage (Jahresplanung, aufgerundet) und 25 % V-Tage. Die automatische Verteilung nimmt erst VJ, solange da, dann V – im Plan steht „VJ“ oder „V“. Der gedruckte Plan zeigt jetzt U, VJ und V, markiert Karneval und Urlaubssperren (z. B. Abstellung), hat eine kleine Legende und lässt Azubis weg.",

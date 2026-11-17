@@ -91,6 +91,9 @@ const cellStyles: Record<string, string> = {
   u: "bg-shift-urlaub/50 text-shift-urlaub-ink ring-1 ring-inset ring-shift-urlaub-ink/40",
   V: "bg-shift-vtag text-shift-vtag-ink",
   v: "bg-shift-vtag/50 text-shift-vtag-ink ring-1 ring-inset ring-shift-vtag-ink/40",
+  // VJ (ab 2027): V-Tag aus der Jahresplanung – fest wie Urlaub, eigenes Grün.
+  VJ: "bg-[#b6d7a8] text-[#274e13] dark:bg-[#38761d] dark:text-[#d9ead3]",
+  vj: "bg-[#b6d7a8]/50 text-[#274e13] ring-1 ring-inset ring-[#274e13]/40 dark:text-[#d9ead3]",
   AF: "bg-shift-altersfrei text-shift-altersfrei-ink",
   // Beantragt: helles Grün mit dunkelgrüner Schrift. Die helle Schrift der
   // genehmigten Zelle wäre auf halb durchsichtigem Dunkelgrün kaum lesbar.
@@ -174,6 +177,8 @@ function dayHeader(iso: string): string {
 const LEAVE_AKTIONEN = [
   "urlaub",
   "v_tag",
+  "vj",
+  "v",
   "altersfreizeit",
   "sonderurlaub",
   "bildungsurlaub",
@@ -226,7 +231,8 @@ const legend = [
   { code: "S", label: "Spätschicht" },
   { code: "N", label: "Nachtschicht" },
   { code: "U", label: "Urlaub" },
-  { code: "V", label: "V-Tag" },
+  { code: "V", label: "V-Tag (ab 2027: widerrufbar)" },
+  { code: "VJ", label: "VJ-Tag – V-Tag aus der Jahresplanung, fest wie Urlaub (ab 2027)" },
   { code: "AF", label: "Altersfreizeit" },
   { code: "SU", label: "Sonderurlaub" },
   { code: "BU", label: "Bildungsurlaub" },
@@ -1012,12 +1018,17 @@ export function ShiftPlanGrid({
           if (cell.absenceCode && ABSENT_CODES.has(cell.absenceCode)) continue;
           present += 1;
         }
-        perDay.set(iso, { present, minimum: minimumByShift.get(dominant) ?? null });
+        // Tagschicht (oder Schicht ohne Mindestbesetzung): keine Besetzung –
+        // wer dort steht, hat einen anderen Grund (Stillstand, Projekte …).
+        const minimum = minimumByShift.get(dominant) ?? null;
+        const detail = shiftDetails.find((d) => d.name === dominant);
+        const ohneBesetzung = !minimum || detail?.shortName === "T" || /^tag/i.test(dominant);
+        perDay.set(iso, { present, minimum: ohneBesetzung ? null : minimum });
       }
       result.set(teamName, perDay);
     }
     return result;
-  }, [groups, dates, gruppenSchicht, minimumByShift]);
+  }, [groups, dates, gruppenSchicht, minimumByShift, shiftDetails]);
 
   /**
    * Gruppenwechsel für die angetippte Zelle: in welche Schicht käme die
@@ -1730,7 +1741,19 @@ export function ShiftPlanGrid({
 
             <Abschnitt titel="Urlaub und Freistellung" hinweis="sofort genehmigt">
               <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
-                {leaveKnoepfe.filter((k) => za || k.aktion !== "v_tag").map((k) => (
+                {(selected.day >= "2027-01-01"
+                  ? leaveKnoepfe.flatMap((k) =>
+                      k.aktion === "v_tag"
+                        ? [
+                            { aktion: "vj" as const, label: "VJ-Tag", code: "VJ" },
+                            { aktion: "v" as const, label: "V (widerrufbar)", code: "V" },
+                          ]
+                        : [k],
+                    )
+                  : leaveKnoepfe
+                )
+                  .filter((k) => za || (k.aktion !== "v_tag" && k.aktion !== "vj" && k.aktion !== "v"))
+                  .map((k) => (
                   <button
                     key={k.aktion}
                     type="button"
@@ -2202,6 +2225,8 @@ const PlanZeile = memo(function PlanZeile({
         // Rangfolge: Abwesenheit > Schicht > (Zelle da, aber ohne Schicht =
         // frei laut Muster). Kein cell = kein Tag.
         const code = cell ? (cell.absenceCode ?? cell.shiftCode ?? "FREI") : null;
+        // VJ-Tag (ab 2027): eigenes Kürzel und eigene Farbe, zählt aber wie V.
+        const stilCode = code && cell?.isVj && (code === "V" || code === "v") ? (code === "V" ? "VJ" : "vj") : code;
         // In der eigenen Zeile: Tag für den Antrag wählen. Vergangene Tage und
         // Tage ohne Plan gehen nicht.
         const waehlbar = antragHier && Boolean(cell) && iso >= from;
@@ -2264,13 +2289,13 @@ const PlanZeile = memo(function PlanZeile({
                 gross
                   ? "h-8 w-9 text-[13px] sm:h-9 sm:w-full sm:min-w-[38px] sm:text-[14px]"
                   : "h-6 w-6 text-[11px] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
-                code ? cellStyles[code] : "bg-surface-muted/40 text-ink-faint",
+                stilCode ? cellStyles[stilCode] : "bg-surface-muted/40 text-ink-faint",
                 (bearbeitbar || waehlbar) && cell && "hover:ring-2 hover:ring-brand-500",
                 !waehlbar && !bearbeitbar && !zellKommentare && "cursor-default",
                 gewaehlt && "ring-2 ring-brand-600 ring-offset-1 ring-offset-surface",
               )}
             >
-              {code ? (cell?.isVj && (code === "V" || code === "v") ? `${code}${code === "V" ? "J" : "j"}` : cellLabel(code)) : ""}
+              {code ? cellLabel(stilCode!) : ""}
               {/* Kleiner roter Strich: hier steht ein Kommentar. */}
               {zellKommentare ? (
                 <span

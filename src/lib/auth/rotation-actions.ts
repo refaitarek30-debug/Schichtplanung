@@ -174,7 +174,7 @@ export async function removeShiftAssignment(id: string): Promise<FormState> {
 export async function setLeaveForDay(
   employeeId: string,
   date: string,
-  mode: LeaveKind | "clear",
+  mode: LeaveKind | "clear" | "vj" | "v",
 ): Promise<FormState> {
   if (!isSupabaseConfigured) return { error: "Supabase ist nicht konfiguriert." };
   const supabase = await createClient();
@@ -188,7 +188,13 @@ export async function setLeaveForDay(
   }
   return {
     success:
-      mode === "clear" ? "Eintrag entfernt." : `${leaveKindLabels[mode]} eingetragen.`,
+      mode === "clear"
+        ? "Eintrag entfernt."
+        : mode === "vj"
+          ? "VJ-Tag eingetragen."
+          : mode === "v"
+            ? "V-Tag (widerrufbar) eingetragen."
+            : `${leaveKindLabels[mode]} eingetragen.`,
   };
 }
 

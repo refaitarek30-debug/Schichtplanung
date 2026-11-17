@@ -18,7 +18,10 @@ import {
   fetchLeaveKindSuggestion,
   fetchMyLeaveBalance,
   fetchMyLeaveKindQuotas,
+  fetchViererTage,
+  fetchVjStand,
 } from "@/lib/data/leave";
+import { viererHinweis } from "@/lib/vierer";
 import { fetchBlockedDays } from "@/lib/data/rotation";
 import { submitLeaveRequest } from "@/lib/auth/leave-actions";
 import type { FormState } from "@/lib/auth/form-state";
@@ -30,6 +33,8 @@ import type {
   LiveLeaveKindQuota,
   LiveLeaveKindSuggestion,
   LiveLeaveRequest,
+  LiveViererTag,
+  LiveVjStand,
 } from "@/lib/types";
 import { leaveKindLabels } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -399,6 +404,27 @@ export function LiveLeaveRequestForm({
     };
   }, [kind, employeeId, stabil, valid]);
 
+  // Ab 2027: VJ-Stand des Startjahres und die 4er-Regel (andere aus der Gruppe).
+  const [vjStand, setVjStand] = useState<LiveVjStand | null>(null);
+  const [viererTage, setViererTage] = useState<LiveViererTag[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!employeeId || !valid || stabil.bis < "2027-01-01") {
+      setVjStand(null);
+      setViererTage([]);
+      return;
+    }
+    fetchVjStand(Number(stabil.von.slice(0, 4)))
+      .then((v) => !cancelled && setVjStand(v))
+      .catch(() => undefined);
+    fetchViererTage(employeeId, stabil.von, stabil.bis)
+      .then((t) => !cancelled && setViererTage(t))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId, stabil, valid]);
+
   // Empfehlung Urlaub vs. V-Tag – hängt am Starttag, weil sich Zuschläge
   // (Sonntag, Feiertag, Nachtschicht) genau daran entscheiden.
   useEffect(() => {
@@ -441,6 +467,19 @@ export function LiveLeaveRequestForm({
   const autoUrlaub = (autoDays ?? []).filter((d) => d.kind === "urlaub").length;
   const autoVTage = (autoDays ?? []).filter((d) => d.kind === "v_tag").length;
   const autoOffen = (autoDays ?? []).filter((d) => d.kind === "keins").length;
+  const autoVj = (autoDays ?? []).filter((d) => d.kind === "v_tag" && d.vj === true).length;
+  const autoV = (autoDays ?? []).filter((d) => d.kind === "v_tag" && d.vj === false).length;
+  // 4er-Regel: was würde ich an welchem Tag nehmen?
+  const vierer = viererHinweis(viererTage, (tag) => {
+    if (kind === "auto") {
+      const d = autoDays?.find((x) => x.date === tag);
+      if (!d || d.kind === "keins") return null;
+      return d.kind === "urlaub" ? "U" : d.vj === false ? "V" : "VJ";
+    }
+    if (kind === "urlaub") return "U";
+    if (kind === "v_tag") return vjStand && vjStand.rest < 1 ? "V" : "VJ";
+    return null;
+  });
   /**
    * Wie viele Tage des Zeitraums fallen in welches Kalenderjahr?
    *
@@ -725,6 +764,11 @@ export function LiveLeaveRequestForm({
                     </span>
                     <span className="text-sm font-semibold">
                       {autoVTage} {autoVTage === 1 ? t("V-Tag") : t("V-Tage")}
+                      {autoVj + autoV > 0 ? (
+                        <span className="font-normal text-ink-muted" data-auto-vj>
+                          {" "}(davon {autoVj} VJ, {autoV} V)
+                        </span>
+                      ) : null}
                     </span>
                     {autoOffen > 0 ? (
                       <span className="text-sm font-semibold text-crit-fg">
@@ -743,12 +787,14 @@ export function LiveLeaveRequestForm({
                               "rounded px-1.5 py-0.5 text-[11px] font-semibold",
                               day.kind === "urlaub"
                                 ? "bg-shift-urlaub text-shift-urlaub-ink"
-                                : day.kind === "v_tag"
-                                  ? "bg-shift-vtag text-shift-vtag-ink"
-                                  : "bg-crit-bg text-crit-fg",
+                                : day.kind === "v_tag" && day.vj
+                                  ? "bg-[#b6d7a8] text-[#274e13]"
+                                  : day.kind === "v_tag"
+                                    ? "bg-shift-vtag text-shift-vtag-ink"
+                                    : "bg-crit-bg text-crit-fg",
                             )}
                           >
-                            {day.kind === "urlaub" ? "U" : day.kind === "v_tag" ? "V" : "–"}
+                            {day.kind === "urlaub" ? "U" : day.kind === "v_tag" ? (day.vj ? "VJ" : "V") : "–"}
                           </span>
                         </span>
                       </li>
@@ -803,6 +849,27 @@ export function LiveLeaveRequestForm({
           ) : !valid ? (
             <Alert tone="error">
               Das Enddatum liegt vor dem Startdatum. Bitte den Zeitraum korrigieren.
+            </Alert>
+          ) : null}
+
+          {/* VJ/V (ab 2027): was ein V-Tag hier wird, und was die Kürzel heißen. */}
+          {vjStand && (kind === "v_tag" || (kind === "auto" && autoVj + autoV > 0)) ? (
+            <p className="rounded-xl bg-surface-muted px-4 py-3 text-[13px] leading-snug text-ink-muted" data-vj-info>
+              <b className="text-ink">VJ</b> = V-Tag aus der Jahresplanung, fest wie Urlaub (75 % deiner V-Tage).{" "}
+              <b className="text-ink">V</b> = V-Tag, den der Betrieb bei dringender Not widerrufen kann (25 %).{" "}
+              {kind === "v_tag"
+                ? vjStand.rest >= Math.max(1, days)
+                  ? `Dieser Antrag wird VJ – noch ${formatDays(vjStand.rest)} von ${formatDays(vjStand.kontingent)} VJ-Tagen frei.`
+                  : `Dein VJ-Kontingent reicht dafür nicht (noch ${formatDays(Math.max(0, vjStand.rest))} frei) – dieser Antrag wird V.`
+                : `VJ wird genommen, solange da – noch ${formatDays(vjStand.rest)} von ${formatDays(vjStand.kontingent)} frei.`}
+            </p>
+          ) : null}
+
+          {vierer.text ? (
+            <Alert tone="warning">
+              <span data-vierer-hinweis>
+                <b>4er-Regel:</b> {vierer.text} Du kannst trotzdem beantragen – die Leitung entscheidet.
+              </span>
             </Alert>
           ) : null}
 
