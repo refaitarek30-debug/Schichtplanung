@@ -19,6 +19,11 @@ export function addDays(iso: string, amount: number): string {
   return toISO(date);
 }
 
+/** Tage von a nach b (beide "YYYY-MM-DD"), negativ wenn b davor liegt. */
+export function tageAbstand(a: string, b: string): number {
+  return Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 86_400_000);
+}
+
 export function isWeekend(iso: string): boolean {
   const day = fromISO(iso).getDay();
   return day === 0 || day === 6;

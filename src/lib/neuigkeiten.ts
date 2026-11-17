@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-18T00:30:00+01:00",
+    titel: "Woche: flüssiger und lesbarer",
+    text: "Zur Seite wischen schiebt die Woche jetzt sanft weiter. Mehrere ganztägige Einträge stehen sauber untereinander statt übereinander, und auch mehrtägige Termine lassen sich per Halten und Ziehen verschieben.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-17T21:00:00+01:00",
     titel: "Woche im Kalender",
     text: "Im Kalender gibt es jetzt auch eine Wochenansicht: oben rechts umschalten. Schichten mit Uhrzeit, Termine darüber – lange drücken legt einen Termin an, Termine lassen sich verschieben.",
