@@ -57,6 +57,8 @@ interface Block {
   ganz: boolean;
   /** Frei: nur umrandet */
   leer?: boolean;
+  /** ganztägiger Termin über einer Schicht – deckend obenauf */
+  vorn?: boolean;
   /** Lage in der Spalte in Prozent und Ebene (Ganztägiges hinten, Termine vorn). */
   links: number;
   breite: number;
@@ -85,7 +87,13 @@ function anordnen(liste: Roh[]): Block[] {
   // mehrtägiger Termin an jedem Tag an derselben Stelle steht.
   ganz.sort((a, b) => Number(!!a.termin) - Number(!!b.termin) || (a.termin?.datum ?? "").localeCompare(b.termin?.datum ?? "") || a.titel.localeCompare(b.titel));
   const scheibe = (GANZ_BIS - GANZ_VON) / Math.max(1, ganz.length);
-  ganz.forEach((g, k) => aus.push({ ...g, von: Math.round(GANZ_VON + k * scheibe), bis: Math.round(GANZ_VON + (k + 1) * scheibe), links: 0, breite: 100, ebene: 0 }));
+  ganz.forEach((g, k) => {
+    const lage = { von: Math.round(GANZ_VON + k * scheibe), bis: Math.round(GANZ_VON + (k + 1) * scheibe) };
+    // Ganztägige Termine dürfen nicht hinter einer Schicht verschwinden:
+    // dann liegen sie wie ein Termin leicht versetzt obenauf.
+    const vorn = !!g.termin && schichten.some((sch) => ueberlappt(sch, lage));
+    aus.push({ ...g, ...lage, links: vorn ? 30 : 0, breite: vorn ? 70 : 100, ebene: vorn ? 2 : 0, vorn });
+  });
   // Schichten: Spuren nur bei echter Überschneidung.
   const spurVon: { b: Roh; spur: number }[] = [];
   for (const sch of schichten) {
@@ -473,7 +481,7 @@ export function WochenSpalten({
                       data-termin-id={b.termin?.id}
                       className={cn(
                         "absolute overflow-hidden px-1 pt-0.5 text-left leading-tight transition-opacity",
-                        b.ganz
+                        b.ganz && !b.vorn
                           ? cn("rounded-[5px] pt-1", b.termin && "border-l-[3px]")
                           : b.termin
                             ? "rounded-[6px] border-l-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.12)] ring-1 ring-surface"
@@ -490,12 +498,12 @@ export function WochenSpalten({
                         // Ganztägiges zart im Hintergrund, Termine deckend obenauf.
                         backgroundColor: b.leer
                           ? "transparent"
-                          : b.ganz
+                          : b.ganz && !b.vorn
                             ? `${b.farbe}26`
                             : b.termin
                               ? `color-mix(in srgb, ${b.farbe} 18%, rgb(var(--c-surface)))`
                               : b.farbe,
-                        color: b.ganz ? "rgb(var(--c-ink) / 0.82)" : b.termin || b.leer ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
+                        color: b.ganz && !b.vorn ? "rgb(var(--c-ink) / 0.82)" : b.termin || b.leer ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
                         borderColor: b.termin || b.leer ? b.farbe : undefined,
                         zIndex: b.ebene,
                       }}
@@ -503,7 +511,9 @@ export function WochenSpalten({
                       <span
                         className={cn(
                           "block font-bold",
-                          b.ganz ? "line-clamp-3 break-words text-[10px] leading-[1.15] [hyphens:auto]" : "truncate text-[11px] font-extrabold",
+                          b.ganz
+                            ? cn("line-clamp-3 break-words leading-[1.15] [hyphens:auto]", b.vorn ? "text-[9px]" : "text-[10px]")
+                            : "truncate text-[11px] font-extrabold",
                         )}
                         lang="de"
                       >
