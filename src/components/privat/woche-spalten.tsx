@@ -55,32 +55,50 @@ interface Block {
   ganz: boolean;
   /** Frei: nur umrandet */
   leer?: boolean;
-  spur: number;
-  spuren: number;
+  /** Lage in der Spalte in Prozent und Ebene (Ganztägiges hinten, Termine vorn). */
+  links: number;
+  breite: number;
+  ebene: number;
 }
 
-/** Überschneidungen nebeneinander: jeder Block bekommt eine Spur, eine Gruppe die Zahl der Spuren. */
-function spuren(liste: Omit<Block, "spur" | "spuren">[]): Block[] {
-  const s = [...liste].sort((a, b) => a.von - b.von || b.bis - a.bis);
+type Roh = Omit<Block, "links" | "breite" | "ebene">;
+const ueberlappt = (a: { von: number; bis: number }, b: { von: number; bis: number }) => a.von < b.bis && b.von < a.bis;
+
+/**
+ * Anordnung in einer Tagesspalte (Entwurf A):
+ * - Ganztägiges (Frei, Urlaub, ganztägige Termine) liegt als zarter
+ *   Hintergrund über die volle Breite und nimmt keinen Platz weg.
+ * - Schichten nutzen die volle Breite; nur wenn sich zwei Schichten
+ *   überschneiden (Nacht vom Vortag + Früh), teilen sie sich die Spalte.
+ * - Termine legen sich darüber – über einer Schicht leicht nach rechts
+ *   versetzt, mehrere Termine stufenweise, so bleibt alles lesbar.
+ */
+function anordnen(liste: Roh[]): Block[] {
   const aus: Block[] = [];
-  let gruppe: Block[] = [];
-  let ende = -1;
-  const schliessen = () => {
-    const n = Math.max(1, ...gruppe.map((b) => b.spur + 1));
-    for (const b of gruppe) b.spuren = n;
-    gruppe = [];
-  };
-  for (const b of s) {
-    if (b.von >= ende) schliessen();
-    const belegt = new Set(gruppe.filter((g) => g.bis > b.von).map((g) => g.spur));
+  const ganz = liste.filter((b) => b.ganz);
+  const schichten = liste.filter((b) => !b.ganz && !b.termin).sort((a, b) => a.von - b.von || b.bis - a.bis);
+  const termine = liste.filter((b) => !b.ganz && b.termin).sort((a, b) => a.von - b.von || b.bis - a.bis);
+  for (const g of ganz) aus.push({ ...g, links: 0, breite: 100, ebene: 0 });
+  // Schichten: Spuren nur bei echter Überschneidung.
+  const spurVon: { b: Roh; spur: number }[] = [];
+  for (const sch of schichten) {
+    const belegt = new Set(spurVon.filter((x) => ueberlappt(x.b, sch)).map((x) => x.spur));
     let spur = 0;
     while (belegt.has(spur)) spur++;
-    const neu = { ...b, spur, spuren: 1 };
-    gruppe.push(neu);
-    aus.push(neu);
-    ende = Math.max(ende, b.bis);
+    spurVon.push({ b: sch, spur });
   }
-  schliessen();
+  for (const { b: sch, spur } of spurVon) {
+    const n = Math.max(1, ...spurVon.filter((x) => ueberlappt(x.b, sch)).map((x) => x.spur + 1));
+    aus.push({ ...sch, links: (spur / n) * 100, breite: 100 / n, ebene: 1 });
+  }
+  const gesetzt: Roh[] = [];
+  for (const t of termine) {
+    const ueberSchicht = schichten.some((sch) => ueberlappt(sch, t));
+    const stufe = gesetzt.filter((x) => ueberlappt(x, t)).length;
+    const links = Math.min((ueberSchicht ? 30 : 0) + stufe * 18, 62);
+    aus.push({ ...t, links, breite: 100 - links, ebene: 2 + stufe });
+    gesetzt.push(t);
+  }
   return aus;
 }
 
@@ -137,7 +155,7 @@ export function WochenSpalten({
       .map((id) => artNach.get(id))
       .filter((a): a is Schichtart => !!a);
 
-  const roh = new Map<string, Omit<Block, "spur" | "spuren">[]>(woche.map((iso) => [iso, []]));
+  const roh = new Map<string, Roh[]>(woche.map((iso) => [iso, []]));
   const zeitVon = (iso: string, a: Schichtart) => zeiten[tagZeitSchluessel(iso, a.id)] ?? { beginn: a.beginn, ende: a.ende };
 
   // Vortag mitnehmen: eine Nachtschicht vom Sonntag davor reicht in den Montag.
@@ -190,7 +208,7 @@ export function WochenSpalten({
       roh.get(iso)!.push({ key: `${t.id}-${iso}`, von: b, bis: e !== null && e > b ? e : Math.min(1440, b + 60), farbe: "#6366f1", titel: t.titel, unter: t.von, termin: t, schicht: null, ganz: false });
     }
   }
-  const bloecke = new Map(woche.map((iso) => [iso, spuren(roh.get(iso)!)]));
+  const bloecke = new Map(woche.map((iso) => [iso, anordnen(roh.get(iso)!)]));
 
   /** Tag und Uhrzeit (auf 15 Minuten) unter dem Finger. */
   function stelle(x: number, y: number): { iso: string; min: number } | null {
@@ -309,10 +327,11 @@ export function WochenSpalten({
   };
 
   return (
-    <div className="flex h-full min-h-0 select-none flex-col [-webkit-touch-callout:none]" data-woche-spalten>
-      <section className="glas flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px] pb-2">
+    // Am Handy bis fast an den Rand – jede Spalte bekommt so ein paar Pixel mehr.
+    <div className="-mx-2.5 flex h-full min-h-0 select-none flex-col [-webkit-touch-callout:none] sm:mx-0" data-woche-spalten>
+      <section className="glas flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] pb-1.5">
         {/* Kopf: Tag und Datum */}
-        <div className="grid grid-cols-[26px_repeat(7,minmax(0,1fr))] gap-x-0.5 px-1 pt-2">
+        <div className="grid grid-cols-[18px_repeat(7,minmax(0,1fr))] gap-x-px pr-0.5 pt-2">
           <span />
           {woche.map((iso, i) => {
             const istHeute = iso === heute;
@@ -329,14 +348,14 @@ export function WochenSpalten({
         </div>
 
         {/* Zeitraster – füllt die übrige Höhe */}
-        <div className="relative mx-1 mt-1 min-h-[260px] flex-1">
+        <div className="relative mr-0.5 mt-1 min-h-[260px] flex-1">
           {Array.from({ length: 9 }, (_, i) => i * 3).map((h) => (
             <div key={h} className="pointer-events-none absolute inset-x-0" style={{ top: `${(h / 24) * 100}%` }}>
-              <span className="tnum absolute left-0 -translate-y-1/2 text-[9.5px] text-ink-faint">{String(h).padStart(2, "0")}</span>
-              <span className="absolute left-[26px] right-0 border-t border-line/70" />
+              <span className="tnum absolute left-0.5 -translate-y-1/2 text-[8.5px] text-ink-faint">{String(h).padStart(2, "0")}</span>
+              <span className="absolute left-[18px] right-0 border-t border-line/60" />
             </div>
           ))}
-          <div ref={raster} className="absolute bottom-0 left-[26px] right-0 top-0 grid grid-cols-7 gap-x-0.5 touch-none" {...(pinsel ? {} : rasterGriffe)}>
+          <div ref={raster} className="absolute bottom-0 left-[18px] right-0 top-0 grid grid-cols-7 gap-x-px touch-none" {...(pinsel ? {} : rasterGriffe)}>
             {woche.map((iso) => (
               <button
                 key={iso}
@@ -365,26 +384,36 @@ export function WochenSpalten({
                       data-ganz={b.ganz ? "" : undefined}
                       data-termin-id={b.termin?.id}
                       className={cn(
-                        "absolute overflow-hidden rounded-[6px] px-0.5 text-left leading-tight shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-opacity",
-                        b.termin && "border-l-2",
-                        b.ganz && "opacity-80",
+                        "absolute overflow-hidden px-1 pt-0.5 text-left leading-tight transition-opacity",
+                        b.ganz
+                          ? "rounded-[5px]"
+                          : b.termin
+                            ? "rounded-[6px] border-l-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.12)] ring-1 ring-surface"
+                            : "rounded-[6px] shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
                         b.leer && "border border-dashed",
                         wirdGezogen && "opacity-30",
                       )}
                       style={{
                         top: `${(b.von / 1440) * 100}%`,
                         height: `calc(${((b.bis - b.von) / 1440) * 100}% - 1px)`,
-                        minHeight: 12,
-                        left: `${(b.spur / b.spuren) * 100}%`,
-                        width: `calc(${100 / b.spuren}% - ${b.spuren > 1 ? 1 : 0}px)`,
-                        backgroundColor: b.leer ? "transparent" : b.termin || b.ganz ? `${b.farbe}26` : b.farbe,
+                        minHeight: 14,
+                        left: `${b.links}%`,
+                        width: `calc(${b.breite}% - ${b.breite < 100 ? 1 : 0}px)`,
+                        // Ganztägiges zart im Hintergrund, Termine deckend obenauf.
+                        backgroundColor: b.leer
+                          ? "transparent"
+                          : b.ganz
+                            ? `${b.farbe}1f`
+                            : b.termin
+                              ? `color-mix(in srgb, ${b.farbe} 18%, rgb(var(--c-surface)))`
+                              : b.farbe,
                         color: b.termin || b.ganz || b.leer ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
                         borderColor: b.termin || b.leer ? b.farbe : undefined,
-                        zIndex: b.termin ? 2 : 1,
+                        zIndex: b.ebene,
                       }}
                     >
-                      <span className="block truncate text-[10.5px] font-extrabold">{b.titel}</span>
-                      {(b.bis - b.von) / 60 >= 2 && b.spuren < 3 ? <span className="block truncate text-[8.5px] font-medium opacity-90">{b.unter}</span> : null}
+                      <span className={cn("block truncate font-extrabold", b.ganz ? "text-[10px] opacity-75" : "text-[11px]")}>{b.titel}</span>
+                      {(b.bis - b.von) / 60 >= 2 && b.breite >= 50 && !b.ganz ? <span className="block truncate text-[9.5px] font-medium opacity-90">{b.unter}</span> : null}
                     </span>
                   );
                 })}

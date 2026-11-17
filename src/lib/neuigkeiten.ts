@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-17T21:00:00+01:00",
+    titel: "Woche im Kalender",
+    text: "Im Kalender gibt es jetzt auch eine Wochenansicht: oben rechts umschalten. Schichten mit Uhrzeit, Termine darüber – lange drücken legt einen Termin an, Termine lassen sich verschieben.",
+    bereich: "betrieb",
+  },
+  {
+    zeit: "2026-11-17T21:00:00+01:00",
+    titel: "Woche aufgeräumt",
+    text: "Die Wochenansicht nutzt jetzt die ganze Breite. Schichten stehen breit, Termine legen sich leicht versetzt darüber, Frei und Urlaub liegen zart im Hintergrund.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-17T18:00:00+01:00",
     titel: "VJ und V überall, 4er-Regel, Gruppenwechsel",
     text: "Ab 2027 steht überall, ob ein V-Tag VJ (fest wie Urlaub) oder V (widerrufbar) ist – im Urlaubskonto, beim Beantragen und in der automatischen Verteilung. Die Leitung kann VJ und V im Plan und bei den Entscheidungen umstellen. Neu ist ein Hinweis zur 4er-Regel (höchstens 4 gleichzeitig weg, bei 4 muss ein V dabei sein). Wechselt jemand die Schichtgruppe, lässt sich das ab einem Datum planen. Am PC zeigt die Startseite den Plan über die ganze Breite.",

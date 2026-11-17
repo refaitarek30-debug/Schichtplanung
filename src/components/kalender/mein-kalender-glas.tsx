@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { meldeBereichBereit } from "@/lib/bereich";
 import { halteSeiteFest } from "@/lib/seite-fest";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Users, CalendarDays, Columns3 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -29,7 +29,8 @@ import {
 } from "@/lib/data/kalender-eigene";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { useAktualisierung } from "@/lib/live-refresh";
-import { FARBEN, farbStil } from "@/lib/privat/daten";
+import { FARBEN, farbStil, type Schichtart, type TagEintrag } from "@/lib/privat/daten";
+import { WochenSpalten } from "@/components/privat/woche-spalten";
 import {
   ABW_IN_EINSTELLUNGEN,
   farbeFuer,
@@ -424,9 +425,9 @@ export function MeinKalenderGlas() {
   /** Eigene Termine und Einträge bei Verbundenen darf man löschen, fremde nicht. */
   const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === profile.id : true);
 
-  async function terminVerschieben(t: Termin, von: string, bis: string) {
-    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis } : x)));
-    await terminSpeichern({ ...t, von, bis }, t.inhaber ? t : null);
+  async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum, ganztaegig = t.ganztaegig) {
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis, datum, ganztaegig } : x)));
+    await terminSpeichern({ ...t, von, bis, datum, ganztaegig }, t.inhaber ? t : null);
   }
 
   // ---- To-dos (nur für mich) ----------------------------------------------
@@ -645,6 +646,26 @@ export function MeinKalenderGlas() {
     return halteSeiteFest();
   }, []);
 
+  // ---- Woche oder Monat ----------------------------------------------------
+  // Montag der angezeigten Woche; null = Monatsansicht. Gemerkt je Gerät.
+  const montagVon = (iso: string) => addDays(iso, -((fromISO(iso).getDay() + 6) % 7));
+  const [woche, setWocheState] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (ausGeraet<boolean>(`${profile.id}:betrieb-woche`)) setWocheState(montagVon(heute));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function setWoche(w: string | null) {
+    setWocheState(w);
+    aufGeraet(`${profile.id}:betrieb-woche`, w !== null);
+    // Die Daten kommen aus dem Monatsraster – den Monat mitziehen, in dem die Woche liegt.
+    if (w) {
+      const d = fromISO(addDays(w, 3));
+      setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
+    }
+  }
+  const wischWoche = useRef<{ x: number; y: number } | null>(null);
+
   // ---- Blättern und Wischen ----------------------------------------------
   function springe(schritt: number) {
     setMonat((m) => {
@@ -653,6 +674,7 @@ export function MeinKalenderGlas() {
     });
   }
   function zuHeute() {
+    if (woche) return setWoche(montagVon(heute));
     const d = fromISO(heute);
     setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
   }
@@ -719,6 +741,58 @@ export function MeinKalenderGlas() {
     geladenGemeldet.current = true;
     meldeBereichBereit();
   }, [sichtbar]);
+  // Woche: eigene Betriebsschichten als Blöcke mit Uhrzeit, Urlaub & Co. ganztägig.
+  const wochenDaten = useMemo(() => {
+    if (!woche) return null;
+    const arten = new Map<string, Schichtart>();
+    const wTage: Record<string, TagEintrag> = {};
+    for (let i = -1; i < 7; i++) {
+      const iso = addDays(woche, i);
+      const z = zellen.get(iso);
+      if (!z) continue;
+      const abw = z.absenceCode;
+      let a: Schichtart | null = null;
+      if (abw && abw === abw.toUpperCase()) {
+        a = {
+          id: `betrieb:abw:${abw}`,
+          name: t(ABWESENHEIT[abw]?.lang ?? "Abwesend"),
+          kuerzel: t(ABWESENHEIT[abw]?.kurz ?? abw),
+          farbe: farbeFuer(`abw:${abw}`, farben) ?? STANDARD_FARBE["abw:A"]!,
+          art: abw === "K" ? "krank" : "urlaub",
+          beginn: "",
+          ende: "",
+          stunden: 0,
+          reihenfolge: 0,
+        };
+      } else if (z.shiftName) {
+        const u = uhrzeit.get(z.shiftName);
+        a = {
+          id: `betrieb:s:${z.shiftName}`,
+          name: z.shiftName,
+          kuerzel: z.shiftCode ?? z.shiftName.slice(0, 1),
+          farbe: farbeFuer(schichtSchluessel(z.shiftCode, z.shiftName), farben) ?? SONSTIGE_SCHICHT_FARBE,
+          art: "arbeit",
+          beginn: u?.startTime?.slice(0, 5) ?? "",
+          ende: u?.endTime?.slice(0, 5) ?? "",
+          stunden: 0,
+          reihenfolge: 0,
+        };
+      }
+      if (a) {
+        arten.set(a.id, a);
+        wTage[iso] = { schicht: a.id, zusatz: null, dritte: null };
+      }
+    }
+    return { arten, tage: wTage };
+  }, [woche, zellen, farben, uhrzeit, t]);
+  const kw = woche
+    ? (() => {
+        const d = fromISO(addDays(woche, 3));
+        const erster = new Date(d.getFullYear(), 0, 4);
+        return 1 + Math.round(((d.getTime() - erster.getTime()) / 864e5 - 3 + ((erster.getDay() + 6) % 7)) / 7);
+      })()
+    : 0;
+
   const istAktuellerMonat = (() => {
     const d = fromISO(heute);
     return d.getFullYear() === monat.jahr && d.getMonth() === monat.monat;
@@ -742,11 +816,11 @@ export function MeinKalenderGlas() {
       <header className="flex items-center justify-between gap-2 px-3.5 pb-2 pt-1.5 sm:px-0 sm:pb-2.5 sm:pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-[26px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[22px]">
-            {monthName(monat.monat)}
+            {woche ? <span className="tnum whitespace-nowrap text-[22px] [@media(max-width:400px)]:text-[20px]">KW{kw}</span> : monthName(monat.monat)}
           </h1>
           <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-none text-ink-muted">
-            {monat.jahr}
-            {!istAktuellerMonat ? (
+            {woche ? `${formatDE(woche).slice(0, 6)}–${formatDE(addDays(woche, 6)).slice(0, 6)}` : monat.jahr}
+            {(woche ? woche !== montagVon(heute) : !istAktuellerMonat) ? (
               <>
                 {" · "}
                 <button type="button" onClick={zuHeute} className="font-semibold text-brand-600">
@@ -758,11 +832,20 @@ export function MeinKalenderGlas() {
         </div>
         <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
           <span className="hidden gap-2 sm:flex">
-            <GlasKnopf label="Vorheriger Monat" onClick={() => blaettern(-1)}>
+            <GlasKnopf label={woche ? "Vorherige Woche" : "Vorheriger Monat"} onClick={() => (woche ? setWoche(addDays(woche, -7)) : blaettern(-1))}>
               <ChevronLeft className="h-5 w-5" />
             </GlasKnopf>
-            <GlasKnopf label="Nächster Monat" onClick={() => blaettern(1)}>
+            <GlasKnopf label={woche ? "Nächste Woche" : "Nächster Monat"} onClick={() => (woche ? setWoche(addDays(woche, 7)) : blaettern(1))}>
               <ChevronRight className="h-5 w-5" />
+            </GlasKnopf>
+          </span>
+          {/* Monat ↔ Woche */}
+          <span data-ansicht-umschalter className="contents">
+            <GlasKnopf
+              label={woche ? "Monatsansicht" : "Wochenansicht"}
+              onClick={() => setWoche(woche ? null : montagVon(istAktuellerMonat ? heute : `${monat.jahr}-${String(monat.monat + 1).padStart(2, "0")}-01`))}
+            >
+              {woche ? <CalendarDays className="h-5 w-5" /> : <Columns3 className="h-5 w-5" />}
             </GlasKnopf>
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
@@ -803,8 +886,41 @@ export function MeinKalenderGlas() {
         </p>
       ) : null}
 
+      {woche && wochenDaten ? (
+        <div
+          className="flex min-h-0 flex-1 flex-col px-2.5 sm:px-0"
+          data-betrieb-woche
+          // Zur Seite wischen = andere Woche (Ziehen von Terminen fängt die Spalte selbst ab).
+          onPointerDown={(e) => {
+            wischWoche.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={(e) => {
+            const w = wischWoche.current;
+            wischWoche.current = null;
+            if (!w) return;
+            const dx = e.clientX - w.x;
+            if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(e.clientY - w.y) * 1.5) setWoche(addDays(woche, dx < 0 ? 7 : -7));
+          }}
+        >
+          <WochenSpalten
+            von={woche}
+            heute={heute}
+            tage={wochenDaten.tage}
+            zeiten={{}}
+            artNach={wochenDaten.arten}
+            termineAm={(iso) => termineAm(sichtbareTermine, iso)}
+            feiertagVon={(iso) => feiertage.get(iso)}
+            darfVerschieben={(tm) => tm.wiederholung === "nie" && !tm.bisDatum}
+            onTag={(iso) => setTagBlatt({ iso, auswahl: false })}
+            onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
+            onVerschieben={(tm, datum, von, bis, ganz) => void terminVerschieben(tm, von, bis, datum, ganz)}
+            onSchichtVerschieben={() => undefined}
+          />
+        </div>
+      ) : null}
+
       {/* Rahmen, der die Fläche beim Blättern beschneidet (mit Platz für den Schatten). */}
-      <div className="relative -m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+      <div className={cn("relative -m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2", woche && "hidden")}>
       <div
         ref={flaeche}
         className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-none will-change-transform sm:rounded-[22px]"
