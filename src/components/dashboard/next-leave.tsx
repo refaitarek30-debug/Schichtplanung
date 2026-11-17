@@ -24,11 +24,14 @@ export function NextLeaveCard({
   antraege,
   heute,
   kompakt = false,
+  reihe = false,
 }: {
   antraege: LiveLeaveRequest[] | null;
   heute: string;
   /** Startseite „Kompakt“: flacher, mit Rest-Tagen und Fortschritt. */
   kompakt?: boolean;
+  /** In der Kachelreihe am PC: so hoch und schlicht wie die Kacheln daneben. */
+  reihe?: boolean;
 }) {
   const [zeitraum, setZeitraum] = useState<LiveNaechsterUrlaub | null | undefined>(undefined);
 
@@ -44,7 +47,7 @@ export function NextLeaveCard({
 
   const laeuft = zeitraum ? zeitraum.von <= heute : false;
 
-  if (kompakt) return <KompaktUrlaub zeitraum={zeitraum} heute={heute} laeuft={laeuft} />;
+  if (kompakt || reihe) return <KompaktUrlaub zeitraum={zeitraum} heute={heute} laeuft={laeuft} reihe={reihe} />;
 
   return (
     <div className="flex items-center gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
@@ -106,10 +109,12 @@ function KompaktUrlaub({
   zeitraum,
   heute,
   laeuft,
+  reihe = false,
 }: {
   zeitraum: LiveNaechsterUrlaub | null | undefined;
   heute: string;
   laeuft: boolean;
+  reihe?: boolean;
 }) {
   const gesamt = zeitraum ? tageZwischen(zeitraum.von, zeitraum.bis) + 1 : 0;
   const noch = zeitraum ? (laeuft ? tageZwischen(heute, zeitraum.bis) + 1 : tageZwischen(heute, zeitraum.von)) : 0;
@@ -118,10 +123,13 @@ function KompaktUrlaub({
   return (
     <div
       data-urlaub-kompakt
-      className="relative overflow-hidden rounded-[22px] border border-ok-dot/25 bg-gradient-to-br from-ok-bg to-surface px-4 py-3 shadow-card"
+      className={cn(
+        "relative overflow-hidden border border-ok-dot/25 bg-gradient-to-br from-ok-bg to-surface shadow-card",
+        reihe ? "flex h-full flex-col justify-center rounded-[18px] px-3 py-2" : "rounded-[22px] px-4 py-3",
+      )}
     >
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface/80 text-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.08)]" aria-hidden>
+        <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface/80 text-[20px] shadow-[0_1px_4px_rgba(0,0,0,0.08)]", reihe && "hidden")} aria-hidden>
           🌴
         </span>
         <span className="min-w-0 flex-1">
@@ -134,9 +142,9 @@ function KompaktUrlaub({
           ) : zeitraum === null ? (
             <span className="block text-[14px] text-ink-muted">Noch kein Urlaub eingetragen.</span>
           ) : (
-            <span className="tnum block truncate text-[17px] font-bold leading-tight">
+            <span className={cn("tnum block truncate font-bold leading-tight", reihe ? "text-[15px]" : "text-[17px]")}>
               {zeitraum.von === zeitraum.bis ? formatDEShort(zeitraum.von) : `${formatDEShort(zeitraum.von)} – ${formatDEShort(zeitraum.bis)}`}
-              <span className="ml-1.5 text-[13px] font-medium text-ink-muted">
+              <span className={cn("ml-1.5 text-[13px] font-medium text-ink-muted", reihe && "hidden")}>
                 · {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"}
               </span>
             </span>
@@ -144,7 +152,7 @@ function KompaktUrlaub({
         </span>
         {zeitraum ? (
           <span className="shrink-0 text-right leading-none">
-            <span className="tnum block text-[24px] font-bold text-ok-fg">{noch}</span>
+            <span className={cn("tnum block font-bold text-ok-fg", reihe ? "text-[20px]" : "text-[24px]")}>{noch}</span>
             <span className="block pt-0.5 text-[11.5px] font-medium text-ink-muted">
               {laeuft ? (noch === 1 ? "Tag noch" : "Tage noch") : noch === 1 ? "Tag bis dahin" : "Tage bis dahin"}
             </span>
@@ -152,7 +160,7 @@ function KompaktUrlaub({
         ) : null}
       </div>
       {zeitraum && laeuft ? (
-        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-ok-fg/15" aria-hidden>
+        <div className={cn("h-1.5 overflow-hidden rounded-full bg-ok-fg/15", reihe ? "mt-1.5" : "mt-2.5")} aria-hidden>
           <div className="h-full rounded-full bg-ok-fg" style={{ width: `${Math.round(anteil * 100)}%` }} />
         </div>
       ) : null}

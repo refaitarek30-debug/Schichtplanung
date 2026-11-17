@@ -74,13 +74,14 @@ export function KpiCard({
     // volle Name steht da, weil dort Platz ist.
     const klein = (
       <>
-        <span className={cn("flex shrink-0 lg:h-9 lg:w-9 lg:items-center lg:justify-center lg:rounded-xl lg:bg-ink/[0.05]", toene[ton].icon)}>
+        {/* Am großen Bildschirm ohne Symbol und mit kurzem Namen – so passen alle Kacheln und der nächste Urlaub in eine Reihe. */}
+        <span className={cn("flex shrink-0 lg:h-9 lg:w-9 lg:items-center lg:justify-center lg:rounded-xl lg:bg-ink/[0.05] xl:hidden", toene[ton].icon)}>
           {icon}
         </span>
         <span className="mt-1.5 block min-w-0 lg:mt-0">
-          <span className="block truncate text-[11.5px] font-medium text-ink-muted sm:text-[12.5px] lg:line-clamp-2 lg:whitespace-normal lg:leading-tight">
-            <span className="lg:hidden">{kurz ?? label}</span>
-            <span className="hidden lg:inline">{label}</span>
+          <span className="block truncate text-[11.5px] font-medium text-ink-muted sm:text-[12.5px] lg:line-clamp-2 lg:whitespace-normal lg:leading-tight xl:pr-4">
+            <span className="lg:hidden xl:inline">{kurz ?? label}</span>
+            <span className="hidden lg:inline xl:hidden">{label}</span>
           </span>
           <span className="flex items-baseline gap-1">
             <span className="tnum text-[20px] font-semibold leading-tight tracking-tight sm:text-[22px]">{value}</span>
@@ -111,7 +112,7 @@ export function KpiCard({
         <ChevronRight
           aria-hidden
           data-kachel-pfeil
-          className="absolute right-1.5 top-2 h-4 w-4 text-ink-faint sm:right-2 sm:top-2.5 lg:static lg:ml-auto lg:h-5 lg:w-5"
+          className="absolute right-1.5 top-2 h-4 w-4 text-ink-faint sm:right-2 sm:top-2.5 lg:static lg:ml-auto lg:h-5 lg:w-5 xl:absolute xl:h-4 xl:w-4"
           strokeWidth={2.2}
         />
       </Link>
