@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { Termin } from "@/components/kalender/termine";
-import { addDays } from "@/lib/dates";
+import { addDays, tageAbstand } from "@/lib/dates";
 import { idsVon, istAbwesenheit, tagZeitSchluessel, textFarbe, type Schichtart, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
  *   (Schichten ohne Uhrzeit nur auf einen anderen Tag)
  */
 
+/** Uhrzeit für Ereignisse (außerhalb des Renderns). */
+const jetzt = () => Date.now();
 const KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const HALTEN_MS = 450;
 const minuten = (hhmm: string) => {
@@ -32,7 +34,7 @@ const GANZ_VON = 8 * 60;
 const GANZ_BIS = 16 * 60;
 
 type Zug =
-  | { art: "termin"; termin: Termin; titel: string; farbe: string; iso: string; von: number; dauer: number; griff: number }
+  | { art: "termin"; termin: Termin; titel: string; farbe: string; iso: string; quelle: string; von: number; dauer: number; griff: number }
   | { art: "schicht"; schicht: Eigen; titel: string; farbe: string; iso: string; von: number; dauer: number; start: number; griff: number };
 
 /** Eigene Schicht (nicht aus dem Betrieb): Id, der Tag, an dem sie steht, und ob sie eine Uhrzeit hat. */
@@ -78,7 +80,12 @@ function anordnen(liste: Roh[]): Block[] {
   const ganz = liste.filter((b) => b.ganz);
   const schichten = liste.filter((b) => !b.ganz && !b.termin).sort((a, b) => a.von - b.von || b.bis - a.bis);
   const termine = liste.filter((b) => !b.ganz && b.termin).sort((a, b) => a.von - b.von || b.bis - a.bis);
-  for (const g of ganz) aus.push({ ...g, links: 0, breite: 100, ebene: 0 });
+  // Mehrere ganztägige Einträge teilen sich das 8–16-Uhr-Band übereinander –
+  // so liegt keine Schrift auf der anderen. Feste Reihenfolge, damit ein
+  // mehrtägiger Termin an jedem Tag an derselben Stelle steht.
+  ganz.sort((a, b) => Number(!!a.termin) - Number(!!b.termin) || (a.termin?.datum ?? "").localeCompare(b.termin?.datum ?? "") || a.titel.localeCompare(b.titel));
+  const scheibe = (GANZ_BIS - GANZ_VON) / Math.max(1, ganz.length);
+  ganz.forEach((g, k) => aus.push({ ...g, von: Math.round(GANZ_VON + k * scheibe), bis: Math.round(GANZ_VON + (k + 1) * scheibe), links: 0, breite: 100, ebene: 0 }));
   // Schichten: Spuren nur bei echter Überschneidung.
   const spurVon: { b: Roh; spur: number }[] = [];
   for (const sch of schichten) {
@@ -117,6 +124,7 @@ export function WochenSpalten({
   onNeu,
   onVerschieben,
   onSchichtVerschieben,
+  onWoche,
 }: {
   /** Montag der Woche */
   von: string;
@@ -137,6 +145,8 @@ export function WochenSpalten({
   onVerschieben: (t: Termin, datum: string, von: string, bis: string, ganztaegig: boolean) => void;
   /** Eigene Schicht auf einen anderen Tag legen; zeit = neue Uhrzeit an dem Tag (undefined = wie bisher). */
   onSchichtVerschieben: (id: string, von: string, nach: string, zeit?: TagZeit) => void;
+  /** Zur Seite wischen: +1 nächste Woche, -1 vorherige. Ohne: kein Wischen hier. */
+  onWoche?: (richtung: 1 | -1) => void;
 }) {
   const raster = useRef<HTMLDivElement>(null);
   const druck = useRef<{ uhr: number | null; x: number; y: number; id: number } | null>(null);
@@ -148,6 +158,73 @@ export function WochenSpalten({
     setZiehenState(z);
   };
   const schlucken = useRef(0);
+
+  // Wischen zur nächsten Woche: Tage und Spalten folgen dem Finger, dann gleitet
+  // die neue Woche von der Seite herein. Die Stundenleiste bleibt stehen.
+  const kopf = useRef<HTMLDivElement>(null);
+  const wisch = useRef<{ x: number; y: number; t: number; aktiv: boolean; id: number } | null>(null);
+  const verschieben = (x: number, dauer: number, mitBlende = true) => {
+    for (const el of [kopf.current, raster.current]) {
+      if (!el) continue;
+      el.style.transition = dauer ? `transform ${dauer}ms cubic-bezier(0.22, 0.8, 0.3, 1), opacity ${dauer}ms ease-out` : "none";
+      el.style.transform = x ? `translate3d(${x}px,0,0)` : "";
+      el.style.opacity = mitBlende && x ? String(Math.max(0.35, 1 - Math.abs(x) / (el.offsetWidth * 1.4))) : "";
+    }
+  };
+  const wischGriffe = {
+        onPointerDown: (e: React.PointerEvent) => {
+          if (!onWoche || (e.pointerType === "mouse" && e.button !== 0)) return;
+          wisch.current = { x: e.clientX, y: e.clientY, t: jetzt(), aktiv: false, id: e.pointerId };
+        },
+        onPointerMove: (e: React.PointerEvent) => {
+          const w = wisch.current;
+          if (!w || zug.current) return;
+          // Kein Finger/keine Taste mehr unten (das Loslassen ging an das Ziehen): vergessen.
+          if (e.pointerId !== w.id || (e.pointerType === "mouse" && e.buttons === 0)) {
+            wisch.current = null;
+            return;
+          }
+          const dx = e.clientX - w.x;
+          const dy = e.clientY - w.y;
+          if (!w.aktiv) {
+            if (Math.abs(dx) < 12 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+            w.aktiv = true;
+            loslassen();
+            try {
+              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+            } catch {
+              // egal
+            }
+          }
+          verschieben(dx, 0);
+        },
+        onPointerUp: (e: React.PointerEvent) => {
+          const w = wisch.current;
+          wisch.current = null;
+          if (!w?.aktiv || !onWoche) return;
+          e.stopPropagation();
+          schlucken.current = jetzt();
+          const breite = raster.current?.offsetWidth ?? 300;
+          const dx = e.clientX - w.x;
+          const tempo = Math.abs(dx) / Math.max(1, jetzt() - w.t);
+          if (Math.abs(dx) < breite * 0.22 && tempo < 0.45) {
+            verschieben(0, 220);
+            return;
+          }
+          const richtung: 1 | -1 = dx < 0 ? 1 : -1;
+          verschieben(-richtung * breite, 170);
+          window.setTimeout(() => {
+            onWoche(richtung);
+            // Neue Woche steht auf der anderen Seite bereit und gleitet herein.
+            verschieben(richtung * breite * 0.6, 0);
+            requestAnimationFrame(() => requestAnimationFrame(() => verschieben(0, 260)));
+          }, 170);
+        },
+        onPointerCancel: () => {
+          if (wisch.current?.aktiv) verschieben(0, 200);
+          wisch.current = null;
+        },
+      };
 
   const woche = Array.from({ length: 7 }, (_, i) => addDays(von, i));
   const artenAm = (iso: string) =>
@@ -249,6 +326,7 @@ export function WochenSpalten({
         }
         const s = stelle(d.x, d.y);
         if (!s) return;
+        wisch.current = null;
         // Ab jetzt gehört der Finger dem Ziehen – auch wenn er die Spalte verlässt.
         try {
           flaeche.setPointerCapture(d.id);
@@ -260,7 +338,8 @@ export function WochenSpalten({
           const ganz = termin.ganztaegig || minuten(termin.von) === null;
           const b = ganz ? GANZ_VON : (minuten(termin.von) ?? 0);
           const ende = ganz ? GANZ_BIS : minuten(termin.bis);
-          setZiehen({ art: "termin", termin, titel: termin.titel, farbe: "#6366f1", iso: s.iso, von: b, griff: s.min - b, dauer: ende !== null && ende > b ? ende - b : 60 });
+          const quelle = terminEl!.dataset.tag!;
+          setZiehen({ art: "termin", termin, titel: termin.titel, farbe: "#6366f1", iso: quelle, quelle, von: b, griff: s.min - b, dauer: ende !== null && ende > b ? ende - b : 60 });
         } else if (schicht && art) {
           const z = zeitVon(schicht.tag, art);
           const b = schicht.zeitbar ? (minuten(z.beginn) ?? 0) : GANZ_VON;
@@ -268,7 +347,7 @@ export function WochenSpalten({
           setZiehen({ art: "schicht", schicht, titel: art.kuerzel || art.name, farbe: art.farbe, iso: schicht.tag, von: b, start: b, griff: s.min - b, dauer: ende > b ? ende - b : ende + 1440 - b });
         } else if (!schichtEl) {
           druck.current = null;
-          schlucken.current = Date.now();
+          schlucken.current = jetzt();
           onNeu(s.iso, hhmm(Math.floor(s.min / 30) * 30));
         } else {
           loslassen();
@@ -288,7 +367,10 @@ export function WochenSpalten({
         // Schichten ohne Uhrzeit wechseln nur den Tag, alles andere auch die Uhrzeit.
         // Der Block bleibt dort am Finger, wo man ihn gepackt hat.
         const neuVon = Math.max(0, Math.min(Math.round((s.min - z.griff) / 15) * 15, 1440 - Math.min(z.dauer, 1440)));
-        setZiehen(z.art === "schicht" && !z.schicht.zeitbar ? { ...z, iso: s.iso } : { ...z, iso: s.iso, von: neuVon });
+        // Mehrtägige Termine und Schichten ohne Uhrzeit wechseln nur den Tag.
+        const nurTag = (z.art === "schicht" && !z.schicht.zeitbar) || (z.art === "termin" && !!z.termin.bisDatum);
+        if (z.iso === s.iso && (nurTag || z.von === neuVon)) return;
+        setZiehen(nurTag ? { ...z, iso: s.iso } : { ...z, iso: s.iso, von: neuVon });
         return;
       }
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) loslassen();
@@ -298,15 +380,19 @@ export function WochenSpalten({
       if (z) {
         // Nicht als Wischen zur nächsten Woche weiterreichen.
         e.stopPropagation();
-        schlucken.current = Date.now();
+        schlucken.current = jetzt();
         setZiehen(null);
         druck.current = null;
         if (z.art === "termin") {
           const neuVon = Math.max(0, Math.min(z.von, 1440 - 15));
           const warGanz = z.termin.ganztaegig || minuten(z.termin.von) === null;
+          // Um so viele Tage verschieben, wie der Finger gewandert ist (zählt auch bei mehrtägigen).
+          const datum = addDays(z.termin.datum, tageAbstand(z.quelle, z.iso));
+          const gleich = datum === z.termin.datum && (warGanz ? neuVon === GANZ_VON : hhmm(neuVon) === z.termin.von.slice(0, 5));
+          if (gleich) return;
           // Ganztägig bleibt ganztägig, solange nur der Tag wechselt.
-          if (warGanz && neuVon === GANZ_VON) onVerschieben(z.termin, z.iso, z.termin.von, z.termin.bis, true);
-          else onVerschieben(z.termin, z.iso, hhmm(neuVon), hhmm(Math.min(1439, neuVon + z.dauer)), false);
+          if (z.termin.bisDatum || (warGanz && neuVon === GANZ_VON)) onVerschieben(z.termin, datum, z.termin.von, z.termin.bis, z.termin.ganztaegig);
+          else onVerschieben(z.termin, datum, hhmm(neuVon), hhmm(Math.min(1439, neuVon + z.dauer)), false);
         } else {
           const zeitNeu = z.schicht.zeitbar && z.von !== z.start ? { beginn: hhmm(z.von), ende: hhmm((z.von + z.dauer) % 1440) } : undefined;
           if (z.iso !== z.schicht.tag || zeitNeu) onSchichtVerschieben(z.schicht.id, z.schicht.tag, z.iso, zeitNeu);
@@ -322,17 +408,18 @@ export function WochenSpalten({
   };
 
   const antippen = (iso: string) => {
-    if (Date.now() - schlucken.current < 600) return;
+    if (jetzt() - schlucken.current < 600) return;
     onTag(iso);
   };
 
   return (
     // Am Handy bis fast an den Rand – jede Spalte bekommt so ein paar Pixel mehr.
-    <div className="-mx-2.5 flex h-full min-h-0 select-none flex-col [-webkit-touch-callout:none] sm:mx-0" data-woche-spalten>
+    <div className="-mx-2.5 flex h-full min-h-0 select-none flex-col [-webkit-touch-callout:none] sm:mx-0" data-woche-spalten {...(pinsel ? {} : wischGriffe)}>
       <section className="glas flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] pb-1.5">
         {/* Kopf: Tag und Datum */}
-        <div className="grid grid-cols-[18px_repeat(7,minmax(0,1fr))] gap-x-px pr-0.5 pt-2">
+        <div className="grid grid-cols-[18px_minmax(0,1fr)] pr-0.5 pt-2">
           <span />
+          <div ref={kopf} className="grid grid-cols-7 gap-x-px will-change-transform">
           {woche.map((iso, i) => {
             const istHeute = iso === heute;
             const feiertag = feiertagVon(iso);
@@ -345,6 +432,7 @@ export function WochenSpalten({
               </button>
             );
           })}
+          </div>
         </div>
 
         {/* Zeitraster – füllt die übrige Höhe */}
@@ -355,7 +443,7 @@ export function WochenSpalten({
               <span className="absolute left-[18px] right-0 border-t border-line/60" />
             </div>
           ))}
-          <div ref={raster} className="absolute bottom-0 left-[18px] right-0 top-0 grid grid-cols-7 gap-x-px touch-none" {...(pinsel ? {} : rasterGriffe)}>
+          <div ref={raster} className="absolute bottom-0 left-[18px] right-0 top-0 grid grid-cols-7 gap-x-px touch-none will-change-transform" {...(pinsel ? {} : rasterGriffe)}>
             {woche.map((iso) => (
               <button
                 key={iso}
@@ -386,7 +474,7 @@ export function WochenSpalten({
                       className={cn(
                         "absolute overflow-hidden px-1 pt-0.5 text-left leading-tight transition-opacity",
                         b.ganz
-                          ? "rounded-[5px]"
+                          ? cn("rounded-[5px] pt-1", b.termin && "border-l-[3px]")
                           : b.termin
                             ? "rounded-[6px] border-l-[3px] shadow-[0_1px_3px_rgba(0,0,0,0.12)] ring-1 ring-surface"
                             : "rounded-[6px] shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
@@ -403,16 +491,24 @@ export function WochenSpalten({
                         backgroundColor: b.leer
                           ? "transparent"
                           : b.ganz
-                            ? `${b.farbe}1f`
+                            ? `${b.farbe}26`
                             : b.termin
                               ? `color-mix(in srgb, ${b.farbe} 18%, rgb(var(--c-surface)))`
                               : b.farbe,
-                        color: b.termin || b.ganz || b.leer ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
+                        color: b.ganz ? "rgb(var(--c-ink) / 0.82)" : b.termin || b.leer ? "rgb(var(--c-ink))" : textFarbe(b.farbe),
                         borderColor: b.termin || b.leer ? b.farbe : undefined,
                         zIndex: b.ebene,
                       }}
                     >
-                      <span className={cn("block truncate font-extrabold", b.ganz ? "text-[10px] opacity-75" : "text-[11px]")}>{b.titel}</span>
+                      <span
+                        className={cn(
+                          "block font-bold",
+                          b.ganz ? "line-clamp-3 break-words text-[10px] leading-[1.15] [hyphens:auto]" : "truncate text-[11px] font-extrabold",
+                        )}
+                        lang="de"
+                      >
+                        {b.titel}
+                      </span>
                       {(b.bis - b.von) / 60 >= 2 && b.breite >= 50 && !b.ganz ? <span className="block truncate text-[9.5px] font-medium opacity-90">{b.unter}</span> : null}
                     </span>
                   );

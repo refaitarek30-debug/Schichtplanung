@@ -27,7 +27,7 @@ import {
   type EigeneArt,
   type EigeneArtEingabe,
 } from "@/lib/data/kalender-eigene";
-import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
+import { addDays, tageAbstand, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { useAktualisierung } from "@/lib/live-refresh";
 import { FARBEN, farbStil, type Schichtart, type TagEintrag } from "@/lib/privat/daten";
 import { WochenSpalten } from "@/components/privat/woche-spalten";
@@ -426,8 +426,10 @@ export function MeinKalenderGlas() {
   const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === profile.id : true);
 
   async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum, ganztaegig = t.ganztaegig) {
-    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis, datum, ganztaegig } : x)));
-    await terminSpeichern({ ...t, von, bis, datum, ganztaegig }, t.inhaber ? t : null);
+    // Mehrtägig: das Ende wandert um dieselben Tage mit.
+    const bisDatum = t.bisDatum ? addDays(t.bisDatum, tageAbstand(t.datum, datum)) : t.bisDatum;
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, von, bis, datum, bisDatum, ganztaegig } : x)));
+    await terminSpeichern({ ...t, von, bis, datum, bisDatum, ganztaegig }, t.inhaber ? t : null);
   }
 
   // ---- To-dos (nur für mich) ----------------------------------------------
@@ -664,7 +666,6 @@ export function MeinKalenderGlas() {
       setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
     }
   }
-  const wischWoche = useRef<{ x: number; y: number } | null>(null);
 
   // ---- Blättern und Wischen ----------------------------------------------
   function springe(schritt: number) {
@@ -890,17 +891,6 @@ export function MeinKalenderGlas() {
         <div
           className="flex min-h-0 flex-1 flex-col px-2.5 sm:px-0"
           data-betrieb-woche
-          // Zur Seite wischen = andere Woche (Ziehen von Terminen fängt die Spalte selbst ab).
-          onPointerDown={(e) => {
-            wischWoche.current = { x: e.clientX, y: e.clientY };
-          }}
-          onPointerUp={(e) => {
-            const w = wischWoche.current;
-            wischWoche.current = null;
-            if (!w) return;
-            const dx = e.clientX - w.x;
-            if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(e.clientY - w.y) * 1.5) setWoche(addDays(woche, dx < 0 ? 7 : -7));
-          }}
         >
           <WochenSpalten
             von={woche}
@@ -910,11 +900,12 @@ export function MeinKalenderGlas() {
             artNach={wochenDaten.arten}
             termineAm={(iso) => termineAm(sichtbareTermine, iso)}
             feiertagVon={(iso) => feiertage.get(iso)}
-            darfVerschieben={(tm) => tm.wiederholung === "nie" && !tm.bisDatum}
+            darfVerschieben={(tm) => tm.wiederholung === "nie"}
             onTag={(iso) => setTagBlatt({ iso, auswahl: false })}
             onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
             onVerschieben={(tm, datum, von, bis, ganz) => void terminVerschieben(tm, von, bis, datum, ganz)}
             onSchichtVerschieben={() => undefined}
+            onWoche={(r) => setWoche(addDays(woche, 7 * r))}
           />
         </div>
       ) : null}

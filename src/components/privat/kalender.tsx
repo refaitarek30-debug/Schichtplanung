@@ -32,7 +32,7 @@ import {
   fetchMeineTermine,
   speichereTermin,
 } from "@/lib/data/partner";
-import { addDays, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
+import { addDays, tageAbstand, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
   MAX_JE_TAG,
   eintragAus,
@@ -338,17 +338,19 @@ export function PrivatKalender() {
   }
 
   async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum, ganztaegig = t.ganztaegig) {
+    // Mehrtägig: das Ende wandert um dieselben Tage mit.
+    const bisDatum = t.bisDatum ? addDays(t.bisDatum, tageAbstand(t.datum, datum)) : t.bisDatum;
     if (istWartend(t)) {
-      offline.merken({ ...t, datum, von, bis, ganztaegig }, t);
+      offline.merken({ ...t, datum, bisDatum, von, bis, ganztaegig }, t);
       return;
     }
     if (istOffline()) {
       setFehler(OHNE_NETZ);
       return;
     }
-    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, von, bis, ganztaegig } : x)));
+    setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, bisDatum, von, bis, ganztaegig } : x)));
     try {
-      await speichereTermin({ ...t, datum, von, bis, ganztaegig });
+      await speichereTermin({ ...t, datum, bisDatum, von, bis, ganztaegig });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
     }
@@ -841,7 +843,7 @@ export function PrivatKalender() {
           : ansicht === "woche"
             ? pinselAn
               ? wocheStrich.griffe
-              : wocheGriffe
+              : {}
             : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
         aria-busy={laedt || !schichtarten}
       >
@@ -880,7 +882,7 @@ export function PrivatKalender() {
             feiertagVon={feiertagVon}
             markiert={wocheStrich.markiert}
             pinsel={pinselAn}
-            darfVerschieben={(t) => t.wiederholung === "nie" && !t.bisDatum && darfTerminLoeschen(t)}
+            darfVerschieben={(t) => t.wiederholung === "nie" && darfTerminLoeschen(t)}
             onTag={(iso) => {
               if (gewischt.current) return;
               if (pinselAn) {
@@ -893,6 +895,7 @@ export function PrivatKalender() {
             onNeu={(iso, zeit) => setTerminBlatt({ datum: iso, termin: null, startZeit: zeit })}
             onVerschieben={(t, datum, von, bis, ganz) => void terminVerschieben(t, von, bis, datum, ganz)}
             onSchichtVerschieben={(id, von, nach, zeit) => void schichtVerschieben(id, von, nach, zeit)}
+            onWoche={(r) => setAnker(addDays(anker, 7 * r))}
           />
         ) : (
           <JahresAnsicht
