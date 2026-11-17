@@ -545,6 +545,11 @@ export function EmployeesView() {
 
       {editing ? (
         <EditEmployeePanel
+          // Neu aufbauen, sobald eine andere Person gewählt wird: Die Felder
+          // behalten sonst die Werte der vorigen Person, und Speichern
+          // überschreibt damit die neue (so wurde am 17.11. aus Ali ein
+          // zweiter Erdem).
+          key={editing.id}
           employee={editing}
           canEditRole={role === "admin"}
           onSaved={(ergebnis) => {

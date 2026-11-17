@@ -110,116 +110,92 @@ export function LiveBalanceCard({
           ) : undefined
         }
       />
-      <CardBody className="space-y-2">
-        <Kontoblock
-          farbe="urlaub"
-          titel="Urlaub"
-          kopf={`${formatDays(balance.entitlement)} Tage Jahresanspruch${
-            balance.carriedOver > 0 ? ` + ${formatDays(balance.carriedOver)} Übertrag` : ""
-          }`}
-          wert={formatDays(Math.max(balance.remainingDays, 0))}
-          einheit="Tage verfügbar"
-          felder={[
-            { label: "Verbraucht", wert: formatDays(balance.usedDays) },
-            { label: "Geplant", wert: formatDays(balance.plannedDays) },
-            { label: "Beantragt", wert: formatDays(balance.pendingDays) },
-          ]}
-        />
-
-        {/* Ohne Zeitausgleich im Betrieb gibt es kein V-Tage-Konto. */}
-        {za ? (
-          <>
-        {/* V-Tage in Tagen. Sie dürfen ins Minus – deshalb steht hier auch
-            ein negativer Stand, nicht 0. */}
-        <Kontoblock
-          farbe="vtag"
-          titel={t("V-Tage")}
-          untertitel="Freischichten"
-          kopf={`${formatDays(balance.vEntitlement)} Tage Jahresanspruch${
-            balance.vCarriedOver > 0 ? ` + ${formatDays(balance.vCarriedOver)} Übertrag` : ""
-          }`}
-          wert={formatDays(balance.vRemainingDays)}
-          einheit={balance.vRemainingDays < 0 ? "Tage im Minus" : "Tage verfügbar"}
-          // Dasselbe Konto in Stunden – 1 V-Tag = 7,5 Std.
-          stunden={vTageInStunden(balance.vRemainingDays)}
-          minus={balance.vRemainingDays < 0}
-          felder={[
-            ...(balance.vKorrektur !== 0
-              ? [
-                  {
-                    label: balance.vKorrektur > 0 ? "Hinzugefügt" : "Abgezogen",
-                    wert: `${balance.vKorrektur > 0 ? "+" : "−"}${formatDays(Math.abs(balance.vKorrektur))}`,
-                  },
-                ]
-              : []),
-            // Ganze V-Tage; Fehlstunden stehen getrennt in Stunden.
-            {
-              label: "Verbraucht",
-              wert: formatDays(balance.vUsedDays - balance.vFehlStunden / V_TAG_STUNDEN),
-            },
-            { label: "Beantragt", wert: formatDays(balance.vPendingDays) },
-            ...(vj
-              ? [
-                  { label: "VJ frei", wert: `${formatDays(Math.max(0, vj.rest))} von ${formatDays(vj.kontingent)}` },
-                  {
-                    label: "V frei",
-                    wert: formatDays(Math.max(0, balance.vEntitlement + balance.vCarriedOver + balance.vKorrektur - vj.kontingent - vj.vBelegt)),
-                  },
-                ]
-              : []),
-            ...(balance.vFehlStunden > 0
-              ? [{ label: "Fehlzeiten", wert: `−${formatDays(balance.vFehlStunden)} Std.` }]
-              : []),
-          ]}
-          fuss={
-            vj ? (
-              <span data-vj-legende>
-                1 {t("V-Tag")} = {formatDays(V_TAG_STUNDEN)} Std. · <b>VJ</b> = aus der Jahresplanung, fest wie Urlaub (75 %) ·{" "}
-                <b>V</b> = kann bei dringender betrieblicher Not widerrufen werden (25 %). VJ wird zuerst genommen.
-              </span>
-            ) : (
-              `1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`
-            )
-          }
-        />
-          </>
-        ) : null}
-
-        {sonderurlaub ? (
-          <Kontoblock
-            farbe="sonderurlaub"
-            titel="Sonderurlaub"
-            kopf={`${formatDays(sonderurlaub.anspruch)} Tage im Jahr`}
-            wert={formatDays(Math.max(sonderurlaub.rest, 0))}
-            einheit="Tage verfügbar"
-            felder={[
-              { label: "Genommen/beantragt", wert: formatDays(sonderurlaub.verbraucht) },
+      <CardBody className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" data-konto-kacheln>
+          <Kachel
+            farbe="urlaub"
+            titel="Urlaub"
+            frei={balance.remainingDays}
+            von={balance.entitlement + balance.carriedOver}
+            zeilen={[
+              ["genommen", balance.usedDays],
+              ["geplant", balance.plannedDays],
+              ["beantragt", balance.pendingDays],
             ]}
           />
-        ) : null}
 
-        {afFrei ? (
-          <Kontoblock
-            farbe="altersfrei"
-            titel="Altersfreizeit"
-            untertitel="AF"
-            kopf={`${formatStunden(afFrei.standStunden)} Std. angespart`}
-            wert={formatDays(afTageAusStand(afFrei.standStunden))}
-            einheit="Tage verfügbar"
-            felder={[
-              {
-                label: `Genommen ${jetzt}`,
-                wert: afGenommenJahr === null || afGenommenJahr === undefined ? "–" : formatDays(afGenommenJahr),
-              },
-            ]}
-          />
-        ) : null}
+          {/* Ohne Zeitausgleich im Betrieb gibt es kein V-Tage-Konto. Ab 2027 getrennt in VJ und V. */}
+          {za && vj ? (
+            <>
+              <Kachel
+                farbe="vj"
+                titel="VJ-Tage"
+                frei={vj.rest}
+                von={vj.kontingent}
+                zeilen={[["verplant", vj.belegt]]}
+              />
+              <Kachel
+                farbe="vtag"
+                titel="V-Tage"
+                frei={balance.vRemainingDays - vj.rest}
+                von={balance.vEntitlement + balance.vCarriedOver + balance.vKorrektur - vj.kontingent}
+                zeilen={[
+                  ["verplant", vj.vBelegt],
+                  ...(balance.vFehlStunden > 0 ? ([["Fehlzeit Std.", -balance.vFehlStunden]] as [string, number][]) : []),
+                ]}
+                minusErlaubt
+              />
+            </>
+          ) : za ? (
+            <Kachel
+              farbe="vtag"
+              titel={t("V-Tage")}
+              frei={balance.vRemainingDays}
+              von={balance.vEntitlement + balance.vCarriedOver + balance.vKorrektur}
+              zeilen={[
+                ["genommen", balance.vUsedDays - balance.vFehlStunden / V_TAG_STUNDEN],
+                ["beantragt", balance.vPendingDays],
+                ...(balance.vFehlStunden > 0 ? ([["Fehlzeit Std.", -balance.vFehlStunden]] as [string, number][]) : []),
+              ]}
+              unten={`= ${vTageInStunden(balance.vRemainingDays)}`}
+              minusErlaubt
+            />
+          ) : null}
 
-        {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? (
-          <p className="text-[12px] text-ink-muted">
-            Übertragene Tage verfallen am 31.03.{balance.year}.
-          </p>
-        ) : null}
+          {sonderurlaub ? (
+            <Kachel
+              farbe="sonderurlaub"
+              titel="Sonderurlaub"
+              frei={sonderurlaub.rest}
+              von={sonderurlaub.anspruch}
+              zeilen={[["genommen", sonderurlaub.verbraucht]]}
+            />
+          ) : null}
+
+          {afFrei ? (
+            <Kachel
+              farbe="altersfrei"
+              titel="Altersfreizeit"
+              frei={afTageAusStand(afFrei.standStunden)}
+              von={null}
+              zeilen={afGenommenJahr === null || afGenommenJahr === undefined ? [] : [[`genommen ${jetzt}`, afGenommenJahr]]}
+              unten={`${formatStunden(afFrei.standStunden)} Std.`}
+            />
+          ) : null}
+        </div>
+
+        {/* Eine kurze Zeile statt Fließtext. */}
+        <p className="text-[12px] leading-snug text-ink-muted" data-vj-legende={vj ? "" : undefined}>
+          {vj ? (
+            <>
+              <b className="text-ink">VJ</b> fest wie Urlaub · <b className="text-ink">V</b> kann widerrufen werden · VJ wird zuerst genommen
+              {za ? ` · 1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.` : ""}
+            </>
+          ) : za ? (
+            `1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`
+          ) : null}
+          {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? ` · Übertrag verfällt am 31.03.${balance.year}` : ""}
+        </p>
       </CardBody>
     </Card>
   );
@@ -230,89 +206,60 @@ function formatStunden(wert: number): string {
 }
 
 const farben = {
-  urlaub: { rand: "border-l-shift-urlaub", grund: "bg-shift-urlaub/10", punkt: "bg-shift-urlaub" },
-  vtag: { rand: "border-l-shift-vtag", grund: "bg-shift-vtag/10", punkt: "bg-shift-vtag" },
-  sonderurlaub: {
-    rand: "border-l-shift-sonderurlaub",
-    grund: "bg-shift-sonderurlaub/10",
-    punkt: "bg-shift-sonderurlaub",
-  },
-  altersfrei: {
-    rand: "border-l-shift-altersfrei",
-    grund: "bg-shift-altersfrei/10",
-    punkt: "bg-shift-altersfrei",
-  },
+  urlaub: { balken: "bg-shift-urlaub", grund: "bg-shift-urlaub/10" },
+  vj: { balken: "bg-[#6aa84f]", grund: "bg-[#b6d7a8]/20" },
+  vtag: { balken: "bg-shift-vtag", grund: "bg-shift-vtag/10" },
+  sonderurlaub: { balken: "bg-shift-sonderurlaub", grund: "bg-shift-sonderurlaub/10" },
+  altersfrei: { balken: "bg-shift-altersfrei", grund: "bg-shift-altersfrei/10" },
 } as const;
 
-function Kontoblock({
+/**
+ * Eine Kachel: oben der Name, groß die freien Tage, daneben „von N“, darunter
+ * höchstens drei kurze Zahlen. Kein Fließtext.
+ */
+function Kachel({
   farbe,
   titel,
-  untertitel,
-  kopf,
-  wert,
-  einheit,
-  minus = false,
-  felder,
-  fuss,
-  stunden,
+  frei,
+  von,
+  zeilen,
+  unten,
+  minusErlaubt = false,
 }: {
   farbe: keyof typeof farben;
   titel: string;
-  untertitel?: string;
-  kopf: string;
-  wert: string;
-  einheit: string;
-  minus?: boolean;
-  felder: { label: string; wert: string }[];
-  fuss?: React.ReactNode;
-  /** Der Stand zusätzlich in Stunden, klein unter der Einheit. */
-  stunden?: string;
+  frei: number;
+  von: number | null;
+  zeilen: [string, number][];
+  unten?: string;
+  minusErlaubt?: boolean;
 }) {
   const f = farben[farbe];
-  // Kompakt: links Art und Anspruch, rechts der Stand groß, darunter die
-  // Einzelwerte als eine Zeile statt als Kästchenraster.
+  const minus = frei < 0;
+  const wert = minusErlaubt ? frei : Math.max(frei, 0);
   return (
-    <div className={cn("rounded-xl border border-l-4 border-line px-3 py-2", f.rand, f.grund)}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[14px] font-semibold tracking-tight">
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", f.punkt)} aria-hidden />
-            {titel}
-            {untertitel ? (
-              <span className="text-[11px] font-normal text-ink-faint">({untertitel})</span>
-            ) : null}
-          </p>
-          <p className="tnum truncate text-[11px] text-ink-muted">{kopf}</p>
-        </div>
-        <p className="shrink-0 text-right leading-none">
-          <span
-            className={cn("tnum text-2xl font-semibold tracking-tight", minus && "text-crit-fg")}
-          >
-            {wert}
+    <div className={cn("overflow-hidden rounded-xl border border-line", f.grund)} data-konto={farbe}>
+      <div className={cn("h-1", f.balken)} aria-hidden />
+      <div className="px-3 pb-2.5 pt-2">
+        <p className="text-[12.5px] font-semibold text-ink-muted">{titel}</p>
+        <p className="mt-0.5 flex items-baseline gap-1.5">
+          <span className={cn("tnum text-[28px] font-bold leading-none tracking-tight", minus && "text-crit-fg")} data-konto-frei>
+            {formatDays(wert)}
           </span>
-          <span className="mt-0.5 block text-[11px] text-ink-muted">{einheit}</span>
-          {stunden ? (
-            <span
-              className={cn(
-                "tnum mt-1 block text-[13px] font-semibold",
-                minus ? "text-crit-fg" : "text-ink",
-              )}
-            >
-              = {stunden}
-            </span>
-          ) : null}
+          <span className="tnum text-[12.5px] text-ink-muted">{von !== null ? `frei von ${formatDays(von)}` : "frei"}</span>
         </p>
+        {zeilen.length || unten ? (
+          <dl className="tnum mt-1.5 space-y-0.5 text-[12px]">
+            {zeilen.map(([label, zahl]) => (
+              <div key={label} className="flex justify-between gap-2 text-ink-muted">
+                <dt>{label}</dt>
+                <dd className="font-semibold text-ink">{formatDays(zahl)}</dd>
+              </div>
+            ))}
+            {unten ? <div className="text-ink-muted">{unten}</div> : null}
+          </dl>
+        ) : null}
       </div>
-
-      <dl className="tnum mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-ink-muted">
-        {felder.map((feld) => (
-          <div key={feld.label} className="flex gap-1">
-            <dt>{feld.label}</dt>
-            <dd className="font-semibold text-ink">{feld.wert}</dd>
-          </div>
-        ))}
-      </dl>
-      {fuss ? <p className="mt-1.5 text-[12px] leading-snug text-ink-muted">{fuss}</p> : null}
     </div>
   );
 }
