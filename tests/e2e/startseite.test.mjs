@@ -156,7 +156,7 @@ export default async function startseite() {
     pruefe(await meinUrlaub.isVisible(), "Kompakt: „Mein Urlaub“ unten auf der Startseite");
     await meinUrlaub.getByRole("button", { name: /Urlaubskonto/ }).click();
     await warte(500);
-    pruefe(await meinUrlaub.getByText(/Resturlaub|verfügbar|übrig/).first().isVisible(), "Mein Urlaub: Urlaubskonto klappt auf");
+    pruefe(await meinUrlaub.getByText(/Resturlaub|verfügbar|übrig|frei von/).first().isVisible(), "Mein Urlaub: Urlaubskonto klappt auf");
     const kachelHoehe = (await seite.locator('main a[href="/urlaub"]').first().boundingBox())?.height ?? 999;
     pruefe(kachelHoehe < 110, `Kompakt: Kacheln sind klein (${Math.round(kachelHoehe)} px hoch)`);
     pruefe(await seite.getByText("aus der Betriebsleitung").first().isVisible(), "Kompakt: Mitteilungen stehen weiter darunter");

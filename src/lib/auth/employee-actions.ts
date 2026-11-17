@@ -314,6 +314,33 @@ export async function updateEmployee(_prev: FormState, formData: FormData): Prom
     return { error: "Personen mit Führungsrolle bearbeitet nur die Administration." };
   }
 
+  // Sicherung: Name oder E-Mail einer ANDEREN Person übernehmen heißt fast
+  // immer, dass im Formular noch die Daten der vorher geöffneten Person
+  // standen (so wurde am 17.11. aus Ali ein zweiter Erdem). Dann nicht speichern.
+  const { data: doppelt } = await supabase
+    .from("employees")
+    .select("id, first_name, last_name, email")
+    .eq("company_id", profile.company_id)
+    .eq("active", true)
+    .neq("id", employeeId)
+    .or(
+      [
+        `and(first_name.eq.${JSON.stringify(firstName)},last_name.eq.${JSON.stringify(lastName)})`,
+        ...(email ? [`email.eq.${JSON.stringify(email)}`] : []),
+      ].join(","),
+    )
+    .limit(1)
+    .returns<{ id: string; first_name: string; last_name: string; email: string | null }[]>();
+  const andere = doppelt?.[0];
+  if (andere) {
+    return {
+      error:
+        email && andere.email?.toLowerCase() === email.toLowerCase()
+          ? `Die E-Mail ${email} gehört schon ${andere.first_name} ${andere.last_name}. Bitte das Fenster schließen, die Person neu öffnen und prüfen.`
+          : `${firstName} ${lastName} gibt es schon im Betrieb. Bitte das Fenster schließen, die Person neu öffnen und prüfen.`,
+    };
+  }
+
   const { error } = await supabase
     .from("employees")
     .update({
