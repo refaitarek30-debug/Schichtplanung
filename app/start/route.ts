@@ -38,6 +38,32 @@ export async function GET(request: NextRequest) {
     // Privatkonto (ohne Firma): eigener Bereich.
     const privat = await getPrivatKonto();
     if (privat) return merke(NextResponse.redirect(new URL("/privat", request.url)), startCookieWert(privat.userId, "privat"));
+    if (userId) {
+      const supabase = await createClient();
+      // Eingeladen, aber das Profil fehlt (Migration 0235): einmal nachholen und neu starten.
+      if (!request.nextUrl.searchParams.has("nachgeholt")) {
+        const { data: nachgeholt } = await supabase.rpc("profil_nachholen");
+        if (nachgeholt === true) {
+          const neu = NextResponse.redirect(new URL("/start?nachgeholt=1", request.url));
+          neu.headers.set("Cache-Control", "no-store");
+          return neu;
+        }
+      }
+      // Datenbank gerade nicht erreichbar? Dann nicht abmelden, sondern kurz warten lassen.
+      const { error: profilFehler } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle();
+      if (profilFehler) {
+        return new NextResponse(
+          "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>ShiftNexo</title>" +
+            "<p style='font-family:system-ui;padding:24px'>ShiftNexo ist gerade nicht erreichbar. Bitte in einer Minute " +
+            "<a href='/start?frisch=1'>erneut versuchen</a>.</p>",
+          { status: 503, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
+        );
+      }
+      // Angemeldet, aber ohne Betrieb, Privatbereich oder Konsole: abmelden statt
+      // /login ↔ /start im Kreis („zu viele Weiterleitungen“).
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/login?fehler=kein_zugang", request.url));
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
   const ziel = new URL(startPfad(session.profile.startSeite), request.url);

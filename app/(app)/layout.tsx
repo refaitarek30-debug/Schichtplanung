@@ -42,7 +42,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     if (gesperrt === true) redirect("/gesperrt");
     // Privatkonten haben kein Firmenprofil – sonst liefe /login ↔ /start im Kreis.
     if (await getPrivatKonto()) redirect("/privat");
-    redirect("/login");
+    // Nicht /login: das schickt Angemeldete zurück – /start entscheidet (Profil nachholen oder abmelden).
+    redirect("/start?frisch=1");
   }
 
   // Pflicht für Administration und Schichtleitung: erst einrichten.

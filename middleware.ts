@@ -156,7 +156,11 @@ export async function middleware(request: NextRequest) {
   if (user && (AUTH_PATHS.includes(pathname) || pathname === "/" || pathname === "/start")) {
     const url = request.nextUrl.clone();
     // Gemerkte Startseite dieser Person: gleich dorthin, ohne Umweg über /start.
-    const gemerkt = startZielAusCookie(request.cookies.get(START_COOKIE)?.value, user.id);
+    // „frisch“: die App hat keinen passenden Bereich gefunden – dann entscheidet /start neu,
+    // statt wieder auf die gemerkte Seite zu springen (sonst Weiterleitung im Kreis).
+    const gemerkt = request.nextUrl.searchParams.has("frisch")
+      ? null
+      : startZielAusCookie(request.cookies.get(START_COOKIE)?.value, user.id);
     if (gemerkt) {
       url.pathname = gemerkt;
       url.search = "";
