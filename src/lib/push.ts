@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { dataErrorMessage } from "@/lib/errors";
+import { istNativeApp } from "@/lib/app-huelle";
 
 /**
  * Mitteilungen für Erinnerungen (Web Push, Migration 0155). Je Gerät
@@ -10,7 +11,7 @@ import { dataErrorMessage } from "@/lib/errors";
  * (ab iOS 16.4). Im normalen Safari-Tab gibt es keine Mitteilungen.
  */
 
-export type PushStatus = "an" | "aus" | "gesperrt" | "nicht-moeglich" | "ios-home";
+export type PushStatus = "an" | "aus" | "gesperrt" | "nicht-moeglich" | "ios-home" | "app";
 
 const SCHLUESSEL = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
@@ -28,6 +29,8 @@ function vomHomeBildschirm(): boolean {
 
 export async function pushStatus(): Promise<PushStatus> {
   if (typeof window === "undefined") return "nicht-moeglich";
+  // In der iPhone-App gibt es (noch) keine Web-Mitteilungen – dort kommen sie später nativ.
+  if (istNativeApp()) return "app";
   const moeglich = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!SCHLUESSEL;
   if (!moeglich) return istIos() && !vomHomeBildschirm() ? "ios-home" : "nicht-moeglich";
   if (Notification.permission === "denied") return "gesperrt";

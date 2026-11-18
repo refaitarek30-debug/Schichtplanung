@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Download, Share, X } from "lucide-react";
+import { istNativeApp } from "@/lib/app-huelle";
 
 const DISMISS_KEY = "schichtplan.install-hint";
 
@@ -38,7 +39,7 @@ export function InstallHint() {
   const [showIosHint, setShowIosHint] = useState(false);
 
   useEffect(() => {
-    if (alreadyDismissed()) return;
+    if (alreadyDismissed() || istNativeApp()) return;
 
     // Am PC nicht fragen: dort zeigen Chrome und Edge ohnehin ihr eigenes Symbol
     // in der Adressleiste. Der Hinweis ist nur für Handy und Tablet (Touch).

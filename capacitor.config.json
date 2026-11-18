@@ -1,0 +1,15 @@
+{
+  "appId": "de.shiftnexo.app",
+  "appName": "ShiftNexo",
+  "webDir": "capacitor/www",
+  "server": {
+    "url": "https://shiftnexo.de/start",
+    "errorPath": "offline.html"
+  },
+  "ios": {
+    "contentInset": "never",
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#ffffff",
+    "appendUserAgent": "ShiftNexoApp/1"
+  }
+}
