@@ -37,6 +37,7 @@ export function usePush() {
 const TEXT: Record<Exclude<PushStatus, "an">, string> = {
   aus: "Damit die Erinnerung auf diesem Gerät ankommt, erlaube Mitteilungen.",
   gesperrt: "Mitteilungen sind für diese Seite gesperrt. Erlaube sie in den Einstellungen des Browsers bzw. des Handys.",
+  app: "Mitteilungen in der App kommen mit dem nächsten Update.",
   "ios-home": "Auf dem iPhone: In Safari auf Teilen → „Zum Home-Bildschirm“ und die App von dort öffnen. Dann gehen Mitteilungen.",
   "nicht-moeglich": "Dieser Browser kann keine Mitteilungen. Probier es in Chrome, Edge, Firefox oder Safari (iPhone: vom Home-Bildschirm).",
 };

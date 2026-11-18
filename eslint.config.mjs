@@ -49,6 +49,9 @@ const eslintConfig = [
       "supabase/**",
       // Fremdcode der Texterkennung, wird beim Installieren hineinkopiert (scripts/ocr-kopieren.mjs).
       "public/ocr/**",
+      // iPhone-App (Capacitor): eigenes Xcode-Projekt, nicht Teil der Web-App.
+      "ios/**",
+      "capacitor/**",
     ],
   },
 ];
