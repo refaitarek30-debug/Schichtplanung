@@ -27,6 +27,13 @@ export default async function LoginPage({
         </Alert>
       ) : null}
 
+      {params.fehler === "kein_zugang" ? (
+        <Alert tone="error" className="mt-4">
+          Dein Konto ist angelegt, aber noch keinem Betrieb zugeordnet. Bitte melde dich bei deiner Schichtleitung oder
+          Administration – sie kann dir einen neuen Zugangslink schicken.
+        </Alert>
+      ) : null}
+
       {params.fehler === "link" || params.fehler === "abgelaufen" || params.fehler === "verbraucht" ? (
         <Alert tone="error" className="mt-4">
           {params.fehler === "verbraucht" && params.art === "passwort"
