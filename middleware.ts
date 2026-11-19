@@ -105,6 +105,19 @@ export async function middleware(request: NextRequest) {
   // Kalender-Abo: Der Kalender des Handys ruft den Link ohne Anmeldung ab.
   if (pathname.startsWith("/abo/")) return NextResponse.next();
 
+  // In der iPhone-App (Kennung „ShiftNexoApp“, capacitor.config.json) gibt es
+  // keine Werbeseiten: Startseite, Betriebe und Demo führen zur Anmeldung bzw.
+  // in die App. Rechtstexte bleiben erreichbar.
+  if (
+    (pathname === "/" || pathname.startsWith("/betriebe") || pathname.startsWith("/demo")) &&
+    request.headers.get("user-agent")?.includes("ShiftNexoApp")
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/start";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   const { response, user, dienstGestoert } = await updateSession(request);
 
   // Antwortet Supabase nicht, ist unbekannt, wer da klopft. Geschützte

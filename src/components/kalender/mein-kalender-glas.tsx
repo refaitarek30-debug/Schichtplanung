@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { meldeBereichBereit } from "@/lib/bereich";
 import { halteSeiteFest } from "@/lib/seite-fest";
 import type React from "react";
-import { ChevronLeft, ChevronRight, Pencil, Plus, Users, CalendarDays, Columns3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
+import { AnsichtMenue } from "@/components/privat/ansicht-menue";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -815,8 +816,13 @@ export function MeinKalenderGlas() {
       )}
     >
       <header className="flex items-center justify-between gap-2 px-3.5 pb-2 pt-1.5 sm:px-0 sm:pb-2.5 sm:pt-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-[26px] font-bold leading-[1.05] tracking-[-0.02em] [@media(max-width:360px)]:text-[22px]">
+        {/* Der Monatsname steht immer ganz da: die Schrift passt sich der freien Breite an. */}
+        <div className="min-w-0 flex-1 [container-type:inline-size]">
+          <h1
+            className="whitespace-nowrap font-bold leading-[1.05] tracking-[-0.02em]"
+            style={{ fontSize: `min(26px, calc(100cqw / ${((woche ? 4 : monthName(monat.monat).length) * 0.74).toFixed(2)}))` }}
+            data-monat-titel
+          >
             {woche ? <span className="tnum whitespace-nowrap text-[22px] [@media(max-width:400px)]:text-[20px]">KW{kw}</span> : monthName(monat.monat)}
           </h1>
           <p className="tnum mt-0.5 truncate text-[13px] font-medium leading-none text-ink-muted">
@@ -831,7 +837,7 @@ export function MeinKalenderGlas() {
             ) : null}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 [@media(max-width:360px)]:gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 [@media(max-width:360px)]:gap-1">
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label={woche ? "Vorherige Woche" : "Vorheriger Monat"} onClick={() => (woche ? setWoche(addDays(woche, -7)) : blaettern(-1))}>
               <ChevronLeft className="h-5 w-5" />
@@ -840,14 +846,17 @@ export function MeinKalenderGlas() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
-          {/* Monat ↔ Woche */}
+          {/* Ansicht: Monat oder Woche – gleiches Menü wie im Privatbereich. */}
           <span data-ansicht-umschalter className="contents">
-            <GlasKnopf
-              label={woche ? "Monatsansicht" : "Wochenansicht"}
-              onClick={() => setWoche(woche ? null : montagVon(istAktuellerMonat ? heute : `${monat.jahr}-${String(monat.monat + 1).padStart(2, "0")}-01`))}
-            >
-              {woche ? <CalendarDays className="h-5 w-5" /> : <Columns3 className="h-5 w-5" />}
-            </GlasKnopf>
+            <AnsichtMenue
+              ansicht={woche ? "woche" : "monat"}
+              ansichten={["woche", "monat"]}
+              kompakt
+              onWahl={(a) => {
+                if (a === "woche" && !woche) setWoche(montagVon(istAktuellerMonat ? heute : `${monat.jahr}-${String(monat.monat + 1).padStart(2, "0")}-01`));
+                if (a === "monat" && woche) setWoche(null);
+              }}
+            />
           </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch

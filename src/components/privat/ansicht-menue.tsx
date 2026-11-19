@@ -16,7 +16,21 @@ const ANSICHTEN = [
  * Ansicht wählen: ein Knopf im Kopf zeigt die aktuelle Ansicht, Antippen
  * klappt Woche, Monat und Jahr auf. Spart die breite Umschalt-Zeile.
  */
-export function AnsichtMenue({ ansicht, onWahl, onHochladen }: { ansicht: Ansicht; onWahl: (a: Ansicht) => void; onHochladen?: () => void }) {
+export function AnsichtMenue({
+  ansicht,
+  onWahl,
+  onHochladen,
+  ansichten,
+  kompakt = false,
+}: {
+  ansicht: Ansicht;
+  onWahl: (a: Ansicht) => void;
+  onHochladen?: () => void;
+  /** Welche Ansichten es gibt (Betrieb: nur Woche und Monat). */
+  ansichten?: readonly Ansicht[];
+  /** Am Handy ohne Pfeil – spart Platz im Kopf. */
+  kompakt?: boolean;
+}) {
   const [offen, setOffen] = useState(false);
   const aktuell = ANSICHTEN.find((a) => a.id === ansicht) ?? ANSICHTEN[1];
   const AktuellesIcon = aktuell.icon;
@@ -39,10 +53,10 @@ export function AnsichtMenue({ ansicht, onWahl, onHochladen }: { ansicht: Ansich
         aria-label={`Ansicht wählen, jetzt ${aktuell.name}`}
         title="Ansicht"
         onClick={() => setOffen((o) => !o)}
-        className="glas flex h-11 shrink-0 items-center justify-center gap-0.5 rounded-full px-2.5 text-ink [@media(max-width:360px)]:h-9 [@media(max-width:360px)]:px-2"
+        className={cn("glas flex h-10 shrink-0 items-center justify-center gap-0.5 rounded-full px-2.5 text-ink sm:h-11 [@media(max-width:360px)]:h-9 [@media(max-width:360px)]:px-2", kompakt && "w-10 px-0 sm:w-auto sm:px-2.5")}
       >
         <AktuellesIcon className="h-[19px] w-[19px]" />
-        <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+        <ChevronDown className={cn("h-3.5 w-3.5 opacity-70", kompakt && "hidden sm:block")} />
       </button>
       {offen ? (
         <>
@@ -53,7 +67,7 @@ export function AnsichtMenue({ ansicht, onWahl, onHochladen }: { ansicht: Ansich
             aria-label="Ansicht"
             className="glas-dicht glas-voll absolute right-0 top-[calc(100%+0.5rem)] z-30 min-w-[11rem] rounded-[20px] p-1.5 [animation:menue-auf_.16s_ease-out] motion-reduce:[animation:none]"
           >
-            {ANSICHTEN.map((a) => {
+            {ANSICHTEN.filter((a) => !ansichten || ansichten.includes(a.id)).map((a) => {
               const Icon = a.icon;
               const an = a.id === ansicht;
               return (
