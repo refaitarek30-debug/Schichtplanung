@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { LoginForm } from "./login-form";
+import { RegistrierenWahl } from "./registrieren-wahl";
 
 export const metadata = { title: "Anmelden – ShiftNexo" };
 
@@ -13,10 +14,11 @@ export default async function LoginPage({
   const params = await searchParams;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Anmelden</h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
-        Mit deinem Spitznamen oder deiner E-Mail-Adresse – für den Schichtkalender und für deinen Betrieb.
+    <>
+    <div className="w-full rounded-[28px] bg-surface p-5 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.5)] sm:p-7">
+      <h1 className="text-2xl font-semibold tracking-tight">Willkommen zurück</h1>
+      <p className="mt-1 text-sm text-ink-muted">
+        Mit Spitzname oder E-Mail – für Schichtkalender und Betrieb.
       </p>
 
       {params.fehler === "dienst" ? (
@@ -57,27 +59,8 @@ export default async function LoginPage({
       ) : null}
 
       <LoginForm next={params.weiter ?? ""} disabled={!isSupabaseConfigured} />
-
-      <div className="mt-8 border-t border-line pt-6">
-        <p className="text-center text-[15px] font-semibold">Noch kein Konto? Hier registrieren:</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Link
-            href="/privat/registrieren"
-            className="rounded-xl bg-brand-50 px-3 py-2.5 text-center text-[13.5px] font-semibold text-brand-700 hover:bg-brand-100"
-          >
-            Privat registrieren
-          </Link>
-          <Link
-            href="/registrieren"
-            className="rounded-xl bg-surface-muted px-3 py-2.5 text-center text-[13.5px] font-semibold text-ink hover:bg-surface-sunken"
-          >
-            Betrieb registrieren
-          </Link>
-        </div>
-        <p className="mt-3 text-center text-[12px] leading-relaxed text-ink-faint">
-          Im Betrieb angestellt? Deinen Zugang bekommst du per Einladung von deiner Schichtleitung.
-        </p>
-      </div>
     </div>
+    <RegistrierenWahl />
+    </>
   );
 }
