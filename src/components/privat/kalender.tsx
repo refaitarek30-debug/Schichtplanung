@@ -26,7 +26,8 @@ import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type To
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
-import { PinselKnopf, PinselLeiste, useMonatKarussell, usePinselStrich } from "@/components/kalender/pinsel";
+import { PinselKnopf, PinselLeiste, usePinselStrich } from "@/components/kalender/pinsel";
+import { MonatsScroller, type MonatsScrollerGriff } from "@/components/kalender/monats-scroller";
 import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import {
   fetchMeineTermine,
@@ -638,13 +639,32 @@ export function PrivatKalender() {
       else springe(dx < 0 ? 1 : -1);
     }
   }
-  // Im Monat: hochwischen = nächster Monat, runter = vorheriger; der Monat folgt dem Finger.
-  const {
-    flaeche: monatFlaeche,
-    seite: monatSeite,
-    griffe: karussellGriffe,
-    gewischt: monatGewischt,
-  } = useMonatKarussell(springe, { nurSenkrecht: true });
+  // Im Monat: die Monate stehen untereinander in einer nativen Scroll-Liste (MonatsScroller) –
+  // hoch/runter mit Schwung, jeder Monat rastet ein.
+  const scroller = useRef<MonatsScrollerGriff>(null);
+  // Mit offenem Pinsel scrollt die Liste nicht (der Finger malt); kurz hoch/runter
+  // wischen blättert dann per Knopfdruck-Bewegung.
+  const pinselWisch = useRef<{ x: number; y: number; t: number } | null>(null);
+  const karussellGriffe = {
+    onPointerDown: (e: React.PointerEvent) => {
+      pinselWisch.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+    },
+    onPointerMove: () => undefined,
+    onPointerUp: (e: React.PointerEvent) => {
+      const w = pinselWisch.current;
+      pinselWisch.current = null;
+      if (!w) return;
+      const dy = e.clientY - w.y;
+      if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(e.clientX - w.x) * 1.5 && Date.now() - w.t < 800) {
+        gewischt.current = true;
+        window.setTimeout(() => (gewischt.current = false), 80);
+        scroller.current?.blaettern(dy < 0 ? 1 : -1);
+      }
+    },
+    onPointerCancel: () => {
+      pinselWisch.current = null;
+    },
+  };
   // Vom rechten Rand nach links ziehen: „Wen sehe ich?“ kommt als Seitenblatt herein –
   // überall am rechten Bildschirmrand, solange kein anderes Fenster offen ist.
   const monatGriffe = karussellGriffe;
@@ -667,7 +687,7 @@ export function PrivatKalender() {
   };
   const wocheStrich = usePinselStrich(pinselStrich, wocheGriffe);
   function tippen(iso: string) {
-    if (langDruck.geschluckt() || gewischt.current || monatGewischt.current) return;
+    if (langDruck.geschluckt() || gewischt.current || scroller.current?.bewegt()) return;
     if (pinselAn && strich.geschluckt()) return;
     tagAntippen(iso);
   }
@@ -843,12 +863,12 @@ export function PrivatKalender() {
         className={cn(
           "relative min-h-0 flex-1 select-none transition-opacity duration-150",
           !bereit && "opacity-0",
-          ansicht === "monat" ? "touch-none overflow-hidden sm:-m-2 sm:p-2" : "touch-pan-y px-3.5 sm:px-0",
+          ansicht === "monat" ? "overflow-hidden sm:-m-2 sm:p-2" : "touch-pan-y px-3.5 sm:px-0",
         )}
         {...(ansicht === "monat"
           ? pinselAn
             ? strich.griffe
-            : monatGriffe
+            : {}
           : ansicht === "woche"
             ? pinselAn
               ? wocheStrich.griffe
@@ -857,29 +877,28 @@ export function PrivatKalender() {
         aria-busy={laedt || !schichtarten}
       >
         {ansicht === "monat" ? (
-          <div ref={monatFlaeche} className="relative h-full">
-            {([-1, 0, 1] as const).map((o) => {
-              const m = new Date(ankerD.getFullYear(), ankerD.getMonth() + o, 1);
-              const mitte = o === 0;
-              return (
-                <div key={o} ref={monatSeite(o)} className={cn("absolute inset-0 will-change-transform", !mitte && "invisible")} aria-hidden={!mitte}>
-                  <MonatsAnsicht
-                    jahr={m.getFullYear()}
-                    monat={m.getMonth()}
-                    heute={heute}
-                    tage={andere.eigeneSchichten ? anzeigeTage : KEINE_TAGE}
-                    artNach={anzeigeArtNach}
-                    feiertagVon={feiertagVon}
-                    termine={sichtbareTermine}
-                    andere={andere}
-                    onTag={mitte ? tippen : () => undefined}
-                    zelle={mitte ? langDruck.zelle : undefined}
-                    markiert={mitte ? strich.markiert : undefined}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <MonatsScroller
+            ref={scroller}
+            monat={{ jahr: ankerD.getFullYear(), monat: ankerD.getMonth() }}
+            onMonat={(m) => setAnker(toISO(new Date(m.jahr, m.monat, 1)))}
+            gesperrt={pinselAn}
+            className="sm:rounded-[24px]"
+            seite={(m, sichtbar) => (
+              <MonatsAnsicht
+                jahr={m.jahr}
+                monat={m.monat}
+                heute={heute}
+                tage={andere.eigeneSchichten ? anzeigeTage : KEINE_TAGE}
+                artNach={anzeigeArtNach}
+                feiertagVon={feiertagVon}
+                termine={sichtbareTermine}
+                andere={andere}
+                onTag={tippen}
+                zelle={langDruck.zelle}
+                markiert={sichtbar ? strich.markiert : undefined}
+              />
+            )}
+          />
         ) : ansicht === "woche" ? (
           <WochenSpalten
             von={bereich.von}
