@@ -64,12 +64,6 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<!-- Nur ShiftNexo selbst wird in der App geöffnet; nötig, damit Offline-Speicher (Service Worker) im WebView läuft. -->
-	<key>WKAppBoundDomains</key>
-	<array>
-		<string>shiftnexo.de</string>
-		<string>www.shiftnexo.de</string>
-	</array>
 	<!-- Nur Standard-Verschlüsselung (HTTPS) – keine Exportpapiere nötig. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
