@@ -60,7 +60,7 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
   }, []);
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
+    <form action={formAction} className="mt-5 space-y-4">
       <input type="hidden" name="weiter" value={next} />
 
       <Field label="E-Mail oder Spitzname">
@@ -72,7 +72,6 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
           autoCorrect="off"
           spellCheck={false}
           required
-          autoFocus
           placeholder="Spitzname oder name@firma.de"
           disabled={disabled}
         />
