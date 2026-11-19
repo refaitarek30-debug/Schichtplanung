@@ -22,14 +22,14 @@ export function RegistrierenWahl() {
 
   return (
     <>
-      <div className="text-center">
-        <p className="text-[13.5px] text-white/85">Noch kein Konto?</p>
+      <div className="border-t border-line pt-5 text-center">
+        <p className="text-[14px] text-ink-muted">Noch kein Konto?</p>
         <button
           type="button"
           onClick={() => setOffen(true)}
           aria-haspopup="dialog"
           data-registrieren
-          className="mt-2 h-12 w-full rounded-2xl bg-white/20 text-[15px] font-semibold text-white ring-1 ring-white/30 backdrop-blur-sm transition-colors hover:bg-white/30 active:bg-white/35"
+          className="mt-2.5 h-12 w-full rounded-2xl border border-line bg-surface text-[15px] font-semibold text-ink transition-colors hover:bg-surface-sunken active:bg-surface-sunken"
         >
           Registrieren
         </button>
