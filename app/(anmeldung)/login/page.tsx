@@ -15,10 +15,10 @@ export default async function LoginPage({
 
   return (
     <>
-    <div className="w-full rounded-[28px] bg-surface p-5 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.5)] sm:p-7">
-      <h1 className="text-2xl font-semibold tracking-tight">Willkommen zurück</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Mit Spitzname oder E-Mail – für Schichtkalender und Betrieb.
+    <div className="w-full">
+      <h1 className="text-[30px] font-semibold leading-tight tracking-tight">Anmelden</h1>
+      <p className="mt-1.5 text-[15px] text-ink-muted">
+        Mit Spitzname oder E-Mail.
       </p>
 
       {params.fehler === "dienst" ? (
