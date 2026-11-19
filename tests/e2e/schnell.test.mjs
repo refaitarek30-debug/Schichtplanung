@@ -31,6 +31,39 @@ export default async function schnell() {
     pruefe((await serverTiming(seite)).includes("sn-kalender"), "Mein Kalender kommt sofort aus dem Gerätespeicher – auch mit Netz");
     await warte(1500);
     pruefe((await seite.getByText(/^(Früh|Spät|Nacht)$/).count()) > 10, "Schichten stehen da");
+
+    // Monate untereinander wie im Privatbereich: hochwischen = nächster Monat, schon vorgeladen.
+    {
+      // Die einmalige Einführung liegt sonst über dem Kalender.
+      const ueberspringen = seite.getByRole("button", { name: "Überspringen" });
+      if (await ueberspringen.isVisible().catch(() => false)) {
+        await ueberspringen.click();
+        await warte(400);
+      }
+      const titel = async () => (await seite.locator("[data-monat-titel]").first().innerText()).trim();
+      const vorherTitel = await titel();
+      const box = await seite.locator("[data-monats-scroller]").boundingBox();
+      const cdp = await seite.context().newCDPSession(seite);
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height * 0.7;
+      const schritt = (box.height * 0.6) / 12;
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let i = 1; i <= 12; i++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - i * schritt }] });
+        await warte(16);
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await warte(1100);
+      pruefe((await titel()) !== vorherTitel, `Mein Kalender: hochwischen = nächster Monat (${vorherTitel} → ${await titel()})`);
+      const sichtbar = await seite.evaluate(() => {
+        const s = document.querySelector("[data-monats-scroller]");
+        const seite = [...s.children].find((c) => c.getAttribute("aria-hidden") === "false");
+        return seite ? [...seite.querySelectorAll("[data-iso]")].filter((b) => /Früh|Spät|Nacht/.test(b.textContent)).length : 0;
+      });
+      pruefe(sichtbar > 5, `Mein Kalender: nächster Monat steht gleich mit Schichten da (${sichtbar})`);
+      await seite.reload({ waitUntil: "networkidle" });
+      await warte(1000);
+    }
     // … und wird nebenher aufgefrischt.
     await warte(2500);
     pruefe((await gemerktAm(seite, "/meine-schichten")) > vorher, "im Hintergrund aufgefrischt (neuer Stand gemerkt)");

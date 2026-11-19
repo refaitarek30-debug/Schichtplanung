@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-19T12:00:00+01:00",
+    titel: "Kalender: Monate flüssig wischen",
+    text: "Im Kalender einfach hoch- oder runterwischen – der nächste Monat rastet sauber ein und steht sofort mit deinen Schichten da, weil die kommenden Monate schon vorgeladen sind. Woche, Monat und Jahr wählst du jetzt im Fenster „Wen sehe ich?“.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-18T00:30:00+01:00",
     titel: "Woche: flüssiger und lesbarer",
     text: "Zur Seite wischen schiebt die Woche jetzt sanft weiter. Mehrere ganztägige Einträge stehen sauber untereinander statt übereinander, und auch mehrtägige Termine lassen sich per Halten und Ziehen verschieben.",
