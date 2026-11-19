@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Clock, Pencil, Repeat, Upload, X } from "lucide-react";
@@ -281,7 +281,15 @@ export function PrivatKalender() {
     }
   }, [tage, feiertage, laedt, konto.userId]);
 
-  useEffect(() => {
+  // Der Kalender erscheint erst, wenn der gemerkte Stand eingesetzt ist – nie leer und dann bunt.
+  const [bereit, setBereit] = useState(false);
+  useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBereit(true);
+  }, []);
+
+  // Layout-Effekt: der gemerkte Stand (Schichten, Feiertage) steht schon im ersten Bild.
+  useLayoutEffect(() => {
     // Im Monat auch die Nachbarmonate vorladen, damit sie beim Wischen schon da sind.
     const rand = ansicht === "monat" ? 35 : 0;
     const jahre = new Set([fromISO(addDays(bereich.von, -rand)).getFullYear(), fromISO(addDays(bereich.bis, rand)).getFullYear()]);
@@ -299,8 +307,8 @@ export function PrivatKalender() {
       if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
   }, [konto.userId]);
-  useEffect(() => {
-    // Gleich nach dem Öffnen: die gemerkten eigenen Termine und To-dos dieses Geräts, bis die frischen da sind.
+  useLayoutEffect(() => {
+    // Gleich nach dem Öffnen (vor dem ersten Bild): die gemerkten eigenen Termine und To-dos dieses Geräts, bis die frischen da sind.
     const t = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (Array.isArray(t)) setTermine((alt) => (alt.length ? alt : t));
@@ -833,8 +841,9 @@ export function PrivatKalender() {
 
       <div
         className={cn(
-          "relative min-h-0 flex-1 select-none",
-          ansicht === "monat" ? "touch-none overflow-hidden px-2 pb-1.5 sm:-m-2 sm:p-2" : "touch-pan-y px-3.5 sm:px-0",
+          "relative min-h-0 flex-1 select-none transition-opacity duration-150",
+          !bereit && "opacity-0",
+          ansicht === "monat" ? "touch-none overflow-hidden sm:-m-2 sm:p-2" : "touch-pan-y px-3.5 sm:px-0",
         )}
         {...(ansicht === "monat"
           ? pinselAn
@@ -1174,7 +1183,7 @@ function MonatsAnsicht({
   const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
   return (
     <div
-      className="glas grid h-full grid-cols-7 overflow-hidden rounded-[24px]"
+      className="glas grid h-full grid-cols-7 overflow-hidden rounded-none border-x-0 border-b-0 sm:rounded-[24px] sm:border-x sm:border-b"
       style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
     >
       {WT.map((w, i) => (

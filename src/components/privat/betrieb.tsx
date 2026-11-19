@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { addDays } from "@/lib/dates";
 import { ladeFarben } from "@/lib/data/kalender-eigene";
@@ -47,22 +47,26 @@ export function useBetriebsschichten(benutzer: string, aktiv: boolean, von: stri
   const [zeiten, setZeiten] = useState<BetriebZeit[]>([]);
   const geladen = useRef(new Set<string>());
 
-  useEffect(() => {
+  // Gleich nach dem Öffnen – vor dem ersten Bild – der zuletzt gemerkte Stand dieses Geräts.
+  useLayoutEffect(() => {
     if (!aktiv) return;
-    // Gleich nach dem Öffnen: der zuletzt gemerkte Stand dieses Geräts.
     const gemerkt = ausGeraet<Record<string, BetriebTag>>(`${benutzer}:privat:betrieb`);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (gemerkt) setTage((alt) => (Object.keys(alt).length ? alt : gemerkt));
     const f = ausGeraet<Record<string, string>>(`${benutzer}:privat:betrieb-farben`);
     if (f) setFarben((alt) => (Object.keys(alt).length ? alt : f));
+    const z = ausGeraet<BetriebZeit[]>(`${benutzer}:privat:betrieb-zeiten`);
+    if (z) setZeiten((alt) => (alt.length ? alt : z));
+  }, [aktiv, benutzer]);
+
+  useEffect(() => {
+    if (!aktiv) return;
     ladeFarben()
       .then((neu) => {
         setFarben(neu);
         aufGeraet(`${benutzer}:privat:betrieb-farben`, neu);
       })
       .catch(() => undefined);
-    const z = ausGeraet<BetriebZeit[]>(`${benutzer}:privat:betrieb-zeiten`);
-    if (z) setZeiten((alt) => (alt.length ? alt : z));
     void Promise.resolve(createClient().from("shifts").select("name, short_name, start_time, end_time"))
       .then(({ data }) => {
         if (!data) return;
