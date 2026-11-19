@@ -13,6 +13,7 @@
   "ios": {
     "contentInset": "never",
     "backgroundColor": "#ffffff",
-    "appendUserAgent": "ShiftNexoApp/1"
+    "appendUserAgent": "ShiftNexoApp/1",
+    "allowsLinkPreview": false
   }
 }

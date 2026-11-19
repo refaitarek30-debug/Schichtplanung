@@ -860,3 +860,9 @@ html.bereich-wechsel::view-transition-new(root) {
     animation: none !important;
   }
 }
+
+/* iPhone-App: Langes Drücken auf Links und Bilder öffnet kein Vorschau-/Safari-Menü. */
+html[data-app] a,
+html[data-app] img {
+  -webkit-touch-callout: none;
+}

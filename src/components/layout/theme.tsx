@@ -55,7 +55,9 @@ export function ThemeScript() {
   const code = `(function(){try{var g=${JSON.stringify(GRUND)}[localStorage.getItem(${JSON.stringify(
     THEME_KEY,
   )})];if(g){var r=document.documentElement;if(g.theme)r.setAttribute("data-theme",g.theme);if(g.palette)r.setAttribute("data-palette",g.palette);}}catch(e){}})();`;
-  return <script dangerouslySetInnerHTML={{ __html: code + ANZEIGE_SKRIPT }} />;
+  // In der iPhone-App (Kennung „ShiftNexoApp“): data-app am <html> – kein Link-Menü bei langem Druck (globals.css).
+  const app = `(function(){try{if(navigator.userAgent.indexOf("ShiftNexoApp")>-1)document.documentElement.setAttribute("data-app","");}catch(e){}})();`;
+  return <script dangerouslySetInnerHTML={{ __html: code + ANZEIGE_SKRIPT + app }} />;
 }
 
 const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [

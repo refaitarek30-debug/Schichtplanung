@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type React from "react";
-import { Check, Minus, Share, Plus, SlidersHorizontal, UserPlus, Users } from "lucide-react";
+import { Check, Minus, Share, Plus, SlidersHorizontal, Upload, UserPlus, Users } from "lucide-react";
+import type { Ansicht } from "@/components/privat/ansicht-menue";
 import {
   PERSON_ARTEN,
   fetchPersonen,
@@ -592,6 +593,8 @@ function FarbReihe({ personKey, farben, onWahl }: { personKey: string; farben: R
 }
 
 
+const ANSICHT_NAME: Record<Ansicht, string> = { woche: "Woche", monat: "Monat", jahr: "Jahr" };
+
 /** Breite Rand-Zone rechts, in der ein Zug nach links „Wen sehe ich?“ hereinholt. */
 const RAND = 28;
 
@@ -608,6 +611,8 @@ export function WenSeheIch({
   randWischen = false,
   onEigeneFarben,
   onExport,
+  ansicht,
+  onHochladen,
 }: {
   andere: Andere;
   onVerwalten: () => void;
@@ -618,6 +623,10 @@ export function WenSeheIch({
   onEigeneFarben?: () => void;
   /** Unten im Fenster: Kalender als PDF (nur Privatbereich). */
   onExport?: () => void;
+  /** Ansicht (Woche/Monat/Jahr) gleich oben im Blatt – so bleibt der Kopf des Kalenders frei. */
+  ansicht?: { wert: Ansicht; optionen: readonly Ansicht[]; onWahl: (a: Ansicht) => void };
+  /** Unten im Fenster: Plan hochladen (Screenshot oder .ics). */
+  onHochladen?: () => void;
 }) {
   const [offen, setOffen] = useState(false);
   /** Blatt ist da, folgt aber noch dem Finger (beim Hereinziehen). */
@@ -929,6 +938,38 @@ export function WenSeheIch({
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-4">
                   <h2 className="border-b border-line pb-2 text-[20px] font-bold">Wen sehe ich?</h2>
 
+                  {ansicht ? (
+                    <div
+                      role="tablist"
+                      aria-label="Ansicht"
+                      data-wen-ansicht
+                      className="mt-2.5 grid gap-1 rounded-full bg-ink/[0.07] p-1"
+                      style={{ gridTemplateColumns: `repeat(${ansicht.optionen.length}, minmax(0, 1fr))` }}
+                    >
+                      {ansicht.optionen.map((a) => {
+                        const an = a === ansicht.wert;
+                        return (
+                          <button
+                            key={a}
+                            type="button"
+                            role="tab"
+                            aria-selected={an}
+                            onClick={() => {
+                              ansicht.onWahl(a);
+                              schliessen();
+                            }}
+                            className={cn(
+                              "h-9 rounded-full text-[15px] font-semibold transition-colors",
+                              an ? "bg-surface text-ink shadow-[0_1px_4px_rgba(0,0,0,0.12)]" : "text-ink-muted",
+                            )}
+                          >
+                            {ANSICHT_NAME[a]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
                   <div className="flex items-center gap-1 border-b border-line py-1.5">
                     {alle.length ? (
                       <>
@@ -1037,19 +1078,33 @@ export function WenSeheIch({
 
                   {!andere.zweige.some((z) => !z.nurSchichten) ? abschnitt("Partner & Familie", null, null, true) : null}
                 </div>
-                {onExport ? (
-                  <div className="shrink-0 px-4 pb-4 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        schliessen();
-                        onExport();
-                      }}
-                      data-wen-export
-                      className="glas flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold active:scale-[0.98]"
-                    >
-                      <Share className="h-[18px] w-[18px]" /> Kalender als PDF
-                    </button>
+                {onHochladen || onExport ? (
+                  <div className="shrink-0 space-y-2 px-4 pb-4 pt-1">
+                    {onHochladen ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          schliessen();
+                          onHochladen();
+                        }}
+                        className="glas flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold active:scale-[0.98]"
+                      >
+                        <Upload className="h-[18px] w-[18px]" /> Plan hochladen
+                      </button>
+                    ) : null}
+                    {onExport ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          schliessen();
+                          onExport();
+                        }}
+                        data-wen-export
+                        className="glas flex h-12 w-full items-center justify-center gap-2 rounded-full text-[15px] font-semibold active:scale-[0.98]"
+                      >
+                        <Share className="h-[18px] w-[18px]" /> Kalender als PDF
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

@@ -56,7 +56,7 @@ import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
-import { AnsichtMenue, type Ansicht } from "./ansicht-menue";
+import type { Ansicht } from "./ansicht-menue";
 import { KALENDER_HEUTE } from "./rahmen";
 import { WochenSpalten } from "./woche-spalten";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
@@ -763,6 +763,8 @@ export function PrivatKalender() {
           <WenSeheIch andere={andere} glas onVerwalten={() => setTeilen(true)} randWischen={randFrei}
             onEigeneFarben={() => router.push("/privat/schichten?reiter=liste")}
             onExport={() => router.push("/privat/export")}
+            ansicht={{ wert: ansicht, optionen: ["woche", "monat", "jahr"], onWahl: waehleAnsicht }}
+            onHochladen={() => hochladeFeld.current?.click()}
           />
           <span className="hidden gap-2 sm:flex">
             <GlasKnopf label="Vorher" onClick={() => springe(-1)}>
@@ -772,7 +774,6 @@ export function PrivatKalender() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
-          <AnsichtMenue ansicht={ansicht} onWahl={waehleAnsicht} onHochladen={() => hochladeFeld.current?.click()} />
         </div>
       </header>
       <OfflinePille wartend={offline.anzahl} />
