@@ -43,6 +43,7 @@ export function PrivatTeilen() {
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Die Personen konnten nicht geladen werden.");
       setPersonen((a) => a ?? []);
+      setVerbindungen((a) => a ?? []);
     }
   }, []);
 
@@ -58,41 +59,11 @@ export function PrivatTeilen() {
     <div className="space-y-5">
       <PrivatKopf titel="Teilen" unter="Wer deinen Kalender sieht" />
 
-      {/* Einladen: ein klarer Weg, dazu die Codes für Leute mit eigenem Kalender. */}
-      <section className="glas space-y-3 rounded-[24px] p-4" data-teilen-einladen>
-        <div className="flex items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-brand-500/12 text-brand-600">
-            <UserPlus className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-[17px] font-bold leading-tight">Partner, Familie, Freunde</h2>
-            <p className="mt-0.5 text-[13.5px] leading-snug text-ink-muted">Sie sehen deine Schichten – Krank und Urlaub nur als „frei“.</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setOffen("neu")}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-brand-600 text-[15.5px] font-semibold text-white"
-        >
-          <UserPlus className="h-[18px] w-[18px]" /> Person einladen
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setOffen("code")}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-[14px] bg-ink/[0.06] text-[14px] font-semibold"
-          >
-            <QrCode className="h-4 w-4" /> Mein Code
-          </button>
-          <button
-            type="button"
-            onClick={() => setOffen("codeEingeben")}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-[14px] bg-ink/[0.06] text-[14px] font-semibold"
-          >
-            <Link2 className="h-4 w-4" /> Code eingeben
-          </button>
-        </div>
-        <p className="text-[12px] leading-snug text-ink-faint">Hat die Person schon ShiftNexo? Dann verbindet ihr euch per Code.</p>
+      {/* Drei Wege oben: einladen (Link), eigener Code, Code eingeben. */}
+      <section className="grid grid-cols-3 gap-2" data-teilen-einladen>
+        <Kachel an icon={UserPlus} text="Einladen" onClick={() => setOffen("neu")} />
+        <Kachel icon={QrCode} text="Mein Code" onClick={() => setOffen("code")} />
+        <Kachel icon={Link2} text="Code eingeben" onClick={() => setOffen("codeEingeben")} />
       </section>
 
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[13px] text-crit-fg">{fehler}</p> : null}
@@ -116,7 +87,7 @@ export function PrivatTeilen() {
                 name={v.name || "Ohne Namen"}
                 farbe={PERSON_FARBEN[(personen.length + i) % PERSON_FARBEN.length]!}
                 unter={`${artName(v.art)} · eigener Kalender`}
-                marke={{ text: "verbunden", gut: true }}
+                status="gut"
               />
             ))}
             {personen.map((p) => (
@@ -128,11 +99,12 @@ export function PrivatTeilen() {
                 unter={`${artName(p.art)} · ${
                   einladungen[p.id] ? "Einladung offen" : !p.linkAktiv ? "Link beendet" : p.darfEintragen ? "darf eintragen" : "sieht mit"
                 }`}
-                marke={einladungen[p.id] ? { text: "wartet", gut: false } : null}
+                status={einladungen[p.id] ? "wartet" : !p.linkAktiv ? "aus" : "gut"}
               />
             ))}
           </ul>
         )}
+        <p className="px-1 text-[12.5px] leading-snug text-ink-muted">Sie sehen deine Schichten – Krank und Urlaub nur als „frei“.</p>
       </section>
 
       <section className="space-y-2">
@@ -141,7 +113,7 @@ export function PrivatTeilen() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="px-1 text-[13px] font-semibold uppercase tracking-[0.05em] text-ink-muted">Im Kalender deines Handys</h2>
+        <h2 className="px-1 text-[13px] font-semibold uppercase tracking-[0.05em] text-ink-muted">Kalender-Abo</h2>
         <KalenderAboCard />
       </section>
 
@@ -152,17 +124,46 @@ export function PrivatTeilen() {
   );
 }
 
+function Kachel({
+  icon: Icon,
+  text,
+  an = false,
+  onClick,
+}: {
+  icon: typeof UserPlus;
+  text: string;
+  an?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-[18px] px-1 text-[13.5px] font-semibold transition-transform active:scale-[0.97]",
+        an ? "bg-brand-600 text-white" : "glas text-ink",
+      )}
+    >
+      <Icon className="h-[22px] w-[22px]" />
+      <span className="leading-tight">{text}</span>
+    </button>
+  );
+}
+
+const PUNKT = { gut: "bg-[#34c759]", wartet: "bg-[#ff9f0a]", aus: "bg-ink-faint" } as const;
+
 function Zeile({
   name,
   farbe,
   unter,
-  marke,
+  status,
   onClick,
 }: {
   name: string;
   farbe: string;
   unter: string;
-  marke: { text: string; gut: boolean } | null;
+  /** Punkt vor der Unterzeile: verbunden/aktiv, Einladung offen, Link beendet. */
+  status: keyof typeof PUNKT;
   onClick: () => void;
 }) {
   return (
@@ -171,13 +172,11 @@ function Zeile({
         <PersonAvatar name={name} farbe={farbe} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[16px] font-semibold">{name}</span>
-          <span className="block truncate text-[12.5px] text-ink-muted">{unter}</span>
-        </span>
-        {marke ? (
-          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-semibold", marke.gut ? "bg-ok-bg text-ok-fg" : "bg-warn-bg text-warn-fg")}>
-            {marke.text}
+          <span className="flex items-center gap-1.5 truncate text-[12.5px] text-ink-muted">
+            <span aria-hidden className={cn("h-2 w-2 shrink-0 rounded-full", PUNKT[status])} />
+            <span className="truncate">{unter}</span>
           </span>
-        ) : null}
+        </span>
         <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
       </button>
     </li>
