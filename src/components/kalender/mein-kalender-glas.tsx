@@ -6,7 +6,6 @@ import { meldeBereichBereit } from "@/lib/bereich";
 import { halteSeiteFest } from "@/lib/seite-fest";
 import type React from "react";
 import { ChevronLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
-import { AnsichtMenue } from "@/components/privat/ansicht-menue";
 import { Alert } from "@/components/ui/alert";
 import { Blatt } from "@/components/privat/blatt";
 import { useSession } from "@/context/session";
@@ -846,18 +845,6 @@ export function MeinKalenderGlas() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
-          {/* Ansicht: Monat oder Woche – gleiches Menü wie im Privatbereich. */}
-          <span data-ansicht-umschalter className="contents">
-            <AnsichtMenue
-              ansicht={woche ? "woche" : "monat"}
-              ansichten={["woche", "monat"]}
-              kompakt
-              onWahl={(a) => {
-                if (a === "woche" && !woche) setWoche(montagVon(istAktuellerMonat ? heute : `${monat.jahr}-${String(monat.monat + 1).padStart(2, "0")}-01`));
-                if (a === "monat" && woche) setWoche(null);
-              }}
-            />
-          </span>
           <TodoZaehler anzahl={offeneBisHeute(todos, heute)} onClick={() => setTodoBlatt({ datum: heute })} />
           <WenSeheIch
             andere={andere}
@@ -865,6 +852,14 @@ export function MeinKalenderGlas() {
             onVerwalten={() => setEinladen(true)}
             randWischen={!pinselAn && !tagBlatt && !terminBlatt && !todoBlatt && !profilOffen && !einladen}
             onEigeneFarben={() => setAnpassen(true)}
+            ansicht={{
+              wert: woche ? "woche" : "monat",
+              optionen: ["woche", "monat"],
+              onWahl: (a) => {
+                if (a === "woche" && !woche) setWoche(montagVon(istAktuellerMonat ? heute : `${monat.jahr}-${String(monat.monat + 1).padStart(2, "0")}-01`));
+                if (a === "monat" && woche) setWoche(null);
+              },
+            }}
           />
           {/* Auf dem Handy fehlt hier die Kopfleiste: Profil, Meldungen, Abmelden. */}
           <span className="relative lg:hidden">

@@ -2,8 +2,8 @@
 
 import { LogoZeichen } from "@/components/ui/logo-zeichen";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, Building2, FolderLock, ClipboardList, KeyRound, LogOut, MessageSquareText, TrendingUp, Trash2, Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { BarChart3, BookOpen, Building2, ChevronLeft, FolderLock, ClipboardList, KeyRound, LogOut, MessageSquareText, TrendingUp, Trash2, Users } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +38,9 @@ export function KonsoleRahmen({ email, nurLesen, children }: { email: string; nu
             <p className="text-[12px] text-[#a1a1aa]">Betreiber-Konsole</p>
           </div>
         </div>
+        <div className="px-1 pb-2">
+          <Zurueck breit />
+        </div>
         <nav aria-label="Konsole" className="flex flex-col gap-0.5">
           {BEREICHE.map(({ pfad: p, text, icon: Icon }) => (
             <Link
@@ -65,10 +68,13 @@ export function KonsoleRahmen({ email, nurLesen, children }: { email: string; nu
       </aside>
 
       <header className="sticky top-0 z-20 border-b border-white/5 bg-[#18181b] text-[#e4e4e7] lg:hidden">
-        <div className="flex items-center justify-between px-4 pb-1 pt-3">
-          <p className="text-[15px] font-semibold text-white">
-            ShiftNexo <span className="font-normal text-[#a1a1aa]">Konsole</span>
-          </p>
+        <div className="flex items-center justify-between gap-3 px-4 pb-1 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="flex min-w-0 items-center gap-2">
+            <Zurueck />
+            <p className="truncate text-[15px] font-semibold text-white">
+              ShiftNexo <span className="font-normal text-[#a1a1aa]">Konsole</span>
+            </p>
+          </div>
           <form action={signOut}>
             <button type="submit" className="text-[13px] text-[#f87171]">
               Abmelden
@@ -96,5 +102,27 @@ export function KonsoleRahmen({ email, nurLesen, children }: { email: string; nu
       ) : null}
       <main className="mx-auto w-full max-w-5xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
+  );
+}
+
+/**
+ * Zurück aus der Konsole – in der App gibt es keine Zurück-Taste des Browsers.
+ * Mit Verlauf einen Schritt zurück, sonst zur eigenen Startseite.
+ */
+function Zurueck({ breit = false }: { breit?: boolean }) {
+  const router = useRouter();
+  return (
+    <button
+      type="button"
+      onClick={() => (window.history.length > 1 ? router.back() : router.push("/start"))}
+      aria-label="Zurück"
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-full text-[#d4d4d8] hover:bg-white/5",
+        breit ? "h-9 px-2 text-[13.5px]" : "-ml-1.5 h-9 w-9 justify-center",
+      )}
+    >
+      <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+      {breit ? "Zurück zur App" : null}
+    </button>
   );
 }
