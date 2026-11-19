@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import type { PrivatKonto } from "@/lib/privat/server";
 import { ladeSchichtarten, type Schichtart } from "@/lib/privat/daten";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
@@ -55,12 +55,16 @@ export function PrivatProvider({
       const sicher = window.location.protocol === "https:" ? "; secure" : "";
       document.cookie = `${START_COOKIE}=${encodeURIComponent(startCookieWert(konto.userId, "privat"))}; path=/; max-age=${START_COOKIE_MAX_AGE}; samesite=lax${sicher}`;
     }
-    // Gleich nach dem Öffnen: die zuletzt gemerkten Schichten dieses Geräts, bis die frischen da sind.
+    void ladeArtenNeu();
+  }, [ladeArtenNeu, konto.userId, mitBetrieb]);
+
+  // Gleich nach dem Öffnen – noch bevor das erste Bild gezeichnet wird – die zuletzt
+  // gemerkten Schichten (Namen, Farben) dieses Geräts, bis die frischen da sind.
+  useLayoutEffect(() => {
     const gemerkt = ausGeraet<Schichtart[]>(`${konto.userId}:privat:arten`);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (Array.isArray(gemerkt)) setSchichtarten((alt) => alt ?? gemerkt);
-    void ladeArtenNeu();
-  }, [ladeArtenNeu, konto.userId, mitBetrieb]);
+  }, [konto.userId]);
 
   const artNach = useMemo(() => new Map((schichtarten ?? []).map((a) => [a.id, a])), [schichtarten]);
 
