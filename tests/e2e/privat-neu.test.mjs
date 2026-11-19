@@ -40,8 +40,18 @@ export default async function privatNeu() {
     await wische(seite, { x: mitte.x + 100, y: mitte.y }, { x: mitte.x - 100, y: mitte.y });
     await warte(700);
     pruefe((await titel()) === vorher, `Seitlich wischen blättert nicht (${await titel()})`);
-    await wische(seite, { x: mitte.x, y: mitte.y + 120 }, { x: mitte.x, y: mitte.y - 120 });
-    await warte(900);
+    // Monate liegen in einer nativen Scroll-Liste: echter Finger (Touch) statt Pointer-Ereignisse.
+    const cdp = await seite.context().newCDPSession(seite);
+    // Gut die Hälfte einer Monatsseite hochziehen.
+    const seitenHoehe = await seite.evaluate(() => document.querySelector("[data-monats-scroller]").clientHeight);
+    const schritt = (seitenHoehe * 0.6) / 12;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: mitte.x, y: mitte.y + 60 }] });
+    for (let i = 1; i <= 12; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: mitte.x, y: mitte.y + 60 - i * schritt }] });
+      await warte(16);
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await warte(1100);
     const naechster = new Intl.DateTimeFormat("de-DE", { month: "long" }).format(new Date(jetzt.jahr, jetzt.monat, 1));
     pruefe((await titel()).startsWith(naechster), `Hochwischen: nächster Monat (${await titel()})`);
 
