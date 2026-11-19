@@ -61,7 +61,8 @@ import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } f
 import { setzeLokal, useLokalNachLaden } from "./lokal";
 import { KalenderEinfuehrung } from "./einfuehrung";
 import { EigeneArtBlatt } from "./eigene-art";
-import { PinselKnopf, PinselLeiste, useMonatWischen, usePinselStrich } from "./pinsel";
+import { PinselKnopf, PinselLeiste, usePinselStrich } from "./pinsel";
+import { MonatsScroller, type Monat, type MonatsScrollerGriff } from "./monats-scroller";
 import { useLoeschFrage } from "./loesch-frage";
 import { TodoZaehler, offeneBisHeute } from "./todo-zaehler";
 import { ProfilBlatt, useBenachrichtigungen } from "./profil-blatt";
@@ -238,6 +239,14 @@ export function MeinKalenderGlas() {
   const [stand, setStand] = useState<Stand | null>(
     () => ausZwischenspeicher<Stand>(schluessel(start, tageImRaster)) ?? null,
   );
+  // Vorgeladene Nachbarmonate: nur ein Zähler, damit neu gezeichnet wird.
+  const [, setVorrat] = useState(0);
+  // Gemerktes vom Gerät erst nach dem ersten Zeichnen (sonst weicht es vom Server-HTML ab).
+  const [montiert, setMontiert] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMontiert(true);
+  }, []);
   const [fehler, setFehler] = useState<string | null>(null);
   const [schichten, setSchichten] = useState<ShiftDetail[]>([]);
   const ladeNr = useRef(0);
@@ -272,13 +281,22 @@ export function MeinKalenderGlas() {
         if (nr !== ladeNr.current) return;
         setStand(neu);
         setFehler(null);
+        // Im Hintergrund weitere Monate holen (erst die nächsten, dann weiter weg),
+        // damit beim Wischen alles schon dasteht – auch ohne Netz.
         const d = fromISO(addDays(s, 10));
-        for (const schritt of [-1, 1]) {
-          const r = raster(d.getFullYear(), d.getMonth() + schritt);
-          if (!ausZwischenspeicher(schluessel(r.start, r.wochen * 7))) {
-            void holen(r.start, r.wochen * 7).catch(() => undefined);
+        void (async () => {
+          for (const schritt of [1, -1, 2, -2, 3, 4, 5, 6]) {
+            if (nr !== ladeNr.current) return;
+            const r = raster(d.getFullYear(), d.getMonth() + schritt);
+            if (ausZwischenspeicher(schluessel(r.start, r.wochen * 7))) continue;
+            try {
+              await holen(r.start, r.wochen * 7);
+              setVorrat((v) => v + 1);
+            } catch {
+              return;
+            }
           }
-        }
+        })();
         return;
       } catch (err) {
         if (versuch === 0) {
@@ -668,18 +686,38 @@ export function MeinKalenderGlas() {
   }
 
   // ---- Blättern und Wischen ----------------------------------------------
-  function springe(schritt: number) {
-    setMonat((m) => {
-      const d = new Date(m.jahr, m.monat + schritt, 1);
-      return { jahr: d.getFullYear(), monat: d.getMonth() };
-    });
-  }
   function zuHeute() {
     if (woche) return setWoche(montagVon(heute));
     const d = fromISO(heute);
     setMonat({ jahr: d.getFullYear(), monat: d.getMonth() });
   }
-  const { flaeche, griffe, blaettern, gewischt } = useMonatWischen(springe);
+  // Die Monate stehen untereinander in einer nativen Scroll-Liste (wie im Privatbereich):
+  // hoch/runter mit Schwung, jeder Monat rastet ein.
+  const scroller = useRef<MonatsScrollerGriff>(null);
+  const gewischt = useRef(false);
+  const blaettern = (schritt: number) => scroller.current?.blaettern(schritt);
+  // Mit offenem Pinsel scrollt die Liste nicht (der Finger malt); kurz hoch/runter wischen blättert.
+  const pinselWisch = useRef<{ x: number; y: number; t: number } | null>(null);
+  const griffe = {
+    onPointerDown: (e: React.PointerEvent) => {
+      pinselWisch.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+    },
+    onPointerMove: () => undefined,
+    onPointerUp: (e: React.PointerEvent) => {
+      const w = pinselWisch.current;
+      pinselWisch.current = null;
+      if (!w) return;
+      const dy = e.clientY - w.y;
+      if (Math.abs(dy) > 50 && Math.abs(dy) > Math.abs(e.clientX - w.x) * 1.5 && Date.now() - w.t < 800) {
+        gewischt.current = true;
+        window.setTimeout(() => (gewischt.current = false), 80);
+        blaettern(dy < 0 ? 1 : -1);
+      }
+    },
+    onPointerCancel: () => {
+      pinselWisch.current = null;
+    },
+  };
   const { ref: zellenRef, hoehe: zellenHoehe } = useZellenHoehe();
 
   // Lange auf einen Tag drücken: neuer Termin für diesen Tag.
@@ -721,7 +759,7 @@ export function MeinKalenderGlas() {
 
   function tippen(iso: string) {
     if (langDruck.geschluckt()) return;
-    if (gewischt.current) return;
+    if (gewischt.current || scroller.current?.bewegt()) return;
     if (pinselAn && pinsel) {
       if (!strich.geschluckt()) pinselStrich([iso]);
       return;
@@ -730,7 +768,6 @@ export function MeinKalenderGlas() {
   }
 
   // ---- Darstellung -------------------------------------------------------
-  const tage = useMemo(() => Array.from({ length: tageImRaster }, (_, i) => addDays(start, i)), [start, tageImRaster]);
   const aktuellerSchluessel = schluessel(start, tageImRaster);
   const sichtbar =
     stand?.schluessel === aktuellerSchluessel ? stand : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
@@ -798,6 +835,128 @@ export function MeinKalenderGlas() {
     const d = fromISO(heute);
     return d.getFullYear() === monat.jahr && d.getMonth() === monat.monat;
   })();
+
+  // Ein Monat im Scroller – der sichtbare und seine Nachbarn (aus dem Vorrat).
+  function standFuer(m: Monat): Stand | null {
+    const r = raster(m.jahr, m.monat);
+    const k = schluessel(r.start, r.wochen * 7);
+    if (k === aktuellerSchluessel) return sichtbar;
+    const g = ausZwischenspeicher<Stand>(k);
+    if (g) return g;
+    if (!montiert) return null;
+    const v = holeEigeneTage(k);
+    return v ? { schluessel: k, ...v } : null;
+  }
+  function monatsRaster(m: Monat, aktiv: boolean) {
+    const r = raster(m.jahr, m.monat);
+    const mTage = Array.from({ length: r.wochen * 7 }, (_, i) => addDays(r.start, i));
+    const st = standFuer(m);
+    const mZellen = st?.tage ?? new Map<string, LiveShiftPlanCell>();
+    return (
+      <div
+        className="glas relative grid h-full select-none grid-cols-7 overflow-hidden rounded-none sm:rounded-[22px]"
+        style={{ gridTemplateRows: `auto repeat(${r.wochen}, minmax(0, 1fr))` }}
+        aria-busy={!st}
+      >
+          {WT.map((w, i) => (
+            <span
+              key={w}
+              aria-hidden
+              className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "we-kopf rounded-t-lg text-ink-faint" : "text-ink-muted")}
+            >
+              {w}
+            </span>
+          ))}
+          {mTage.map((iso, i) => {
+            const info = tagInfo(mZellen.get(iso));
+            const d = fromISO(iso);
+            const imM = d.getMonth() === m.monat;
+            // „Wen sehe ich?“ → Ich · Schichten aus: eigene Einträge im Monat ausblenden.
+            const plan = st && andere.eigeneSchichten ? planKaestchen(info, farben, t) : [];
+            const eigen = andere.eigeneSchichten && eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
+            const andereAm = andere.amTag(iso);
+            const partner = andereAm.length > 0;
+            const ts = termineAm(sichtbareTermine, iso);
+            // Wird es eng (Schicht + Antrag + eigener Eintrag, oder dazu
+            // Eingeladene), steht der eigene Eintrag als Punkt an der Tageszahl.
+            const eigenAlsPunkt = !!eigen && plan.length + 1 + (partner ? 1 : 0) >= 3;
+            const kaestchen = plan.length + (eigen && !eigenAlsPunkt ? 1 : 0);
+            const klein = kaestchen >= 2;
+            // Termine stehen untereinander – so viele, wie in die Zelle passen.
+            const zeilen = terminZeilen(zellenHoehe, { kaestchen, klein, eingeladene: partner });
+            const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
+            const rest = ts.length - zeigen.length;
+            return (
+              <button
+                key={iso}
+                ref={aktiv && i === 7 ? zellenRef : undefined}
+                type="button"
+                data-iso={iso}
+                {...langDruck.zelle(iso)}
+                onClick={() => tippen(iso)}
+                aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}${feiertage.has(iso) ? `, ${feiertage.get(iso)}` : ""}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
+                className={cn(
+                  "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
+                  i % 7 !== 0 && "border-l",
+                  i % 7 >= 5 && "we-zelle",
+                  feiertage.has(iso) && "feiertag-zelle",
+                  !imM && "opacity-35",
+                  aktiv && strich.markiert.has(iso) && "pinsel-strich",
+                )}
+              >
+                <span className="relative mx-auto shrink-0">
+                  <span
+                    className={cn(
+                      "tnum flex h-[24px] min-w-[24px] items-center justify-center rounded-full px-1 text-[14.5px] font-medium leading-none [@media(max-height:750px)]:h-[21px] [@media(max-height:750px)]:min-w-[21px] [@media(max-height:750px)]:text-[13.5px]",
+                      iso === heute
+                        ? "bg-[#ff3b30] font-bold text-white shadow-[0_2px_8px_rgba(255,59,48,0.45)]"
+                        : feiertage.has(iso) && "font-semibold text-[#e5484d]",
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                  {eigen && eigenAlsPunkt ? (
+                    <span
+                      aria-hidden
+                      className="absolute -left-2.5 top-[8px] h-[7px] w-[7px] rounded-full ring-1 ring-inset ring-black/15"
+                      style={{ backgroundColor: eigen.farbe }}
+                    />
+                  ) : null}
+                  {ts.length ? (
+                    <span aria-hidden className="absolute -right-2.5 top-0.5 hidden gap-px [@media(max-height:750px)]:flex">
+                      {ts.slice(0, 3).map((t) => (
+                        <span key={t.id} className={cn("h-[5px] w-[5px] rounded-full", t.vonPartner ? "bg-brand-500" : "bg-ink-muted")} />
+                      ))}
+                    </span>
+                  ) : null}
+                </span>
+                {st ? (
+                  plan.map((k, j) => <Chip key={j} text={k.text} stil={k.stil} klein={klein} />)
+                ) : (
+                  <span className="h-5 shrink-0 animate-pulse rounded-[7px] bg-ink/[0.07]" />
+                )}
+                {eigen && !eigenAlsPunkt ? <Chip text={eigen.name} stil={eigenStil(eigen.farbe)} klein={klein} /> : null}
+                <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
+                {zeigen.map((t) => (
+                  <span
+                    key={t.id}
+                    className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden"
+                  >
+                    <span className={cn("mr-0.5 inline-block h-[5px] w-[5px] rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
+                    {t.titel || "Termin"}
+                  </span>
+                ))}
+                {rest > 0 && zeilen > 0 ? (
+                  <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
+                    +{rest} {zeigen.length ? "mehr" : rest === 1 ? "Termin" : "Termine"}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -914,112 +1073,17 @@ export function MeinKalenderGlas() {
         </div>
       ) : null}
 
-      {/* Rahmen, der die Fläche beim Blättern beschneidet (mit Platz für den Schatten). */}
-      <div className={cn("relative -m-2 flex min-h-0 flex-1 flex-col overflow-hidden p-2", woche && "hidden")}>
-      <div
-        ref={flaeche}
-        className="glas relative grid min-h-0 flex-1 touch-none select-none grid-cols-7 overflow-hidden rounded-none will-change-transform sm:rounded-[22px]"
-        style={{ gridTemplateRows: `auto repeat(${wochen}, minmax(0, 1fr))` }}
-        {...(pinselAn ? strich.griffe : griffe)}
-        aria-busy={!sichtbar}
-      >
-        {WT.map((w, i) => (
-          <span
-            key={w}
-            aria-hidden
-            className={cn("pb-1 pt-1.5 text-center text-[11px] font-semibold uppercase", i >= 5 ? "we-kopf rounded-t-lg text-ink-faint" : "text-ink-muted")}
-          >
-            {w}
-          </span>
-        ))}
-        {tage.map((iso, i) => {
-          const info = tagInfo(zellen.get(iso));
-          const d = fromISO(iso);
-          const imM = d.getMonth() === monat.monat;
-          // „Wen sehe ich?“ → Ich · Schichten aus: eigene Einträge im Monat ausblenden.
-          const plan = sichtbar && andere.eigeneSchichten ? planKaestchen(info, farben, t) : [];
-          const eigen = andere.eigeneSchichten && eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
-          const andereAm = andere.amTag(iso);
-          const partner = andereAm.length > 0;
-          const ts = termineAm(sichtbareTermine, iso);
-          // Wird es eng (Schicht + Antrag + eigener Eintrag, oder dazu
-          // Eingeladene), steht der eigene Eintrag als Punkt an der Tageszahl.
-          const eigenAlsPunkt = !!eigen && plan.length + 1 + (partner ? 1 : 0) >= 3;
-          const kaestchen = plan.length + (eigen && !eigenAlsPunkt ? 1 : 0);
-          const klein = kaestchen >= 2;
-          // Termine stehen untereinander – so viele, wie in die Zelle passen.
-          const zeilen = terminZeilen(zellenHoehe, { kaestchen, klein, eingeladene: partner });
-          const zeigen = ts.length > zeilen ? ts.slice(0, Math.max(0, zeilen - 1)) : ts;
-          const rest = ts.length - zeigen.length;
-          return (
-            <button
-              key={iso}
-              ref={i === 7 ? zellenRef : undefined}
-              type="button"
-              data-iso={iso}
-              {...langDruck.zelle(iso)}
-              onClick={() => tippen(iso)}
-              aria-label={`${WOCHENTAG_LANG[d.getDay()]}, ${formatDE(iso)}${feiertage.has(iso) ? `, ${feiertage.get(iso)}` : ""}: ${beschreibung(info, t)}${eigen ? `, eigener Eintrag: ${eigen.name}` : ""}${andereAm.map((e) => `, ${e.name}: ${e.code}`).join("")}${ts.length ? `, ${ts.length} Termin${ts.length === 1 ? "" : "e"}` : ""}`}
-              className={cn(
-                "glas-linie flex min-h-0 flex-col items-stretch gap-[2px] overflow-hidden border-t px-[2px] pb-0.5 pt-[3px] text-center outline-none transition-colors [-webkit-touch-callout:none] active:bg-ink/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500",
-                i % 7 !== 0 && "border-l",
-                i % 7 >= 5 && "we-zelle",
-                feiertage.has(iso) && "feiertag-zelle",
-                !imM && "opacity-35",
-                strich.markiert.has(iso) && "pinsel-strich",
-              )}
-            >
-              <span className="relative mx-auto shrink-0">
-                <span
-                  className={cn(
-                    "tnum flex h-[24px] min-w-[24px] items-center justify-center rounded-full px-1 text-[14.5px] font-medium leading-none [@media(max-height:750px)]:h-[21px] [@media(max-height:750px)]:min-w-[21px] [@media(max-height:750px)]:text-[13.5px]",
-                    iso === heute
-                      ? "bg-[#ff3b30] font-bold text-white shadow-[0_2px_8px_rgba(255,59,48,0.45)]"
-                      : feiertage.has(iso) && "font-semibold text-[#e5484d]",
-                  )}
-                >
-                  {d.getDate()}
-                </span>
-                {eigen && eigenAlsPunkt ? (
-                  <span
-                    aria-hidden
-                    className="absolute -left-2.5 top-[8px] h-[7px] w-[7px] rounded-full ring-1 ring-inset ring-black/15"
-                    style={{ backgroundColor: eigen.farbe }}
-                  />
-                ) : null}
-                {ts.length ? (
-                  <span aria-hidden className="absolute -right-2.5 top-0.5 hidden gap-px [@media(max-height:750px)]:flex">
-                    {ts.slice(0, 3).map((t) => (
-                      <span key={t.id} className={cn("h-[5px] w-[5px] rounded-full", t.vonPartner ? "bg-brand-500" : "bg-ink-muted")} />
-                    ))}
-                  </span>
-                ) : null}
-              </span>
-              {sichtbar ? (
-                plan.map((k, j) => <Chip key={j} text={k.text} stil={k.stil} klein={klein} />)
-              ) : (
-                <span className="h-5 shrink-0 animate-pulse rounded-[7px] bg-ink/[0.07]" />
-              )}
-              {eigen && !eigenAlsPunkt ? <Chip text={eigen.name} stil={eigenStil(eigen.farbe)} klein={klein} /> : null}
-              <AndereTags eintraege={andereAm} anzeige={andere.anzeige} />
-              {zeigen.map((t) => (
-                <span
-                  key={t.id}
-                  className="shrink-0 truncate text-left text-[10px] leading-[1.25] text-ink-muted [@media(max-height:750px)]:hidden"
-                >
-                  <span className={cn("mr-0.5 inline-block h-[5px] w-[5px] rounded-full align-middle", t.vonPartner ? "bg-brand-500" : "bg-ink-faint")} />
-                  {t.titel || "Termin"}
-                </span>
-              ))}
-              {rest > 0 && zeilen > 0 ? (
-                <span className="shrink-0 truncate whitespace-nowrap text-left text-[10px] font-semibold leading-[1.25] text-ink-faint [@media(max-height:750px)]:hidden">
-                  +{rest} {zeigen.length ? "mehr" : rest === 1 ? "Termin" : "Termine"}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      {/* Rahmen, der die Fläche beim Blättern beschneidet. */}
+      <div className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden", woche && "hidden")}>
+        <MonatsScroller
+          ref={scroller}
+          monat={monat}
+          onMonat={setMonat}
+          gesperrt={pinselAn}
+          className="sm:rounded-[22px]"
+          griffe={pinselAn ? strich.griffe : undefined}
+          seite={(m, aktiv) => monatsRaster(m, aktiv)}
+        />
 
         {!pinselAn ? (
           <PinselKnopf
