@@ -64,6 +64,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- App-gebundene Domains: nötig, damit die Seite im App-Fenster einen
+	     Service Worker nutzen darf (schneller Start, Kalender ohne Netz). -->
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>shiftnexo.de</string>
+		<string>www.shiftnexo.de</string>
+	</array>
 	<!-- Nur Standard-Verschlüsselung (HTTPS) – keine Exportpapiere nötig. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>

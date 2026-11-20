@@ -39,7 +39,7 @@ import {
   STANDARD_FARBE,
 } from "@/lib/kalender-farben";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
-import { holeEigeneTage, merkeEigeneTage } from "./stand-geraet";
+import { ausVorrat, holeEigeneTage, inVorrat, merkeEigeneTage, vorratSpeichern, vorratStand } from "./stand-geraet";
 import { aufGeraet, ausGeraet } from "@/lib/geraete-speicher";
 import { istOffline } from "@/lib/netz";
 import { istWartend, useOfflineTermine } from "@/lib/offline-termine";
@@ -204,6 +204,8 @@ function beschreibung(info: TagInfo, t: (text: string) => string): string {
 
 const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
 
+const rasterTage = (s: string, n: number) => Array.from({ length: n }, (_, i) => addDays(s, i));
+
 export function MeinKalenderGlas() {
   const t = useBegriffe();
   const { profile, company } = useSession();
@@ -236,6 +238,7 @@ export function MeinKalenderGlas() {
     (s: string, n: number) => `${profile.id}:kalender:${company.id}:${s}:${n}`,
     [profile.id, company.id],
   );
+  const vorratSchluessel = `${profile.id}:kalender-vorrat:${company.id}`;
   const [stand, setStand] = useState<Stand | null>(
     () => ausZwischenspeicher<Stand>(schluessel(start, tageImRaster)) ?? null,
   );
@@ -259,9 +262,53 @@ export function MeinKalenderGlas() {
       const ergebnis: Stand = { schluessel: schluessel(s, n), tage, imPlan: tage.size > 0 };
       inZwischenspeicher(schluessel(s, n), ergebnis);
       merkeEigeneTage(schluessel(s, n), tage, tage.size > 0);
+      inVorrat(vorratSchluessel, s, rasterTage(s, n), tage, tage.size > 0);
       return ergebnis;
     },
-    [company.id, schluessel],
+    [company.id, schluessel, vorratSchluessel],
+  );
+
+  /**
+   * Vorrat bis 5 Jahre voraus (und 1 Jahr zurück): Monat für Monat im
+   * Hintergrund, höchstens einmal am Tag je Monat. Nur die eigenen Zeilen
+   * landen auf dem Gerät.
+   */
+  const vorratLaeuft = useRef(false);
+  const vorratFuellen = useCallback(
+    async (ab: Date) => {
+      if (vorratLaeuft.current) return;
+      vorratLaeuft.current = true;
+      try {
+        const schritte = [
+          ...Array.from({ length: 54 }, (_, i) => i + 7),
+          ...Array.from({ length: 10 }, (_, i) => -(i + 3)),
+        ];
+        let geholt = 0;
+        for (const schritt of schritte) {
+          if (document.visibilityState !== "visible" || istOffline()) break;
+          const r = raster(ab.getFullYear(), ab.getMonth() + schritt);
+          const n = r.wochen * 7;
+          if (Date.now() - vorratStand(vorratSchluessel, r.start) < 20 * 60 * 60 * 1000) continue;
+          const zellen = await fetchShiftPlanGrid(company.id, r.start, n);
+          const tage = new Map<string, LiveShiftPlanCell>();
+          for (const z of zellen) if (z.isMe) tage.set(z.day, z);
+          inVorrat(vorratSchluessel, r.start, rasterTage(r.start, n), tage, tage.size > 0, false);
+          if (++geholt % 6 === 0) {
+            vorratSpeichern(vorratSchluessel);
+            setVorrat((v) => v + 1);
+          }
+          // Sanft: der Server und das Handy sollen davon nichts merken.
+          await new Promise((ok) => setTimeout(ok, 250));
+        }
+      } catch {
+        // Beim nächsten Öffnen geht es weiter, wo es aufgehört hat.
+      } finally {
+        vorratSpeichern(vorratSchluessel);
+        setVorrat((v) => v + 1);
+        vorratLaeuft.current = false;
+      }
+    },
+    [company.id, vorratSchluessel],
   );
 
   const laden = useCallback(async () => {
@@ -272,7 +319,7 @@ export function MeinKalenderGlas() {
     if (gespeichert) setStand(gespeichert);
     else {
       // Gleich nach dem Öffnen der App: der letzte Stand vom Gerät, bis die frischen Daten da sind.
-      const vomGeraet = holeEigeneTage(schluessel(s, n));
+      const vomGeraet = holeEigeneTage(schluessel(s, n)) ?? ausVorrat(vorratSchluessel, s, rasterTage(s, n));
       if (vomGeraet) setStand({ schluessel: schluessel(s, n), ...vomGeraet });
     }
     for (let versuch = 0; versuch < 2; versuch++) {
@@ -296,6 +343,7 @@ export function MeinKalenderGlas() {
               return;
             }
           }
+          if (nr === ladeNr.current) void vorratFuellen(d);
         })();
         return;
       } catch (err) {
@@ -312,7 +360,7 @@ export function MeinKalenderGlas() {
         );
       }
     }
-  }, [start, tageImRaster, schluessel, holen]);
+  }, [start, tageImRaster, schluessel, holen, vorratSchluessel, vorratFuellen]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -844,7 +892,7 @@ export function MeinKalenderGlas() {
     const g = ausZwischenspeicher<Stand>(k);
     if (g) return g;
     if (!montiert) return null;
-    const v = holeEigeneTage(k);
+    const v = holeEigeneTage(k) ?? ausVorrat(vorratSchluessel, r.start, rasterTage(r.start, r.wochen * 7));
     return v ? { schluessel: k, ...v } : null;
   }
   function monatsRaster(m: Monat, aktiv: boolean) {
