@@ -10,14 +10,21 @@ export default async function startseite() {
     await seite.getByRole("button", { name: "Überspringen" }).click({ timeout: 1500 }).catch(() => {});
 
     // Klassisch (Stand aller bisherigen Konten): großer Knopf, große Kacheln.
-    pruefe(await seite.getByText("Urlaubstage verfügbar").first().isVisible(), "Klassisch: große Kachel „Urlaubstage verfügbar“");
+    pruefe(await seite.getByText(/von \d+ übrig/).first().isVisible(), "Klassisch: große Kachel „Urlaub“ (… übrig)");
     pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]:visible').count()) === 1, "Klassisch: großer Knopf „Urlaub beantragen“");
 
-    // Geburtsdatum bestätigen (nur Administration, nur wenn etwas offen ist).
-    pruefe(await seite.getByText("Geburtsdatum bestätigen").isVisible(), "Admin: Hinweis „Geburtsdatum bestätigen“");
+    // Aufgaben (nur Administration, nur wenn etwas offen ist): Kachel öffnet ein Blatt.
+    const aufgabenKachel = seite.getByRole("button", { name: /^Aufgaben: 1/ });
+    pruefe(await aufgabenKachel.isVisible(), "Admin: Kachel „Aufgaben“ mit 1 offen");
+    await aufgabenKachel.click();
+    await warte(500);
+    pruefe(await seite.locator('[role="dialog"]').getByText("Anna Becker").first().isVisible(), "Aufgaben: Blatt zeigt „Geburtsdatum bestätigen“ für Anna Becker");
     await seite.getByRole("button", { name: "Bestätigen" }).click();
     await warte(800);
-    pruefe((await seite.getByText("Geburtsdatum bestätigen").count()) === 0, "Admin: nach dem Bestätigen verschwunden");
+    pruefe(await seite.getByText("Alles erledigt.").isVisible(), "Aufgaben: nach dem Bestätigen erledigt");
+    await seite.keyboard.press("Escape");
+    await warte(500);
+    pruefe((await seite.getByRole("button", { name: /^Aufgaben: / }).count()) === 0, "Admin: Kachel verschwindet, wenn nichts offen ist");
 
     // Glühbirne: Nachrichtenfeld ohne Leuchten – auch wenn es Neues gibt.
     const birne = seite.locator("[data-neuigkeiten]:visible").first();

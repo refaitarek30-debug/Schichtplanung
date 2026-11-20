@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-20T21:00:00+01:00",
+    titel: "Kalender und Startseite: aufgeräumt",
+    text: "Eingeladene Personen: bis zu zwei stehen als eigene Zeile im Tag, ab drei als kleine Kreise. „Wen sehe ich?“ kommt mit einem kurzen Wisch vom rechten Rand und geht mit einem kurzen Wisch nach rechts wieder zu. Neue Privatkonten sehen oben nur noch einen schmalen Hinweis.",
+    bereich: "beide",
+  },
+  {
+    zeit: "2026-11-20T21:00:00+01:00",
+    titel: "Aufgaben als Kachel",
+    text: "Offene Aufgaben (z. B. Geburtsdatum bestätigen) stehen jetzt als eigene Kachel auf der Startseite. Wer die Kachel ausblendet, sieht stattdessen einen kleinen Punkt unter der Begrüßung.",
+    rollen: ["admin"],
+  },
+  {
     zeit: "2026-11-20T19:00:00+01:00",
     titel: "Startseite aufgeräumt",
     text: "Im Plan auf der Startseite stehen „Heute“ und „…“ jetzt oben neben dem Monat, „Groß“ neben dem Zeitraum. Legende, Ansicht, Wochenende und Farben findest du unter „…“ – beim Schließen klappt dort alles wieder zu. Die untere Leiste ist schlanker, die aktive Seite sitzt in einer kleinen Glasblase.",

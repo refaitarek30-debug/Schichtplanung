@@ -1,5 +1,7 @@
 "use client";
 
+import { gruppenName } from "@/lib/utils";
+
 import { useState } from "react";
 import { Download, Share2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -87,7 +89,7 @@ export function ShiftPlanExport({
       }
 
       const zeitraum = range === "month" ? `${monthName(month)} ${year}` : String(year);
-      const gruppe = team === "all" ? "alle Schichten" : `Schicht ${team}`;
+      const gruppe = team === "all" ? "alle Schichten" : gruppenName(team);
       const dateiname =
         range === "month"
           ? `Schichtplan_${year}-${pad(month + 1)}`

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { useSession } from "@/context/session";
-import { cn } from "@/lib/utils";
+import { cn, gruppenName } from "@/lib/utils";
 import { formatDE, formatDays } from "@/lib/dates";
 import { afTageAusStand } from "@/lib/af";
 import { fetchTeamBalances, fetchTeamSonderKonten } from "@/lib/data/leave";
@@ -87,7 +87,7 @@ export function TeamUebersicht() {
       // ist und ihr Urlaub nach Montag–Freitag gerechnet wird.
       const key =
         person.shiftWorker && person.rotationTeam
-          ? `Schicht ${person.rotationTeam}`
+          ? gruppenName(person.rotationTeam)
           : "Tagschicht";
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(person);
@@ -105,7 +105,7 @@ export function TeamUebersicht() {
   const eigeneGruppe = useMemo(() => {
     const ich = (colleagues ?? []).find((p) => p.id === profile.employeeId);
     if (!ich) return null;
-    return ich.shiftWorker && ich.rotationTeam ? `Schicht ${ich.rotationTeam}` : "Tagschicht";
+    return ich.shiftWorker && ich.rotationTeam ? gruppenName(ich.rotationTeam) : "Tagschicht";
   }, [colleagues, profile.employeeId]);
 
   /** Eine Person mit Konten, Geburtstag und Qualifikationen. */

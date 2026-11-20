@@ -194,7 +194,12 @@ export function LiveBalanceCard({
           ) : za ? (
             `1 ${t("V-Tag")} = ${formatDays(V_TAG_STUNDEN)} Std.`
           ) : null}
-          {balance.carriedOver > 0 || balance.vCarriedOver > 0 ? ` · Übertrag verfällt am 31.03.${balance.year}` : ""}
+          {balance.carriedOver > 0 || balance.vCarriedOver > 0
+            ? // Nach dem 31.03. ist der Übertrag schon weg – dann nicht mehr „verfällt“.
+              new Date() > new Date(balance.year, 2, 31, 23, 59, 59)
+              ? ` · Übertrag ist am 31.03.${balance.year} verfallen`
+              : ` · Übertrag verfällt am 31.03.${balance.year}`
+            : ""}
         </p>
       </CardBody>
     </Card>

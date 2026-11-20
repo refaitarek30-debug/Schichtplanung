@@ -28,6 +28,7 @@ const toene = {
   orange: { kachel: "bg-warn-bg/60 border-warn-bg", icon: "text-warn-fg" },
   lila: { kachel: "bg-plan-bg/60 border-plan-bg", icon: "text-plan-fg" },
   rot: { kachel: "bg-crit-bg/60 border-crit-bg", icon: "text-crit-fg" },
+  marke: { kachel: "bg-brand-500/10 border-brand-500/20", icon: "text-brand-600" },
 } as const;
 
 /**
@@ -50,6 +51,7 @@ export function KpiCard({
   kompakt = false,
   kurz,
   kurzEinheit,
+  onClick,
 }: {
   label: string;
   value: string | number;
@@ -67,6 +69,8 @@ export function KpiCard({
   kurz?: string;
   /** Kurze Einheit für schmale Kacheln, z. B. „/33“. */
   kurzEinheit?: string;
+  /** Statt eines Ziels: beim Antippen etwas öffnen (z. B. ein Blatt). */
+  onClick?: () => void;
 }) {
   if (kompakt) {
     // Handy und Tablet: Symbol oben, darunter kurzer Name und Zahl – vier
@@ -96,25 +100,33 @@ export function KpiCard({
       "block min-w-0 rounded-[18px] border border-line p-2.5 shadow-card sm:p-3 lg:flex lg:items-center lg:gap-3",
       toene[ton].kachel,
     );
-    if (!href) return <div className={rahmenKlein}>{klein}</div>;
+    if (!href && !onClick) return <div className={rahmenKlein}>{klein}</div>;
+    const klickKlasse = cn(
+      rahmenKlein,
+      "relative w-full text-left transition-[filter] hover:brightness-[0.97] active:brightness-[0.94]",
+      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
+    );
+    const pfeil = (
+      // Kleiner Pfeil: die Kachel führt weiter (z. B. in den Urlaub).
+      <ChevronRight
+        aria-hidden
+        data-kachel-pfeil
+        className="absolute right-1.5 top-2 h-4 w-4 text-ink-faint sm:right-2 sm:top-2.5 lg:static lg:ml-auto lg:h-5 lg:w-5 xl:absolute xl:h-4 xl:w-4"
+        strokeWidth={2.2}
+      />
+    );
+    if (!href) {
+      return (
+        <button type="button" onClick={onClick} aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`} className={klickKlasse}>
+          {klein}
+          {pfeil}
+        </button>
+      );
+    }
     return (
-      <Link
-        href={href}
-        aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`}
-        className={cn(
-          rahmenKlein,
-          "relative transition-[filter] hover:brightness-[0.97] active:brightness-[0.94]",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
-        )}
-      >
+      <Link href={href} aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`} className={klickKlasse}>
         {klein}
-        {/* Kleiner Pfeil: die Kachel führt weiter (z. B. in den Urlaub). */}
-        <ChevronRight
-          aria-hidden
-          data-kachel-pfeil
-          className="absolute right-1.5 top-2 h-4 w-4 text-ink-faint sm:right-2 sm:top-2.5 lg:static lg:ml-auto lg:h-5 lg:w-5 xl:absolute xl:h-4 xl:w-4"
-          strokeWidth={2.2}
-        />
+        {pfeil}
       </Link>
     );
   }
@@ -122,10 +134,14 @@ export function KpiCard({
   const inhalt = (
     <>
       <div className="flex items-center justify-between">
-        <p className="text-[13px] font-medium text-ink-muted">{label}</p>
+        {/* Handy: der kurze Name, damit der Titel nicht umbricht und die Symbole gleich hoch stehen. */}
+        <p className="min-w-0 truncate text-[13px] font-medium text-ink-muted">
+          {kurz ? <span className="sm:hidden">{kurz}</span> : null}
+          <span className={cn(kurz && "hidden sm:inline")}>{label}</span>
+        </p>
         <span className={cn("flex items-center gap-1", toene[ton].icon)}>
           {icon}
-          {href ? (
+          {href || onClick ? (
             <ChevronRight
               className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
               strokeWidth={1.8}
@@ -151,6 +167,22 @@ export function KpiCard({
 
   const rahmen = cn("rounded-card border border-line p-4 shadow-card", toene[ton].kachel);
 
+  if (!href && onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`${label}: ${value}${unit ? ` ${unit}` : ""}`}
+        className={cn(
+          rahmen,
+          "group block w-full text-left transition-[filter] hover:brightness-[0.97]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
+        )}
+      >
+        {inhalt}
+      </button>
+    );
+  }
   if (!href) return <div className={rahmen}>{inhalt}</div>;
 
   return (

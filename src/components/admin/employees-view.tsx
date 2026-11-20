@@ -27,7 +27,7 @@ import { CreateEmployeePanel } from "./create-employee-panel";
 import { EditEmployeePanel } from "./edit-employee-panel";
 import { HinweisSenden } from "@/components/hinweise/hinweis-senden";
 import { Blatt } from "@/components/privat/blatt";
-import { cn } from "@/lib/utils";
+import { cn, gruppenName } from "@/lib/utils";
 import { nachOben } from "@/lib/app-scroller";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -48,7 +48,7 @@ function useBreit(): boolean {
 
 /** Wie bisher: Schichtgruppe, sonst der Name der festen Schicht (z. B. Tagdienst). */
 function gruppeVon(row: EmployeeRecord): string {
-  return row.rotationTeam ? `Schicht ${row.rotationTeam}` : (row.shiftName ?? "keine Schicht");
+  return row.rotationTeam ? gruppenName(row.rotationTeam) : (row.shiftName ?? "keine Schicht");
 }
 
 export function EmployeesView() {
@@ -117,7 +117,7 @@ export function EmployeesView() {
       [
         ...new Set(
           (rows ?? [])
-            .map((r) => (r.rotationTeam ? `Schicht ${r.rotationTeam}` : r.shiftName))
+            .map((r) => (r.rotationTeam ? gruppenName(r.rotationTeam) : r.shiftName))
             .filter(Boolean),
         ),
       ].sort() as string[],
@@ -132,7 +132,7 @@ export function EmployeesView() {
         `${row.firstName} ${row.lastName}`.toLowerCase().includes(term) ||
         (row.personnelNumber ?? "").toLowerCase().includes(term) ||
         (row.department ?? "").toLowerCase().includes(term);
-      const rowShiftLabel = row.rotationTeam ? `Schicht ${row.rotationTeam}` : row.shiftName;
+      const rowShiftLabel = row.rotationTeam ? gruppenName(row.rotationTeam) : row.shiftName;
       const matchesShift = shiftFilter === "all" || rowShiftLabel === shiftFilter;
       const matchesStatus =
         statusFilter === "all" ||

@@ -39,7 +39,7 @@ import { createAbsence } from "@/lib/auth/absence-actions";
 import { fetchShiftDetails, type ShiftDetail } from "@/lib/data/shifts";
 import { fetchHolidays, fetchSchoolHolidays } from "@/lib/data/holidays";
 import type { LiveShiftPlanCell } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, gruppenName } from "@/lib/utils";
 import { gemerkteAnsicht, istPlausiblesDatum, merkeAnsicht } from "@/lib/view-state";
 import { PlanLeaveRequest } from "./plan-leave-request";
 import { useSession } from "@/context/session";
@@ -841,7 +841,7 @@ export function ShiftPlanGrid({
 
     const teams = new Map<string, GridRow[]>();
     for (const [employeeId, value] of byEmployee) {
-      const key = value.team ? `Schicht ${value.team}` : "Tagschicht";
+      const key = value.team ? gruppenName(value.team) : "Tagschicht";
       if (!teams.has(key)) teams.set(key, []);
       teams.get(key)!.push({ employeeId, ...value });
     }
@@ -1034,7 +1034,7 @@ export function ShiftPlanGrid({
    */
   const gruppenWechsel = useMemo(() => {
     if (!selected) return [];
-    const eigene = selected.rotationTeam ? `Schicht ${selected.rotationTeam}` : null;
+    const eigene = selected.rotationTeam ? gruppenName(selected.rotationTeam) : null;
     const ziele: { team: string; shiftId: string; shiftName: string; shortName: string }[] = [];
     for (const [teamName] of groups) {
       if (!teamName.startsWith("Schicht ") || teamName === eigene) continue;

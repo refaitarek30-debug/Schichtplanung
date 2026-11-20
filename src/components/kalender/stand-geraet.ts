@@ -11,12 +11,22 @@ interface Gemerkt {
   imPlan: boolean;
 }
 
+/**
+ * Gesundheitsangaben bleiben vom Gerät fern: „krank“ wird dort nur als
+ * „abwesend“ gemerkt. Mit Netz zeigt der Kalender wieder „Krank“.
+ */
+function neutral(code: string | null): string | null {
+  if (code === "K") return "A";
+  if (code === "k") return "a";
+  return code;
+}
+
 export function merkeEigeneTage(schluessel: string, tage: Map<string, LiveShiftPlanCell>, imPlan: boolean): void {
   const eintraege: Gemerkt["tage"] = [];
   for (const [tag, zelle] of tage) {
     const { personnelNumber: _weg, ...rest } = zelle;
     void _weg;
-    eintraege.push([tag, rest]);
+    eintraege.push([tag, { ...rest, absenceCode: neutral(rest.absenceCode) }]);
   }
   aufGeraet(schluessel, { tage: eintraege, imPlan } satisfies Gemerkt);
 }
@@ -78,7 +88,7 @@ export function inVorrat(
   for (const t of tageImRaster) delete v.tage[t];
   for (const [tag, z] of tage) {
     v.person = { id: z.employeeId, name: z.employeeName };
-    v.tage[tag] = [z.shiftName, z.shiftCode, z.absenceCode, z.rotationTeam, z.isVj ? 1 : 0, z.isApprentice ? 1 : 0];
+    v.tage[tag] = [z.shiftName, z.shiftCode, neutral(z.absenceCode), z.rotationTeam, z.isVj ? 1 : 0, z.isApprentice ? 1 : 0];
   }
   v.monate[start] = Date.now();
   v.imPlan = v.imPlan || imPlan;
