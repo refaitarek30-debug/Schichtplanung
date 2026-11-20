@@ -19,7 +19,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Info,
   ListOrdered,
   Lock,
   Maximize2,
@@ -406,8 +405,6 @@ export function ShiftPlanGrid({
       geheZu(zurueck(start), true);
     }
   }
-  /** Legende zu, bis jemand sie braucht. Spart auf dem Handy zwei Zeilen. */
-  const [legendeOffen, setLegendeOffen] = useState(false);
   const [mehrOffen, setMehrOffen] = useState(false);
   useEffect(() => {
     if (!mehrOffen) return;
@@ -1389,17 +1386,34 @@ export function ShiftPlanGrid({
               ))}
             </select>
           </label>
+          {/* Der Weg zurück zum heutigen Tag – oben rechts, neben „Mehr“. */}
+          <button
+            type="button"
+            onClick={() => {
+              geheZu(from);
+              if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+            }}
+            className={cn(
+              "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-bold transition-colors",
+              start === from
+                ? "bg-brand-600 text-white shadow-card"
+                : "border border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
+            )}
+          >
+            Heute
+          </button>
           <button
             type="button"
             onClick={() => setMehrOffen((v) => !v)}
             aria-expanded={mehrOffen}
             aria-label="Anzeige und mehr"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-surface-muted"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-ink hover:bg-surface-muted"
           >
             <MoreHorizontal className="h-5 w-5" strokeWidth={2.2} />
           </button>
         </div>
 
+        {/* Zeile 2: blättern – daneben die Größe, die man beim Lesen umschaltet. */}
         <div className="flex items-center gap-2">
           <div className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-line bg-surface-muted/60 sm:max-w-xs">
             <button
@@ -1422,84 +1436,16 @@ export function ShiftPlanGrid({
               <ChevronRight className="h-[18px] w-[18px]" strokeWidth={2.4} />
             </button>
           </div>
-          {/* Hervorgehoben: der Weg zurück zum heutigen Tag. */}
-          <button
-            type="button"
-            onClick={() => {
-              geheZu(from);
-              if (scrollBox.current) scrollBox.current.scrollLeft = 0;
-            }}
-            className={cn(
-              "h-10 shrink-0 rounded-full px-4 text-[14px] font-bold transition-colors",
-              start === from
-                ? "bg-brand-600 text-white shadow-card"
-                : "border border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
-            )}
-          >
-            Heute
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {antragLink && employeeId ? (
-            <Link
-              href={antragLink}
-              className={cn(chip, "border-transparent bg-brand-500/15 font-bold text-brand-700 hover:bg-brand-500/25")}
-            >
-              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
-              Urlaub beantragen
-            </Link>
-          ) : null}
-          {!nurLesen && employeeId && antragSchalter ? (
-            <button
-              type="button"
-              onClick={() => {
-                setAntragsModus((v) => !v);
-                setAuswahl(null);
-                setSelected(null);
-              }}
-              aria-pressed={antragsModus}
-              // Eingeschaltet wird er kräftig, damit „Fertig“ als Rückweg
-              // erkennbar ist.
-              className={cn(
-                chip,
-                "border-transparent font-bold",
-                antragsModus ? "bg-brand-600 text-white" : "bg-brand-500/15 text-brand-700 hover:bg-brand-500/25",
-              )}
-            >
-              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
-              {antragsModus ? (
-                "Fertig"
-              ) : (
-                <>
-                  Urlaub<span className="hidden sm:inline">&nbsp;beantragen</span>
-                </>
-              )}
-            </button>
-          ) : null}
-          {/* Mit „Urlaub beantragen“ in der Zeile: auf dem Handy nur die Symbole –
-              sonst rutscht „Groß“ allein in eine zweite Zeile. */}
-          <button
-            type="button"
-            onClick={() => setLegendeOffen((v) => !v)}
-            aria-pressed={legendeOffen}
-            aria-label="Legende"
-            title="Legende"
-            className={cn(chip, legendeOffen && chipAn, antragLink && "max-sm:w-[34px] max-sm:justify-center max-sm:px-0")}
-          >
-            {antragLink ? <Info className="h-4 w-4 sm:hidden" strokeWidth={2.2} /> : null}
-            <span className={cn(antragLink && "max-sm:hidden")}>Legende</span>
-          </button>
           <button
             type="button"
             onClick={() => void setzeAnzeige({ planAnsicht: gross ? "kompakt" : "gross" }).catch(() => undefined)}
             aria-pressed={gross}
             aria-label={gross ? "Kompakt" : "Groß"}
             title={gross ? "Kompakt" : "Groß"}
-            className={cn(chip, gross && chipAn, antragLink && "max-sm:w-[34px] max-sm:justify-center max-sm:px-0")}
+            className={cn(chip, "h-10 max-sm:w-10 max-sm:justify-center max-sm:px-0", gross && chipAn)}
           >
-            {gross ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={2.2} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={2.2} />}
-            <span className={cn(antragLink && "max-sm:hidden")}>{gross ? "Kompakt" : "Groß"}</span>
+            {gross ? <Minimize2 className="h-4 w-4" strokeWidth={2.2} /> : <Maximize2 className="h-4 w-4" strokeWidth={2.2} />}
+            <span className="max-sm:hidden">{gross ? "Kompakt" : "Groß"}</span>
           </button>
           {/* Reihenfolge: selten gebraucht. Die Pfeile erscheinen erst in
               diesem Modus, sonst verstellen sie jede Namensspalte. */}
@@ -1518,6 +1464,47 @@ export function ShiftPlanGrid({
           ) : null}
         </div>
 
+        {(antragLink && employeeId) || (!nurLesen && employeeId && antragSchalter) ? (
+          <div className="flex flex-wrap gap-1.5">
+          {antragLink && employeeId ? (
+            <Link
+              href={antragLink}
+              className={cn(chip, "h-10 justify-center border-transparent bg-brand-500/15 font-bold text-brand-700 hover:bg-brand-500/25 max-sm:flex-1")}
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
+              Urlaub beantragen
+            </Link>
+          ) : null}
+          {!nurLesen && employeeId && antragSchalter ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAntragsModus((v) => !v);
+                setAuswahl(null);
+                setSelected(null);
+              }}
+              aria-pressed={antragsModus}
+              // Eingeschaltet wird er kräftig, damit „Fertig“ als Rückweg
+              // erkennbar ist.
+              className={cn(
+                chip,
+                "h-10 justify-center border-transparent font-bold max-sm:flex-1",
+                antragsModus ? "bg-brand-600 text-white" : "bg-brand-500/15 text-brand-700 hover:bg-brand-500/25",
+              )}
+            >
+              <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
+              {antragsModus ? (
+                "Fertig"
+              ) : (
+                <>
+                  Urlaub<span className="hidden sm:inline">&nbsp;beantragen</span>
+                </>
+              )}
+            </button>
+          ) : null}
+          </div>
+        ) : null}
+
         {mehrOffen ? (
           <>
             <button
@@ -1529,24 +1516,71 @@ export function ShiftPlanGrid({
             <div
               role="dialog"
               aria-label="Anzeige"
-              className="absolute right-3 top-[3.6rem] z-40 w-[min(20rem,calc(100vw-1.5rem))] space-y-4 rounded-2xl border border-line bg-surface p-4 shadow-pop sm:right-4"
+              className="absolute right-3 top-[3.3rem] z-40 max-h-[min(70vh,34rem)] w-[min(20rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface px-4 py-1.5 shadow-pop sm:right-4"
             >
-              <div>
-                <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">Ansicht</p>
-                <PlanAnsichtWahl />
-              </div>
-              <div>
-                <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-ink-faint">
-                  Wochenende hervorheben
-                </p>
-                <WochenendeWahl vorschau={false} />
-              </div>
-              <div className="border-t border-line pt-3">
-                <PlanFarbenSchalter />
-                <a href="/meine-schichten?anpassen=1" className="mt-2 block text-[13px] font-semibold text-brand-600">
-                  Farben ändern (im Kalender unter „Kalender anpassen“)
-                </a>
-              </div>
+              {/* Jeder Abschnitt klappt auf; beim Schließen des Menüs klappt alles wieder zu. */}
+              <MenueAbschnitte
+                abschnitte={[
+                  { id: "ansicht", titel: "Ansicht", inhalt: <PlanAnsichtWahl /> },
+                  { id: "wochenende", titel: "Wochenende hervorheben", inhalt: <WochenendeWahl vorschau={false} /> },
+                  {
+                    id: "farben",
+                    titel: "Farben",
+                    inhalt: (
+                      <>
+                        <PlanFarbenSchalter />
+                        <a href="/meine-schichten?anpassen=1" className="mt-2 block text-[13px] font-semibold text-brand-600">
+                          Farben ändern (im Kalender unter „Kalender anpassen“)
+                        </a>
+                      </>
+                    ),
+                  },
+                  {
+                    id: "legende",
+                    titel: "Legende",
+                    inhalt: (
+                <div data-legende className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] text-ink-muted">
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span className="h-4 w-5 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot" />
+                    <span className="leading-tight">Feiertag (Rahmen am Tag)</span>
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1">
+                    <span className="h-4 w-5 shrink-0 rounded-sm bg-ferien-bg" />
+                    <span className="leading-tight">Schulferien NRW</span>
+                  </span>
+                  {legend.map((item) => (
+                    <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
+                      <span
+                        className={cn(
+                          "flex h-4 w-5 shrink-0 items-center justify-center rounded-sm text-[10px] font-semibold",
+                          cellStyles[item.code],
+                          legendExtra[item.code],
+                        )}
+                        style={item.code && zellFarbe ? (zellFarbe(item.code) ?? undefined) : undefined}
+                      >
+                        {cellLabel(item.code)}
+                      </span>
+                      <span className="leading-tight">{t(item.label)}</span>
+                    </span>
+                  ))}
+                  {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
+                  <span className="col-span-2 pt-1 leading-snug">
+                    Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
+                    stehen dann zusätzlich klein da (u, v, g).
+                  </span>
+                  <span className="col-span-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    Besetzung:
+                    <span className="rounded bg-ok-bg px-1.5 text-ok-fg">genug</span>
+                    <span className="rounded bg-warn-bg px-1.5 text-warn-fg">
+                      genau Minimum – fällt noch jemand aus, wird es rot
+                    </span>
+                    <span className="rounded bg-crit-bg px-1.5 text-crit-fg">unterschritten</span>
+                  </span>
+                </div>
+                    ),
+                  },
+                ]}
+              />
               {canEdit && !nurLesen ? (
                 <button
                   type="button"
@@ -1554,60 +1588,16 @@ export function ShiftPlanGrid({
                     setSortieren(true);
                     setMehrOffen(false);
                   }}
-                  className="flex w-full items-center gap-2 border-t border-line pt-3 text-left text-[14px] font-semibold text-ink sm:hidden"
+                  className="flex w-full items-center gap-2 border-t border-line py-3 text-left text-[14px] font-semibold text-ink sm:hidden"
                 >
                   <ListOrdered className="h-4 w-4" strokeWidth={2.2} /> Reihenfolge ändern
                 </button>
               ) : null}
-              {hilfe ? <p className="border-t border-line pt-3 text-[12.5px] text-ink-muted">{hilfe}</p> : null}
+              {hilfe ? <p className="border-t border-line py-3 text-[12.5px] text-ink-muted">{hilfe}</p> : null}
             </div>
           </>
         ) : null}
       </div>
-
-      {/* Die Legende ist Nachschlagewerk, nicht Dauerinhalt: eingeklappt
-          gewinnt der Plan auf dem Handy zwei Zeilen. Aufgeklappt steht sie
-          direkt unter dem Knopf „Legende“. */}
-      {legendeOffen ? (
-      <div className="grid grid-cols-3 gap-x-2 gap-y-1 border-b border-line px-2 py-2 text-[10px] text-ink-faint sm:grid-cols-6 sm:gap-x-3 sm:px-4 sm:py-2.5 sm:text-[11px] sm:text-ink-muted">
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="h-3.5 w-4 shrink-0 rounded-sm ring-2 ring-inset ring-crit-dot sm:h-4 sm:w-5" />
-          <span className="truncate">Feiertag (Rahmen am Tag)</span>
-        </span>
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="h-3.5 w-4 shrink-0 rounded-sm bg-ferien-bg sm:h-4 sm:w-5" />
-          <span className="truncate">Schulferien NRW</span>
-        </span>
-        {legend.map((item) => (
-          <span key={item.code || "leer"} className="flex min-w-0 items-center gap-1">
-            <span
-              className={cn(
-                "flex h-3.5 w-4 shrink-0 items-center justify-center rounded-sm text-[9px] font-semibold sm:h-4 sm:w-5 sm:text-[10px]",
-                cellStyles[item.code],
-                legendExtra[item.code],
-              )}
-              style={item.code && zellFarbe ? (zellFarbe(item.code) ?? undefined) : undefined}
-            >
-              {cellLabel(item.code)}
-            </span>
-            <span className="truncate">{t(item.label)}</span>
-          </span>
-        ))}
-        {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
-        <span className="col-span-3 pt-0.5 sm:col-span-6">
-          Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
-          stehen dann zusätzlich klein da (u, v, g).
-        </span>
-        <span className="col-span-3 flex flex-wrap items-center gap-x-2 gap-y-1 sm:col-span-6">
-          Besetzung:
-          <span className="rounded bg-ok-bg px-1.5 text-ok-fg">genug</span>
-          <span className="rounded bg-warn-bg px-1.5 text-warn-fg">
-            genau Minimum – fällt noch jemand aus, wird es rot
-          </span>
-          <span className="rounded bg-crit-bg px-1.5 text-crit-fg">unterschritten</span>
-        </span>
-      </div>
-      ) : null}
 
       {(error ?? ladeFehler) ? (
         <div className="px-4 pt-3">
@@ -2310,3 +2300,32 @@ const PlanZeile = memo(function PlanZeile({
     </tr>
   );
 });
+
+/**
+ * Abschnitte im Menü „Anzeige und mehr“: alle zu, einer geht auf. Die Liste
+ * steht nur, solange das Menü offen ist – beim Schließen ist danach wieder alles zu.
+ */
+function MenueAbschnitte({ abschnitte }: { abschnitte: { id: string; titel: string; inhalt: React.ReactNode }[] }) {
+  const [offen, setOffen] = useState<string | null>(null);
+  return (
+    <div className="divide-y divide-line">
+      {abschnitte.map((a) => (
+        <div key={a.id} data-menue-abschnitt={a.id}>
+          <button
+            type="button"
+            onClick={() => setOffen((o) => (o === a.id ? null : a.id))}
+            aria-expanded={offen === a.id}
+            className="flex w-full items-center justify-between gap-2 py-3 text-left text-[14.5px] font-semibold text-ink"
+          >
+            {a.titel}
+            <ChevronDown
+              className={cn("h-4 w-4 shrink-0 text-ink-faint transition-transform duration-200", offen === a.id && "rotate-180")}
+              strokeWidth={2.2}
+            />
+          </button>
+          {offen === a.id ? <div className="pb-3.5">{a.inhalt}</div> : null}
+        </div>
+      ))}
+    </div>
+  );
+}

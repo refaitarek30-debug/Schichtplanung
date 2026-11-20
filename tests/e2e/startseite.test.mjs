@@ -147,9 +147,27 @@ export default async function startseite() {
     pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]').count()) === 1, "Kompakt: nur noch der kleine Knopf (im Plan)");
     const kleinerKnopf = seite.locator('main a[href="/schichtplan?antrag=1"]');
     pruefe((await kleinerKnopf.innerText()).includes("Urlaub beantragen"), "Kompakt: „Urlaub beantragen“ in der Knopfleiste des Plans");
-    const knopfY = (await kleinerKnopf.boundingBox())?.y ?? -1;
+    // Ordnung im Kopf: „Groß“ steht neben dem Zeitraum, „Heute“ neben „Mehr“.
+    const zeitraumY = (await seite.getByRole("button", { name: "Nächster Zeitraum" }).first().boundingBox())?.y ?? -1;
     const grossY = (await seite.getByRole("button", { name: "Groß" }).first().boundingBox())?.y ?? -2;
-    pruefe(Math.abs(knopfY - grossY) < 4, `Kompakt: „Urlaub beantragen“, Legende und Groß in einer Zeile (${Math.round(knopfY)}/${Math.round(grossY)})`);
+    pruefe(Math.abs(zeitraumY - grossY) < 6, `Kompakt: „Groß“ neben dem Zeitraum (${Math.round(zeitraumY)}/${Math.round(grossY)})`);
+    const heuteY = (await seite.locator("main").getByRole("button", { name: "Heute", exact: true }).first().boundingBox())?.y ?? -1;
+    const mehrY = (await seite.getByRole("button", { name: "Anzeige und mehr" }).first().boundingBox())?.y ?? -2;
+    pruefe(Math.abs(heuteY - mehrY) < 6, `Kompakt: „Heute“ neben „Mehr“ (${Math.round(heuteY)}/${Math.round(mehrY)})`);
+    // Menü: Abschnitte zu; einer geht auf; nach dem Schließen ist wieder alles zu.
+    await seite.getByRole("button", { name: "Anzeige und mehr" }).first().click();
+    await warte(300);
+    pruefe((await seite.locator('[data-menue-abschnitt] [aria-expanded="true"]').count()) === 0, "Menü: alle Abschnitte zu");
+    await seite.locator('[data-menue-abschnitt="legende"] button').click();
+    await warte(300);
+    pruefe(await seite.locator("[data-legende]").isVisible(), "Menü: Legende klappt auf");
+    await seite.keyboard.press("Escape");
+    await warte(300);
+    await seite.getByRole("button", { name: "Anzeige und mehr" }).first().click();
+    await warte(300);
+    pruefe((await seite.locator('[data-menue-abschnitt] [aria-expanded="true"]').count()) === 0, "Menü: nach dem Schließen wieder alles zu");
+    await seite.keyboard.press("Escape");
+    await warte(300);
     pruefe(await seite.locator("[data-urlaub-kompakt]:visible").first().isVisible(), "Kompakt: neue Urlaubskarte");
     pruefe((await seite.locator("main a[href='/urlaub'] [data-kachel-pfeil]").count()) > 0, "Kompakt: Kacheln mit Pfeil zum Antippen");
     const meinUrlaub = seite.locator("[data-mein-urlaub]");

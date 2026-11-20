@@ -58,6 +58,8 @@ export const MonatsScroller = forwardRef<
   });
 
   const hoehe = () => flaeche.current?.clientHeight || 1;
+  /** Hat die Person schon angefasst? Dann nicht mehr von selbst nachstellen. */
+  const angefasst = useRef(false);
 
   // Am Anfang (und nach neuem Bezugsmonat): ohne Bewegung auf den Monat stellen.
   useLayoutEffect(() => {
@@ -67,9 +69,41 @@ export const MonatsScroller = forwardRef<
     el.scrollTop = i * hoehe();
     aktuellRef.current = i;
     setAktuell(i);
+    // Steht die Fläche beim ersten Zeichnen noch nicht in voller Größe da (Schrift,
+    // Leiste, Einblenden), greift das Setzen oben nicht ganz – in den nächsten
+    // Bildern nachstellen, bis es sitzt.
+    let bild = 0;
+    let runden = 0;
+    const nachstellen = () => {
+      const e = flaeche.current;
+      if (!e || angefasst.current) return;
+      const soll = aktuellRef.current * hoehe();
+      if (Math.abs(e.scrollTop - soll) > 2) e.scrollTop = soll;
+      if (++runden < 20) bild = requestAnimationFrame(nachstellen);
+    };
+    bild = requestAnimationFrame(nachstellen);
+    return () => cancelAnimationFrame(bild);
     // Nur beim Wechsel des Bezugsmonats – sonst übernimmt das Scrollen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basis]);
+
+  useEffect(() => {
+    const el = flaeche.current;
+    if (!el) return;
+    const an = () => {
+      angefasst.current = true;
+    };
+    el.addEventListener("touchstart", an, { passive: true });
+    el.addEventListener("pointerdown", an, { passive: true });
+    el.addEventListener("wheel", an, { passive: true });
+    el.addEventListener("keydown", an);
+    return () => {
+      el.removeEventListener("keydown", an);
+      el.removeEventListener("touchstart", an);
+      el.removeEventListener("pointerdown", an);
+      el.removeEventListener("wheel", an);
+    };
+  }, []);
 
   // Monat von außen geändert (Heute, Jahresansicht, Pfeile): dorthin scrollen.
   useEffect(() => {
@@ -91,8 +125,14 @@ export const MonatsScroller = forwardRef<
   useEffect(() => {
     const el = flaeche.current;
     if (!el || typeof ResizeObserver === "undefined") return;
+    let alteHoehe = el.clientHeight;
     const ro = new ResizeObserver(() => {
-      el.scrollTop = aktuellRef.current * hoehe();
+      const neu = el.clientHeight;
+      if (!neu || neu === alteHoehe) return;
+      // Auf der Seite bleiben, auf der man gerade ist – auch mitten im Wischen.
+      const i = alteHoehe > 1 ? Math.round(el.scrollTop / alteHoehe) : aktuellRef.current;
+      alteHoehe = neu;
+      el.scrollTop = i * neu;
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -101,6 +141,8 @@ export const MonatsScroller = forwardRef<
   const beimScrollen = useCallback(() => {
     const el = flaeche.current;
     if (!el) return;
+    // Noch nicht angefasst: das Scrollen kam vom Nachstellen, nicht von der Person.
+    if (!angefasst.current) return;
     zuletzt.current = Date.now();
     const i = Math.max(0, Math.min(2 * SPANNE, Math.round(el.scrollTop / hoehe())));
     if (i === aktuellRef.current) return;
@@ -118,6 +160,7 @@ export const MonatsScroller = forwardRef<
       blaettern: (schritt: number) => {
         const el = flaeche.current;
         if (!el) return;
+        angefasst.current = true;
         const ziel = Math.max(0, Math.min(2 * SPANNE, aktuellRef.current + schritt));
         el.scrollTo({ top: ziel * hoehe(), behavior: "smooth" });
       },

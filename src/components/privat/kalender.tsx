@@ -230,7 +230,8 @@ export function PrivatKalender() {
   const ladeJahre = useCallback(async (jahre: number[], erneut = false, still = false) => {
     const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
     if (!fehlend.length) return;
-    setLaedt(true);
+    // Vorrat im Hintergrund: keine Ladeanzeige, nichts verschiebt sich.
+    if (!still) setLaedt(true);
     if (!erneut) {
       // Gleich nach dem Öffnen: der zuletzt gemerkte Stand dieses Geräts, bis die frischen Daten da sind.
       for (const j of fehlend) {
@@ -266,7 +267,7 @@ export function PrivatKalender() {
       // Ohne Netz zeigt der Kalender den gemerkten Stand (Banner „Offline“) – keine Fehlermeldung.
       if (!still && !istOffline()) setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
     } finally {
-      setLaedt(false);
+      if (!still) setLaedt(false);
     }
   }, [konto.userId]);
 

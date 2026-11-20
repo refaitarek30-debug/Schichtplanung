@@ -133,28 +133,38 @@ function KompaktUrlaub({
           🌴
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ok-fg">
-            {laeuft ? "Du bist im Urlaub" : "Nächster Urlaub"}
-            {zeitraum?.offen ? <span className="ml-1.5 normal-case tracking-normal text-warn-fg">· noch beantragt</span> : null}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[11.5px] font-semibold uppercase tracking-[0.06em] text-ok-fg">
+              {laeuft ? "Du bist im Urlaub" : "Nächster Urlaub"}
+            </span>
+            {zeitraum?.offen ? (
+              <span className="shrink-0 rounded-full bg-warn-bg px-1.5 py-px text-[10.5px] font-semibold text-warn-fg">beantragt</span>
+            ) : null}
           </span>
           {zeitraum === undefined ? (
             <span className="block text-[14px] text-ink-faint">wird geladen …</span>
           ) : zeitraum === null ? (
             <span className="block text-[14px] text-ink-muted">Noch kein Urlaub eingetragen.</span>
           ) : (
-            <span className={cn("tnum block truncate font-bold leading-tight", reihe ? "text-[15px]" : "text-[17px]")}>
-              {zeitraum.von === zeitraum.bis ? formatDEShort(zeitraum.von) : `${formatDEShort(zeitraum.von)} – ${formatDEShort(zeitraum.bis)}`}
-              <span className={cn("ml-1.5 text-[13px] font-medium text-ink-muted", reihe && "hidden")}>
-                · {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"}
+            <>
+              <span className={cn("tnum block truncate font-bold leading-tight", reihe ? "text-[15px]" : "mt-0.5 text-[17px]")}>
+                {zeitraum.von === zeitraum.bis ? formatDEShort(zeitraum.von) : `${formatDEShort(zeitraum.von)} – ${formatDEShort(zeitraum.bis)}`}
               </span>
-            </span>
+              {reihe ? null : (
+                <span className="tnum block text-[12.5px] text-ink-muted">
+                  {zeitraum.kalendertage} {zeitraum.kalendertage === 1 ? "Tag" : "Tage"}
+                </span>
+              )}
+            </>
           )}
         </span>
         {zeitraum ? (
           <span className="shrink-0 text-right leading-none">
             <span className={cn("tnum block font-bold text-ok-fg", reihe ? "text-[20px]" : "text-[24px]")}>{noch}</span>
-            <span className="block pt-0.5 text-[11.5px] font-medium text-ink-muted">
-              {laeuft ? (noch === 1 ? "Tag noch" : "Tage noch") : noch === 1 ? "Tag bis dahin" : "Tage bis dahin"}
+            <span className="block whitespace-nowrap pt-1 text-[11.5px] font-medium leading-tight text-ink-muted">
+              {noch === 1 ? "Tag" : "Tage"}
+              <br />
+              {laeuft ? "noch" : "bis dahin"}
             </span>
           </span>
         ) : null}
