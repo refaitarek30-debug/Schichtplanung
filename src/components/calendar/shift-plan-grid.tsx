@@ -1496,9 +1496,7 @@ export function ShiftPlanGrid({
               {antragsModus ? (
                 "Fertig"
               ) : (
-                <>
-                  Urlaub<span className="hidden sm:inline">&nbsp;beantragen</span>
-                </>
+                "Urlaub beantragen"
               )}
             </button>
           ) : null}
