@@ -14,6 +14,7 @@
     "contentInset": "never",
     "backgroundColor": "#ffffff",
     "appendUserAgent": "ShiftNexoApp/1",
-    "allowsLinkPreview": false
+    "allowsLinkPreview": false,
+    "limitsNavigationsToAppBoundDomains": true
   }
 }

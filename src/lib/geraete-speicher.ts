@@ -14,7 +14,8 @@
 
 const PRAEFIX = "sp_geraet:";
 const MAX_ALTER_MS = 14 * 24 * 60 * 60 * 1000;
-const MAX_EINTRAEGE = 40;
+// Genug für Kalender-Monate, Privat-Jahre (5 Jahre voraus) und Einstellungen.
+const MAX_EINTRAEGE = 120;
 
 interface Eintrag {
   t: number;
@@ -71,7 +72,14 @@ export function aufGeraet(schluessel: string, wert: unknown): void {
   }
 }
 
+/** Wer Gemerktes zusätzlich im Arbeitsspeicher hält, wird beim Leeren mit geleert. */
+const beimLeeren = new Set<() => void>();
+export function beimLeerenAuch(fn: () => void): void {
+  beimLeeren.add(fn);
+}
+
 export function leereGeraet(): void {
+  for (const fn of beimLeeren) fn();
   const s = speicher();
   if (!s) return;
   try {

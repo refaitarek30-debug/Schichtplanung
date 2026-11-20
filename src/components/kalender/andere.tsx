@@ -596,7 +596,8 @@ function FarbReihe({ personKey, farben, onWahl }: { personKey: string; farben: R
 const ANSICHT_NAME: Record<Ansicht, string> = { woche: "Woche", monat: "Monat", jahr: "Jahr" };
 
 /** Breite Rand-Zone rechts, in der ein Zug nach links „Wen sehe ich?“ hereinholt. */
-const RAND = 28;
+// Schmaler Streifen am rechten Rand – nicht aus Versehen beim Blättern auslösen.
+const RAND = 22;
 
 /**
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
@@ -698,11 +699,12 @@ export function WenSeheIch({
       const dx = start.x - e.clientX;
       const dy = Math.abs(e.clientY - start.y);
       if (!gezogen) {
-        if (dy > 24 && dy > dx) {
+        // Nur klar waagerecht: schon etwas Hoch/Runter bricht ab.
+        if (dy > 14 && dy > dx * 0.6) {
           start = null;
           return;
         }
-        if (dx < 10) return;
+        if (dx < 26) return;
         gezogen = true;
         setPerHand(true);
         setZieht(true);
@@ -714,8 +716,8 @@ export function WenSeheIch({
       start = null;
       if (!s || !gezogen) return;
       const dx = s.x - letztesX;
-      const schnell = dx > 30 && Date.now() - s.t < 260;
-      if (dx > breite() * 0.3 || schnell) {
+      const schnell = dx > 80 && Date.now() - s.t < 260;
+      if (dx > breite() * 0.45 || schnell) {
         setzeVersatz(0, true);
         setOffen(true);
         setZieht(false);

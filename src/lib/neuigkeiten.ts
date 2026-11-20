@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-20T12:00:00+01:00",
+    titel: "Kalender: 5 Jahre im Voraus gespeichert",
+    text: "Deine Schichten der nächsten 5 Jahre werden im Hintergrund auf dem Handy gemerkt – Blättern geht sofort, auch ohne Netz. Das Fenster „Wen sehe ich?“ öffnet sich vom rechten Rand jetzt erst bei einem klaren Wisch, nicht mehr aus Versehen.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-19T12:00:00+01:00",
     titel: "Kalender: Monate flüssig wischen",
     text: "Im Kalender einfach hoch- oder runterwischen – der nächste Monat rastet sauber ein und steht sofort mit deinen Schichten da, weil die kommenden Monate schon vorgeladen sind. Woche, Monat und Jahr wählst du jetzt im Fenster „Wen sehe ich?“.",

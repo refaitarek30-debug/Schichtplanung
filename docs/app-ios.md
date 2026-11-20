@@ -60,6 +60,13 @@ npx cap sync ios
 Dann in Xcode erneut ▶ bzw. Archive. Vor jedem Upload die **Build-Nummer** erhöhen
 (App → General → Identity → Build).
 
+## Schneller Start und ohne Netz
+
+`WKAppBoundDomains` (Info.plist) und `limitsNavigationsToAppBoundDomains` (capacitor.config.json)
+erlauben der Seite im App-Fenster einen Service Worker: der Kalender öffnet sofort vom Gerät,
+die eigenen Schichten der nächsten 5 Jahre sind vorab gemerkt. Startet die App danach nicht
+mehr richtig, diese beiden Einträge wieder entfernen und erneut `npx cap sync ios`.
+
 ## Noch offen (nächste Schritte)
 
 - Mitteilungen nativ (Apple Push) – braucht das Entwicklerkonto (Push-Schlüssel).

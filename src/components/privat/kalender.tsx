@@ -227,7 +227,7 @@ export function PrivatKalender() {
     [artNach, betriebSchichten.arten],
   );
 
-  const ladeJahre = useCallback(async (jahre: number[], erneut = false) => {
+  const ladeJahre = useCallback(async (jahre: number[], erneut = false, still = false) => {
     const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
     if (!fehlend.length) return;
     setLaedt(true);
@@ -264,13 +264,15 @@ export function PrivatKalender() {
       setFehler(null);
     } catch (e) {
       // Ohne Netz zeigt der Kalender den gemerkten Stand (Banner „Offline“) – keine Fehlermeldung.
-      if (!istOffline()) setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
+      if (!still && !istOffline()) setFehler(e instanceof Error ? e.message : "Der Kalender konnte nicht geladen werden.");
     } finally {
       setLaedt(false);
     }
   }, [konto.userId]);
 
   // Den aktuellen Stand je Jahr auf dem Gerät merken (eigene Schichten und Feiertage, siehe geraete-speicher.ts).
+  // Nur Jahre schreiben, die sich geändert haben (es sind bis zu 7 Jahre gemerkt).
+  const zuletztGemerkt = useRef(new Map<number, string>());
   useEffect(() => {
     if (laedt) return;
     for (const j of geladen.current) {
@@ -278,9 +280,23 @@ export function PrivatKalender() {
       for (const [k, v] of Object.entries(tage)) if (k.startsWith(`${j}-`)) t[k] = v;
       const f: Record<string, string> = {};
       for (const [k, v] of Object.entries(feiertage)) if (k.startsWith(`${j}-`)) f[k] = v;
+      const wert = JSON.stringify({ t, f });
+      if (zuletztGemerkt.current.get(j) === wert) continue;
+      zuletztGemerkt.current.set(j, wert);
       aufGeraet(`${konto.userId}:privat:jahr:${j}`, { t, f });
     }
   }, [tage, feiertage, laedt, konto.userId]);
+
+  // Vorrat: das Vorjahr und bis 5 Jahre voraus im Hintergrund holen und auf dem Gerät merken –
+  // so steht beim Wischen alles sofort da, auch ohne Netz.
+  useEffect(() => {
+    const uhr = window.setTimeout(() => {
+      if (istOffline()) return;
+      const j = new Date().getFullYear();
+      void ladeJahre([j - 1, j, j + 1, j + 2, j + 3, j + 4, j + 5], false, true);
+    }, 3000);
+    return () => window.clearTimeout(uhr);
+  }, [ladeJahre]);
 
   // Der Kalender erscheint erst, wenn der gemerkte Stand eingesetzt ist – nie leer und dann bunt.
   const [bereit, setBereit] = useState(false);
