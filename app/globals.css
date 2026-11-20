@@ -297,6 +297,9 @@ body {
  */
 :root {
   --glas-rand: rgba(255, 255, 255, 0.65);
+  --blase-hinter: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.24));
+  --blase-rand: rgba(255, 255, 255, 0.75);
+  --blase-schatten: 0 4px 14px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --glas-licht: rgba(255, 255, 255, 0.8);
   --glas-schatten: 0 10px 34px rgba(31, 41, 77, 0.1);
   --glas-linie: rgba(17, 24, 39, 0.07);
@@ -308,6 +311,9 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --glas-rand: rgba(255, 255, 255, 0.09);
+    --blase-hinter: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.05));
+    --blase-rand: rgba(255, 255, 255, 0.16);
+    --blase-schatten: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
     --glas-licht: rgba(255, 255, 255, 0.06);
     --glas-schatten: 0 12px 38px rgba(0, 0, 0, 0.45);
     --glas-linie: rgba(255, 255, 255, 0.07);
@@ -319,6 +325,9 @@ body {
 }
 :root[data-theme="dark"] {
   --glas-rand: rgba(255, 255, 255, 0.09);
+  --blase-hinter: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.05));
+  --blase-rand: rgba(255, 255, 255, 0.16);
+  --blase-schatten: 0 4px 16px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   --glas-licht: rgba(255, 255, 255, 0.06);
   --glas-schatten: 0 12px 38px rgba(0, 0, 0, 0.45);
   --glas-linie: rgba(255, 255, 255, 0.07);
@@ -578,24 +587,35 @@ body {
     margin-inline: auto;
     padding: 0.25rem;
     border: 1px solid var(--glas-rand);
-    border-radius: 28px;
+    border-radius: 26px;
     background-color: rgb(var(--c-surface) / 0.55);
     -webkit-backdrop-filter: blur(26px) saturate(180%);
     backdrop-filter: blur(26px) saturate(180%);
     box-shadow: var(--glas-schatten), inset 0 1px 0 var(--glas-licht);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto,
       "Helvetica Neue", Arial, sans-serif;
+    /* Eigene Ebene: der Inhalt darunter scrollt, ohne die Leiste neu zu zeichnen. */
+    transform: translateZ(0);
   }
   body:has([data-glas-seite], [data-glas-leiste]) [data-mobile-nav] a,
   body:has([data-glas-seite], [data-glas-leiste]) [data-mobile-nav] button {
-    gap: 2px;
-    padding-block: 0.45rem;
+    gap: 1px;
+    padding-block: 0.32rem;
+    border: 1px solid transparent;
     border-radius: 22px;
+    font-size: 10.5px;
     font-weight: 600;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
   }
+  body:has([data-glas-seite], [data-glas-leiste]) [data-mobile-nav] svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+  /* Aktive Seite: eine kleine Glasblase. */
   body:has([data-glas-seite], [data-glas-leiste]) [data-mobile-nav] a[aria-current="page"] {
-    background-color: rgb(var(--c-surface) / 0.7);
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+    background-image: var(--blase-hinter);
+    border-color: var(--blase-rand);
+    box-shadow: var(--blase-schatten);
   }
 }
 
@@ -865,4 +885,11 @@ html.bereich-wechsel::view-transition-new(root) {
 html[data-app] a,
 html[data-app] img {
   -webkit-touch-callout: none;
+}
+
+/* Aktive Seite in einer schwebenden Leiste: kleine Glasblase. */
+.glas-blase {
+  background-image: var(--blase-hinter);
+  border-color: var(--blase-rand);
+  box-shadow: var(--blase-schatten);
 }

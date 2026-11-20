@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-20T19:00:00+01:00",
+    titel: "Startseite aufgeräumt",
+    text: "Im Plan auf der Startseite stehen „Heute“ und „…“ jetzt oben neben dem Monat, „Groß“ neben dem Zeitraum. Legende, Ansicht, Wochenende und Farben findest du unter „…“ – beim Schließen klappt dort alles wieder zu. Die untere Leiste ist schlanker, die aktive Seite sitzt in einer kleinen Glasblase.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-20T12:00:00+01:00",
     titel: "Kalender: 5 Jahre im Voraus gespeichert",
     text: "Deine Schichten der nächsten 5 Jahre werden im Hintergrund auf dem Handy gemerkt – Blättern geht sofort, auch ohne Netz. Das Fenster „Wen sehe ich?“ öffnet sich vom rechten Rand jetzt erst bei einem klaren Wisch, nicht mehr aus Versehen.",

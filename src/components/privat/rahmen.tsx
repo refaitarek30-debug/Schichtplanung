@@ -45,7 +45,7 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
       {/* Schwebende Leiste im Glas-Stil – fest am unteren Rand. */}
       <nav
         aria-label="Bereiche"
-        className="glas fixed inset-x-3 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-md rounded-[28px] p-1"
+        className="glas fixed inset-x-3 bottom-[max(0.6rem,env(safe-area-inset-bottom))] z-30 mx-auto max-w-md rounded-[26px] p-1 [transform:translateZ(0)]"
       >
         <ul className="flex items-stretch">
           {NAV.map((n) => {
@@ -63,8 +63,8 @@ export function PrivatRahmen({ children }: { children: ReactNode }) {
                     if (aktiv && n.href === "/privat") window.dispatchEvent(new Event(KALENDER_HEUTE));
                   }}
                   className={cn(
-                    "flex flex-col items-center gap-0.5 rounded-[22px] py-1.5 text-[10.5px] font-semibold transition-colors",
-                    aktiv ? "bg-surface/70 text-brand-600 shadow-[0_1px_6px_rgba(0,0,0,0.08)]" : "text-ink-muted hover:text-ink",
+                    "flex flex-col items-center gap-px rounded-[22px] border border-transparent py-[0.32rem] text-[10.5px] font-semibold transition-[background-color,box-shadow,color] duration-200",
+                    aktiv ? "glas-blase text-brand-600" : "text-ink-muted hover:text-ink",
                   )}
                 >
                   <span className="relative">
