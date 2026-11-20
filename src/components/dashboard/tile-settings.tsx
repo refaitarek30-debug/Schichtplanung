@@ -43,10 +43,13 @@ export function startKachelOptionen({
   /** Kachel „Nächste Schicht“ (eigener Plan nötig). */
   mitNaechster: boolean;
 }): TileOption[] {
-  const liste: TileOption[] = [
+  const liste: TileOption[] = [];
+  // Nur die Administration hat Aufgaben (z. B. Geburtsdatum bestätigen).
+  if (rolle === "admin") liste.push({ key: "aufgaben", label: "Aufgaben (z. B. Geburtsdatum bestätigen)" });
+  liste.push(
     { key: "urlaub", label: "Urlaubstage verfügbar" },
     { key: "antraege", label: rolle === "employee" ? "Meine offenen Anträge" : "Offene Anträge" },
-  ];
+  );
   if (rolle !== "employee") liste.push({ key: "kritisch", label: "Kritische Tage" });
   liste.push({ key: "krank", label: "Krank gesamt" });
   if (rolle !== "employee") {

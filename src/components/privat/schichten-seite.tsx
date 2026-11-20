@@ -131,6 +131,18 @@ function Startliste() {
         }
       />
 
+      {re && anzahl === 0 && ist === 0 ? (
+        // Leerer Monat: statt „0 Std“ ein klarer Hinweis mit dem nächsten Schritt.
+        <section className="glas glas-ruhig flex items-center gap-3 rounded-[24px] px-4 py-4" data-stunden-karte data-schichten-leer>
+          <div className="min-w-0 flex-1">
+            <div className="text-[15px] font-semibold">Noch keine Schichten im {monthName(monat.getMonth())}</div>
+            <div className="text-[12.5px] text-ink-muted">Trag deine Schichtfolge ein – dann füllt sich der Kalender von selbst.</div>
+          </div>
+          <Link href="/privat" className="shrink-0 rounded-full bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white">
+            Zum Kalender
+          </Link>
+        </section>
+      ) : (
       <section className="glas glas-ruhig space-y-3 rounded-[24px] px-4 pb-4 pt-3.5" data-stunden-karte>
         <div className="flex items-end justify-between gap-3">
           <div>
@@ -166,6 +178,7 @@ function Startliste() {
           </p>
         )}
       </section>
+      )}
 
       <Gruppe>
         <Eintrag
@@ -188,7 +201,7 @@ function Startliste() {
           icon={<Palmtree className="h-[18px] w-[18px]" />}
           farbe="bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]"
           name="Urlaubsplaner"
-          unter="Brückentage · Urlaubstage im Jahr"
+          unter="Brückentage finden"
           wert={bereit && urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
         />
         <Eintrag
@@ -196,7 +209,7 @@ function Startliste() {
           icon={<Timer className="h-[18px] w-[18px]" />}
           farbe="bg-[rgb(20_184_166/0.15)] text-[rgb(13_148_136)]"
           name="Countdown"
-          unter="Wie lange noch bis Schicht, Urlaub, Termin"
+          unter="Bis zur nächsten Schicht"
         />
         <Eintrag
           href="/privat/zahlen"

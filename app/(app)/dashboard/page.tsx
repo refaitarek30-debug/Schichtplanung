@@ -60,7 +60,7 @@ import { useAktualisierung } from "@/lib/live-refresh";
 import { ausZwischenspeicher, inZwischenspeicher } from "@/lib/zwischenspeicher";
 import { useBegriffe, useZeitausgleich } from "@/lib/begriffe";
 import { gruppiereAntraege } from "@/lib/leave-groups";
-import { GeburtsdatenOffen } from "@/components/admin/geburtsdaten-offen";
+import { AufgabenBlatt, AufgabenPunkt, AufgabenSymbol, useAufgaben } from "@/components/admin/geburtsdaten-offen";
 import { OffeneAntraegeKachel } from "@/components/dashboard/offene-antraege-kachel";
 
 /**
@@ -116,6 +116,10 @@ export default function DashboardPage() {
     (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub" || key === NAECHSTE_KEY),
     [versteckt],
   );
+
+  // Aufgaben der Administration (z. B. Geburtsdatum bestätigen): als Kachel oder als Punkt.
+  const aufgaben = useAufgaben();
+  const [aufgabenOffen, setAufgabenOffen] = useState(false);
 
   const speicherSchluessel = `${profile.id}:startseite`;
   const [gemerkt] = useState(() => ausZwischenspeicher<StartStand>(speicherSchluessel));
@@ -338,8 +342,7 @@ export default function DashboardPage() {
       {/* Ganz oben, weil eine Ersatzanfrage schnell beantwortet werden
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
       <MyReplacementRequests />
-      {/* Nur für die Administration und nur, wenn etwas offen ist. */}
-      <GeburtsdatenOffen />
+      {aufgabenOffen ? <AufgabenBlatt a={aufgaben} onClose={() => setAufgabenOffen(false)} /> : null}
 
       <header className="dash-kopf relative flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col items-start gap-2">
@@ -348,6 +351,8 @@ export default function DashboardPage() {
           </h1>
           {/* Kleiner Umschalter: jederzeit zwischen den zwei Aufbauten wechseln. */}
           {mode === "live" ? <StartAnsichtSchalter winzig /> : null}
+          {/* Aufgaben ohne eigene Kachel: ein kleiner Punkt mit Zahl. */}
+          {!zeige("aufgaben") ? <AufgabenPunkt anzahl={aufgaben.anzahl} onClick={() => setAufgabenOffen(true)} /> : null}
         </div>
         {mode === "live" && !glas ? (
           <TileSettings
@@ -520,6 +525,23 @@ export default function DashboardPage() {
         }
         data-kachel-raster
       >
+        {aufgaben.anzahl > 0 && zeige("aufgaben") ? (
+          <KachelHuelle id="aufgaben" name="Aufgaben">
+            <KpiCard
+              label="Aufgaben"
+              kompakt={kompakt}
+              kurz="Aufgaben"
+              kurzEinheit="offen"
+              onClick={() => setAufgabenOffen(true)}
+              value={aufgaben.anzahl}
+              unit="offen"
+              hint="Geburtsdatum bestätigen"
+              accent="warn"
+              ton="marke"
+              icon={<AufgabenSymbol className="h-4 w-4" strokeWidth={1.9} />}
+            />
+          </KachelHuelle>
+        ) : null}
         {zeige("urlaub") ? (
         <KachelHuelle id="urlaub" name="Urlaubstage">
         <KpiCard

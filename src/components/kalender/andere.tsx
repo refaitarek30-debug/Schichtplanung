@@ -419,7 +419,7 @@ const TAG_GROESSE: Record<AnzeigeGroesse, { zeile: string; kreis: string }> = {
 };
 
 /**
- * Unter dem eigenen Eintrag: bis zwei Personen als Umriss „L·S“, ab drei als
+ * Unter dem eigenen Eintrag: bis zwei Personen je als Zeile „L Spät“, ab drei als
  * kleine Kreise mit dem Kürzel der Schicht. Frei ist blasser. Ausgeschrieben
  * steht je Person eine Zeile mit dem Namen der Schicht, etwa „L Früh“. Größe
  * und Beschriftung stellt man im Kalender ein (Knopf „Wen sehe ich?“).
@@ -438,7 +438,8 @@ export function AndereTags({
   if (!eintraege.length) return null;
   // Bei drei und mehr Personen ist „Groß“ zu hoch für die Tageskachel.
   const g = TAG_GROESSE[anzeige.groesse === "gross" && eintraege.length > 2 ? "mittel" : anzeige.groesse];
-  if (anzeige.text === "voll") {
+  // Bis zwei Personen (dazu man selbst): je eine eigene Zeile „L Spät“ – keine Kreise.
+  if (anzeige.text === "voll" || eintraege.length <= max) {
     return (
       <span className={cn("flex w-full shrink-0 flex-col gap-[2px]", className)}>
         {eintraege.map((e) => (
@@ -470,20 +471,7 @@ export function AndereTags({
       </span>
     );
   }
-  return (
-    <span className={cn("flex w-full shrink-0 gap-[2px]", className)}>
-      {eintraege.map((e) => (
-        <span
-          key={e.key}
-          title={`${e.name}: ${partnerText(e.code, true)}`}
-          className={cn("min-w-0 flex-1 overflow-hidden whitespace-nowrap rounded-[5px] text-center font-bold", g.zeile, e.code === "X" && "opacity-70")}
-          style={{ backgroundColor: e.schichtFarbe, color: textFarbe(e.schichtFarbe), boxShadow: `inset 0 -2px 0 ${e.farbe}` }}
-        >
-          {e.kurz.slice(0, 1)}·{e.code === "X" ? "–" : e.code === "T" ? "A" : e.code}
-        </span>
-      ))}
-    </span>
-  );
+  return null;
 }
 
 /** Zeilen für das Tagesblatt: wer an diesem Tag arbeitet oder frei hat. */
@@ -599,6 +587,15 @@ const ANSICHT_NAME: Record<Ansicht, string> = { woche: "Woche", monat: "Monat", 
 // Schmaler Streifen am rechten Rand – nicht aus Versehen beim Blättern auslösen.
 const RAND = 22;
 
+/** Geschwindigkeit (px/ms) aus den letzten Punkten einer Wischbewegung. */
+function tempo(verlauf: { x: number; t: number }[]): number {
+  const jetzt = verlauf[verlauf.length - 1];
+  if (!jetzt) return 0;
+  const alt = verlauf.find((p) => jetzt.t - p.t <= 100) ?? verlauf[0]!;
+  const dt = jetzt.t - alt.t;
+  return dt > 0 ? (jetzt.x - alt.x) / dt : 0;
+}
+
 /**
  * Knopf oben rechts: die eingeblendeten Personen als kleine Kreise. Antippen
  * öffnet „Wen sehe ich?“ als Seitenblatt am rechten Rand: eine ruhige Liste
@@ -637,7 +634,8 @@ export function WenSeheIch({
   /** Bei wem in den Einstellungen gerade die Farbwahl offen ist. */
   const [farbWahl, setFarbWahl] = useState<string | null>(null);
   const blatt = useRef<HTMLDivElement>(null);
-  const zug = useRef<{ x: number; dx: number } | null>(null);
+  const wischKlick = useRef(false);
+  const zug = useRef<{ x: number; y: number; dx: number; an: boolean; verlauf: { x: number; t: number }[] } | null>(null);
   /** Hereingezogen statt angetippt: dann ohne Einflug-Animation. */
   const [perHand, setPerHand] = useState(false);
   const schliesstGerade = useRef(false);
@@ -685,45 +683,49 @@ export function WenSeheIch({
   // Vom rechten Rand nach links ziehen: das Blatt folgt dem Finger.
   useEffect(() => {
     if (!randWischen || offen) return;
-    let start: { x: number; y: number; t: number } | null = null;
+    let start: { x: number; y: number } | null = null;
     let gezogen = false;
-    let letztesX = 0;
+    let verlauf: { x: number; t: number }[] = [];
     const los = (e: PointerEvent) => {
-      start = e.clientX > window.innerWidth - RAND ? { x: e.clientX, y: e.clientY, t: Date.now() } : null;
+      start = e.clientX > window.innerWidth - RAND ? { x: e.clientX, y: e.clientY } : null;
       gezogen = false;
-      letztesX = e.clientX;
+      verlauf = [{ x: e.clientX, t: e.timeStamp }];
     };
     const bewegt = (e: PointerEvent) => {
       if (!start) return;
-      letztesX = e.clientX;
+      verlauf.push({ x: e.clientX, t: e.timeStamp });
+      if (verlauf.length > 8) verlauf.shift();
       const dx = start.x - e.clientX;
       const dy = Math.abs(e.clientY - start.y);
       if (!gezogen) {
-        // Nur klar waagerecht: schon etwas Hoch/Runter bricht ab.
-        if (dy > 14 && dy > dx * 0.6) {
+        // Nur klar waagerecht: wer hoch/runter wischt, blättert den Kalender.
+        if (dy > 16 && dy > dx) {
           start = null;
           return;
         }
-        if (dx < 26) return;
+        if (dx < 12) return;
         gezogen = true;
         setPerHand(true);
         setZieht(true);
       }
-      setzeVersatz(Math.max(0, breite() - dx), false);
+      // Das Blatt folgt dem Finger, ab dem Punkt, an dem es losging.
+      setzeVersatz(Math.max(0, breite() - (dx - 12)), false);
     };
     const ende = () => {
       const s = start;
       start = null;
       if (!s || !gezogen) return;
-      const dx = s.x - letztesX;
-      const schnell = dx > 80 && Date.now() - s.t < 260;
-      if (dx > breite() * 0.45 || schnell) {
+      const letzt = verlauf[verlauf.length - 1]?.x ?? s.x;
+      const dx = s.x - letzt;
+      // Kurzer, schneller Wisch ODER ein längerer Zug öffnet.
+      const schwung = -tempo(verlauf) > 0.35 && dx > 30;
+      if (schwung || dx > breite() * 0.3) {
         setzeVersatz(0, true);
         setOffen(true);
         setZieht(false);
       } else {
         setzeVersatz(breite() + 16, true);
-        window.setTimeout(() => setZieht(false), 220);
+        window.setTimeout(() => setZieht(false), 240);
       }
     };
     window.addEventListener("pointerdown", los, true);
@@ -751,22 +753,44 @@ export function WenSeheIch({
   const da = offen || zieht;
 
   // Im Blatt nach rechts ziehen schiebt es wieder hinaus.
+  // Schon ein kurzer Wisch nach rechts schließt; ein langsamer Zug ab einem Viertel der Breite.
   const ziehen = {
     onPointerDown: (e: React.PointerEvent) => {
-      if ((e.target as HTMLElement).closest("button, input, select")) return;
-      zug.current = { x: e.clientX, dx: 0 };
+      if ((e.target as HTMLElement).closest("input, select")) return;
+      zug.current = { x: e.clientX, y: e.clientY, dx: 0, an: false, verlauf: [{ x: e.clientX, t: e.timeStamp }] };
+    },
+    onClickCapture: (e: React.MouseEvent) => {
+      if (!wischKlick.current) return;
+      e.preventDefault();
+      e.stopPropagation();
     },
     onPointerMove: (e: React.PointerEvent) => {
       const z = zug.current;
       if (!z) return;
-      z.dx = Math.max(0, e.clientX - z.x);
+      z.verlauf.push({ x: e.clientX, t: e.timeStamp });
+      if (z.verlauf.length > 8) z.verlauf.shift();
+      const dx = e.clientX - z.x;
+      if (!z.an) {
+        // Erst wenn klar nach rechts gewischt wird – sonst scrollt die Liste.
+        if (Math.abs(e.clientY - z.y) > 12 && Math.abs(e.clientY - z.y) > Math.abs(dx)) {
+          zug.current = null;
+          return;
+        }
+        if (dx < 8) return;
+        z.an = true;
+      }
+      z.dx = Math.max(0, dx - 8);
       setzeVersatz(z.dx, false);
     },
     onPointerUp: () => {
       const z = zug.current;
       zug.current = null;
-      if (!z) return;
-      if (z.dx > 70) schliessen();
+      if (!z || !z.an) return;
+      // Nach dem Wischen kein Antippen der Zeile darunter auslösen.
+      wischKlick.current = true;
+      window.setTimeout(() => (wischKlick.current = false), 60);
+      const schwung = tempo(z.verlauf) > 0.3 && z.dx > 20;
+      if (schwung || z.dx > breite() * 0.25) schliessen();
       else setzeVersatz(0, true);
     },
   };

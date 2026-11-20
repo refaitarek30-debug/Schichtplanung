@@ -815,64 +815,28 @@ export function PrivatKalender() {
         }}
       />
 
-      {leer && !hinweisZu.upload ? (
-        <div className="relative mx-3.5 mb-2.5 rounded-[22px] bg-gradient-to-br from-brand-500 to-[#4a3fd6] p-4 text-white shadow-[0_12px_28px_rgba(47,91,234,0.3)] sm:mx-0">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-white/20">
-              <Upload className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 pr-7">
-              <h2 className="text-[16.5px] font-bold leading-tight">Schon einen Plan in einer anderen App?</h2>
-              <p className="mt-1 text-[13px] leading-snug text-white/85">
-                Screenshot der Monatsansicht hochladen – ShiftNexo erkennt Monat, Schichten und Termine.
-              </p>
-            </div>
-          </div>
+      {/* Neues Konto: ein schmaler Streifen statt großer Karten – der Kalender bleibt groß.
+          Erst „Plan übernehmen“; ist der zu, kommt „Schichtfolge eintragen“. */}
+      {leer && (!hinweisZu.upload || !hinweisZu.los) ? (
+        <div data-hinweis-streifen className="glas mx-3.5 mb-2 flex h-11 items-center rounded-[14px] sm:mx-0">
           <button
             type="button"
-            onClick={() => hinweisSchliessen("upload")}
-            aria-label="Hinweis schließen"
-            className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full text-white/80 active:bg-white/20"
+            onClick={() => (!hinweisZu.upload ? hochladeFeld.current?.click() : setRotation(true))}
+            className="flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 text-left text-[14px] font-semibold text-brand-600"
           >
-            <X className="h-5 w-5" />
-          </button>
-          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-            <button
-              type="button"
-              onClick={() => hochladeFeld.current?.click()}
-              className="h-11 rounded-[14px] bg-white text-[14.5px] font-bold text-brand-700"
-            >
-              Screenshot hochladen
-            </button>
-            <button
-              type="button"
-              onClick={() => hochladeFeld.current?.click()}
-              className="h-11 rounded-[14px] border-2 border-white/45 px-3.5 text-[13.5px] font-semibold"
-            >
-              .ics wählen
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {leer && !hinweisZu.los ? (
-        <div className="glas relative mx-3.5 mb-2.5 flex items-center rounded-[18px] sm:mx-0">
-          <button type="button" onClick={() => setRotation(true)} className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-3.5 pr-1 text-left">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
-              <Repeat className="h-[18px] w-[18px]" />
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
+              {!hinweisZu.upload ? <Upload className="h-4 w-4" /> : <Repeat className="h-4 w-4" />}
             </span>
-            <span className="text-[13.5px] leading-snug">
-              <b className="font-semibold">Los geht&apos;s:</b> Trag deine Schichtfolge einmal ein – der Kalender füllt
-              sich von selbst.
-            </span>
+            <span className="min-w-0 truncate">{!hinweisZu.upload ? "Plan aus anderer App übernehmen" : "Schichtfolge eintragen"}</span>
+            <ChevronRight className="h-4 w-4 shrink-0 opacity-70" />
           </button>
           <button
             type="button"
-            onClick={() => hinweisSchliessen("los")}
+            onClick={() => hinweisSchliessen(!hinweisZu.upload ? "upload" : "los")}
             aria-label="Hinweis schließen"
-            className="mr-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-muted active:bg-black/5"
+            className="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-muted active:bg-black/5"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       ) : null}

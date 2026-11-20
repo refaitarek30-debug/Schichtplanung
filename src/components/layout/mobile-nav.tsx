@@ -78,13 +78,14 @@ export function MobileNav() {
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
-            className="absolute inset-0 bg-ink/30"
+            className="absolute inset-0 bg-ink/20"
             aria-label="Menü schließen"
             onClick={() => setOpen(false)}
           />
           <div
             data-mehr
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-3xl bg-surface p-5 pb-24 shadow-pop"
+            // Glas wie die Leiste darunter.
+            className="glas-dicht absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-[28px] p-5 pb-24 shadow-pop"
           >
             {/* Auf dem iPad nicht über die ganze Breite gezogen. */}
             <div className="mx-auto max-w-xl">
@@ -112,13 +113,13 @@ export function MobileNav() {
                         href={k.href}
                         onClick={() => setOpen(false)}
                         className={cn(
-                          "flex rounded-[18px] border border-line bg-surface-muted/50 p-3.5 hover:bg-surface-muted sm:min-h-[118px] sm:flex-col sm:items-start sm:gap-0",
-                          breit ? "col-span-2 items-center gap-3 sm:col-span-1" : "min-h-[112px] flex-col",
+                          "flex rounded-[18px] border border-[var(--glas-rand)] bg-surface/60 p-3 hover:bg-surface/80 sm:min-h-[104px] sm:flex-col sm:items-start sm:gap-0",
+                          breit ? "col-span-2 items-center gap-3 sm:col-span-1" : "min-h-[96px] flex-col",
                         )}
                       >
                         <span
                           className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl sm:mb-2",
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:mb-2",
                             !breit && "mb-2",
                             k.farbe,
                           )}

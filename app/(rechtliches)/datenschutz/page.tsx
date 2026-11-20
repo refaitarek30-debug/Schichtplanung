@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="16. November 2026"
+      updated="20. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -847,13 +847,17 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             beim Öffnen gleich dorthin führt
           </li>
           <li>
-            <code className={kode}>sp_geraet:…</code> (lokaler Speicher, bis zu 14 Tage; wird beim
-            Abmelden und auf der Anmeldeseite gelöscht) – der zuletzt geladene Stand der{" "}
-            <em>eigenen</em> Schichten und Einträge im Kalender, bei Privatkonten außerdem die
-            eigenen Schichtarten, die Feiertage und die eigenen To-dos; dazu die eigenen Termine (ohne
-            Termine anderer), damit der Kalender beim Öffnen sofort erscheint und danach aufgefrischt
-            wird – und damit er ohne Netz den zuletzt geladenen Stand zeigen kann. Ohne Netz neu
-            angelegte eigene Termine liegen bis zum Hochladen unter{" "}
+            <code className={kode}>sp_geraet:…</code> (lokaler Speicher; jeder Eintrag verfällt
+            14 Tage nach dem letzten Auffrischen; wird beim Abmelden und auf der Anmeldeseite
+            gelöscht) – der zuletzt geladene Stand der <em>eigenen</em> Schichten, Abwesenheiten und
+            Einträge im Kalender, und zwar für das zurückliegende Jahr und bis zu fünf Jahre im
+            Voraus; bei Privatkonten außerdem die eigenen Schichtarten, die Feiertage und die
+            eigenen To-dos; dazu die eigenen Termine (ohne Termine anderer). So erscheint der
+            Kalender beim Öffnen und beim Blättern sofort und zeigt auch ohne Netz die eigenen
+            Schichten; mit Netz wird er im Hintergrund aufgefrischt. Abwesenheiten liegen dort nur
+            als Kürzel (z. B. Urlaub); Krankheitstage werden auf dem Gerät nur als „abwesend“
+            gemerkt, sodass dort keine Gesundheitsangaben liegen. Ohne Netz neu angelegte eigene
+            Termine liegen bis zum Hochladen unter{" "}
             <code className={kode}>sp_offline_termine:…</code>; sie gehen hoch, sobald wieder Netz
             da ist, und werden beim Abmelden gelöscht. Es werden weder Daten anderer Personen noch
             Anträge oder Krankheitsgründe so gespeichert, und nichts davon wird an einen Server
