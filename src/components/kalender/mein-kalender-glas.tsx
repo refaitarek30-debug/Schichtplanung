@@ -1057,7 +1057,7 @@ export function MeinKalenderGlas() {
             andere={andere}
             glas
             onVerwalten={() => setEinladen(true)}
-            randWischen={!pinselAn && !tagBlatt && !terminBlatt && !todoBlatt && !profilOffen && !einladen}
+            randWischen={!woche && !pinselAn && !tagBlatt && !terminBlatt && !todoBlatt && !profilOffen && !einladen}
             onEigeneFarben={() => setAnpassen(true)}
             ansicht={{
               wert: woche ? "woche" : "monat",

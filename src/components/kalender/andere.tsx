@@ -584,8 +584,10 @@ function FarbReihe({ personKey, farben, onWahl }: { personKey: string; farben: R
 const ANSICHT_NAME: Record<Ansicht, string> = { woche: "Woche", monat: "Monat", jahr: "Jahr" };
 
 /** Breite Rand-Zone rechts, in der ein Zug nach links „Wen sehe ich?“ hereinholt. */
-// Schmaler Streifen am rechten Rand – nicht aus Versehen beim Blättern auslösen.
-const RAND = 22;
+// Bereich, aus dem „Wen sehe ich?“ hereingezogen wird: das rechte gute Drittel des
+// Bildschirms. Ausgelöst wird nur bei klar waagerechtem Wisch nach links – hoch und
+// runter blättert weiter den Kalender.
+const RAND_ANTEIL = 0.35;
 
 /** Geschwindigkeit (px/ms) aus den letzten Punkten einer Wischbewegung. */
 function tempo(verlauf: { x: number; t: number }[]): number {
@@ -687,7 +689,10 @@ export function WenSeheIch({
     let gezogen = false;
     let verlauf: { x: number; t: number }[] = [];
     const los = (e: PointerEvent) => {
-      start = e.clientX > window.innerWidth - RAND ? { x: e.clientX, y: e.clientY } : null;
+      const imBereich = e.clientX > window.innerWidth * (1 - RAND_ANTEIL);
+      // Nicht aus der unteren Leiste oder aus offenen Fenstern heraus.
+      const ziel = e.target as Element | null;
+      start = imBereich && !ziel?.closest?.("nav, [role='dialog']") ? { x: e.clientX, y: e.clientY } : null;
       gezogen = false;
       verlauf = [{ x: e.clientX, t: e.timeStamp }];
     };
