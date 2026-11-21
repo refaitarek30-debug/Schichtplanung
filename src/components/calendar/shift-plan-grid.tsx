@@ -2186,14 +2186,14 @@ const PlanZeile = memo(function PlanZeile({
       className={cn(
         "hover:bg-surface-muted/50",
         fokus === "blass" && "opacity-[0.8] transition-opacity",
-        fokus === "ich" && "bg-brand-500/[0.08] outline outline-[1.5px] -outline-offset-1 outline-brand-500",
+        fokus === "ich" && "bg-brand-500/[0.14]",
       )}
     >
       <th
         scope="row"
         className={cn(
           "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap px-1 py-0.5 text-left font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2",
-          fokus === "ich" ? "bg-brand-50 font-semibold text-brand-700" : "bg-surface",
+          fokus === "ich" ? "bg-brand-100 font-semibold text-brand-700" : "bg-surface",
           gross ? "text-[12.5px] sm:text-[14px]" : "text-[11px] sm:text-[12px] lg:text-[13px]",
         )}
       >
