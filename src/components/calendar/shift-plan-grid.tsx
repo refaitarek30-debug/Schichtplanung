@@ -1603,12 +1603,28 @@ export function ShiftPlanGrid({
         </div>
       ) : null}
 
-      {antragAktiv && !auswahl ? (
-        <div className="px-4 pt-3">
-          <Alert tone="info">
-            Urlaub beantragen: in deiner Zeile auf den ersten und dann auf den letzten Tag
-            tippen.
-          </Alert>
+      {/* Beim Beantragen: der Hinweis schwebt unten über der Leiste – nichts
+          über dem Plan, damit nichts nach unten rutscht. */}
+      {antragAktiv && (!auswahl || !auswahl.fertig) ? (
+        <div
+          data-antrag-hinweis
+          data-ueber-leiste
+          className="fixed inset-x-3 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-ink px-4 py-2.5 text-surface shadow-pop lg:bottom-6"
+        >
+          <span className="min-w-0 flex-1 text-[13.5px] leading-snug">
+            <b className="block font-semibold">{auswahl ? "Letzten Tag antippen" : "Ersten Tag antippen"}</b>
+            <span className="opacity-75">{auswahl ? `ab ${formatDE(auswahl.von)} · in deiner Zeile` : "in deiner Zeile (markiert)"}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setAntragsModus(false);
+              setAuswahl(null);
+            }}
+            className="shrink-0 rounded-full px-3 py-1.5 text-[13px] font-semibold text-surface/90 hover:bg-white/10"
+          >
+            Abbrechen
+          </button>
         </div>
       ) : null}
 
@@ -1995,6 +2011,7 @@ export function ShiftPlanGrid({
                       dates={dates}
                       from={from}
                       antragHier={antragAktiv && member.isMe}
+                      fokus={antragAktiv ? (member.isMe ? "ich" : "blass") : null}
                       auswahl={member.isMe ? auswahl : null}
                       bearbeitbarBasis={!nurLesen && canEdit}
                       blocked={blocked}
@@ -2128,6 +2145,7 @@ const PlanZeile = memo(function PlanZeile({
   dates,
   from,
   antragHier,
+  fokus = null,
   auswahl,
   bearbeitbarBasis,
   blocked,
@@ -2139,6 +2157,8 @@ const PlanZeile = memo(function PlanZeile({
   gross,
   zellFarbe,
 }: {
+  /** Beim Urlaub beantragen: die eigene Zeile hervorgehoben, die anderen leicht blass. */
+  fokus?: "ich" | "blass" | null;
   member: GridRow;
   memberIndex: number;
   anzahl: number;
@@ -2160,11 +2180,20 @@ const PlanZeile = memo(function PlanZeile({
   zellFarbe: ((code: string) => React.CSSProperties | null) | null;
 }) {
   return (
-    <tr id={member.isMe ? "eigene-zeile" : undefined} className="hover:bg-surface-muted/50">
+    <tr
+      id={member.isMe ? "eigene-zeile" : undefined}
+      data-fokus={fokus ?? undefined}
+      className={cn(
+        "hover:bg-surface-muted/50",
+        fokus === "blass" && "opacity-[0.55] transition-opacity",
+        fokus === "ich" && "bg-brand-500/[0.08] outline outline-[1.5px] -outline-offset-1 outline-brand-500",
+      )}
+    >
       <th
         scope="row"
         className={cn(
-          "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap bg-surface px-1 py-0.5 text-left font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2",
+          "sticky left-0 z-10 w-[4.25rem] min-w-[4.25rem] max-w-[4.25rem] whitespace-nowrap px-1 py-0.5 text-left font-normal sm:w-[1%] sm:min-w-0 sm:max-w-none sm:px-2",
+          fokus === "ich" ? "bg-brand-50 font-semibold text-brand-700" : "bg-surface",
           gross ? "text-[12.5px] sm:text-[14px]" : "text-[11px] sm:text-[12px] lg:text-[13px]",
         )}
       >
@@ -2193,8 +2222,12 @@ const PlanZeile = memo(function PlanZeile({
           ) : null}
           <span className="flex min-w-0 items-center gap-1">
             {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
-            <span className="block truncate sm:hidden">{shortName(member.name)}</span>
+            {/* Beim Beantragen steht auf dem Handy statt des Namens „Du“ – passt in die schmale Spalte. */}
+            <span className={cn("block truncate sm:hidden", fokus === "ich" && "hidden")}>{shortName(member.name)}</span>
             <span className="hidden truncate sm:block">{member.name}</span>
+            {fokus === "ich" ? (
+              <span className="shrink-0 rounded bg-brand-600 px-1.5 text-[10px] font-bold leading-[16px] text-white">Du</span>
+            ) : null}
             {/* Azubis stehen im Plan, zählen aber nicht zur Besetzung – das
                 soll man sehen. */}
             {member.isApprentice ? (

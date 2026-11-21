@@ -27,7 +27,7 @@ import { fetchAnnouncements } from "@/lib/data/announcements";
 import { SetupBanner } from "@/components/settings/setup-banner";
 import { MyReplacementRequests } from "@/components/staffing/my-replacement-requests";
 import { LeadershipKpis } from "@/components/dashboard/leadership-kpis";
-import { TileSettings, kachelGroesse, kachelSichtbar, speichereKachelAuswahl, startKachelOptionen, type KachelGroesse } from "@/components/dashboard/tile-settings";
+import { TileSettings, kachelSichtbar, speichereKachelAuswahl, startKachelOptionen } from "@/components/dashboard/tile-settings";
 import { KachelBearbeitung, KachelHuelle } from "@/components/dashboard/kachel-bearbeiten";
 import { NAECHSTE_KEY, NAECHSTE_PREFIX, NaechsteSchichtKachel } from "@/components/dashboard/naechste-schicht";
 import { KompaktHinweis } from "@/components/dashboard/kompakt-hinweis";
@@ -116,14 +116,6 @@ export default function DashboardPage() {
     (key: string) => kachelSichtbar(versteckt, key, key === "naechsterurlaub" || key === NAECHSTE_KEY),
     [versteckt],
   );
-
-  // Größe je Kachel (Handy): Vorgabe „Klassisch“ halbe Breite, „Nächste Schicht“ ganze Breite;
-  // „Kompakt“ ein Viertel. Jede Person kann das im Bearbeiten-Modus ändern.
-  const standardGroesse = useCallback(
-    (key: string): KachelGroesse => (kompakt ? "S" : key === NAECHSTE_KEY ? "L" : "M"),
-    [kompakt],
-  );
-  const klein = (key: string) => kachelGroesse(versteckt, key, standardGroesse(key)) === "S";
 
   // Aufgaben der Administration (z. B. Geburtsdatum bestätigen): als Kachel oder als Punkt.
   const aufgaben = useAufgaben();
@@ -343,7 +335,7 @@ export default function DashboardPage() {
   return (
     // Einheitliche Abstände: „Kompakt“ hat überall 16 px zwischen den Blöcken
     // (dasselbe Maß wie im Raster darunter), „Klassisch“ wie bisher 24 px.
-    <div className={cn(kompakt ? "space-y-4" : "space-y-6")}>
+    <div className={cn(kompakt ? "space-y-3" : "space-y-4")}>
       <SetupBanner />
       {mode === "live" ? <KompaktHinweis /> : null}
 
@@ -386,7 +378,7 @@ export default function DashboardPage() {
         <ProfilInline />
       </header>
 
-      <KachelBearbeitung profileId={profile.id} optionen={kachelOptionen} versteckt={versteckt} onChange={setVersteckt} aktiv={mode === "live"} standardGroesse={standardGroesse} danach={
+      <KachelBearbeitung profileId={profile.id} optionen={kachelOptionen} versteckt={versteckt} onChange={setVersteckt} aktiv={mode === "live"} danach={
       <>
 
       {/* Der eigene nächste Urlaub, direkt über dem Knopf zum Beantragen:
@@ -396,7 +388,7 @@ export default function DashboardPage() {
       {mode === "live" && profile.employeeId && (zeige("naechsterurlaub") || !kompakt) ? (
         // Am PC stehen „Nächster Urlaub“ und „Urlaub beantragen“ oben in der Kachelreihe.
         <Fach an={kompakt} platz="md:col-span-2 xl:hidden">
-          <div className={cn(kompakt ? "space-y-4" : "space-y-6")} data-start-urlaub>
+          <div className={cn(kompakt ? "space-y-3" : "space-y-4")} data-start-urlaub>
             {zeige("naechsterurlaub") ? (
               <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
                 <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
@@ -533,8 +525,8 @@ export default function DashboardPage() {
       <div
         className={
           kompakt
-            ? "grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(105px,1fr))]"
-            : "grid grid-cols-4 gap-3 lg:grid-cols-5 xl:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]"
+            ? "grid grid-cols-4 gap-2 lg:grid-cols-[repeat(auto-fit,minmax(170px,1fr))] xl:grid-cols-[repeat(auto-fit,minmax(105px,1fr))]"
+            : "grid grid-cols-2 gap-2.5 lg:grid-cols-5 xl:grid-cols-[repeat(auto-fit,minmax(150px,1fr))]"
         }
         data-kachel-raster
       >
@@ -542,7 +534,7 @@ export default function DashboardPage() {
           <KachelHuelle id="aufgaben" name="Aufgaben">
             <KpiCard
               label="Aufgaben"
-              kompakt={klein("aufgaben")}
+              kompakt={kompakt}
               kurz="Aufgaben"
               kurzEinheit="offen"
               onClick={() => setAufgabenOffen(true)}
@@ -559,7 +551,7 @@ export default function DashboardPage() {
         <KachelHuelle id="urlaub" name="Urlaubstage">
         <KpiCard
           label="Urlaubstage verfügbar"
-          kompakt={klein("urlaub")}
+          kompakt={kompakt}
           kurz="Urlaub"
           kurzEinheit={`/${formatDays(totalLeave)}`}
           href="/urlaub"
@@ -576,7 +568,7 @@ export default function DashboardPage() {
         <KachelHuelle id="antraege" name="Offene Anträge">
         <KpiCard
           label={role === "employee" ? "Meine offenen Anträge" : "Offene Anträge"}
-          kompakt={klein("antraege")}
+          kompakt={kompakt}
           kurz="Anträge"
           kurzEinheit="offen"
           href={role === "employee" ? "/urlaub" : "/urlaubsantraege"}
@@ -598,7 +590,7 @@ export default function DashboardPage() {
           <KachelHuelle id="kritisch" name="Kritische Tage">
         <KpiCard
             label="Kritische Tage (14 T.)"
-            kompakt={klein("kritisch")}
+            kompakt={kompakt}
             kurz="Kritisch"
             kurzEinheit="Tage"
             href="/besetzung"
@@ -618,7 +610,7 @@ export default function DashboardPage() {
         <KachelHuelle id="krank" name="Krank gesamt">
         <KpiCard
           label="Krank gesamt"
-          kompakt={klein("krank")}
+          kompakt={kompakt}
           kurz="Krank"
           href="/krank"
           value={sickDays}
@@ -636,15 +628,14 @@ export default function DashboardPage() {
         <LeadershipKpis
           zeigeRate={zeige("gesundheit")}
           zeigeAnfragen={zeige("ersatz")}
-          kompaktRate={klein("gesundheit")}
-          kompaktAnfragen={klein("ersatz")}
+          kompakt={kompakt}
         />
 
         {hatVKonto && zeige("vtage") ? (
           <KachelHuelle id="vtage" name="V-Tage">
         <KpiCard
             label={t("V-Tage gesamt")}
-            kompakt={klein("vtage")}
+            kompakt={kompakt}
             kurz={t("V-Tage")}
             href="/urlaub"
             value={formatDays(vRemaining)}
@@ -658,8 +649,9 @@ export default function DashboardPage() {
         ) : null}
 
         {mode === "live" && profile.employeeId && zeige(NAECHSTE_KEY) ? (
-          <KachelHuelle id={NAECHSTE_KEY} name="Nächste Schicht">
-            <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={klein(NAECHSTE_KEY)} mitPrivat={profile.hatPrivat === true} />
+          // „Klassisch“ auf dem Handy über die ganze Breite – sonst bleibt daneben ein Loch.
+          <KachelHuelle id={NAECHSTE_KEY} name="Nächste Schicht" className={kompakt ? undefined : "col-span-2 lg:col-span-1"}>
+            <NaechsteSchichtKachel wahl={naechsteWahl} onWahl={waehleNaechste} kompakt={kompakt} mitPrivat={profile.hatPrivat === true} />
           </KachelHuelle>
         ) : null}
 
@@ -696,13 +688,13 @@ function Raster({ an, children }: { an: boolean; children: React.ReactNode }) {
   // Bildschirm wird genutzt. Handy und Tablet: untereinander wie bisher.
   if (!an) {
     return (
-      <div className="space-y-6 xl:flex xl:flex-wrap xl:items-start xl:gap-6 xl:space-y-0">
+      <div className="space-y-4 xl:flex xl:flex-wrap xl:items-start xl:gap-6 xl:space-y-0">
         {children}
       </div>
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:flex xl:flex-wrap xl:items-start xl:gap-4">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:flex xl:flex-wrap xl:items-start xl:gap-4">
       {children}
     </div>
   );

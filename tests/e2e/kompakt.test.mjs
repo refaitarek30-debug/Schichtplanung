@@ -57,8 +57,8 @@ export default async function kompakt() {
       return l.map((x) => Math.round(x));
     });
     pruefe(
-      !!luecken && luecken.length >= 3 && luecken.every((x) => Math.abs(x - 16) <= 1),
-      `Kompakt: alle Abstände zwischen den Blöcken 16 px (${luecken?.join(", ")})`,
+      !!luecken && luecken.length >= 3 && luecken.every((x) => Math.abs(x - 12) <= 1),
+      `Kompakt: alle Abstände zwischen den Blöcken 12 px (${luecken?.join(", ")})`,
     );
 
     await schalter.getByRole("radio", { name: "Klassisch" }).click();
