@@ -37,7 +37,8 @@ export default async function privatNeu() {
     const vorher = await titel();
     const v = seite.viewportSize();
     const mitte = { x: v.width / 2, y: v.height / 2 };
-    await wische(seite, { x: mitte.x + 100, y: mitte.y }, { x: mitte.x - 100, y: mitte.y });
+    // Nach rechts – nach links aus dem rechten Drittel öffnet absichtlich „Wen sehe ich?“.
+    await wische(seite, { x: mitte.x - 100, y: mitte.y }, { x: mitte.x + 100, y: mitte.y });
     await warte(700);
     pruefe((await titel()) === vorher, `Seitlich wischen blättert nicht (${await titel()})`);
     // Monate liegen in einer nativen Scroll-Liste: echter Finger (Touch) statt Pointer-Ereignisse.
@@ -62,6 +63,15 @@ export default async function privatNeu() {
     await seite.keyboard.press("Escape");
     await warte(300);
     pruefe((await seite.locator("[data-wen-sehe-ich]").count()) === 0, "Escape schließt „Wen sehe ich?“");
+    // Auch aus dem rechten Drittel (nicht nur ganz am Rand) – aber nur waagerecht.
+    await wische(seite, { x: v.width * 0.72, y: mitte.y }, { x: v.width * 0.72, y: mitte.y - 140 });
+    await warte(500);
+    pruefe((await seite.locator("[data-wen-sehe-ich]").count()) === 0, "Rechtes Drittel: hoch wischen öffnet nichts");
+    await wische(seite, { x: v.width * 0.72, y: mitte.y }, { x: v.width * 0.72 - 120, y: mitte.y });
+    await warte(600);
+    pruefe((await seite.locator("[data-wen-sehe-ich]").count()) === 1, "Rechtes Drittel: nach links wischen öffnet „Wen sehe ich?“");
+    await seite.keyboard.press("Escape");
+    await warte(400);
 
     // Eigene Schichten ausblenden: „Ich · Schichten“ im Seitenblatt.
     const mitSchicht = () => seite.locator('[data-iso][aria-label*=": "]').count();
