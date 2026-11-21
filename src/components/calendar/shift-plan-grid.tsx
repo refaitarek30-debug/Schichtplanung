@@ -1489,7 +1489,7 @@ export function ShiftPlanGrid({
               className={cn(
                 chip,
                 "h-10 justify-center border-transparent font-bold max-sm:flex-1",
-                antragsModus ? "bg-brand-600 text-white" : "bg-brand-500/15 text-brand-700 hover:bg-brand-500/25",
+                antragsModus ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-brand-500/15 text-brand-700 hover:bg-brand-500/25",
               )}
             >
               <CalendarPlus className="h-4 w-4" strokeWidth={2.2} />
@@ -2185,7 +2185,7 @@ const PlanZeile = memo(function PlanZeile({
       data-fokus={fokus ?? undefined}
       className={cn(
         "hover:bg-surface-muted/50",
-        fokus === "blass" && "opacity-[0.55] transition-opacity",
+        fokus === "blass" && "opacity-[0.8] transition-opacity",
         fokus === "ich" && "bg-brand-500/[0.08] outline outline-[1.5px] -outline-offset-1 outline-brand-500",
       )}
     >
