@@ -26,11 +26,16 @@ export function LeadershipKpis({
   zeigeRate = true,
   zeigeAnfragen = true,
   kompakt = false,
+  kompaktRate = kompakt,
+  kompaktAnfragen = kompakt,
 }: {
   zeigeRate?: boolean;
   zeigeAnfragen?: boolean;
   /** Kleine Kacheln (Startseite „Kompakt“). */
   kompakt?: boolean;
+  /** Je Kachel eigene Größe (S = klein). */
+  kompaktRate?: boolean;
+  kompaktAnfragen?: boolean;
 } = {}) {
   const { mode, role } = useSession();
   const [rate, setRate] = useState<number | null | undefined>(undefined);
@@ -83,7 +88,7 @@ export function LeadershipKpis({
       <KachelHuelle id="gesundheit" name="Gesundheitsrate">
       <KpiCard
         label="Gesundheitsrate"
-        kompakt={kompakt}
+        kompakt={kompaktRate}
         kurz="Gesundheit"
         value={rate === undefined ? "…" : typeof rate === "number" ? rate.toFixed(1) : "–"}
         unit="%"
@@ -109,7 +114,7 @@ export function LeadershipKpis({
       <KachelHuelle id="ersatz" name="Offene Ersatzanfragen">
       <KpiCard
         label="Offene Ersatzanfragen"
-        kompakt={kompakt}
+        kompakt={kompaktAnfragen}
         kurz="Ersatz"
         kurzEinheit="offen"
         value={offen ?? "–"}
