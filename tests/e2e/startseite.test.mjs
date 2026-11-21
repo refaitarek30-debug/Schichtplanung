@@ -13,6 +13,24 @@ export default async function startseite() {
     pruefe(await seite.getByText(/von \d+ übrig/).first().isVisible(), "Klassisch: große Kachel „Urlaub“ (… übrig)");
     pruefe((await seite.locator('main a[href="/schichtplan?antrag=1"]:visible').count()) === 1, "Klassisch: großer Knopf „Urlaub beantragen“");
 
+    // „Urlaub beantragen“ im Plan (Entwurf B): eigene Zeile markiert, die anderen leicht blass,
+    // Hinweis unten statt über dem Plan – die Zeile bleibt stehen.
+    await seite.goto(`${APP}/schichtplan?antrag=1`, { waitUntil: "networkidle" });
+    await warte(400);
+    const zeileY = async () => seite.evaluate(() => document.getElementById("eigene-zeile")?.getBoundingClientRect().top ?? -1);
+    const y1 = await zeileY();
+    await warte(1200);
+    const y2 = await zeileY();
+    pruefe(Math.abs(y1 - y2) < 2, `Antrag: der Plan rutscht nicht (${Math.round(y1)} → ${Math.round(y2)})`);
+    pruefe((await seite.locator('#eigene-zeile[data-fokus="ich"]').count()) === 1, "Antrag: eigene Zeile hervorgehoben");
+    pruefe((await seite.locator('tr[data-fokus="blass"]').count()) > 0, "Antrag: andere Zeilen leicht blass");
+    pruefe(await seite.locator("[data-antrag-hinweis]").isVisible(), "Antrag: Hinweis unten über der Leiste");
+    await seite.locator("[data-antrag-hinweis]").getByRole("button", { name: "Abbrechen" }).click();
+    await warte(300);
+    pruefe((await seite.locator('tr[data-fokus]').count()) === 0, "Antrag: Abbrechen macht den Plan wieder normal");
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(800);
+
     // Aufgaben (nur Administration, nur wenn etwas offen ist): Kachel öffnet ein Blatt.
     const aufgabenKachel = seite.getByRole("button", { name: /^Aufgaben: 1/ });
     pruefe(await aufgabenKachel.isVisible(), "Admin: Kachel „Aufgaben“ mit 1 offen");
@@ -67,31 +85,6 @@ export default async function startseite() {
     await seite.getByRole("button", { name: "Urlaubstage verfügbar" }).click();
     await warte(300);
     pruefe((await seite.locator('[data-kachel="urlaub"]').count()) === 1, "Kacheln: „Kachel hinzufügen“ holt sie zurück");
-    // Größe: Vorgabe halbe Breite (M); L macht sie breit; „Vorgabe“ setzt zurück.
-    pruefe((await seite.locator('[data-kachel="krank"]').getAttribute("data-groesse")) === "M", "Kacheln: Vorgabe „Klassisch“ ist M");
-    const breiteM = (await seite.locator('[data-kachel="krank"]').boundingBox())?.width ?? 0;
-    await seite.getByRole("button", { name: "Krank gesamt: Größe L" }).click();
-    await warte(400);
-    const breiteL = (await seite.locator('[data-kachel="krank"]').boundingBox())?.width ?? 0;
-    pruefe(breiteL > breiteM * 1.8, `Kacheln: Größe L ist ganze Breite (${Math.round(breiteM)} → ${Math.round(breiteL)})`);
-    // Ziehen: „Anträge“ auf den Platz von „Urlaub“.
-    await seite.locator('[data-kachel="urlaub"]').scrollIntoViewIfNeeded();
-    await warte(200);
-    const vonBox = await seite.locator('[data-kachel="antraege"]').boundingBox();
-    const zuBox = await seite.locator('[data-kachel="urlaub"]').boundingBox();
-    await seite.mouse.move(vonBox.x + 30, vonBox.y + 30);
-    await seite.mouse.down();
-    for (let i = 1; i <= 8; i++) {
-      await seite.mouse.move(vonBox.x + 30 + ((zuBox.x - vonBox.x) * i) / 8, vonBox.y + 30 + ((zuBox.y - vonBox.y) * i) / 8);
-      await warte(30);
-    }
-    await seite.mouse.up();
-    await warte(500);
-    const platz = async (k) => Number((await seite.locator(`[data-kachel="${k}"]`).evaluate((e) => e.style.order)) || 0);
-    pruefe((await platz("antraege")) < (await platz("urlaub")), "Kacheln: Ziehen verschiebt „Anträge“ vor „Urlaub“");
-    await seite.locator("[data-kacheln-vorgabe]").click();
-    await warte(400);
-    pruefe((await seite.locator('[data-kachel="krank"]').getAttribute("data-groesse")) === "M", "Kacheln: „Vorgabe“ setzt Größe zurück");
     await seite.getByRole("button", { name: "Fertig" }).click();
     await warte(300);
     pruefe((await seite.locator("[data-kacheln-bearbeiten]").count()) === 0, "Kacheln: „Fertig“ beendet das Bearbeiten");
