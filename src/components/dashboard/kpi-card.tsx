@@ -157,9 +157,10 @@ export function KpiCard({
         {unit ? <span className="text-sm text-ink-muted">{unit}</span> : null}
       </p>
       {hint ? (
-        <p className="mt-2 flex items-center gap-1.5 text-[12px] text-ink-muted">
-          <span className={cn("h-1.5 w-1.5 rounded-full", accents[accent])} />
-          {hint}
+        <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] text-ink-muted">
+          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", accents[accent])} />
+          {/* Eine Zeile – so sind alle Kacheln gleich hoch. */}
+          <span className="truncate">{hint}</span>
         </p>
       ) : null}
     </>

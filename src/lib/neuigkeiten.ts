@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-21T12:00:00+01:00",
+    titel: "Startseite selbst anordnen",
+    text: "Lange auf eine Kachel drücken: Jetzt kannst du sie auch verschieben (halten und ziehen) und die Größe wählen – S klein, M halbe Breite, L ganze Breite. „Vorgabe“ stellt alles zurück. Die Kacheln in „Klassisch“ sind jetzt gleich hoch und ordentlicher angeordnet.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-20T21:00:00+01:00",
     titel: "Kalender und Startseite: aufgeräumt",
     text: "Eingeladene Personen: bis zu zwei stehen als eigene Zeile im Tag, ab drei als kleine Kreise. „Wen sehe ich?“ kommt mit einem kurzen Wisch vom rechten Rand und geht mit einem kurzen Wisch nach rechts wieder zu. Neue Privatkonten sehen oben nur noch einen schmalen Hinweis.",

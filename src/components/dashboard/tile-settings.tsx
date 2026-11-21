@@ -62,6 +62,26 @@ export function startKachelOptionen({
   return liste;
 }
 
+/** Größe einer Kachel auf dem Handy: S = ein Viertel, M = halbe Breite, L = ganze Breite. */
+export type KachelGroesse = "S" | "M" | "L";
+
+/** Gespeicherte Größe (`groesse:<key>:<S|M|L>` in derselben Liste) oder die Vorgabe. */
+export function kachelGroesse(gespeichert: Set<string>, key: string, standard: KachelGroesse): KachelGroesse {
+  const vorne = `groesse:${key}:`;
+  for (const e of gespeichert) {
+    if (!e.startsWith(vorne)) continue;
+    const g = e.slice(vorne.length);
+    if (g === "S" || g === "M" || g === "L") return g;
+  }
+  return standard;
+}
+
+/** Eigene Reihenfolge der Kacheln (`reihe:a,b,c`), leer = wie vorgegeben. */
+export function kachelReihe(gespeichert: Set<string>): string[] {
+  for (const e of gespeichert) if (e.startsWith("reihe:")) return e.slice(6).split(",").filter(Boolean);
+  return [];
+}
+
 /** Ist die Kachel sichtbar – nach der gespeicherten Liste? */
 export function kachelSichtbar(gespeichert: Set<string>, key: string, optIn = false): boolean {
   return optIn ? gespeichert.has(`zeige:${key}`) : !gespeichert.has(key);

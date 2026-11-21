@@ -67,6 +67,31 @@ export default async function startseite() {
     await seite.getByRole("button", { name: "Urlaubstage verfügbar" }).click();
     await warte(300);
     pruefe((await seite.locator('[data-kachel="urlaub"]').count()) === 1, "Kacheln: „Kachel hinzufügen“ holt sie zurück");
+    // Größe: Vorgabe halbe Breite (M); L macht sie breit; „Vorgabe“ setzt zurück.
+    pruefe((await seite.locator('[data-kachel="krank"]').getAttribute("data-groesse")) === "M", "Kacheln: Vorgabe „Klassisch“ ist M");
+    const breiteM = (await seite.locator('[data-kachel="krank"]').boundingBox())?.width ?? 0;
+    await seite.getByRole("button", { name: "Krank gesamt: Größe L" }).click();
+    await warte(400);
+    const breiteL = (await seite.locator('[data-kachel="krank"]').boundingBox())?.width ?? 0;
+    pruefe(breiteL > breiteM * 1.8, `Kacheln: Größe L ist ganze Breite (${Math.round(breiteM)} → ${Math.round(breiteL)})`);
+    // Ziehen: „Anträge“ auf den Platz von „Urlaub“.
+    await seite.locator('[data-kachel="urlaub"]').scrollIntoViewIfNeeded();
+    await warte(200);
+    const vonBox = await seite.locator('[data-kachel="antraege"]').boundingBox();
+    const zuBox = await seite.locator('[data-kachel="urlaub"]').boundingBox();
+    await seite.mouse.move(vonBox.x + 30, vonBox.y + 30);
+    await seite.mouse.down();
+    for (let i = 1; i <= 8; i++) {
+      await seite.mouse.move(vonBox.x + 30 + ((zuBox.x - vonBox.x) * i) / 8, vonBox.y + 30 + ((zuBox.y - vonBox.y) * i) / 8);
+      await warte(30);
+    }
+    await seite.mouse.up();
+    await warte(500);
+    const platz = async (k) => Number((await seite.locator(`[data-kachel="${k}"]`).evaluate((e) => e.style.order)) || 0);
+    pruefe((await platz("antraege")) < (await platz("urlaub")), "Kacheln: Ziehen verschiebt „Anträge“ vor „Urlaub“");
+    await seite.locator("[data-kacheln-vorgabe]").click();
+    await warte(400);
+    pruefe((await seite.locator('[data-kachel="krank"]').getAttribute("data-groesse")) === "M", "Kacheln: „Vorgabe“ setzt Größe zurück");
     await seite.getByRole("button", { name: "Fertig" }).click();
     await warte(300);
     pruefe((await seite.locator("[data-kacheln-bearbeiten]").count()) === 0, "Kacheln: „Fertig“ beendet das Bearbeiten");
