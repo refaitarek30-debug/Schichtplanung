@@ -117,25 +117,37 @@ export default async function startseite() {
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
 
-    // „Mehr“: oben die Kacheln Team, Urlaubssperre, Mitteilungen – darunter der Rest ohne Doppelte.
+    // „Mehr“ (Entwurf B + C): Profil, Suche, vier Führungs-Kacheln, darunter der Rest.
     await seite.locator("[data-mobile-nav]").getByRole("button", { name: "Mehr" }).click();
     await warte(500);
     const mehr = seite.locator("[data-mehr]");
     const kacheln = await mehr.locator("[data-mehr-kacheln] a").allInnerTexts();
     pruefe(
-      kacheln.length === 3 && /^Team/.test(kacheln[0]) && /^Urlaubssperre/.test(kacheln[1]) && /^Mitteilungen/.test(kacheln[2]),
-      `Mehr: Kacheln Team, Urlaubssperre, Mitteilungen (${kacheln.map((k) => k.split("\n")[0]).join(", ")})`,
+      kacheln.length === 4 && /^Team/.test(kacheln[0]) && /^Besetzung/.test(kacheln[1]) && /^Anträge/.test(kacheln[2]) && /^Mitteilungen/.test(kacheln[3]),
+      `Mehr: Kacheln Team, Besetzung, Anträge, Mitteilungen (${kacheln.map((k) => k.split("\n")[0]).join(", ")})`,
     );
     pruefe(
-      (await mehr.locator('ul a[href="/verwaltung"], ul a[href="/mitteilungen"], ul a[href="/altersfreizeit"]').count()) === 0,
-      "Mehr: Verwaltung, Mitteilungen, AF nicht doppelt in der Liste",
+      (await mehr.locator('a[href="/dashboard"], a[href="/schichtplan"], a[href="/urlaub"], a[href="/meine-schichten"]').count()) === 0,
+      "Mehr: Start, Plan, Urlaub, Kalender nicht doppelt (stehen in der Leiste)",
     );
+    await mehr.locator("[data-mehr-suche]").fill("sperre");
+    await warte(300);
     pruefe(
-      (await mehr.locator('ul a[href="/besetzung"], ul a[href="/ausbildung"], ul a[href="/urlaubsantraege"]').count()) === 0,
-      "Mehr: Besetzung, Ausbildung, Urlaubsanträge nicht mehr in der Liste (Reiter in Plan und Urlaub)",
+      (await mehr.locator('[data-mehr-treffer] a[href="/mitteilungen?bereich=sperren&neu=sperre"]').count()) === 1,
+      "Mehr: Suche „sperre“ findet die Urlaubssperre",
     );
+    await mehr.locator("[data-mehr-suche]").fill("dunkel");
+    await warte(300);
+    pruefe(
+      (await mehr.locator('[data-mehr-treffer] a[href="/einstellungen?blatt=darstellung"]').count()) === 1,
+      "Mehr: Suche „dunkel“ findet die Darstellung in den Einstellungen",
+    );
+    await mehr.locator("[data-mehr-suche]").fill("");
+    await warte(200);
     pruefe((await mehr.locator('ul a[href="/todos"]').count()) === 1, "Mehr: übrige Bereiche (z. B. To-dos) weiter da");
-    await mehr.getByRole("link", { name: /Urlaubssperre/ }).click();
+    await mehr.locator("[data-mehr-suche]").fill("sperre");
+    await warte(300);
+    await mehr.locator("[data-mehr-treffer]").getByRole("link", { name: /Urlaubssperre/ }).click();
     await seite.waitForURL(/\/mitteilungen\?bereich=sperren/);
     await warte(1200);
     pruefe(

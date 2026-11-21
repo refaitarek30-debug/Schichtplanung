@@ -350,6 +350,19 @@ export default function DashboardPage() {
       {/* Ganz oben, weil eine Ersatzanfrage schnell beantwortet werden
           muss. Die Karte verschwindet, wenn nichts offen ist. */}
       <MyReplacementRequests />
+      {/* „Klassisch“ auf Handy und Tablet: „Urlaub beantragen“ schwebt über der Leiste –
+          beim Scrollen immer erreichbar. „Kompakt“ hat den Knopf im Plan. */}
+      {mode === "live" && profile.employeeId && !kompakt ? (
+        <Link
+          href="/schichtplan?antrag=1"
+          data-urlaub-schwebend
+          aria-label="Urlaub beantragen"
+          className="fixed right-4 z-20 flex h-12 items-center gap-1.5 rounded-full bg-brand-600 pl-3.5 pr-4 text-[15px] font-semibold text-white shadow-[0_10px_24px_rgb(var(--c-brand-600)/0.35)] transition-transform active:scale-95 lg:hidden bottom-[calc(max(0.6rem,env(safe-area-inset-bottom))+4.8rem)]"
+        >
+          <Plus className="h-5 w-5" strokeWidth={2.4} />
+          Urlaub
+        </Link>
+      ) : null}
       {aufgabenOffen ? <AufgabenBlatt a={aufgaben} onClose={() => setAufgabenOffen(false)} /> : null}
 
       <header className="dash-kopf relative flex items-start justify-between gap-3">
@@ -393,15 +406,7 @@ export default function DashboardPage() {
             {/* Führt in den Schichtplan, wo man in der eigenen Zeile Anfang und
                 Ende antippt. Die Art steht dort auf „Automatisch". */}
             {/* „Kompakt“: kleiner Knopf in der Leiste des Plans statt dieses großen. */}
-            {!kompakt ? (
-              <Link
-                href="/schichtplan?antrag=1"
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-3.5 text-[15px] font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-              >
-                <Plus className="h-5 w-5" strokeWidth={2.2} />
-                Urlaub beantragen
-              </Link>
-            ) : null}
+            {/* „Klassisch“: der Knopf schwebt unten rechts über der Leiste (siehe unten). */}
           </div>
         </Fach>
       ) : null}

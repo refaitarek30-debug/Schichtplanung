@@ -88,6 +88,19 @@ export default function SettingsPage() {
 
   const [blatt, setBlatt] = useState<null | "startseite" | "mitteilungen" | "abo" | "kollegen" | "darstellung" | "unternehmen" | "benachrichtigungen" | "mail" | "rollen">(null);
   const zu = () => setBlatt(null);
+  // Aus der Suche im Menü „Mehr“: `?blatt=darstellung` öffnet gleich den Punkt.
+  useEffect(() => {
+    try {
+      const w = new URLSearchParams(window.location.search).get("blatt");
+      const erlaubt = ["startseite", "mitteilungen", "abo", "kollegen", "darstellung", "rollen", ...(istAdmin ? ["unternehmen", "benachrichtigungen", "mail"] : [])];
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (w && erlaubt.includes(w)) setBlatt(w as typeof blatt);
+    } catch {
+      // ohne lesbare Adresse wie gewohnt
+    }
+    // Nur beim Öffnen der Seite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const kachel = "flex min-h-[92px] flex-col items-start justify-between gap-2 rounded-card border border-line bg-surface p-3.5 text-left shadow-card transition-transform active:scale-[0.98]";
   const symbol = (farbe: string) => `flex h-8 w-8 items-center justify-center rounded-[10px] text-white ${farbe}`;
 
