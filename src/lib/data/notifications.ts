@@ -30,6 +30,9 @@ export function benachrichtigungZiel(typ: string | null | undefined): string | n
       return "/besetzung";
     case "fehlzeit":
       return "/meine-schichten";
+    case "tausch_angefragt":
+    case "tausch_entschieden":
+      return "/schichtplan/tausch";
     default:
       return null;
   }

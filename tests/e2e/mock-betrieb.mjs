@@ -274,6 +274,23 @@ http.createServer((req, res) => {
         return send(204);
       }
       if (f === "team_sichtbarkeit_zahlen") return send(200, [{ eigene: 7, andere: 3, abgelehnt: 1, offen: 2, nicht_angemeldet: 1 }]);
+      // Schichttausch (0240): ein Angebot von Mia (passt), eines von Ben (passt nicht).
+      if (f === "my_shift_plan") {
+        return send(200, Array.from({ length: body.p_days }, (_, i) => { const date = add(body.p_from, i); const frei = i % 3 === 2; return { date, shift_id: frei ? null : "s1", shift_name: frei ? null : "Frühschicht", start_time: frei ? null : "06:00:00", end_time: frei ? null : "14:00:00", is_free: frei }; }));
+      }
+      if (f.startsWith("tausch_")) {
+        const t = db.tausch ?? (db.tausch = [
+          { id: "t1", tag: add(new Date().toISOString().slice(0, 10), 4), schicht: "Spätschicht", von_name: "Mia Wagner", von_ich: false, status: "offen", notiz: "Familienfeier", uebernehmer_name: null, uebernehmer_ich: false, gegen_tag: null, gegen_schicht: null, passt: true, grund: "Du hast an dem Tag frei" },
+          { id: "t2", tag: add(new Date().toISOString().slice(0, 10), 6), schicht: "Nachtschicht", von_name: "Ben Krause", von_ich: false, status: "offen", notiz: null, uebernehmer_name: null, uebernehmer_ich: false, gegen_tag: null, gegen_schicht: null, passt: false, grund: "Du arbeitest an dem Tag schon" },
+          { id: "t3", tag: add(new Date().toISOString().slice(0, 10), 8), schicht: "Frühschicht", von_name: "Tom Hoffmann", von_ich: false, status: "angefragt", notiz: null, uebernehmer_name: "Eva Musterfrau", uebernehmer_ich: false, gegen_tag: null, gegen_schicht: null, passt: null, grund: null },
+        ]);
+        const z = (id) => t.find((x) => x.id === id);
+        if (f === "tausch_liste") return send(200, t);
+        if (f === "tausch_anbieten") { t.push({ id: "t" + (t.length + 1), tag: body.p_tag, schicht: "Frühschicht", von_name: "Tarek Test", von_ich: true, status: "offen", notiz: body.p_notiz, uebernehmer_name: null, uebernehmer_ich: false, gegen_tag: null, gegen_schicht: null, passt: null, grund: null }); return send(200, "neu"); }
+        if (f === "tausch_annehmen") { Object.assign(z(body.p_id), { status: "angefragt", uebernehmer_name: "Tarek Test", uebernehmer_ich: true, gegen_tag: body.p_gegen_tag, passt: null }); return send(204); }
+        if (f === "tausch_entscheiden") { z(body.p_id).status = body.p_ok ? "genehmigt" : "abgelehnt"; return send(204); }
+        if (f === "tausch_zurueckziehen") { const x = z(body.p_id); if (x.von_ich) x.status = "zurueckgezogen"; else Object.assign(x, { status: "offen", uebernehmer_name: null, uebernehmer_ich: false, gegen_tag: null }); return send(204); }
+      }
       if (f === "test_team_frage") { db.team = { eigene: false, andere: false, gefragt: null, push: false }; return send(204); }
       if (f === "hinweis_standard") return send(200, db.hinweisStandard ?? "schicht");
       if (f === "set_hinweis_standard") { db.hinweisStandard = body.p_wert; return send(200, null); }

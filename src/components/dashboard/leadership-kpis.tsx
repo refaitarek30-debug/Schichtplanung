@@ -1,63 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Activity, HandHelping } from "lucide-react";
+import { HandHelping } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { KachelHuelle } from "@/components/dashboard/kachel-bearbeiten";
 import { useSession } from "@/context/session";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { fassenZusammen, fetchReport } from "@/lib/data/report";
-import { fetchCompanyRules } from "@/lib/data/staffing-rules";
 
 /**
- * Zwei Kennzahlen für die Führung, direkt auf dem Dashboard.
- *
- * Bewusst nur zwei: das Dashboard soll den Tag zeigen, nicht die
- * Jahresauswertung ersetzen. Die Gesundheitsrate des laufenden Monats
- * beantwortet „wie stehen wir gerade da", die offenen Ersatzanfragen
- * „wartet jemand auf mich".
- *
- * Die Rate kostet rund eine Viertelsekunde, weil sie über dieselbe
- * Funktion läuft wie die Auswertung – und deshalb nicht von ihr abweichen
- * kann. Sie wird nachgeladen; die übrigen Kacheln stehen sofort.
+ * Kennzahl für die Führung auf der Startseite: offene Ersatzanfragen –
+ * „wartet jemand auf mich“. Die Gesundheitsrate und die Auswertung gibt es
+ * nicht mehr (bewusst entfernt, Datenschutz).
  */
 export function LeadershipKpis({
-  zeigeRate = true,
   zeigeAnfragen = true,
   kompakt = false,
 }: {
-  zeigeRate?: boolean;
   zeigeAnfragen?: boolean;
   /** Kleine Kacheln (Startseite „Kompakt“). */
   kompakt?: boolean;
 } = {}) {
   const { mode, role } = useSession();
-  const [rate, setRate] = useState<number | null | undefined>(undefined);
-  const [ziel, setZiel] = useState(96);
   const [offen, setOffen] = useState<number | null>(null);
 
   const laden = useCallback(async () => {
     if (mode !== "live" || role === "employee" || !isSupabaseConfigured) return;
-    // Was ausgeblendet ist, wird auch nicht geladen – die Rate kostet
-    // eine Viertelsekunde, die niemand zahlen soll, der sie wegklickt.
-    if (!zeigeRate && !zeigeAnfragen) return;
-    const jetzt = new Date();
-
-    if (zeigeRate) try {
-      const [zeilen, regeln] = await Promise.all([
-        fetchReport(jetzt.getFullYear(), jetzt.getMonth() + 1),
-        fetchCompanyRules(),
-      ]);
-      const gesamt = fassenZusammen(zeilen, () => ({ schluessel: "alle", bezeichnung: "" }))[0];
-      setRate(gesamt?.gesundheitsrate ?? null);
-      setZiel(regeln.gesundheitsrateZiel);
-    } catch {
-      // Eine Kennzahl, die nicht lädt, darf das Dashboard nicht blockieren.
-      setRate(null);
-    }
-
-    if (zeigeAnfragen) try {
+    if (!zeigeAnfragen) return;
+    try {
       const supabase = createClient();
       const { count } = await supabase
         .from("replacement_requests")
@@ -67,7 +37,7 @@ export function LeadershipKpis({
     } catch {
       setOffen(null);
     }
-  }, [mode, role, zeigeRate, zeigeAnfragen]);
+  }, [mode, role, zeigeAnfragen]);
 
   useEffect(() => {
     void laden();
@@ -75,36 +45,8 @@ export function LeadershipKpis({
 
   if (mode !== "live" || role === "employee") return null;
 
-  const abweichung = typeof rate === "number" ? rate - ziel : null;
-
   return (
     <>
-      {zeigeRate ? (
-      <KachelHuelle id="gesundheit" name="Gesundheitsrate">
-      <KpiCard
-        label="Gesundheitsrate"
-        kompakt={kompakt}
-        kurz="Gesundheit"
-        value={rate === undefined ? "…" : typeof rate === "number" ? rate.toFixed(1) : "–"}
-        unit="%"
-        hint={
-          abweichung === null
-            ? `laufender Monat · Ziel ${ziel} %`
-            : `${abweichung >= 0 ? "+" : ""}${abweichung.toFixed(1)} zum Ziel`
-        }
-        accent={
-          abweichung === null
-            ? "neutral"
-            : abweichung >= 0
-              ? "ok"
-              : abweichung >= -1
-                ? "warn"
-                : "critical"
-        }
-        icon={<Activity className="h-4 w-4" strokeWidth={1.8} />}
-      />
-      </KachelHuelle>
-      ) : null}
       {zeigeAnfragen ? (
       <KachelHuelle id="ersatz" name="Offene Ersatzanfragen">
       <KpiCard

@@ -63,9 +63,9 @@ export default async function fuehrung() {
     await warte(1500);
     const reiter = seite.locator("[data-plan-reiter]");
     pruefe(
-      (await reiter.getByRole("link").allInnerTexts()).join("|") === "Schichtplan|Besetzung|Ausbildung" &&
+      (await reiter.getByRole("link").allInnerTexts()).join("|") === "Schichtplan|Tausch|Besetzung|Ausbildung" &&
         (await reiter.getByRole("link", { name: "Schichtplan" }).getAttribute("aria-current")) === "page",
-      "Plan: Reiter Schichtplan · Besetzung · Ausbildung, Schichtplan aktiv",
+      "Plan: Reiter Schichtplan · Tausch · Besetzung · Ausbildung, Schichtplan aktiv",
     );
     await reiter.getByRole("link", { name: "Besetzung" }).click();
     await seite.waitForURL(/\/besetzung$/);
@@ -231,8 +231,8 @@ export default async function fuehrung() {
     // Seitenleiste: wenige Bereiche mit Untertext, „Team“ leuchtet auf der Verwaltung
     const leiste = await s.locator("aside [data-leiste]").evaluateAll((els) => els.map((e) => e.getAttribute("data-leiste")));
     pruefe(
-      leiste.join("|") === "Start|Plan|Urlaub|Kalender|Team|Mitteilungen|Auswertung|Einstellungen",
-      `Seitenleiste: Start, Plan, Urlaub, Kalender, Team, Mitteilungen, Auswertung, Einstellungen (${leiste.join(", ")})`,
+      leiste.join("|") === "Start|Plan|Urlaub|Kalender|Team|Mitteilungen|Einstellungen",
+      `Seitenleiste: Start, Plan, Urlaub, Kalender, Team, Mitteilungen, Einstellungen – ohne Auswertung (${leiste.join(", ")})`,
     );
     pruefe(
       (await s.locator('aside [data-leiste="Team"]').getAttribute("aria-current")) === "page" &&

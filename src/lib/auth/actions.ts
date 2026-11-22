@@ -205,13 +205,30 @@ export async function updatePassword(
   if (password !== repeat) return { error: "Die beiden Passwörter stimmen nicht überein." };
 
   const supabase = await createClient();
+  // Ohne gültige Sitzung (Code abgelaufen, anderes Gerät, schon benutzt) klar sagen, was zu tun ist.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      error: "Dein Code ist abgelaufen oder wurde schon benutzt. Hol dir einfach einen neuen Code – das dauert eine Minute.",
+      abgelaufen: true,
+    };
+  }
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: authErrorMessage(error) ?? "Änderung fehlgeschlagen." };
+  if (error) {
+    const text = authErrorMessage(error);
+    if (/same|gleich/i.test(error.message)) return { error: "Das ist dein altes Passwort. Nimm bitte ein neues." };
+    return { error: text ?? "Das hat nicht geklappt. Bitte versuch es gleich noch einmal." };
+  }
 
   await protokolliere(supabase, "anmeldung.passwort", "Neues Passwort gesetzt");
 
+  // Keine Umleitung vom Server aus: Am 18.11. lief die automatische
+  // Weiterleitung bei einer Person im Kreis. Stattdessen eine klare
+  // Erfolgsmeldung mit einem Knopf „Weiter zur App“.
   revalidatePath("/", "layout");
-  redirect("/start");
+  return { success: "Geschafft! Dein neues Passwort ist gespeichert." };
 }
 
 export async function updateOwnProfile(

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BarChart3,
   BookOpen,
   ChevronRight,
   GraduationCap,
@@ -73,7 +72,6 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
     { href: "/meine-zahlen", titel: "Meine Zahlen", icon: Sparkles },
     ...(fuehrung ? [{ href: "/ausbildung", titel: "Ausbildung", icon: GraduationCap }] : []),
     ...(fuehrung && protokoll ? [{ href: "/protokoll", titel: "Protokoll", icon: ScrollText }] : []),
-    ...(role === "admin" ? [{ href: "/auswertung", titel: "Auswertung", icon: BarChart3 }] : []),
     { href: "/hilfe", titel: "Hilfe", icon: BookOpen },
     { href: "/einstellungen", titel: "Einstellungen", icon: Settings },
   ];

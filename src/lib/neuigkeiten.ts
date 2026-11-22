@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-22T16:00:00+01:00",
+    titel: "Neu: Schichten tauschen",
+    text: "Im Plan gibt es jetzt den Reiter „Tausch“: Schicht anbieten, Kollegin oder Kollege mit freiem Tag übernimmt – auf Wunsch mit Gegentag –, die Leitung bestätigt mit einem Tipp. Erst dann ändert sich der Plan.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-22T12:00:00+01:00",
     titel: "Schichtplan am PC: Mausrad und Zeiger",
     text: "Am Computer schiebt das Mausrad den Schichtplan zur Seite. Fährt die Maus über den Plan, leuchten Name und Tag auf, und ein kleines Schild nennt beides. Abmelden steht oben rechts, die Benachrichtigungen sind größer.",

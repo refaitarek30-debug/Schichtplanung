@@ -25,6 +25,7 @@ export const SUCHE: SuchEintrag[] = [
   // Hauptseiten
   { titel: "Start", wo: "Übersicht", href: "/dashboard", roles: ALLE, worte: ["dashboard", "startseite", "kacheln", "übersicht"] },
   { titel: "Schichtplan", wo: "Plan", href: "/schichtplan", roles: ALLE, worte: ["plan", "schichten", "dienstplan"] },
+  { titel: "Schichttausch", wo: "Plan", href: "/schichtplan/tausch", roles: ALLE, worte: ["tausch", "tauschen", "abgeben", "übernehmen", "schicht abgeben", "einspringen"] },
   { titel: "Urlaub beantragen", wo: "Plan", href: "/schichtplan?antrag=1", roles: ALLE, worte: ["antrag", "frei", "urlaub nehmen"] },
   { titel: "Mein Urlaub", wo: "Urlaub", href: "/urlaub", roles: ALLE, worte: ["urlaubskonto", "resturlaub", "anträge", "v-tage", "übertrag"] },
   { titel: "Mein Kalender", wo: "Kalender", href: "/meine-schichten", roles: ALLE, worte: ["kalender", "termine", "partner", "familie", "teilen"] },
@@ -47,7 +48,6 @@ export const SUCHE: SuchEintrag[] = [
   // Verwaltung
   { titel: "Schichten", wo: "Verwaltung", href: "/verwaltung?bereich=schichten", roles: ADMIN, worte: ["schichtarten", "uhrzeiten", "früh", "spät", "nacht"] },
   { titel: "Regeln", wo: "Verwaltung", href: "/verwaltung?bereich=regeln", roles: ADMIN, worte: ["4er-regel", "urlaubsanspruch", "kontingent", "regel"] },
-  { titel: "Auswertung", wo: "Verwaltung", href: "/auswertung", roles: ADMIN, worte: ["gesundheitsrate", "ausfall", "anwesenheit", "statistik"] },
   { titel: "Einrichtung", wo: "Verwaltung", href: "/einrichtung", roles: ADMIN, worte: ["feiertage", "bundesland", "schichtsystem", "erste schritte"] },
 
   // Einstellungen und Profil

@@ -20,7 +20,7 @@ const BREITE_SEITEN = ["/schichtplan"];
  * damit Kacheln und Listen nebeneinander Platz haben. Formulare und Texte
  * (Profil, Einstellungen, Rechtliches) bleiben bei der Lesebreite.
  */
-const WEITE_SEITEN = ["/dashboard", "/urlaubsantraege", "/besetzung", "/verwaltung", "/protokoll", "/ausbildung", "/auswertung"];
+const WEITE_SEITEN = ["/dashboard", "/urlaubsantraege", "/besetzung", "/verwaltung", "/protokoll", "/ausbildung"];
 
 export function ShellMain({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";

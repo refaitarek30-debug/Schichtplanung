@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Cake, Check, ListChecks } from "lucide-react";
+import { Cake, Check, ListChecks, LogOut, UserX } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Blatt } from "@/components/privat/blatt";
@@ -18,6 +18,13 @@ interface Zeile {
   geaendert_am: string;
 }
 
+/** Seit über sechs Monaten nicht in der App (Migration 0239). */
+interface Inaktiv {
+  employee_id: string;
+  name: string;
+  zuletzt: string;
+}
+
 /**
  * Offene Aufgaben der Administration: selbst geänderte Geburtsdaten, die
  * noch bestätigt werden müssen – erst danach zählt das Datum für den
@@ -26,15 +33,18 @@ interface Zeile {
 export function useAufgaben() {
   const { mode, echteRolle } = useSession();
   const [zeilen, setZeilen] = useState<Zeile[]>([]);
+  const [inaktiv, setInaktiv] = useState<Inaktiv[]>([]);
   const [fehler, setFehler] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const darf = mode === "live" && echteRolle === "admin" && isSupabaseConfigured;
 
   const laden = useCallback(async () => {
     if (!darf) return;
-    const { data, error } = await createClient().rpc("geburtsdaten_offen");
+    const supabase = createClient();
+    const [geb, ina] = await Promise.all([supabase.rpc("geburtsdaten_offen"), supabase.rpc("inaktive_konten")]);
     // Still bleiben, wenn es nicht klappt – das ist ein Hinweis, keine Pflicht.
-    if (!error) setZeilen((data ?? []) as Zeile[]);
+    if (!geb.error) setZeilen((geb.data ?? []) as Zeile[]);
+    if (!ina.error) setInaktiv((ina.data ?? []) as Inaktiv[]);
   }, [darf]);
 
   useEffect(() => {
@@ -54,7 +64,20 @@ export function useAufgaben() {
     setZeilen((alt) => alt.filter((z) => z.employee_id !== id));
   }, []);
 
-  return { darf, zeilen, anzahl: darf ? zeilen.length : 0, fehler, busy, bestaetigen };
+  /** Lange nicht genutzt: auf allen Geräten abmelden oder nur als erledigt markieren. */
+  const inaktivErledigt = useCallback(async (id: string, abmelden: boolean) => {
+    setBusy(id);
+    setFehler(null);
+    const { error } = await createClient().rpc("inaktiv_erledigt", { p_employee_id: id, p_abmelden: abmelden });
+    setBusy(null);
+    if (error) {
+      setFehler(dataErrorMessage(error) ?? "Das hat nicht geklappt.");
+      return;
+    }
+    setInaktiv((alt) => alt.filter((z) => z.employee_id !== id));
+  }, []);
+
+  return { darf, zeilen, inaktiv, anzahl: darf ? zeilen.length + inaktiv.length : 0, fehler, busy, bestaetigen, inaktivErledigt };
 }
 
 type Aufgaben = ReturnType<typeof useAufgaben>;
@@ -89,9 +112,55 @@ function Liste({ a }: { a: Aufgaben }) {
 
 /** Die Aufgaben als Blatt (von der Kachel oder vom Punkt auf der Startseite). */
 export function AufgabenBlatt({ a, onClose }: { a: Aufgaben; onClose: () => void }) {
+  const nichts = !a.zeilen.length && !a.inaktiv.length;
   return (
-    <Blatt titel="Aufgaben" unter="Geburtsdatum bestätigen – erst dann zählt es für den Sonderurlaub ab 55." onClose={onClose}>
-      {a.zeilen.length ? <Liste a={a} /> : <p className="text-[14px] text-ink-muted">Alles erledigt.</p>}
+    <Blatt titel="Aufgaben" onClose={onClose}>
+      <div className="space-y-5">
+        {a.zeilen.length ? (
+          <section className="space-y-2">
+            <p className="text-[13px] text-ink-muted">Geburtsdatum bestätigen – erst dann zählt es für den Sonderurlaub ab 55.</p>
+            <Liste a={a} />
+          </section>
+        ) : null}
+        {a.inaktiv.length ? (
+          <section className="space-y-2" data-inaktiv>
+            <p className="text-[13px] text-ink-muted">
+              Seit über 6 Monaten nicht in der App. Wenn das Konto nicht mehr gebraucht wird oder ein Handy verloren ging:
+              auf allen Geräten abmelden. Die Person kann sich danach ganz normal wieder anmelden.
+            </p>
+            {a.inaktiv.map((z) => (
+              <div key={z.employee_id} className="flex flex-wrap items-center gap-3 rounded-xl bg-surface-muted px-3 py-2.5">
+                <UserX className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={1.8} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-medium">{z.name}</p>
+                  <p className="text-[12px] text-ink-muted">zuletzt am {formatDE(z.zuletzt.slice(0, 10))}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void a.inaktivErledigt(z.employee_id, false)}
+                    disabled={a.busy !== null}
+                    className="rounded-full border border-line px-3 py-2 text-[13px] font-semibold disabled:opacity-60"
+                  >
+                    Passt so
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void a.inaktivErledigt(z.employee_id, true)}
+                    disabled={a.busy !== null}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3 py-2 text-[13px] font-semibold text-white disabled:opacity-60"
+                  >
+                    <LogOut className="h-4 w-4" strokeWidth={2} />
+                    {a.busy === z.employee_id ? "…" : "Abmelden"}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {a.fehler && !a.zeilen.length ? <Alert tone="error">{a.fehler}</Alert> : null}
+          </section>
+        ) : null}
+        {nichts ? <p className="text-[14px] text-ink-muted">Alles erledigt.</p> : null}
+      </div>
     </Blatt>
   );
 }
