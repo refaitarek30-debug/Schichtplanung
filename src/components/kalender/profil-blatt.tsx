@@ -10,7 +10,6 @@ import { usePrivatWechsel } from "@/components/layout/bereich";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { Blatt } from "@/components/privat/blatt";
 import { Avatar } from "@/components/ui/avatar";
-import { StartAnsichtSchalter } from "@/components/layout/start-ansicht-schalter";
 import { useSession } from "@/context/session";
 import { signOut } from "@/lib/auth/actions";
 import { meinZweiFaktorStatus } from "@/lib/auth/zwei-faktor-actions";
@@ -30,7 +29,7 @@ import { cn } from "@/lib/utils";
 /**
  * Profil-Fenster auf dem Handy (Entwurf A): oben Name und Glocke, darunter
  * Betrieb | Privat und schlichte Listen in Gruppen – Schnell, Konto,
- * Startseite, Daten & Hilfe. Benachrichtigungen führen beim Antippen auf die
+ * Daten & Hilfe (Klassisch/Kompakt stellt man auf der Startseite um). Benachrichtigungen führen beim Antippen auf die
  * passende Seite. Ganz unten Abmelden. Jede Zeile bricht sauber um, nichts
  * ragt aus seinem Kasten.
  */
@@ -228,12 +227,6 @@ export function ProfilBlatt({
         />
         <ZeileLink href="/einstellungen" onClick={onClose} icon={<Cog className={ICON} strokeWidth={1.7} />} text="Einstellungen" />
         <BetreiberLink onClick={onClose} className={ZEILE} />
-      </Gruppe>
-
-      <Gruppe titel="Startseite">
-        <div className="px-2 py-2">
-          <StartAnsichtSchalter />
-        </div>
       </Gruppe>
 
       <Gruppe titel="Daten & Hilfe">

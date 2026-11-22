@@ -733,11 +733,33 @@ export function WenSeheIch({
         window.setTimeout(() => setZieht(false), 240);
       }
     };
+    // Solange der Finger eher waagerecht zieht, darf der Kalender darunter nicht
+    // mitscrollen – sonst rutscht beim Hereinziehen der Monat weiter.
+    let touchStart: { x: number; y: number } | null = null;
+    const touchLos = (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchStart = t && start ? { x: t.clientX, y: t.clientY } : null;
+    };
+    const touchBewegt = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t || !touchStart || !start || e.touches.length > 1) return;
+      const dx = touchStart.x - t.clientX;
+      const dy = Math.abs(t.clientY - touchStart.y);
+      if (gezogen || (dx > 0 && dx >= dy)) {
+        if (e.cancelable) e.preventDefault();
+      } else if (dy > 0) {
+        touchStart = null;
+      }
+    };
     window.addEventListener("pointerdown", los, true);
     window.addEventListener("pointermove", bewegt, true);
     window.addEventListener("pointerup", ende, true);
     window.addEventListener("pointercancel", ende, true);
+    window.addEventListener("touchstart", touchLos, { capture: true, passive: true });
+    window.addEventListener("touchmove", touchBewegt, { capture: true, passive: false });
     return () => {
+      window.removeEventListener("touchstart", touchLos, true);
+      window.removeEventListener("touchmove", touchBewegt, true);
       window.removeEventListener("pointerdown", los, true);
       window.removeEventListener("pointermove", bewegt, true);
       window.removeEventListener("pointerup", ende, true);
