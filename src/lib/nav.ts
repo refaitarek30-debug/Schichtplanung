@@ -106,16 +106,6 @@ export const navItems: NavItem[] = [
     roles: ["shift_leader", "admin"],
   },
   {
-    // Nur Administration: die Auswertung zeigt Kranktage je Person. Die
-    // Schichtleitung plant damit nicht, deshalb steht ihr die Zahl auch
-    // nicht zu. Abgesichert wird das in `absence_report()`, nicht hier --
-    // diese Liste blendet nur aus.
-    href: "/auswertung",
-    label: "Auswertung",
-    icon: BarChart3,
-    roles: ["admin"],
-  },
-  {
     // Wer hat was geändert: ganze Führung. Anmeldungen und Fehler nur die
     // freigeschaltete Administration – abgesichert in `protokoll_liste()`,
     // hier wird nur ausgeblendet.
@@ -280,7 +270,6 @@ const LEISTE: { label: string | null; eintraege: LeistenEintrag[] }[] = [
   {
     label: "Nur Administration",
     eintraege: [
-      { href: "/auswertung", label: "Auswertung", unter: "Ausfall · Anwesenheit · Gesundheitsrate", icon: BarChart3, roles: ["admin"] },
     ],
   },
   {

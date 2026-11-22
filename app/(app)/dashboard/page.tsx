@@ -540,7 +540,7 @@ export default function DashboardPage() {
               onClick={() => setAufgabenOffen(true)}
               value={aufgaben.anzahl}
               unit="offen"
-              hint="Geburtsdatum bestätigen"
+              hint={aufgaben.zeilen.length ? "Geburtsdatum bestätigen" : "Lange nicht angemeldet"}
               accent="warn"
               ton="marke"
               icon={<AufgabenSymbol className="h-4 w-4" strokeWidth={1.9} />}
@@ -622,11 +622,9 @@ export default function DashboardPage() {
         />
         </KachelHuelle>
         ) : null}
-        {/* Nur für die Führung: Gesundheitsrate des laufenden Monats und
-            offene Ersatzanfragen. Die Karte blendet sich für Mitarbeiter
-            selbst aus. */}
+        {/* Nur für die Führung: offene Ersatzanfragen. Blendet sich für
+            Mitarbeiter selbst aus. */}
         <LeadershipKpis
-          zeigeRate={zeige("gesundheit")}
           zeigeAnfragen={zeige("ersatz")}
           kompakt={kompakt}
         />

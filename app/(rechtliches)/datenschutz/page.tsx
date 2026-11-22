@@ -218,9 +218,10 @@ export default function DatenschutzPage() {
             Administration des Unternehmens. Das Anmeldeprotokoll (Anmeldungen, fehlgeschlagene
             Anmeldungen) und die Fehlermeldungen kann im Unternehmen niemand einsehen – auch nicht
             die Administration. Sie dienen allein der Aufklärung von Sicherheitsvorfällen und
-            technischen Störungen durch den Betreiber. Die Auswertung von Ausfall und Anwesenheit
-            zeigt der Administration nur Summen ohne Namen: je Schicht erst ab fünf Personen, sonst
-            nur für das ganze Unternehmen. Unter „Meine Zahlen“ kann jede Person freiwillig eine
+            technischen Störungen durch den Betreiber. Eine Auswertung von Ausfall, Anwesenheit oder
+            Gesundheitsquote gibt es für das Unternehmen nicht. Die Administration sieht nur, wer
+            seit über sechs Monaten nicht mehr in der Anwendung war (Name und Datum der letzten
+            Nutzung), damit verwaiste Zugänge auf allen Geräten abgemeldet werden können. Unter „Meine Zahlen“ kann jede Person freiwillig eine
             Statistik über sich selbst ansehen (z. B. gearbeitete Sonntage, Feiertage, Nächte); sie
             wird beim Öffnen aus dem eigenen Plan errechnet, nicht gespeichert und ist für niemand
             anderen sichtbar
@@ -312,6 +313,16 @@ export default function DatenschutzPage() {
           sie den Plan führen. Wegen der Gegenseitigkeit kann eine Ablehnung bedeuten, dass man
           selbst weniger sieht; alles, was für die Arbeit nötig ist (eigener Plan, Besetzung,
           Anträge), bleibt davon unberührt.
+        </Absatz>
+
+        <Absatz className="pt-1">
+          <strong>Schichttausch:</strong> Wer eine eigene Schicht zum Tausch anbietet, speichert
+          Tag, Schicht und auf Wunsch einen kurzen Grund (bitte ohne Gesundheitsangaben). Das
+          Angebot sehen die Kolleginnen und Kollegen des Unternehmens – mit Namen nur, wo die
+          Team-Sichtbarkeit es erlaubt. Wer übernimmt, wird der anbietenden Person und der Leitung
+          genannt; die Leitung bestätigt oder lehnt ab, erst dann ändert sich der Plan. Gespeichert
+          werden außerdem Zeitpunkt der Anfrage und der Entscheidung sowie wer entschieden hat;
+          die Entscheidung steht im Änderungsprotokoll.
         </Absatz>
 
         <Absatz className="text-[13px] text-ink-muted">
@@ -994,7 +1005,7 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
           <li>Passwörter nur als Hash; Begrenzung von Anmelde-, Zurücksetzen- und Registrierungsversuchen</li>
           <li>automatische Abmeldung nach Inaktivität, je nach Rolle (Administration 15 Minuten, Schichtleitung 8 Stunden, Mitarbeiter 12 Stunden, Privatkonten ohne Firma 30 Tage)</li>
           <li>Datenschutz durch Voreinstellung: Gründe für Kollegen aus, Krankheit privat, keine Gesundheitsfreitexte</li>
-          <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte; das Anmeldeprotokoll ist im Unternehmen nicht einsehbar, Auswertungen nur als Summen ohne Namen</li>
+          <li>Änderungs- und Anmeldeprotokoll ohne Gesundheitsinhalte; das Anmeldeprotokoll ist im Unternehmen nicht einsehbar, keine Auswertung von Ausfall oder Krankheit</li>
           <li>automatisierte Prüfskripte für Zugriffsregeln und Mandantentrennung</li>
         </Liste>
         <Absatz>

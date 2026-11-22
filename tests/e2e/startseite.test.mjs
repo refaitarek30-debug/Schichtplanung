@@ -136,6 +136,33 @@ export default async function startseite() {
     await warte(1000);
     pruefe((await seite.locator("[data-team-frage]").count()) === 0, "Start: einmal beantwortet, kommt die Frage nicht wieder");
 
+    // Schichttausch (0240): Reiter im Plan, anbieten, übernehmen, Leitung bestätigt.
+    await seite.goto(`${APP}/schichtplan`, { waitUntil: "networkidle" });
+    await warte(600);
+    await seite.locator("[data-plan-reiter]").getByRole("link", { name: "Tausch" }).click();
+    await seite.waitForURL(/\/schichtplan\/tausch/, { timeout: 15_000 }).catch(() => {});
+    await warte(800);
+    pruefe(await seite.locator("[data-tausch-anleitung]").isVisible(), "Tausch: Reiter im Plan mit kurzer Anleitung (1-2-3)");
+    pruefe((await seite.locator('[data-tausch-abschnitt="entscheiden"] [data-tausch-karte]').count()) === 1, "Tausch: Leitung sieht, was auf Bestätigung wartet");
+    pruefe((await seite.locator('[data-tausch-abschnitt="angebote"] [data-tausch-knopf="uebernehmen"]').count()) === 1, "Tausch: „Übernehmen“ nur, wo es passt");
+    pruefe(await seite.getByText("Du arbeitest an dem Tag schon").isVisible(), "Tausch: sagt, warum es nicht passt");
+    await seite.locator("[data-tausch-anbieten]").click();
+    await warte(500);
+    pruefe((await seite.locator("[data-tausch-anbieten-ok]").isDisabled()), "Tausch: Anbieten erst nach Tag-Wahl");
+    await seite.locator("[data-tausch-tage] button").first().click();
+    await seite.locator("[data-tausch-anbieten-ok]").click();
+    await warte(800);
+    pruefe(/Angeboten/.test((await seite.locator("[data-tausch-meldung]").textContent()) ?? ""), "Tausch: Angebot mit klarer Meldung");
+    pruefe((await seite.locator('[data-tausch-abschnitt="meine"] [data-tausch-karte="offen"]').count()) === 1, "Tausch: eigenes Angebot unter „Meine Tausche“");
+    await seite.locator('[data-tausch-knopf="uebernehmen"]').click();
+    await warte(500);
+    await seite.locator("[data-tausch-uebernehmen-ok]").click();
+    await warte(800);
+    pruefe(/Angefragt/.test((await seite.locator("[data-tausch-meldung]").textContent()) ?? ""), "Tausch: Übernehmen angefragt");
+    await seite.locator('[data-tausch-abschnitt="entscheiden"] [data-tausch-knopf="bestaetigen"]').first().click();
+    await warte(800);
+    pruefe(/Bestätigt/.test((await seite.locator("[data-tausch-meldung]").textContent()) ?? ""), "Tausch: Leitung bestätigt mit einem Tipp");
+
     // Druckansicht des Schichtplans: ein Blatt je Monat, A4/A3 umschaltbar.
     await seite.goto(`${APP}/schichtplan/druck?team=all`, { waitUntil: "networkidle" });
     await warte(1500);

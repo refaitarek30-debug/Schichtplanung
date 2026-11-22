@@ -53,7 +53,6 @@ export function startKachelOptionen({
   if (rolle !== "employee") liste.push({ key: "kritisch", label: "Kritische Tage" });
   liste.push({ key: "krank", label: "Krank gesamt" });
   if (rolle !== "employee") {
-    liste.push({ key: "gesundheit", label: "Gesundheitsrate" });
     liste.push({ key: "ersatz", label: "Offene Ersatzanfragen" });
   }
   if (vTage) liste.push({ key: "vtage", label: vTage });
