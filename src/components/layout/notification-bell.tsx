@@ -130,12 +130,13 @@ export function NotificationBell() {
         // gemessen auf einem 390 px breiten Geraet. Deshalb spannt es sich
         // dort jetzt fest zwischen beide Raender, statt an der Glocke zu
         // haengen. Ab sm bleibt alles wie gehabt.
-        <div className="fixed inset-x-2 top-[60px] z-30 rounded-2xl border border-line bg-surface p-2 shadow-pop sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
-          <p className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+        <div className="fixed inset-x-2 top-[60px] z-30 rounded-2xl border border-line bg-surface p-2 shadow-pop sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80 lg:w-[30rem] lg:p-3" data-benachrichtigungen-fenster>
+          {/* Am PC größer und übersichtlicher – aber kein ganzer Bildschirm. */}
+          <p className="px-2.5 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint lg:text-[12px]">
             Benachrichtigungen
           </p>
           <PushAnstoss className="mx-1 mb-2" />
-          <div className="max-h-80 overflow-y-auto">
+          <div className="max-h-80 overflow-y-auto lg:max-h-[min(70vh,40rem)]">
             {items === null ? (
               <p className="px-2.5 py-6 text-center text-sm text-ink-muted">wird geladen …</p>
             ) : items.length === 0 ? (
@@ -161,18 +162,18 @@ export function NotificationBell() {
                   }}
                   data-benachrichtigung-ziel={item.ziel ?? undefined}
                   className={cn(
-                    "flex w-full flex-col items-start gap-0.5 rounded-xl px-2.5 py-2 text-left hover:bg-surface-muted",
+                    "flex w-full flex-col items-start gap-0.5 rounded-xl px-2.5 py-2 text-left hover:bg-surface-muted lg:gap-1 lg:px-3.5 lg:py-3",
                     !item.readAt && "bg-brand-50/60",
                   )}
                 >
                   <span className="flex w-full items-center justify-between gap-2">
-                    <span className="min-w-0 text-[13px] font-medium">{item.title}</span>
-                    <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-ink-faint">
+                    <span className="min-w-0 text-[13px] font-medium lg:text-[15px]">{item.title}</span>
+                    <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-ink-faint lg:text-[12px]">
                       {timeAgo(item.createdAt)}
                       {item.ziel ? <ChevronRight className="h-3.5 w-3.5" /> : null}
                     </span>
                   </span>
-                  <span className="text-[12px] leading-snug text-ink-muted">{item.body}</span>
+                  <span className="text-[12px] leading-snug text-ink-muted lg:text-[13.5px]">{item.body}</span>
                 </button>
               ))
             )}

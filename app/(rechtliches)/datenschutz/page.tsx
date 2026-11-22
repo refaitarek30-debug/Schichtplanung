@@ -301,7 +301,9 @@ export default function DatenschutzPage() {
           dass Namen und Schichten nur mit Zustimmung gezeigt werden. Dann entscheidet jede Person
           getrennt, ob ihre eigene Schichtgruppe und ob die anderen Schichtgruppen sie sehen. Das
           gilt gegenseitig: Wer für eine Seite nicht zustimmt, sieht diese Seite ebenfalls ohne
-          Namen. Bis zur Antwort gilt „nicht sichtbar“. Ohne Namen übermittelt die Anwendung
+          Namen. Bis zur Antwort gilt „nicht sichtbar“. Wer die Anwendung bei Einführung dieser
+          Wahl (22. November 2026) bereits nutzte, ist mit Freigabe des Unternehmens für beide
+          Seiten sichtbar und kann das jederzeit ändern. Ohne Namen übermittelt die Anwendung
           weder den Namen noch die interne Kennung der Person, nur ihre Schichten (damit der
           Plan und die Besetzung stimmen) und keinen Grund einer Abwesenheit. Gespeichert werden
           die Wahl und der Zeitpunkt der Antwort; die Wahl lässt sich jederzeit unter

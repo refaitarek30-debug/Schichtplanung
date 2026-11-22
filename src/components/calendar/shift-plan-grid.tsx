@@ -380,6 +380,64 @@ export function ShiftPlanGrid({
    */
   const wischStart = useRef<{ x: number; y: number; links: number } | null>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
+  /** Am PC: kleines Schild am Mauszeiger mit Name und Tag. */
+  const zeigerSchild = useRef<HTMLDivElement>(null);
+
+  // Am PC: Das Mausrad schiebt den Plan zur Seite. Steht er am Rand, scrollt
+  // wieder die Seite. Quer-Wischen am Trackpad macht der Browser selbst.
+  useEffect(() => {
+    const box = scrollBox.current;
+    if (!box || !window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) return;
+    const rad = (e: WheelEvent) => {
+      if (e.ctrlKey || e.shiftKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      const max = box.scrollWidth - box.clientWidth;
+      if (max <= 1) return;
+      const d = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaMode === 2 ? e.deltaY * box.clientWidth : e.deltaY;
+      if ((d > 0 && box.scrollLeft >= max - 1) || (d < 0 && box.scrollLeft <= 0)) return;
+      e.preventDefault();
+      box.scrollLeft += d;
+    };
+    box.addEventListener("wheel", rad, { passive: false });
+    return () => box.removeEventListener("wheel", rad);
+  }, []);
+
+  // Am PC: Fährt die Maus über den Plan, leuchten Tageskopf und Name auf, und
+  // ein Schild nennt beides. Direkt im DOM – ohne den Plan neu zu zeichnen.
+  useEffect(() => {
+    const box = scrollBox.current;
+    const schild = zeigerSchild.current;
+    if (!box || !schild || !window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) return;
+    let kopf: Element | null = null;
+    const weg = () => {
+      kopf?.classList.remove("plan-spalte-hover");
+      kopf = null;
+      schild.hidden = true;
+    };
+    const bewegt = (e: MouseEvent) => {
+      const zelle = (e.target as Element | null)?.closest?.("td[data-tag]");
+      const zeile = zelle?.closest("tr[data-name]");
+      if (!zelle || !zeile) return weg();
+      const iso = zelle.getAttribute("data-tag")!;
+      const neuerKopf = box.querySelector(`thead th[data-tag="${iso}"]`);
+      if (neuerKopf !== kopf) {
+        kopf?.classList.remove("plan-spalte-hover");
+        neuerKopf?.classList.add("plan-spalte-hover");
+        kopf = neuerKopf;
+      }
+      const tag = new Date(`${iso}T12:00:00`).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+      schild.textContent = `${zeile.getAttribute("data-name")} · ${tag}`;
+      schild.style.left = `${Math.min(e.clientX + 14, window.innerWidth - schild.offsetWidth - 8)}px`;
+      schild.style.top = `${e.clientY + 18}px`;
+      schild.hidden = false;
+    };
+    box.addEventListener("mousemove", bewegt);
+    box.addEventListener("mouseleave", weg);
+    return () => {
+      box.removeEventListener("mousemove", bewegt);
+      box.removeEventListener("mouseleave", weg);
+      weg();
+    };
+  }, []);
   function wischBeginn(e: React.TouchEvent) {
     const t = e.touches[0];
     if (!t) return;
@@ -1936,6 +1994,13 @@ export function ShiftPlanGrid({
         onTouchStart={wischBeginn}
         onTouchEnd={wischEnde}
       >
+        <div
+          ref={zeigerSchild}
+          hidden
+          aria-hidden
+          data-plan-schild
+          className="pointer-events-none fixed z-50 whitespace-nowrap rounded-lg bg-ink px-2 py-1 text-[12px] font-semibold text-surface shadow-pop"
+        />
         {cells === null ? (
           <RowSkeleton rows={6} />
         ) : groups.length === 0 && ladeFehler ? (
@@ -1949,7 +2014,7 @@ export function ShiftPlanGrid({
         ) : groups.length === 0 ? (
           <EmptyState title="Keine Mitarbeiter gefunden." />
         ) : (
-          <table className="w-max border-separate border-spacing-0 text-[13px] sm:w-full">
+          <table data-plan-tabelle className="w-max border-separate border-spacing-0 text-[13px] sm:w-full">
             <thead>
               <tr>
                 <th
@@ -2191,6 +2256,7 @@ const PlanZeile = memo(function PlanZeile({
   return (
     <tr
       id={member.isMe ? "eigene-zeile" : undefined}
+      data-name={member.verborgen ? "Ohne Namen" : member.name}
       data-fokus={fokus ?? undefined}
       className={cn(
         "hover:bg-surface-muted/50",
@@ -2281,6 +2347,7 @@ const PlanZeile = memo(function PlanZeile({
           return (
             <td
               key={iso}
+              data-tag={iso}
               className={cn(
                 "p-px text-center sm:p-0.5",
                 iso.slice(8, 10) === "01" && "border-l-2 border-line",
@@ -2304,6 +2371,7 @@ const PlanZeile = memo(function PlanZeile({
         return (
           <td
             key={iso}
+            data-tag={iso}
             className={cn(
               "p-px text-center sm:p-0.5",
               // Dieselbe Linie wie im Kopf, damit der Monatswechsel durch die

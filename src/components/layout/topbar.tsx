@@ -84,6 +84,29 @@ export function Topbar() {
         {startseite ? <NeuigkeitenKnopf /> : null}
         <NotificationBell />
 
+        {/* Am Computer: Abmelden immer oben rechts griffbereit. */}
+        {mode !== "demo" ? (
+          <form
+            action={signOut}
+            onSubmit={() => {
+              setAnsicht(null);
+              leereZwischenspeicher();
+              forgetIdentity();
+              vergissAenderungsstand();
+            }}
+            className="hidden lg:block"
+          >
+            <button
+              type="submit"
+              data-abmelden-oben
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line px-3 text-[13px] font-semibold text-ink-muted transition-colors hover:bg-crit-bg/40 hover:text-crit-fg"
+            >
+              <LogOut className="h-4 w-4" strokeWidth={1.8} />
+              Abmelden
+            </button>
+          </form>
+        ) : null}
+
         {/* Am Computer steht das Konto unten in der Seitenleiste (KontoMenue) –
             hier nur noch auf Tablet und Handy, und in der Demo (Rollenwechsel). */}
         <div className={cn("relative", mode !== "demo" && "lg:hidden")} ref={wurzel}>

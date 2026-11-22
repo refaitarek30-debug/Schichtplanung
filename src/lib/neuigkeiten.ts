@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-22T12:00:00+01:00",
+    titel: "Schichtplan am PC: Mausrad und Zeiger",
+    text: "Am Computer schiebt das Mausrad den Schichtplan zur Seite. Fährt die Maus über den Plan, leuchten Name und Tag auf, und ein kleines Schild nennt beides. Abmelden steht oben rechts, die Benachrichtigungen sind größer.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-22T09:00:00+01:00",
     titel: "Du entscheidest, wer dich im Plan sieht",
     text: "Unter Einstellungen → Was Kollegen sehen wählst du getrennt: deine Schichtgruppe und die anderen Schichtgruppen. Wer nein sagt, sieht die andere Seite auch ohne Namen. Wer noch nicht angemeldet ist, erscheint als graue Zeile. Leitung und Administration sehen weiter alles.",
