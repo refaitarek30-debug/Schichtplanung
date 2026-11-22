@@ -173,11 +173,13 @@ export default async function startseite() {
     pruefe(/\/urlaubsantraege/.test(seite.url()), "Profil: Benachrichtigung öffnet die passende Seite");
     await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
     await warte(1000);
+    // Klassisch/Kompakt steht nur noch auf der Startseite selbst, nicht mehr im Profil-Fenster.
     await seite.locator("[data-glas-profil]").first().click();
     await warte(500);
-    await seite.locator('[role="dialog"]').getByRole("radio", { name: "Kompakt" }).click();
-    await warte(300);
+    pruefe((await seite.locator('[role="dialog"] [role="radiogroup"][aria-label="Startseite"]').count()) === 0, "Profil: kein Umschalter Klassisch/Kompakt mehr");
     await seite.keyboard.press("Escape");
+    await warte(500);
+    await seite.locator('main [role="radiogroup"][aria-label="Startseite"]').first().getByRole("radio", { name: "Kompakt" }).click();
     await warte(800);
 
     // Kompakt: kleine Kacheln, kein großer Knopf, kleiner Knopf im Plan.
