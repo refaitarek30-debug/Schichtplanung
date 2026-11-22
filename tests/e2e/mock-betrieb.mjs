@@ -136,7 +136,16 @@ http.createServer((req, res) => {
       if (m === "PATCH") { const id = (url.searchParams.get("id") ?? "").replace("eq.", ""); db.mitteilungen = (db.mitteilungen ?? []).filter((x) => x.id !== id); return send(204); }
       return liste(db.mitteilungen ?? []);
     }
-    if (p === "/rest/v1/privacy_settings") return liste([{ accepted_at: "2026-01-01T00:00:00Z", user_id: U }]);
+    // Team-Sichtbarkeit (0237): Betrieb verlangt Zustimmung; die Testperson hat schon geantwortet,
+    // bis ein Test die Frage mit rpc/test_team_frage wieder öffnet.
+    if (p === "/rest/v1/privacy_settings") {
+      const team = db.team ?? (db.team = { eigene: true, andere: false, gefragt: "2026-01-01T00:00:00Z", push: false });
+      return liste([{ accepted_at: "2026-01-01T00:00:00Z", user_id: U, team_eigene: team.eigene, team_andere: team.andere, team_gefragt_am: team.gefragt, push_ohne_inhalt: team.push }]);
+    }
+    if (p === "/rest/v1/company_settings" && m === "PATCH" && body && "team_sichtbarkeit" in body) { db.teamModus = body.team_sichtbarkeit; return send(204); }
+    if (p === "/rest/v1/company_settings" && m === "GET" && (url.searchParams.get("select") ?? "").includes("team_sichtbarkeit")) {
+      return liste([{ team_sichtbarkeit: db.teamModus ?? "zustimmung" }]);
+    }
     if (p === "/rest/v1/kalender_farben") return liste([{ schluessel: "schicht:F", farbe: "#E5484D" }, { schluessel: "abw:U", farbe: "#0EA5E9" }]);
     if (p === "/rest/v1/shifts") return liste([
       { id: "s1", name: "Frühschicht", short_name: "F", start_time: "06:00:00", end_time: "14:00:00", target_staff: 5, minimum_staff: 3, weekdays: [1,2,3,4,5,6,7], color: null, active: true },
@@ -256,13 +265,24 @@ http.createServer((req, res) => {
       if (f === "meine_stammdaten_setzen") { PROFIL.employees.personnel_number = body.p_personalnummer; PROFIL.employees.department = body.p_abteilung; db.stammdaten = body; return send(204); }
       if (f === "geburtsdaten_offen") return send(200, db.geburtOffen ?? (db.geburtOffen = [{ employee_id: "e1", name: "Anna Becker", birth_date: "1969-03-14", geaendert_am: new Date().toISOString() }]));
       if (f === "geburtsdatum_bestaetigen") { db.geburtOffen = (db.geburtOffen ?? []).filter((z) => z.employee_id !== body.p_employee_id); return send(204); }
+      if (f === "team_sichtbarkeit_setzen") {
+        const team = db.team ?? (db.team = { eigene: false, andere: false, gefragt: null, push: false });
+        if (body.p_eigene !== null) team.eigene = body.p_eigene;
+        if (body.p_andere !== null) team.andere = body.p_andere;
+        if (body.p_eigene !== null || body.p_andere !== null) team.gefragt = new Date().toISOString();
+        if (body.p_push_ohne_inhalt !== null) team.push = body.p_push_ohne_inhalt;
+        return send(204);
+      }
+      if (f === "team_sichtbarkeit_zahlen") return send(200, [{ eigene: 7, andere: 3, abgelehnt: 1, offen: 2, nicht_angemeldet: 1 }]);
+      if (f === "test_team_frage") { db.team = { eigene: false, andere: false, gefragt: null, push: false }; return send(204); }
       if (f === "hinweis_standard") return send(200, db.hinweisStandard ?? "schicht");
       if (f === "set_hinweis_standard") { db.hinweisStandard = body.p_wert; return send(200, null); }
       if (f === "schichtplan_kompakt") {
         const gruppen = ["Schicht A", "Schicht B", "Schicht C"]; const namen = ["Anna Becker", "Lukas Schmitz", "Mia Wagner", "Tom Hoffmann", "Rita Neumann", "Eva Musterfrau", "Ben Krause", "Ida Vogel", "Ole Brandt", "Paul Lang", "Jana Roth", "Kai Busch"];
         const folge = ["F", "F", "S", "S", "N", "N", null, null, null, null];
         const name = { F: "Frühschicht", S: "Spätschicht", N: "Nachtschicht" };
-        return send(200, namen.map((n, i) => ({ employee_id: "e" + i, employee_name: n, rotation_team: gruppen[i % 3], personnel_number: String(100 + i), is_me: i === 0, is_apprentice: i === 7,
+        // Index 9 (Gruppe A, wie die Testperson): ohne Namen (noch nicht angemeldet) – die Datenbank schickt weder Name noch echte Kennung.
+        return send(200, namen.map((n, i) => ({ employee_id: i === 9 ? "f3c1a9e2-0000-4000-8000-00000000000a" : "e" + i, employee_name: i === 9 ? null : n, rotation_team: gruppen[i % 3], personnel_number: String(100 + i), is_me: i === 0, is_apprentice: i === 7,
           tage: Array.from({ length: body.p_days }, (_, d) => { const t = add(body.p_from, d); const c = folge[(d + (i % 3) * 3) % 10]; const abw = i === 2 && d > 3 && d < 8 ? "U" : i === 4 && d === 6 ? "u" : i === 5 && d === 9 ? "K" : i === 6 && (d === 10 || d === 11) ? "V" : null; return [t, c ? name[c] : null, c, abw, i === 6 && d === 10]; }) })));
       }
       if (f === "blocked_days") return send(200, body.p_from?.endsWith("-01-01") ? [12, 13, 14].map((n) => ({ day: `${body.p_from.slice(0, 4)}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${n}`, reason: "Stillstand" })) : []);

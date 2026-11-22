@@ -171,6 +171,8 @@ export function MeineZahlen({ lade, zurueck }: { lade: (jahr: number) => Promise
             <Kachel n={z.laengsteFrei} titel="Längste Pause" unter="so viele Tage am Stück ohne Arbeit (Urlaub zählt mit)" farbe="#E0F4F1" />
           </div>
 
+          <SchichtAnteil jeTyp={z.jeTyp} />
+
           <div className="glas divide-y divide-line rounded-[18px] text-[14px]">
             <Zeile name="Freie Tage" hilfe="ohne Urlaub und Krank" wert={zahl(z.freieTage)} />
             <Zeile name="Samstage gearbeitet" wert={zahl(z.samstage)} />
@@ -248,6 +250,39 @@ function Kachel({ n, titel, unter, farbe }: { n: number; titel: string; unter: s
       <b className="tnum text-[30px] leading-[1.05]">{zahl(n)}</b>
       <span className="mt-0.5 text-[13px] font-semibold leading-tight">{titel}</span>
       <small className="mt-auto pt-1 text-[11.5px] leading-tight text-black/60">{unter}</small>
+    </div>
+  );
+}
+
+/** Anteil Früh / Spät / Nacht an den Arbeitstagen – ein geteilter Balken mit Legende. */
+function SchichtAnteil({ jeTyp }: { jeTyp: Zahlen["jeTyp"] }) {
+  const teile = [
+    { key: "frueh", name: "Früh", n: jeTyp.frueh, farbe: "bg-shift-frueh" },
+    { key: "spaet", name: "Spät", n: jeTyp.spaet, farbe: "bg-shift-spaet" },
+    { key: "nacht", name: "Nacht", n: jeTyp.nacht, farbe: "bg-shift-nacht" },
+    { key: "sonst", name: "Andere", n: jeTyp.sonst, farbe: "bg-ink/20" },
+  ].filter((t) => t.n > 0);
+  const summe = teile.reduce((a, t) => a + t.n, 0);
+  if (!summe || teile.every((t) => t.key === "sonst")) return null;
+  const prozent = (n: number) => Math.round((n / summe) * 100);
+  return (
+    <div className="glas space-y-2.5 rounded-[18px] px-4 py-3.5" data-schicht-anteil>
+      <p className="text-[13px] font-semibold">Früh · Spät · Nacht</p>
+      <div className="flex h-3 gap-[2px] overflow-hidden rounded-full" aria-hidden>
+        {teile.map((t) => (
+          <span key={t.key} className={t.farbe} style={{ width: `${(t.n / summe) * 100}%` }} />
+        ))}
+      </div>
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+        {teile.map((t) => (
+          <li key={t.key} className="flex items-center gap-1.5" data-anteil={t.key}>
+            <i className={cn("inline-block h-2.5 w-2.5 rounded-[3px]", t.farbe)} />
+            <span>{t.name}</span>
+            <b className="tnum font-semibold">{prozent(t.n)} %</b>
+            <span className="tnum text-ink-muted">({zahl(t.n)})</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -12,7 +12,6 @@ import { NotificationBell } from "./notification-bell";
 import { roleLabels } from "@/lib/nav";
 import { signOut } from "@/lib/auth/actions";
 import { NeuigkeitenKnopf } from "./neuigkeiten";
-import { StartAnsichtSchalter } from "./start-ansicht-schalter";
 import { vergissAenderungsstand } from "@/lib/live-refresh";
 import { leereZwischenspeicher } from "@/lib/zwischenspeicher";
 import { forgetIdentity } from "@/lib/supabase/identity";
@@ -171,12 +170,6 @@ export function Topbar() {
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted [&_svg]:h-4 [&_svg]:w-4"
               />
-              <div className="mt-1 border-t border-line px-1 pt-2">
-                <p className="px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
-                  Startseite
-                </p>
-                <StartAnsichtSchalter klein />
-              </div>
 
               {mode === "demo" ? (
                 <>

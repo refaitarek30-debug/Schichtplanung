@@ -57,7 +57,7 @@ export const SUCHE: SuchEintrag[] = [
   { titel: "Datenschutz & meine Daten", wo: "Profil", href: "/profil/datenschutz", roles: ALLE, worte: ["datenschutz", "export", "löschen", "dsgvo", "auskunft"] },
   { titel: "Darstellung", wo: "Einstellungen", href: "/einstellungen?blatt=darstellung", roles: ALLE, worte: ["dunkel", "dunkelmodus", "hell", "farbe", "thema", "schrift"] },
   { titel: "Startseite & Kacheln", wo: "Einstellungen", href: "/einstellungen?blatt=startseite", roles: ALLE, worte: ["kacheln", "klassisch", "kompakt", "anordnen"] },
-  { titel: "Mitteilungen aufs Handy", wo: "Einstellungen", href: "/einstellungen?blatt=mitteilungen", roles: ALLE, worte: ["push", "benachrichtigung", "erinnerung", "handy"] },
+  { titel: "Aufs Handy", wo: "Einstellungen", href: "/einstellungen?blatt=mitteilungen", roles: ALLE, worte: ["push", "benachrichtigung", "erinnerung", "handy", "mitteilungen"] },
   { titel: "Kalender-Abo", wo: "Einstellungen", href: "/einstellungen?blatt=abo", roles: ALLE, worte: ["ical", "ics", "google", "apple kalender", "outlook", "abo"] },
   { titel: "Was Kollegen sehen", wo: "Einstellungen", href: "/einstellungen?blatt=kollegen", roles: ALLE, worte: ["sichtbarkeit", "privatsphäre", "grund", "kollegen"] },
   { titel: "Rollen und Rechte", wo: "Einstellungen", href: "/einstellungen?blatt=rollen", roles: ALLE, worte: ["rolle", "rechte", "schichtleitung", "administration"] },

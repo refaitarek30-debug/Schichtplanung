@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="20. November 2026"
+      updated="22. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -293,6 +293,25 @@ export default function DatenschutzPage() {
           Betreiber; Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. f DSGVO.
         </Absatz>
 
+        <Absatz className="pt-1">
+          <strong>Was Kolleginnen und Kollegen im Plan sehen:</strong> Mitarbeitende sehen im
+          Schichtplan, in der Urlaubsliste ihrer Schicht und im Ausdruck die Namen anderer nur,
+          wenn diese sichtbar sein dürfen. Ohne Namen erscheinen immer Personen, die sich noch
+          nie angemeldet haben oder ausgeschieden sind. Das Unternehmen kann außerdem festlegen,
+          dass Namen und Schichten nur mit Zustimmung gezeigt werden. Dann entscheidet jede Person
+          getrennt, ob ihre eigene Schichtgruppe und ob die anderen Schichtgruppen sie sehen. Das
+          gilt gegenseitig: Wer für eine Seite nicht zustimmt, sieht diese Seite ebenfalls ohne
+          Namen. Bis zur Antwort gilt „nicht sichtbar“. Ohne Namen übermittelt die Anwendung
+          weder den Namen noch die interne Kennung der Person, nur ihre Schichten (damit der
+          Plan und die Besetzung stimmen) und keinen Grund einer Abwesenheit. Gespeichert werden
+          die Wahl und der Zeitpunkt der Antwort; die Wahl lässt sich jederzeit unter
+          Einstellungen → Was Kollegen sehen ändern. Die Administration sieht nur Zahlen, nicht
+          wer was gewählt hat. Schichtleitung und Administration sehen weiterhin alle Namen, weil
+          sie den Plan führen. Wegen der Gegenseitigkeit kann eine Ablehnung bedeuten, dass man
+          selbst weniger sieht; alles, was für die Arbeit nötig ist (eigener Plan, Besetzung,
+          Anträge), bleibt davon unberührt.
+        </Absatz>
+
         <Absatz className="text-[13px] text-ink-muted">
           Es findet keine Reichweitenmessung, kein Tracking und keine Werbung statt. Es werden
           keine Daten verkauft oder für fremde Zwecke ausgewertet.
@@ -486,7 +505,9 @@ export default function DatenschutzPage() {
           diesen geht der Inhalt der Mitteilung – Titel des Termins bzw. To-dos und der Zeitpunkt –
           verschlüsselt (Web-Push-Verschlüsselung nach RFC 8291), sodass der Dienst ihn nicht
           lesen kann. Mitteilungen lassen sich jederzeit unter den Einstellungen des Kalenders
-          oder in den Einstellungen des Geräts abschalten; dann wird die Adresse gelöscht.
+          oder in den Einstellungen des Geräts abschalten; dann wird die Adresse gelöscht. Wer
+          unter Einstellungen → Aufs Handy „Ohne Inhalt anzeigen“ wählt, bekommt Mitteilungen der
+          Warteschlange nur als „Neue Mitteilung“ ohne Namen und Details; den Inhalt zeigt die App.
         </Absatz>
         <Absatz>
           <strong>Anzeige-Einstellungen:</strong> Jede Person kann für sich festlegen, ob Samstag

@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { MeineZahlen, type JahrDaten } from "@/components/statistik/meine-zahlen";
 import { fetchHolidays } from "@/lib/data/holidays";
 import { createClient } from "@/lib/supabase/client";
-import type { StatTag, TagArt } from "@/lib/statistik";
+import { schichtTyp, type StatTag, type TagArt } from "@/lib/statistik";
 
 /**
  * „Meine Zahlen“ im Betrieb: eigene Statistik aus dem eigenen Plan. Die Datenbank
@@ -28,6 +28,7 @@ export default function MeineZahlenSeite() {
         stunden: art === "arbeit" ? Number(z.stunden) || 0 : 0,
         nacht: art === "arbeit" && (z.kuerzel === "N" || /nacht/i.test(z.schicht ?? "")),
         schicht: z.schicht ?? undefined,
+        typ: art === "arbeit" ? schichtTyp(z.kuerzel, z.schicht) : undefined,
       };
     });
     return { tage, feiertage: new Set(feiertage.map((h) => h.date).filter((d) => d.startsWith(`${jahr}-`))) };

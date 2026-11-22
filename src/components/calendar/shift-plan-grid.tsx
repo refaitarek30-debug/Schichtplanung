@@ -267,6 +267,8 @@ interface GridEmployee {
   isMe: boolean;
   /** Azubi: steht im Plan, zählt aber nicht zur Besetzung. */
   isApprentice: boolean;
+  /** Ohne Namen (Migration 0237): graue Zeile, nicht antippbar. */
+  verborgen: boolean;
   cells: Map<string, LiveShiftPlanCell>;
 }
 
@@ -833,6 +835,7 @@ export function ShiftPlanGrid({
           number: cell.personnelNumber,
           isMe: cell.isMe,
           isApprentice: cell.isApprentice,
+          verborgen: cell.verborgen === true,
           cells: new Map(),
         });
       }
@@ -1561,6 +1564,12 @@ export function ShiftPlanGrid({
                       <span className="leading-tight">{t(item.label)}</span>
                     </span>
                   ))}
+                  <span className="col-span-2 flex min-w-0 items-center gap-1.5">
+                    <span className="h-2 w-8 shrink-0 rounded-full bg-gradient-to-r from-ink/30 via-ink/10 to-ink/30 blur-[1.5px]" />
+                    <span className="leading-tight">
+                      Graue Zeile ohne Namen: noch nicht angemeldet oder nicht freigegeben (Einstellungen → Was Kollegen sehen)
+                    </span>
+                  </span>
                   {/* Spart acht Einträge: statt U/u, V/v, AF/af … einmal die Regel. */}
                   <span className="col-span-2 pt-1 leading-snug">
                     Heller Hintergrund mit Rahmen heißt beantragt, noch nicht genehmigt – U, V und G
@@ -2223,14 +2232,27 @@ const PlanZeile = memo(function PlanZeile({
           <span className="flex min-w-0 items-center gap-1">
             {/* Kurzform auf dem Handy: "T. Refai" statt "Tarek Refai". */}
             {/* Beim Beantragen steht auf dem Handy statt des Namens „Du“ – passt in die schmale Spalte. */}
-            <span className={cn("block truncate sm:hidden", fokus === "ich" && "hidden")}>{shortName(member.name)}</span>
-            <span className="hidden truncate sm:block">{member.name}</span>
+            {member.verborgen ? (
+              // Kein Name von der Datenbank: ein verschwommener Balken, kein echter Text.
+              <span
+                data-ohne-namen
+                role="img"
+                aria-label="Person ohne Namen – noch nicht angemeldet oder nicht freigegeben"
+                title="Noch nicht angemeldet oder nicht freigegeben"
+                className="block h-2.5 w-14 max-w-full rounded-full bg-gradient-to-r from-ink/30 via-ink/10 to-ink/30 opacity-70 blur-[2px]"
+              />
+            ) : (
+              <>
+                <span className={cn("block truncate sm:hidden", fokus === "ich" && "hidden")}>{shortName(member.name)}</span>
+                <span className="hidden truncate sm:block">{member.name}</span>
+              </>
+            )}
             {fokus === "ich" ? (
               <span className="shrink-0 rounded bg-brand-600 px-1.5 text-[10px] font-bold leading-[16px] text-white">Du</span>
             ) : null}
             {/* Azubis stehen im Plan, zählen aber nicht zur Besetzung – das
                 soll man sehen. */}
-            {member.isApprentice ? (
+            {member.isApprentice && !member.verborgen ? (
               <span
                 title="Azubi – zählt nicht zur Besetzung"
                 className="shrink-0 rounded bg-surface-sunken px-1 text-[9px] font-semibold uppercase tracking-[0.04em] text-ink-muted sm:text-[10px]"
@@ -2254,6 +2276,31 @@ const PlanZeile = memo(function PlanZeile({
         const gewaehlt = auswahl !== null && iso >= auswahl.von && iso <= auswahl.bis;
         const bearbeitbar = bearbeitbarBasis && Boolean(cell);
         const zellKommentare = kommentareJeZelle.get(zellSchluessel(member.employeeId, iso));
+        // Ohne Namen: nur die Schicht in Grau – kein Antippen, kein Kommentar.
+        if (member.verborgen) {
+          return (
+            <td
+              key={iso}
+              className={cn(
+                "p-px text-center sm:p-0.5",
+                iso.slice(8, 10) === "01" && "border-l-2 border-line",
+                blocked.has(iso) ? "bg-crit-bg/50" : ferien.has(iso) && "bg-ferien-bg/70",
+                isWeekend(iso) && "we-spalte",
+              )}
+            >
+              <span
+                className={cn(
+                  "mx-auto flex select-none items-center justify-center rounded bg-ink/[0.07] font-semibold text-ink-faint",
+                  gross
+                    ? "h-8 w-9 text-[13px] sm:h-9 sm:w-full sm:min-w-[38px] sm:text-[14px]"
+                    : "h-6 w-6 text-[11px] sm:h-7 sm:w-full sm:min-w-[26px] sm:text-[12px]",
+                )}
+              >
+                {code ? cellLabel(stilCode!) : ""}
+              </span>
+            </td>
+          );
+        }
         return (
           <td
             key={iso}

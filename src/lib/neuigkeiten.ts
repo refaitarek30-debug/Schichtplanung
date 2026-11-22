@@ -27,6 +27,24 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-22T09:00:00+01:00",
+    titel: "Du entscheidest, wer dich im Plan sieht",
+    text: "Unter Einstellungen → Was Kollegen sehen wählst du getrennt: deine Schichtgruppe und die anderen Schichtgruppen. Wer nein sagt, sieht die andere Seite auch ohne Namen. Wer noch nicht angemeldet ist, erscheint als graue Zeile. Leitung und Administration sehen weiter alles.",
+    bereich: "betrieb",
+  },
+  {
+    zeit: "2026-11-22T08:55:00+01:00",
+    titel: "Aufgeräumt: Profil, Mehr und Einstellungen",
+    text: "Jede Sache steht jetzt an einer festen Stelle: Profil (Kreis oben rechts) für dein Konto, „Mehr“ für Meine Zahlen, To-dos und Hilfe, Einstellungen nur für Einstellungen. Die Glocke klappt die Benachrichtigungen auf. Meine Zahlen zeigt neu den Anteil Früh, Spät und Nacht.",
+    bereich: "betrieb",
+  },
+  {
+    zeit: "2026-11-22T08:50:00+01:00",
+    titel: "Sperrbildschirm ohne Namen",
+    text: "Unter Einstellungen → Aufs Handy kannst du Mitteilungen auf dem Sperrbildschirm ohne Inhalt anzeigen lassen – dann steht dort nur „Neue Mitteilung“.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-21T18:00:00+01:00",
     titel: "Urlaub beantragen: deine Zeile im Blick",
     text: "Wer im Plan Urlaub beantragt, sieht die eigene Zeile jetzt umrandet mit „Du“, alle anderen leicht blass. Der Hinweis steht unten über der Leiste – der Plan rutscht nicht mehr. Die Startseite hat engere Abstände.",

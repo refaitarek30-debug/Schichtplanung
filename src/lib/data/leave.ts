@@ -255,7 +255,7 @@ export async function fetchLeaveDayCount(
 
 interface ShiftLeaveRow {
   employee_id: string;
-  employee_name: string;
+  employee_name: string | null;
   start_date: string;
   end_date: string;
   status: string;
@@ -289,7 +289,8 @@ export async function fetchMyShiftLeave(
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
   return ((data ?? []) as ShiftLeaveRow[]).map((row) => ({
     employeeId: row.employee_id,
-    employeeName: row.employee_name,
+    // Ohne Namen (Migration 0237): nicht angemeldet oder nicht freigegeben.
+    employeeName: row.employee_name ?? "Ohne Namen",
     startDate: row.start_date,
     endDate: row.end_date,
     status: row.status as LiveShiftLeaveEntry["status"],

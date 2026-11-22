@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { MeineZahlen, type JahrDaten } from "@/components/statistik/meine-zahlen";
 import { usePrivat } from "@/components/privat/kontext";
 import { idsVon, ladeFeiertage, ladeTage, type Schichtart } from "@/lib/privat/daten";
-import type { StatTag, TagArt } from "@/lib/statistik";
+import { schichtTyp, type StatTag, type TagArt } from "@/lib/statistik";
 
 /** Nachtschicht: heißt so, oder geht über Mitternacht. */
 const istNacht = (a: Schichtart) => /nacht/i.test(a.name) || (!!a.beginn && !!a.ende && a.ende < a.beginn);
@@ -41,6 +41,7 @@ export default function Seite() {
           stunden: arbeit.reduce((s, a) => s + (Number(a.stunden) || 0), 0),
           nacht: arbeit.some(istNacht),
           schicht: arbeit[0]?.name,
+          typ: arbeit[0] ? (arbeit.some(istNacht) ? "nacht" : schichtTyp(arbeit[0].kuerzel, arbeit[0].name)) : undefined,
         });
       }
       return { tage: liste, feiertage: new Set(feiertage.map((f) => f.tag)) };
