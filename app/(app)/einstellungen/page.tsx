@@ -12,14 +12,11 @@ import {
   Contrast,
   Eye,
   LayoutGrid,
-  LockKeyhole,
   Mail,
-  ShieldCheck,
-  Sparkles,
+  Users,
   Wand2,
 } from "lucide-react";
 import { Blatt } from "@/components/privat/blatt";
-import { Avatar } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/ui/page-header";
 import { employees } from "@/lib/demo-data";
 import { useSession } from "@/context/session";
@@ -28,6 +25,7 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { MailDeliveryCard } from "@/components/settings/mail-delivery-card";
 import { ThemeToggle } from "@/components/layout/theme";
 import { PrivacySettingsPanel } from "./privacy-settings-panel";
+import { PushOhneInhaltZeile, TeamModusKarte, TeamSichtbarkeitKarte } from "@/components/privacy/team-sichtbarkeit";
 import { StartSeiteCard } from "@/components/settings/start-seite-card";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
 import { KalenderVorliebenInhalt } from "@/components/kalender/kalender-einstellungen";
@@ -86,13 +84,13 @@ export default function SettingsPage() {
     };
   }, [live, istAdmin]);
 
-  const [blatt, setBlatt] = useState<null | "startseite" | "mitteilungen" | "abo" | "kollegen" | "darstellung" | "unternehmen" | "benachrichtigungen" | "mail" | "rollen">(null);
+  const [blatt, setBlatt] = useState<null | "startseite" | "mitteilungen" | "abo" | "kollegen" | "darstellung" | "unternehmen" | "team" | "benachrichtigungen" | "mail" | "rollen">(null);
   const zu = () => setBlatt(null);
   // Aus der Suche im Menü „Mehr“: `?blatt=darstellung` öffnet gleich den Punkt.
   useEffect(() => {
     try {
       const w = new URLSearchParams(window.location.search).get("blatt");
-      const erlaubt = ["startseite", "mitteilungen", "abo", "kollegen", "darstellung", "rollen", ...(istAdmin ? ["unternehmen", "benachrichtigungen", "mail"] : [])];
+      const erlaubt = ["startseite", "mitteilungen", "abo", "kollegen", "darstellung", "rollen", ...(istAdmin ? ["unternehmen", "team", "benachrichtigungen", "mail"] : [])];
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (w && erlaubt.includes(w)) setBlatt(w as typeof blatt);
     } catch {
@@ -108,30 +106,9 @@ export default function SettingsPage() {
     <div className="mx-auto w-full max-w-2xl space-y-5" data-einstellungen>
       <PageHeader title="Einstellungen" />
 
-      <Link href="/profil" className="flex items-center gap-3 rounded-card border border-line bg-surface px-4 py-3 shadow-card transition-colors hover:bg-surface-muted">
-        <Avatar employee={profile} className="h-11 w-11 text-[14px]" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">
-            {profile.firstName} {profile.lastName}
-          </span>
-          <span className="block truncate text-[12.5px] text-ink-muted">
-            {roleLabels[profile.role]} · {company.name}
-          </span>
-        </span>
-        <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" strokeWidth={2} />
-      </Link>
-
       {/* Das Wichtigste als Kacheln, der Rest als kurze Listen – Details öffnen als Blatt. */}
+      {live ? (
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-einstellungen-kacheln>
-        <Link href="/profil?bereich=sicherheit" className={kachel}>
-          <span className={symbol("bg-[#64748b]")}>
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <span>
-            <span className="block text-[14.5px] font-semibold">Sicherheit</span>
-            <span className="block text-[12px] text-ink-muted">Zwei-Faktor, Geräte</span>
-          </span>
-        </Link>
         {live ? (
           <button type="button" onClick={() => setBlatt("startseite")} className={kachel}>
             <span className={symbol("bg-brand-500")}>
@@ -149,8 +126,8 @@ export default function SettingsPage() {
               <Bell className="h-4 w-4" />
             </span>
             <span>
-              <span className="block text-[14.5px] font-semibold">Mitteilungen</span>
-              <span className="block text-[12px] text-ink-muted">Aufs Handy</span>
+              <span className="block text-[14.5px] font-semibold">Aufs Handy</span>
+              <span className="block text-[12px] text-ink-muted">Push-Mitteilungen</span>
             </span>
           </button>
         ) : null}
@@ -165,18 +142,29 @@ export default function SettingsPage() {
             </span>
           </button>
         ) : null}
+        {live ? (
+          <button type="button" onClick={() => setBlatt("kollegen")} className={kachel}>
+            <span className={symbol("bg-[#0ea5e9]")}>
+              <Eye className="h-4 w-4" />
+            </span>
+            <span>
+              <span className="block text-[14.5px] font-semibold">Was Kollegen sehen</span>
+              <span className="block text-[12px] text-ink-muted">Name, Schichten, Gründe</span>
+            </span>
+          </button>
+        ) : null}
       </div>
+      ) : null}
 
       <Gruppe titel="Für mich">
-        {live ? <ListenZeile icon={<Eye className="h-4 w-4" />} farbe="bg-[#0ea5e9]" text="Was Kollegen sehen" onClick={() => setBlatt("kollegen")} /> : null}
         <ListenZeile icon={<Contrast className="h-4 w-4" />} farbe="bg-[#334155]" text="Darstellung" onClick={() => setBlatt("darstellung")} />
-        <ListenZeile icon={<Sparkles className="h-4 w-4" />} farbe="bg-[#8b5cf6]" text="Meine Zahlen" href="/meine-zahlen" />
-        <ListenZeile icon={<LockKeyhole className="h-4 w-4" />} farbe="bg-[#22c55e]" text="Datenschutz & meine Daten" href="/profil/datenschutz" />
+        <ListenZeile icon={<CircleHelp className="h-4 w-4" />} farbe="bg-[#94a3b8]" text="Rollen und Rechte" onClick={() => setBlatt("rollen")} />
       </Gruppe>
 
       {live && istAdmin ? (
         <Gruppe titel="Betrieb">
           <ListenZeile icon={<Building2 className="h-4 w-4" />} farbe="bg-[#1d4ed8]" text="Unternehmen" wert={aktive === null ? undefined : `${aktive} aktiv`} onClick={() => setBlatt("unternehmen")} />
+          <ListenZeile icon={<Users className="h-4 w-4" />} farbe="bg-[#0284c7]" text="Team-Sichtbarkeit" onClick={() => setBlatt("team")} />
           <ListenZeile icon={<Mail className="h-4 w-4" />} farbe="bg-[#ef4444]" text="Benachrichtigungen" onClick={() => setBlatt("benachrichtigungen")} />
           <ListenZeile icon={<AtSign className="h-4 w-4" />} farbe="bg-[#16a34a]" text="Mailversand" onClick={() => setBlatt("mail")} />
           <ListenZeile
@@ -189,10 +177,6 @@ export default function SettingsPage() {
         </Gruppe>
       ) : null}
 
-      <Gruppe>
-        <ListenZeile icon={<CircleHelp className="h-4 w-4" />} farbe="bg-[#94a3b8]" text="Rollen und Rechte" onClick={() => setBlatt("rollen")} />
-      </Gruppe>
-
       {/* Inhalte als Blatt – ohne Aufklapp-Gruppen darin. */}
       <GruppenAufklappen.Provider value={false}>
         {blatt === "startseite" ? (
@@ -204,8 +188,11 @@ export default function SettingsPage() {
           </Blatt>
         ) : null}
         {blatt === "mitteilungen" ? (
-          <Blatt titel="Mitteilungen" unter="Aufs Handy und Vorschläge" onClose={zu}>
-            <KalenderVorliebenInhalt firma />
+          <Blatt titel="Aufs Handy" unter="Push-Mitteilungen und Vorschläge" onClose={zu}>
+            <div className="space-y-5">
+              <KalenderVorliebenInhalt firma />
+              <PushOhneInhaltZeile />
+            </div>
           </Blatt>
         ) : null}
         {blatt === "abo" ? (
@@ -215,7 +202,10 @@ export default function SettingsPage() {
         ) : null}
         {blatt === "kollegen" ? (
           <Blatt titel="Was Kollegen sehen" unter="Leitung und Administration sehen immer alles." onClose={zu}>
-            <PrivacySettingsPanel />
+            <div className="space-y-5">
+              <TeamSichtbarkeitKarte />
+              <PrivacySettingsPanel />
+            </div>
           </Blatt>
         ) : null}
         {blatt === "darstellung" ? (
@@ -234,6 +224,11 @@ export default function SettingsPage() {
                 text={company.setupCompletedAt ? "Abgeschlossen – jederzeit erneut durchgehen." : "Noch offen. Ohne Feiertage rechnet der Urlaub falsch."}
               />
             </Gruppe>
+          </Blatt>
+        ) : null}
+        {blatt === "team" ? (
+          <Blatt titel="Team-Sichtbarkeit" unter="Wer sieht Namen und Schichten der Kollegen?" onClose={zu}>
+            <TeamModusKarte />
           </Blatt>
         ) : null}
         {blatt === "benachrichtigungen" ? (

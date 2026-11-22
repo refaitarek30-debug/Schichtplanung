@@ -12,6 +12,7 @@ import { isProductionMisconfigured, isSupabaseConfigured } from "@/lib/supabase/
 import { PrivacyOnboarding } from "@/components/privacy/privacy-onboarding";
 import { getPrivatKonto } from "@/lib/privat/server";
 import { GlasProfil, GlasTitelAnpassung } from "@/components/layout/glas-profil";
+import { TeamFrage } from "@/components/privacy/team-sichtbarkeit";
 
 /**
  * Zweite Verteidigungslinie hinter der Middleware: ohne gültige Session
@@ -74,6 +75,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       <GlasTitelAnpassung />
       <IdleLogout fristMs={fristFuer(session.profile.role, session.profile.id)} />
       <StartWeiterleitung startSeite={session.profile.startSeite ?? null} />
+      {/* Einmal fragen: Darf das Team mich im Plan sehen? (Migration 0237) */}
+      {privacyOnboardingRequired ? null : <TeamFrage />}
       {privacyOnboardingRequired ? (
         <PrivacyOnboarding />
       ) : (

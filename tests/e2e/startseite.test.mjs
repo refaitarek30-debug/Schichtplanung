@@ -96,6 +96,46 @@ export default async function startseite() {
     pruefe(await seite.getByText("Kacheln auf der Startseite").first().isVisible(), "Einstellungen: Kachel „Startseite“ öffnet Ansicht und Kacheln als Blatt");
     await seite.keyboard.press("Escape");
     await warte(400);
+    // Team-Sichtbarkeit (0237): eigene Wahl unter „Was Kollegen sehen“, Schalter des Betriebs für Admins.
+    await seite.locator("[data-einstellungen-kacheln]").getByRole("button", { name: /Was Kollegen sehen/ }).click();
+    await warte(600);
+    pruefe(await seite.locator("[data-team-karte]").isVisible(), "Kollegen: Wahl „Wer sieht mich?“ sichtbar");
+    const eigene = seite.locator('[data-team-wahl="eigene"]');
+    const vorher = await eigene.getAttribute("aria-checked");
+    await eigene.click();
+    await warte(300);
+    pruefe((await eigene.getAttribute("aria-checked")) !== vorher, "Kollegen: eigene Schichtgruppe umschaltbar");
+    await seite.keyboard.press("Escape");
+    await warte(400);
+    await seite.getByRole("button", { name: "Team-Sichtbarkeit" }).click();
+    await warte(600);
+    pruefe(await seite.locator("[data-team-modus]").isVisible(), "Admin: Team-Sichtbarkeit mit Schalter des Betriebs");
+    pruefe(await seite.getByText("Stand im Team").isVisible(), "Admin: Stand im Team nur als Zahlen");
+    await seite.getByRole("radio", { name: /Alle sehen alle/ }).click();
+    await warte(300);
+    pruefe((await seite.getByRole("radio", { name: /Alle sehen alle/ }).getAttribute("aria-checked")) === "true", "Admin: „Alle sehen alle“ wählbar");
+    await seite.getByRole("radio", { name: /Nur mit Zustimmung/ }).click();
+    await seite.keyboard.press("Escape");
+    await warte(400);
+    // Graue Zeile ohne Namen im Plan, nicht antippbar.
+    await seite.goto(`${APP}/schichtplan`, { waitUntil: "networkidle" });
+    await warte(800);
+    pruefe((await seite.locator("[data-ohne-namen]").count()) >= 1, "Plan: Person ohne Namen als graue Zeile");
+    const graueZeile = seite.locator("tr", { has: seite.locator("[data-ohne-namen]") }).first();
+    pruefe((await graueZeile.locator("td button").count()) === 0, "Plan: graue Zeile ist nicht antippbar");
+    // Frage beim Start, wenn noch nicht geantwortet.
+    await fetch("http://127.0.0.1:5459/rest/v1/rpc/test_team_frage", { method: "POST", body: "{}" });
+    await seite.goto(`${APP}/dashboard`, { waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe(await seite.locator("[data-team-frage]").isVisible(), "Start: Frage „Darf dein Team dich im Plan sehen?“");
+    await seite.locator('[data-team-frage] [data-team-wahl="eigene"]').click();
+    await seite.locator("[data-team-speichern]").click();
+    await warte(800);
+    pruefe((await seite.locator("[data-team-frage]").count()) === 0, "Start: nach dem Speichern ist die Frage weg");
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1000);
+    pruefe((await seite.locator("[data-team-frage]").count()) === 0, "Start: einmal beantwortet, kommt die Frage nicht wieder");
+
     // Druckansicht des Schichtplans: ein Blatt je Monat, A4/A3 umschaltbar.
     await seite.goto(`${APP}/schichtplan/druck?team=all`, { waitUntil: "networkidle" });
     await warte(1500);

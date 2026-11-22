@@ -14,16 +14,15 @@ import {
   Megaphone,
   ScrollText,
   Search,
+  Settings,
   Sparkles,
   Users,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { useSession } from "@/context/session";
-import { Avatar } from "@/components/ui/avatar";
 import { TodoZahlMarke } from "@/components/kalender/todo-zaehler";
 import { useWischZu } from "@/components/privat/blatt";
-import { roleLabels } from "@/lib/nav";
 import { suche } from "@/lib/suche";
 import { useBegriffe } from "@/lib/begriffe";
 import { cn } from "@/lib/utils";
@@ -37,8 +36,8 @@ interface Punkt {
 }
 
 /**
- * „Mehr“ auf dem Handy (Entwurf B + C): oben das eigene Profil und eine
- * Suche, die jede Seite und die wichtigsten Unterpunkte findet; darunter
+ * „Mehr“ auf dem Handy (Entwurf B + C): oben eine Suche, die jede Seite und
+ * die wichtigsten Unterpunkte findet (das Profil ist der Kreis oben rechts); darunter
  * für die Führung vier ruhige Kacheln und der Rest als Liste. Start, Plan,
  * Urlaub und Kalender stehen schon in der Leiste und fehlen hier. Ein Wisch
  * nach unten schließt.
@@ -76,6 +75,7 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
     ...(fuehrung && protokoll ? [{ href: "/protokoll", titel: "Protokoll", icon: ScrollText }] : []),
     ...(role === "admin" ? [{ href: "/auswertung", titel: "Auswertung", icon: BarChart3 }] : []),
     { href: "/hilfe", titel: "Hilfe", icon: BookOpen },
+    { href: "/einstellungen", titel: "Einstellungen", icon: Settings },
   ];
 
   const zeile = "flex h-10 items-center gap-3 px-3.5 text-[15px]";
@@ -93,34 +93,9 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
         <div className="mx-auto max-w-xl space-y-2.5">
           <span aria-hidden className="mx-auto block h-[5px] w-9 rounded-full bg-ink/20" data-wisch-kopf />
 
-          {/* Profil und Einstellungen */}
-          <div className="flex items-center gap-2">
-            <Link
-              href="/einstellungen"
-              onClick={onClose}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-[16px] bg-surface/60 px-3 py-2"
-            >
-              <Avatar employee={profile} className="h-9 w-9 text-[12px]" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-semibold leading-tight">
-                  {profile.firstName} {profile.lastName}
-                </span>
-                <span className="block truncate text-[12px] text-ink-muted">{roleLabels[role]} · Profil &amp; Einstellungen</span>
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
-            </Link>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface/60 text-ink-muted"
-              aria-label="Menü schließen"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
           {/* Suche über alle Bereiche und Unterpunkte */}
-          <label className="flex h-10 items-center gap-2 rounded-[12px] bg-ink/[0.06] px-3 text-ink-muted focus-within:ring-2 focus-within:ring-brand-500/40">
+          <div className="flex items-center gap-2">
+          <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-[12px] bg-ink/[0.06] px-3 text-ink-muted focus-within:ring-2 focus-within:ring-brand-500/40">
             <Search className="h-4 w-4 shrink-0" />
             <input
               type="search"
@@ -132,6 +107,15 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
               data-mehr-suche
             />
           </label>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface/60 text-ink-muted"
+              aria-label="Menü schließen"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
 
           {frage.trim() ? (
             treffer.length ? (

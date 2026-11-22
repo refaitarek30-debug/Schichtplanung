@@ -351,6 +351,12 @@ export interface LiveShiftPlanCell {
   isApprentice: boolean;
   /** V-Tag aus der Jahresplanung (VJ, ab 2027) – nur wo „V“ sichtbar ist. */
   isVj?: boolean;
+  /**
+   * Ohne Namen (Migration 0237): noch nicht angemeldet, ausgeschieden oder
+   * nicht für mich freigegeben. Die Datenbank schickt dann weder Namen noch
+   * echte Kennung.
+   */
+  verborgen?: boolean;
 }
 
 /**

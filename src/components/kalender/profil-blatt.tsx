@@ -4,7 +4,7 @@ import { PushAnstoss } from "./erinnerungen";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, ChevronRight, CircleHelp, Cog, LockKeyhole, LogOut, School, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { Bell, ChevronRight, Cog, LockKeyhole, LogOut, School, ShieldCheck, UserRound } from "lucide-react";
 import { BerufsschuleBlatt, useIstAzubi } from "./berufsschule";
 import { usePrivatWechsel } from "@/components/layout/bereich";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
@@ -28,8 +28,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * Profil-Fenster auf dem Handy (Entwurf A): oben Name und Glocke, darunter
- * Betrieb | Privat und schlichte Listen in Gruppen – Schnell, Konto,
- * Daten & Hilfe (Klassisch/Kompakt stellt man auf der Startseite um). Benachrichtigungen führen beim Antippen auf die
+ * Betrieb | Privat und schlichte Listen: das eigene Konto. Die Glocke klappt die
+ * Benachrichtigungen auf. Meine Zahlen und Hilfe stehen unter „Mehr“,
+ * Klassisch/Kompakt auf der Startseite. Benachrichtigungen führen beim Antippen auf die
  * passende Seite. Ganz unten Abmelden. Jede Zeile bricht sauber um, nichts
  * ragt aus seinem Kasten.
  */
@@ -141,13 +142,16 @@ export function ProfilBlatt({
         </div>
         <button
           type="button"
-          onClick={() => {
-            setMitteilungenOffen(true);
-            requestAnimationFrame(() => document.getElementById("profil-benachrichtigungen")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-          }}
+          // Die Glocke klappt die Liste auf und zu – eine eigene Zeile dafür gibt es nicht mehr.
+          onClick={() => setMitteilungenOffen((o) => !o)}
+          aria-expanded={mitteilungenOffen}
           aria-label={ungelesen ? `Benachrichtigungen, ${ungelesen} neu` : "Benachrichtigungen"}
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-ink/[0.1] text-ink"
+          className={cn(
+            "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-ink/[0.1] text-ink",
+            mitteilungenOffen && "bg-ink/[0.06]",
+          )}
           data-zu-benachrichtigungen
+          data-benachrichtigungen-zeile
         >
           <Bell className="h-[19px] w-[19px]" strokeWidth={1.7} />
           {ungelesen ? <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-crit-dot" /> : null}
@@ -167,53 +171,46 @@ export function ProfilBlatt({
       ) : null}
       {privat.fenster}
 
-      <Gruppe titel="Schnell">
-        <button type="button" onClick={() => setMitteilungenOffen((o) => !o)} aria-expanded={mitteilungenOffen} className={ZEILE} data-benachrichtigungen-zeile>
-          <Bell className={ICON} strokeWidth={1.7} />
-          <span className="min-w-0 flex-1 truncate">Benachrichtigungen</span>
-          {ungelesen > 0 ? <span className="shrink-0 rounded-full bg-ink px-1.5 text-[11.5px] font-semibold text-surface">{ungelesen}</span> : null}
-          <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-faint transition-transform", mitteilungenOffen && "rotate-180")} />
-        </button>
-        {mitteilungenOffen ? (
-          <div id="profil-benachrichtigungen" className="scroll-mt-4 px-2 pb-2">
-            <PushAnstoss className="mb-2" />
-            {items === null ? (
-              <p className="px-2 py-4 text-center text-[14px] text-ink-muted">wird geladen …</p>
-            ) : items.length === 0 ? (
-              <p className="px-2 py-4 text-center text-[14px] text-ink-muted">Noch keine Benachrichtigungen.</p>
-            ) : (
-              <div className="max-h-72 overflow-y-auto rounded-[12px] bg-ink/[0.04]">
-                {items.map((n, i) => (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => oeffne(n)}
-                    data-benachrichtigung-ziel={n.ziel ?? undefined}
-                    className={cn("flex w-full items-start gap-2 px-3 py-2.5 text-left", i > 0 && "glas-linie border-t", beimOeffnen.has(n.id) && "bg-brand-500/10")}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 text-[14px] font-medium">{n.title}</span>
-                        <span className="shrink-0 text-[11.5px] text-ink-faint">{vor(n.createdAt)}</span>
-                      </span>
-                      <span className="block break-words text-[13px] leading-snug text-ink-muted">{n.body}</span>
+      {mitteilungenOffen ? (
+        <div id="profil-benachrichtigungen" className="scroll-mt-4 pb-3 pt-1">
+          <PushAnstoss className="mb-2" />
+          {items === null ? (
+            <p className="px-2 py-4 text-center text-[14px] text-ink-muted">wird geladen …</p>
+          ) : items.length === 0 ? (
+            <p className="px-2 py-4 text-center text-[14px] text-ink-muted">Noch keine Benachrichtigungen.</p>
+          ) : (
+            <div className="max-h-72 overflow-y-auto rounded-[12px] bg-ink/[0.04]">
+              {items.map((n, i) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => oeffne(n)}
+                  data-benachrichtigung-ziel={n.ziel ?? undefined}
+                  className={cn("flex w-full items-start gap-2 px-3 py-2.5 text-left", i > 0 && "glas-linie border-t", beimOeffnen.has(n.id) && "bg-brand-500/10")}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 text-[14px] font-medium">{n.title}</span>
+                      <span className="shrink-0 text-[11.5px] text-ink-faint">{vor(n.createdAt)}</span>
                     </span>
-                    {n.ziel ? <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-ink-faint" /> : null}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : null}
-        <ZeileLink href="/meine-zahlen" onClick={onClose} icon={<TrendingUp className={ICON} strokeWidth={1.7} />} text="Meine Zahlen" />
-        {azubi ? (
+                    <span className="block break-words text-[13px] leading-snug text-ink-muted">{n.body}</span>
+                  </span>
+                  {n.ziel ? <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-ink-faint" /> : null}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+      {azubi ? (
+        <Gruppe titel="Schnell">
           <button type="button" onClick={() => setSchule(true)} className={ZEILE} data-berufsschule-zeile>
             <School className={ICON} strokeWidth={1.7} />
             <span className="min-w-0 flex-1 truncate">Berufsschule eintragen</span>
             <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
           </button>
-        ) : null}
-      </Gruppe>
+        </Gruppe>
+      ) : null}
       {schule ? <BerufsschuleBlatt onClose={() => setSchule(false)} /> : null}
 
       <Gruppe titel="Konto">
@@ -225,13 +222,9 @@ export function ProfilBlatt({
           text="Sicherheit"
           rechts={zweiFaktor === null ? undefined : zweiFaktor ? "Zwei-Faktor an" : "Zwei-Faktor aus"}
         />
+        <ZeileLink href="/profil/datenschutz" onClick={onClose} icon={<LockKeyhole className={ICON} strokeWidth={1.7} />} text="Datenschutz & meine Daten" />
         <ZeileLink href="/einstellungen" onClick={onClose} icon={<Cog className={ICON} strokeWidth={1.7} />} text="Einstellungen" />
         <BetreiberLink onClick={onClose} className={ZEILE} />
-      </Gruppe>
-
-      <Gruppe titel="Daten & Hilfe">
-        <ZeileLink href="/profil/datenschutz" onClick={onClose} icon={<LockKeyhole className={ICON} strokeWidth={1.7} />} text="Datenschutz & meine Daten" />
-        <ZeileLink href="/hilfe" onClick={onClose} icon={<CircleHelp className={ICON} strokeWidth={1.7} />} text="Hilfe" />
       </Gruppe>
 
       {ansichten.length > 0 ? (

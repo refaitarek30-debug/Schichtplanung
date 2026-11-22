@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronUp, CircleHelp, Cog, Home, LockKeyhole, LogOut, School, ShieldCheck, TrendingUp, UserRound } from "lucide-react";
+import { ChevronUp, CircleHelp, Cog, Home, LockKeyhole, LogOut, School, ShieldCheck, UserRound } from "lucide-react";
 import { BerufsschuleBlatt, useIstAzubi } from "@/components/kalender/berufsschule";
 import { useSession } from "@/context/session";
 import { Avatar } from "@/components/ui/avatar";
@@ -16,7 +16,6 @@ import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { BetreiberLink } from "./betreiber-link";
 import { usePrivatWechsel } from "./bereich";
-import { StartAnsichtSchalter } from "./start-ansicht-schalter";
 
 const ROLLEN: Role[] = ["employee", "shift_leader", "admin"];
 const ZEILE = "flex w-full min-w-0 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-[13.5px] text-zinc-200 hover:bg-white/5";
@@ -25,7 +24,8 @@ const ICON = "h-4 w-4 shrink-0 text-zinc-400";
 /**
  * Konto unten in der Seitenleiste am Computer (Entwurf B): ein Knopf mit
  * Bild und Name, darüber geht das Konto-Menü auf – Profil, Sicherheit,
- * Einstellungen, Datenschutz, Privatbereich, Startseite, Ansicht, Abmelden.
+ * Einstellungen, Datenschutz, Privatbereich, Ansicht, Abmelden. Meine Zahlen steht
+ * in der Seitenleiste, Klassisch/Kompakt auf der Startseite.
  */
 export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
   const { mode, role, profile, company, echteRolle, ansicht, setAnsicht } = useSession();
@@ -79,7 +79,6 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
               rechts={zweiFaktor === null ? undefined : zweiFaktor ? "Zwei-Faktor an" : "aus"}
             />
             <Eintrag href="/einstellungen" onClick={zu} icon={<Cog className={ICON} strokeWidth={1.7} />} text="Einstellungen" />
-            <Eintrag href="/meine-zahlen" onClick={zu} icon={<TrendingUp className={ICON} strokeWidth={1.7} />} text="Meine Zahlen" />
             {azubi ? (
               <button type="button" onClick={() => (zu(), setSchule(true))} className={ZEILE}>
                 <School className={ICON} strokeWidth={1.7} />
@@ -102,10 +101,6 @@ export function KontoMenue({ eingeklappt }: { eingeklappt: boolean }) {
                 <span className="min-w-0 flex-1 truncate">Zum Privatbereich</span>
               </button>
             ) : null}
-          </div>
-          <div className="border-t border-white/10 px-1.5 py-2">
-            <p className="px-1 pb-1.5 text-[11px] font-semibold text-zinc-500">Startseite</p>
-            <StartAnsichtSchalter klein />
           </div>
           {ansichten.length > 0 ? (
             <div className="border-t border-white/10 py-1">

@@ -118,7 +118,8 @@ interface RotationPatternRow {
 /** Eine Person aus `schichtplan_kompakt()`: die Tage als Liste. */
 interface SchichtplanKompaktZeile {
   employee_id: string;
-  employee_name: string;
+  /** null: Person ohne Namen (Migration 0237). */
+  employee_name: string | null;
   rotation_team: string | null;
   personnel_number: string | null;
   is_me: boolean;
@@ -126,6 +127,9 @@ interface SchichtplanKompaktZeile {
   /** Je Tag: [Tag, Schichtname, Schichtkürzel, Abwesenheitskürzel, VJ (ab Migration 0231)]. */
   tage: [string, string | null, string | null, string | null, boolean?][];
 }
+
+/** Anzeige statt des Namens, wenn die Datenbank keinen schickt (Migration 0237). */
+export const OHNE_NAMEN = "Ohne Namen";
 
 /** Meldung, wenn der Plan wegen einer echten Störung nicht kommt. */
 export const PLAN_STOERUNG =
@@ -167,7 +171,8 @@ export async function fetchShiftPlanGrid(
     for (const [day, shiftName, shiftCode, absenceCode, vj] of person.tage ?? []) {
       zellen.push({
         employeeId: person.employee_id,
-        employeeName: person.employee_name,
+        employeeName: person.employee_name ?? OHNE_NAMEN,
+        verborgen: person.employee_name == null,
         rotationTeam: person.rotation_team,
         personnelNumber: person.personnel_number,
         day,

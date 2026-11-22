@@ -14,6 +14,20 @@ export interface StatTag {
   nacht: boolean;
   /** Name der Schicht – für „Wechsel zwischen Schichten“. */
   schicht?: string;
+  /** Früh, Spät oder Nacht – für den Anteil je Schicht. */
+  typ?: SchichtTyp;
+}
+
+export type SchichtTyp = "frueh" | "spaet" | "nacht" | "sonst";
+
+/** Früh/Spät/Nacht aus Kürzel und Name einer Schicht. */
+export function schichtTyp(kuerzel: string | null | undefined, name: string | null | undefined): SchichtTyp {
+  const k = (kuerzel ?? "").trim().toUpperCase();
+  const n = (name ?? "").toLowerCase();
+  if (k === "N" || /nacht/.test(n)) return "nacht";
+  if (k === "F" || /früh|frueh/.test(n)) return "frueh";
+  if (k === "S" || /spät|spaet/.test(n)) return "spaet";
+  return "sonst";
 }
 
 export interface Zahlen {
@@ -35,6 +49,8 @@ export interface Zahlen {
   laengsteSerie: number;
   laengsteFrei: number;
   wechsel: number;
+  /** Arbeitstage je Schicht – für den Anteil Früh/Spät/Nacht. */
+  jeTyp: Record<SchichtTyp, number>;
   /** 0 = Sonntag … 6 = Samstag; null ohne freie Tage */
   freiTag: number | null;
   /** 0–11; null ohne Arbeit */
@@ -80,7 +96,7 @@ export function rechne(tage: StatTag[], feiertage: ReadonlySet<string>, zeitraum
   const z: Zahlen = {
     arbeitstage: 0, stunden: 0, sonntage: 0, sonntagStunden: 0, feiertage: 0, feiertagStunden: 0, samstage: 0,
     naechte: 0, nachtStunden: 0, urlaub: 0, vtage: 0, krank: 0, freieTage: 0, freieWochenenden: 0, wochenenden: 0,
-    laengsteSerie: 0, laengsteFrei: 0, wechsel: 0, freiTag: null, fleissigsterMonat: null, anteilArbeit: 0, stundenGesamt: 0,
+    laengsteSerie: 0, laengsteFrei: 0, wechsel: 0, jeTyp: { frueh: 0, spaet: 0, nacht: 0, sonst: 0 }, freiTag: null, fleissigsterMonat: null, anteilArbeit: 0, stundenGesamt: 0,
     tageMitDaten: drin.length, geplant,
   };
   const freiJeWt = [0, 0, 0, 0, 0, 0, 0];
@@ -111,6 +127,7 @@ export function rechne(tage: StatTag[], feiertage: ReadonlySet<string>, zeitraum
         z.naechte++;
         z.nachtStunden += t.stunden;
       }
+      z.jeTyp[t.typ ?? (t.nacht ? "nacht" : "sonst")]++;
       if (t.schicht && letzteSchicht && t.schicht !== letzteSchicht) z.wechsel++;
       if (t.schicht) letzteSchicht = t.schicht;
       serie++;

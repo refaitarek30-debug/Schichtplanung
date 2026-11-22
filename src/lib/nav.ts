@@ -285,7 +285,7 @@ const LEISTE: { label: string | null; eintraege: LeistenEintrag[] }[] = [
   },
   {
     label: null,
-    eintraege: [{ href: "/einstellungen", label: "Einstellungen", unter: "Profil · Darstellung · Datenschutz", icon: Cog, roles: ALLE }],
+    eintraege: [{ href: "/einstellungen", label: "Einstellungen", unter: "Startseite · Aufs Handy · Darstellung", icon: Cog, roles: ALLE }],
   },
 ];
 

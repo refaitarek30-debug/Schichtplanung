@@ -76,7 +76,7 @@ export default async function rahmen() {
   // Computer: die Seite scrollt wie bisher.
   const b = await chromium.launch();
   try {
-    const ctx = await b.newContext({ viewport: { width: 1360, height: 800 }, locale: "de-DE", timezoneId: "Europe/Berlin", bypassCSP: true });
+    const ctx = await b.newContext({ viewport: { width: 1360, height: 560 }, locale: "de-DE", timezoneId: "Europe/Berlin", bypassCSP: true });
     await ctx.addCookies([SITZUNG_COOKIE]);
     await ctx.addInitScript(HINWEIS_GESEHEN);
     const s = await ctx.newPage();
