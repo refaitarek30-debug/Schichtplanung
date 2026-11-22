@@ -51,7 +51,7 @@ export function Sidebar() {
     <aside
       className={cn(
         // Entwurf B: dunkle Leiste in hellem und dunklem Farbschema gleich.
-        "hidden shrink-0 border-r border-white/5 bg-[#18181b] text-zinc-300 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col",
+        "hidden shrink-0 border-r border-white/5 bg-[#18181b] text-zinc-300 lg:sticky lg:top-0 lg:z-40 lg:flex lg:h-dvh lg:flex-col",
         eingeklappt ? "w-16" : "w-64",
       )}
     >

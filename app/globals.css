@@ -893,3 +893,21 @@ html[data-app] img {
   border-color: var(--blase-rand);
   box-shadow: var(--blase-schatten);
 }
+
+/*
+ * Schichtplan am PC: Fährt die Maus über eine Zeile, leuchtet der Name auf;
+ * der Tageskopf darüber bekommt `plan-spalte-hover` (gesetzt im Plan selbst).
+ */
+@media (hover: hover) and (pointer: fine) {
+  [data-plan-tabelle] tbody tr[data-name]:hover > th[scope="row"] {
+    background-color: rgb(var(--c-brand-500) / 0.14);
+    color: rgb(var(--c-brand-700));
+  }
+  [data-plan-tabelle] thead th.plan-spalte-hover {
+    background-color: rgb(var(--c-brand-500) / 0.16);
+    border-radius: 6px;
+  }
+  [data-plan-tabelle] thead th.plan-spalte-hover span {
+    color: rgb(var(--c-brand-700));
+  }
+}

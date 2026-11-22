@@ -89,6 +89,24 @@ export default async function rahmen() {
     await warte(600);
     const l = await lage(s);
     pruefe(l.fensterY > 100, `Computer: die Seite scrollt wie bisher (${l.fensterY})`);
+    pruefe(await s.locator("[data-abmelden-oben]").isVisible(), "Computer: Abmelden oben rechts");
+
+    // Schichtplan am Computer: Mausrad schiebt den Plan zur Seite, Maus zeigt Name und Tag.
+    await s.setViewportSize({ width: 1100, height: 800 });
+    await s.goto(`${APP}/schichtplan`, { waitUntil: "networkidle" });
+    await warte(1000);
+    const zelle = s.locator("tr[data-name] td[data-tag]").nth(3);
+    await zelle.hover();
+    await warte(200);
+    pruefe(await s.locator("[data-plan-schild]").isVisible(), "Plan am PC: Schild mit Name und Tag beim Darüberfahren");
+    pruefe(/·/.test((await s.locator("[data-plan-schild]").textContent()) ?? ""), `Plan am PC: Schild nennt Name · Tag (${await s.locator("[data-plan-schild]").textContent()})`);
+    pruefe((await s.locator("thead th.plan-spalte-hover").count()) === 1, "Plan am PC: Tageskopf leuchtet auf");
+    const box = s.locator("[data-plan-tabelle]").locator("xpath=..");
+    const vorher = await box.evaluate((e) => e.scrollLeft);
+    await s.mouse.wheel(0, 300);
+    await warte(300);
+    const nachher = await box.evaluate((e) => e.scrollLeft);
+    pruefe(nachher > vorher, `Plan am PC: Mausrad schiebt den Plan zur Seite (${vorher} → ${nachher})`);
   } finally {
     await b.close();
   }

@@ -111,7 +111,8 @@ export function LiveBalanceCard({
         }
       />
       <CardBody className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" data-konto-kacheln>
+        {/* Spalten nach Platz in der Karte, nicht nach Bildschirmbreite – am PC steht die Karte schmal neben den Anträgen. */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-2" data-konto-kacheln>
           <Kachel
             farbe="urlaub"
             titel="Urlaub"
