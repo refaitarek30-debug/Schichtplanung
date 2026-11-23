@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage, istVoruebergehendeStoerung } from "@/lib/errors";
-import { addDays } from "@/lib/dates";
 import type {
   LiveRotationPattern,
   LiveShiftAssignment,
@@ -132,9 +131,6 @@ interface SchichtplanKompaktZeile {
 /** Anzeige statt des Namens, wenn die Datenbank keinen schickt (Migration 0237). */
 export const OHNE_NAMEN = "Ohne Namen";
 
-/** Mehr Tage nimmt `shift_plan_grid()` nicht in einem Abruf. */
-const STUECK_TAGE = 60;
-
 /** Meldung, wenn der Plan wegen einer echten Störung nicht kommt. */
 export const PLAN_STOERUNG =
   "Der Schichtplan kann momentan nicht geladen werden. Bitte in einigen Minuten erneut versuchen.";
@@ -157,15 +153,6 @@ export async function fetchShiftPlanGrid(
   days: number,
 ): Promise<LiveShiftPlanCell[]> {
   if (!isSupabaseConfigured) return [];
-  // Die Datenbank liefert höchstens 62 Tage je Abruf. Größere Fenster
-  // (Plan scrollt durchgehend) kommen in Stücken, die gleichzeitig laufen.
-  if (days > STUECK_TAGE) {
-    const teile: Promise<LiveShiftPlanCell[]>[] = [];
-    for (let ab = 0; ab < days; ab += STUECK_TAGE) {
-      teile.push(fetchShiftPlanGrid(companyId, addDays(fromISO, ab), Math.min(STUECK_TAGE, days - ab)));
-    }
-    return (await Promise.all(teile)).flat();
-  }
   const supabase = createClient();
 
   const { data, error, status } = await supabase.rpc("schichtplan_kompakt", {

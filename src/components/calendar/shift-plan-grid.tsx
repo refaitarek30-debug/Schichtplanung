@@ -11,7 +11,6 @@ import {
   useRef,
   useState,
   useTransition,
-  type RefObject,
 } from "react";
 import {
   ArrowDown,
@@ -78,23 +77,6 @@ function zellSchluessel(employeeId: string, tag: string): string {
 function monatKurz(jahr: number, monat: number): string {
   return new Date(jahr, monat, 1).toLocaleDateString("de-DE", { month: "short", year: "numeric" });
 }
-
-/**
- * Der Plan scrollt durchgehend: Das Fenster wächst von selbst, sobald man sich
- * dem Rand nähert. So gibt es kein Blättern in Zeiträumen mehr.
- *  - CHUNK: so viele Tage kommen auf einmal dazu,
- *  - RECHTS_TAGE / LINKS_TAGE: ab so wenigen Tagen bis zum Rand wird nachgeladen
- *    (links früher als rechts nötig – dort scrollt man selten),
- *  - MIN_MAX_TAGE: so viele Tage hält das Fenster höchstens; darüber hinaus
- *    wandert es mit (die Gegenseite fällt weg), damit der Plan leicht bleibt.
- */
-const CHUNK = 30;
-const RECHTS_TAGE = 14;
-const LINKS_TAGE = 10;
-const MIN_MAX_TAGE = 90;
-/** So weit zurück und voraus lässt sich durchscrollen. */
-const TAGE_ZURUECK = 400;
-const TAGE_VORAUS = 800;
 
 /** Ab so vielen Millisekunden Drücken gilt es als „lang gedrückt“. */
 const LANG_DRUECKEN_MS = 500;
@@ -177,162 +159,6 @@ function cellLabel(code: string): string {
  */
 function dayHeader(iso: string): string {
   return `${Number(iso.slice(8, 10))}.${Number(iso.slice(5, 7))}.`;
-}
-
-/** Zwei Stücke desselben Plans aneinanderfügen (a vor b). */
-function fuegeZusammen(a: PlanStand, b: PlanStand): PlanStand {
-  return {
-    grid: [...a.grid, ...b.grid],
-    details: a.details.length ? a.details : b.details,
-    blocked: new Map([...a.blocked, ...b.blocked]),
-    ferien: new Map([...a.ferien, ...b.ferien]),
-    kommentare: [...a.kommentare, ...b.kommentare],
-  };
-}
-
-/** Nur die Tage von bis bis behalten – wenn das Fenster seine Höchstgröße hat. */
-function kuerze(stand: PlanStand, von: string, bis: string): PlanStand {
-  const drin = (tag: string) => tag >= von && tag <= bis;
-  return {
-    grid: stand.grid.filter((z) => drin(z.day)),
-    details: stand.details,
-    blocked: new Map([...stand.blocked].filter(([tag]) => drin(tag))),
-    ferien: new Map([...stand.ferien].filter(([tag]) => drin(tag))),
-    kommentare: stand.kommentare.filter((k) => drin(k.tag)),
-  };
-}
-
-/**
- * Welche Tage gerade im Bild sind – aus der Scrollstellung gerechnet. Jeder
- * Baustein, der das zeigt, hat seinen eigenen kleinen Zustand: beim Scrollen
- * wird nur er neu gezeichnet, nicht die ganze Tabelle.
- */
-function useSichtbar(box: RefObject<HTMLDivElement | null>, start: string, span: number, geladen: boolean) {
-  const [von, setVon] = useState(start);
-  const [anzahl, setAnzahl] = useState(Math.min(span, 14));
-  useEffect(() => {
-    const el = box.current;
-    if (!el || !geladen) {
-      setVon(start);
-      return;
-    }
-    let bild = 0;
-    const messen = () => {
-      bild = 0;
-      const name = el.querySelector<HTMLElement>("thead th");
-      if (!name) return;
-      const breite = (el.scrollWidth - name.offsetWidth) / span;
-      if (!(breite > 0)) return;
-      const index = Math.min(span - 1, Math.max(0, Math.floor(el.scrollLeft / breite + 0.001)));
-      setVon(addDays(start, index));
-      setAnzahl(Math.max(1, Math.floor((el.clientWidth - name.offsetWidth) / breite)));
-    };
-    const aufScrollen = () => {
-      if (!bild) bild = requestAnimationFrame(messen);
-    };
-    el.addEventListener("scroll", aufScrollen, { passive: true });
-    window.addEventListener("resize", aufScrollen);
-    messen();
-    return () => {
-      el.removeEventListener("scroll", aufScrollen);
-      window.removeEventListener("resize", aufScrollen);
-      if (bild) cancelAnimationFrame(bild);
-    };
-  }, [box, start, span, geladen]);
-  const bis = addDays(von, Math.max(0, Math.min(anzahl, span) - 1));
-  return { von, bis };
-}
-
-/** „24.11. – 14.12.“ – der Zeitraum, der gerade im Bild ist. */
-function SichtbarerZeitraum(props: { box: RefObject<HTMLDivElement | null>; start: string; span: number; geladen: boolean }) {
-  const { von, bis } = useSichtbar(props.box, props.start, props.span, props.geladen);
-  return <>{`${dayHeader(von)} – ${dayHeader(bis)}`}</>;
-}
-
-/** „Heute“ leuchtet, solange der heutige Tag im Bild ist. */
-function HeuteKnopf(props: {
-  box: RefObject<HTMLDivElement | null>;
-  start: string;
-  span: number;
-  geladen: boolean;
-  from: string;
-  onClick: () => void;
-}) {
-  const { von, bis } = useSichtbar(props.box, props.start, props.span, props.geladen);
-  const heuteDa = props.from >= von && props.from <= bis;
-  return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      className={cn(
-        "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-bold transition-colors",
-        heuteDa ? "bg-brand-600 text-white shadow-card" : "border border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
-      )}
-    >
-      Heute
-    </button>
-  );
-}
-
-/** Monat groß (zugleich die Monatsauswahl) – folgt dem, was im Bild steht. */
-function MonatsKopf(props: {
-  box: RefObject<HTMLDivElement | null>;
-  start: string;
-  span: number;
-  geladen: boolean;
-  from: string;
-  onWahl: (iso: string) => void;
-}) {
-  const { von } = useSichtbar(props.box, props.start, props.span, props.geladen);
-  // Der Monat wechselt etwas früher als die erste Spalte – wie in jedem Kalender.
-  const massgeblich = fromISO(addDays(von, 3));
-  const viewYear = massgeblich.getFullYear();
-  const viewMonth = massgeblich.getMonth();
-  // Auswahlliste: das laufende Jahr und das kommende. Vergangene Jahre stehen
-  // nicht mehr darin; zurück geht es durch Scrollen.
-  const monthOptions = useMemo(() => {
-    const base = fromISO(props.from).getFullYear();
-    const list: { value: string; label: string }[] = [];
-    for (let y = base; y <= base + 1; y += 1) {
-      for (let m = 0; m < 12; m += 1) {
-        list.push({ value: `${y}-${m}`, label: monatKurz(y, m) });
-      }
-    }
-    // Der angezeigte Monat muss in der Liste stehen, sonst springt das Feld
-    // beim Scrollen über den Rand auf einen falschen Eintrag.
-    if (!list.some((o) => o.value === `${viewYear}-${viewMonth}`)) {
-      list.push({ value: `${viewYear}-${viewMonth}`, label: monatKurz(viewYear, viewMonth) });
-      list.sort((a, b) => a.value.localeCompare(b.value, "de", { numeric: true }));
-    }
-    return list;
-  }, [props.from, viewYear, viewMonth]);
-  return (
-    <label className="relative mr-auto flex min-w-0 cursor-pointer items-baseline gap-1.5">
-      <span className="truncate text-[24px] font-bold leading-tight tracking-tight sm:text-[26px]">
-        {new Date(viewYear, viewMonth, 1).toLocaleDateString("de-DE", { month: "long" })}
-      </span>
-      <span className="text-[17px] font-medium text-ink-muted">{viewYear}</span>
-      <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-faint" strokeWidth={2.4} />
-      {/* Monat gezielt ansteuern statt sich dorthin zu scrollen – bei
-          Jahresplanung der schnellste Weg. Unsichtbar über dem Monatsnamen,
-          damit das System-Auswahlfeld aufgeht. */}
-      <select
-        value={`${viewYear}-${viewMonth}`}
-        onChange={(e) => {
-          const [y, m] = e.target.value.split("-").map(Number);
-          props.onWahl(`${y}-${String(m + 1).padStart(2, "0")}-01`);
-        }}
-        aria-label="Monat auswählen"
-        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-      >
-        {monthOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
 }
 
 /**
@@ -518,10 +344,7 @@ export function ShiftPlanGrid({
     } catch {
       // ohne lesbare Adresse wie gewohnt
     }
-    if (gemerkt && !(zumAntrag && gemerkt < from)) {
-      springen.current = true;
-      setStart(gemerkt);
-    }
+    if (gemerkt && !(zumAntrag && gemerkt < from)) setStart(gemerkt);
     // Nur beim ersten Rendern: ein späteres Blättern soll sich nicht selbst
     // überschreiben.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -530,14 +353,6 @@ export function ShiftPlanGrid({
   useEffect(() => {
     merkeAnsicht(merkSchluessel, start);
   }, [merkSchluessel, start]);
-  // Beim Verlassen: nicht den linken Rand des Fensters merken, sondern den Tag,
-  // der im Bild stand.
-  useEffect(
-    () => () => {
-      if (ersterSichtbar.current) merkeAnsicht(merkSchluessel, ersterSichtbar.current);
-    },
-    [merkSchluessel],
-  );
   /**
    * Fensterbreite in Tagen – fest, nicht wählbar.
    *
@@ -554,10 +369,16 @@ export function ShiftPlanGrid({
    * (30 Tage) – nicht erst zum nächsten Monatsersten. Die
    * Monatsauswahl setzt den Start auf den Ersten, ab dort gilt dasselbe.
    */
-  const [tage, setTage] = useState(days);
-  const span = tage;
+  const span = days;
+  const weiter = (s: string) => addDays(s, span);
+  const zurueck = (s: string) => addDays(s, -span);
 
-  /** Der Rahmen, in dem der Plan seitlich scrollt. */
+  /**
+   * Wischen blättert: nach links die nächsten Tage, nach rechts die
+   * vorigen. Passt der Plan nicht ganz aufs Handy, scrollt er erst bis zum
+   * Rand; erst ein Wischen am Rand blättert weiter.
+   */
+  const wischStart = useRef<{ x: number; y: number; links: number } | null>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
   /** Am PC: kleines Schild am Mauszeiger mit Name und Tag. */
   const zeigerSchild = useRef<HTMLDivElement>(null);
@@ -617,7 +438,33 @@ export function ShiftPlanGrid({
       weg();
     };
   }, []);
-
+  function wischBeginn(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (!t) return;
+    wischStart.current = { x: t.clientX, y: t.clientY, links: scrollBox.current?.scrollLeft ?? 0 };
+  }
+  function wischEnde(e: React.TouchEvent) {
+    const anfang = wischStart.current;
+    wischStart.current = null;
+    const t = e.changedTouches[0];
+    const box = scrollBox.current;
+    if (!anfang || !t || !box) return;
+    const dx = t.clientX - anfang.x;
+    const dy = t.clientY - anfang.y;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const maxLinks = box.scrollWidth - box.clientWidth;
+    // Stand der Plan beim Anfassen schon am Rand – oder ein kräftiger
+    // Wisch hat ihn bis an den Rand gebracht –, wird geblättert.
+    const kraeftig = Math.abs(dx) > 150;
+    const amEnde = (links: number) => links >= maxLinks - 2;
+    const amAnfang = (links: number) => links <= 2;
+    if (dx < 0 && (amEnde(anfang.links) || (kraeftig && amEnde(box.scrollLeft)))) {
+      geheZu(weiter(start));
+    } else if (dx > 0 && (amAnfang(anfang.links) || (kraeftig && amAnfang(box.scrollLeft)))) {
+      // Zurück: am Ende des vorigen Zeitraums landen, nicht am Anfang.
+      geheZu(zurueck(start), true);
+    }
+  }
   const [mehrOffen, setMehrOffen] = useState(false);
   useEffect(() => {
     if (!mehrOffen) return;
@@ -751,7 +598,7 @@ export function ShiftPlanGrid({
   const { profile } = useSession();
   // Je Benutzer getrennt: die Führung sieht andere Zeilen als ein Mitarbeiter.
   const schluesselFuer = useCallback(
-    (s: string, n: number = span) => `${profile.id}:plan:${companyId}:${s}:${n}`,
+    (s: string) => `${profile.id}:plan:${companyId}:${s}:${span}`,
     [profile.id, companyId, span],
   );
   const speicherSchluessel = schluesselFuer(start);
@@ -774,27 +621,10 @@ export function ShiftPlanGrid({
   const [, startBlaettern] = useTransition();
   /** Fingerabdruck des angezeigten Stands – gleich = nicht neu zeichnen. */
   const angezeigt = useRef<string | null>(null);
-  /** Der Stand, der gerade im Bild ist – die Grundlage fürs Anfügen neuer Stücke. */
-  const aktuellerStand = useRef<PlanStand | null>(null);
-  /** Aktuelles Fenster, damit eine langsame Antwort erkennt, ob sie noch passt. */
-  const fenster = useRef({ start, tage: days });
-  /** Hat die Person den Plan schon angefasst? Erst dann wächst er nach links. */
-  const angefasst = useRef(false);
-  /** Erster Tag im Bild – damit das Öffnen dort weitermacht, wo man war. */
-  const ersterSichtbar = useRef<string | null>(null);
-  /** Springen statt wachsen: nach einem Sprung steht der erste Tag links. */
-  const springen = useRef(true);
-  /** Zählt Sprünge – ein Wachsen, das noch unterwegs ist, wird dann verworfen. */
-  const fensterNr = useRef(0);
-  /** Fenster wächst gerade (nur eine Erweiterung zur Zeit). */
-  const waechst = useRef(false);
-  /** Spalte, die beim Wachsen an derselben Stelle im Bild bleiben soll. */
-  const anker = useRef<{ iso: string; links: number } | null>(null);
-  /** Schlüssel des Stands, der gerade frisch geholt wurde – kein zweiter Abruf nötig. */
-  const frisch = useRef<string | null>(null);
+  /** Nach dem Zurückblättern ans Ende des Zeitraums scrollen. */
+  const zumEnde = useRef(false);
 
   function zeige(stand: PlanStand) {
-    aktuellerStand.current = stand;
     const abdruck = JSON.stringify([
       stand.grid,
       stand.details,
@@ -811,38 +641,13 @@ export function ShiftPlanGrid({
     setKommentare(stand.kommentare ?? []);
   }
 
-  /** Sanft zu einem Tag scrollen, der schon im Fenster liegt. */
-  function scrolleZuTag(iso: string): boolean {
-    const box = scrollBox.current;
-    const th = box?.querySelector<HTMLElement>(`thead th[data-tag="${iso}"]`);
-    const name = box?.querySelector<HTMLElement>("thead th");
-    if (!box || !th || !name) return false;
-    box.scrollTo({ left: Math.max(0, th.offsetLeft - name.offsetWidth), behavior: "smooth" });
-    return true;
-  }
-
-  /** Pfeile: eine Bildschirmbreite weiter scrollen – der Plan wächst dabei von selbst. */
-  function blaettere(richtung: 1 | -1) {
-    const box = scrollBox.current;
-    const name = box?.querySelector<HTMLElement>("thead th");
-    if (!box || !name) return;
-    const seite = Math.max(200, (box.clientWidth - name.offsetWidth) * 0.85);
-    box.scrollBy({ left: richtung * seite, behavior: "smooth" });
-  }
-
-  /**
-   * Zu einem Tag gehen: liegt er schon im Fenster, scrollt der Plan sanft
-   * hin; sonst springt das Fenster dorthin (Monatswahl in ein fernes Jahr).
-   */
-  function geheZu(neu: string) {
-    if (neu >= start && neu <= addDays(start, span - 1) && scrolleZuTag(neu)) return;
-    fensterNr.current += 1;
-    springen.current = true;
+  function geheZu(neu: string, ansEnde = false) {
+    if (neu === start) return;
     setError(null);
-    const gemerkt = ausZwischenspeicher<PlanStand>(schluesselFuer(neu, days));
+    const gemerkt = ausZwischenspeicher<PlanStand>(schluesselFuer(neu));
+    zumEnde.current = ansEnde;
     startBlaettern(() => {
       setStart(neu);
-      setTage(days);
       if (gemerkt) {
         zeige(gemerkt);
       } else {
@@ -883,12 +688,12 @@ export function ShiftPlanGrid({
    */
   /** Alles, was ein Zeitraum braucht, in einem Rutsch holen. */
   const holeStand = useCallback(
-    async (s: string, n: number, alterRahmen: typeof rahmen.current) => {
-      const schluessel = schluesselFuer(s, n);
-      const bis = addDays(s, n - 1);
+    async (s: string, alterRahmen: typeof rahmen.current) => {
+      const schluessel = schluesselFuer(s);
+      const bis = addDays(s, span - 1);
       const rahmenDa = alterRahmen?.schluessel === schluessel;
       const [grid, blockedDays, neueKommentare, neuerRahmen] = await Promise.all([
-        fetchShiftPlanGrid(companyId, s, n),
+        fetchShiftPlanGrid(companyId, s, span),
         fetchBlockedDays(s, bis),
         fetchPlanKommentare(s, bis),
         rahmenDa
@@ -896,10 +701,8 @@ export function ShiftPlanGrid({
           : (async () => {
               // Die Schichtdetails liefern Name und Id gleich mit – eine
               // zweite Abfrage nur für die Auswahlliste braucht es nicht.
-              // Die Schichtdetails hängen nicht vom Fenster ab – beim Wachsen
-              // bleiben sie, nur die Ferien des neuen Fensters kommen dazu.
               const [details, ferienZeitraeume] = await Promise.all([
-                alterRahmen ? Promise.resolve(alterRahmen.details) : fetchShiftDetails(),
+                fetchShiftDetails(),
                 fetchSchoolHolidays(s, bis),
               ]);
               // Zeiträume auf einzelne Tage aufziehen, damit der Tabellenkopf
@@ -923,51 +726,21 @@ export function ShiftPlanGrid({
       };
       return { stand, rahmen: neuerRahmen };
     },
-    [companyId, schluesselFuer],
+    [companyId, span, schluesselFuer],
   );
 
-  /** Wie weit das Fenster höchstens reicht: so viele Tage, wie im Bild sind, plus Luft. */
-  const maxTage = useCallback(() => {
-    const box = scrollBox.current;
-    const name = box?.querySelector<HTMLElement>("thead th");
-    const spalte = box?.querySelector<HTMLElement>("thead th[data-tag]");
-    if (!box || !name || !spalte || !spalte.offsetWidth) return MIN_MAX_TAGE;
-    const imBild = Math.ceil((box.clientWidth - name.offsetWidth) / spalte.offsetWidth);
-    return Math.max(MIN_MAX_TAGE, imBild + CHUNK + RECHTS_TAGE + LINKS_TAGE + CHUNK);
-  }, []);
-
-  /** Das Fenster nach einer Erweiterung – oder null, wenn es nicht weiter geht. */
-  const naechstesFenster = useCallback(
-    (seite: "rechts" | "links"): { start: string; tage: number } | null => {
-      const grenze = maxTage();
-      if (seite === "rechts") {
-        let neuTage = span + CHUNK;
-        let neuStart = start;
-        if (neuTage > grenze) {
-          neuStart = addDays(start, neuTage - grenze);
-          neuTage = grenze;
-        }
-        if (addDays(neuStart, neuTage) > addDays(from, TAGE_VORAUS)) return null;
-        return { start: neuStart, tage: neuTage };
-      }
-      if (start <= addDays(from, -TAGE_ZURUECK)) return null;
-      return { start: addDays(start, -CHUNK), tage: Math.min(span + CHUNK, grenze) };
-    },
-    [maxTage, span, start, from],
-  );
-
-  /** Das nächste Stück rechts im Hintergrund holen, damit das Weiterscrollen nicht wartet. */
+  /** Nachbarzeitraum im Hintergrund holen, damit der nächste Wisch sofort steht. */
   const imVorladen = useRef(new Set<string>());
   const vorladen = useCallback(
-    (stueckStart: string) => {
-      const schluessel = schluesselFuer(stueckStart, CHUNK);
+    (s: string) => {
+      const schluessel = schluesselFuer(s);
       if (ausZwischenspeicher<PlanStand>(schluessel) || imVorladen.current.has(schluessel)) return;
       if (document.visibilityState !== "visible") return;
       imVorladen.current.add(schluessel);
-      holeStand(stueckStart, CHUNK, rahmen.current)
+      holeStand(s, null)
         .then(({ stand }) => inZwischenspeicher<PlanStand>(schluessel, stand))
         .catch(() => {
-          // Vorladen ist Beiwerk – klappt es nicht, wird beim Wachsen geholt.
+          // Vorladen ist Beiwerk – klappt es nicht, lädt der Wisch wie bisher.
         })
         .finally(() => imVorladen.current.delete(schluessel));
     },
@@ -982,13 +755,6 @@ export function ShiftPlanGrid({
    * Unterschied für die Datenbank.
    */
   const load = useCallback(async (nurDaten = false) => {
-    // Gerade erst für dieses Fenster geholt (beim Wachsen): nicht gleich noch einmal.
-    if (!nurDaten && frisch.current === speicherSchluessel) {
-      frisch.current = null;
-      window.clearTimeout(vorladeUhr.current);
-      vorladeUhr.current = window.setTimeout(() => vorladen(addDays(start, span)), 600);
-      return;
-    }
     const meiner = ++letzterAbruf.current;
     setLadeFehler(null);
     // Schon einmal geladen? Dann sofort zeigen und im Hintergrund auffrischen.
@@ -1005,7 +771,7 @@ export function ShiftPlanGrid({
       let ergebnis: Awaited<ReturnType<typeof holeStand>>;
       for (;;) {
         try {
-          ergebnis = await holeStand(start, span, nurDaten ? rahmen.current : null);
+          ergebnis = await holeStand(start, nurDaten ? rahmen.current : null);
           break;
         } catch (fehler) {
           if (versuch >= 2 || meiner !== letzterAbruf.current) throw fehler;
@@ -1024,10 +790,9 @@ export function ShiftPlanGrid({
         // Kurz warten, damit das Vorladen nicht mit dem Aufbau der Tabelle
         // um die Leitung konkurriert.
         window.clearTimeout(vorladeUhr.current);
-        // Nur nach rechts vorladen – dort scrollt man meistens hin – und nur,
-        // wenn die Person den Plan schon bewegt hat. Nach links kommt er bei Bedarf.
         vorladeUhr.current = window.setTimeout(() => {
-          if (angefasst.current) vorladen(addDays(start, span));
+          vorladen(addDays(start, span));
+          vorladen(addDays(start, -span));
         }, 600);
       }
     } catch (caught) {
@@ -1100,148 +865,22 @@ export function ShiftPlanGrid({
   );
 
   /**
-   * Nach einem Sprung (Heute, Monatswahl, Öffnen) steht der erste Tag ganz
-   * links. Wächst das Fenster nach links, bleibt die Spalte im Bild, die vorher
-   * schon dort stand – gemessen an ihrer Lage in der Tabelle, nicht am Bild,
-   * damit ein Weiterscrollen währenddessen nichts verschiebt.
+   * Der erste angezeigte Tag steht immer ganz links – nach „Heute“, nach
+   * einem Monatswechsel und beim Öffnen. Vorher blieb die Tabelle seitlich
+   * verschoben stehen, und der gewünschte Tag war nicht im Bild.
    */
   const geladen = cells !== null;
-  // Vor dem Zeichnen, sonst blitzt kurz der falsche Ausschnitt auf.
+  // Vor dem Zeichnen, sonst blitzt beim Zurückblättern kurz der Anfang auf.
   useLayoutEffect(() => {
-    fenster.current = { start, tage: span };
     const box = scrollBox.current;
     if (!box) return;
-    const a = anker.current;
-    if (a) {
-      anker.current = null;
-      const th = box.querySelector<HTMLElement>(`thead th[data-tag="${a.iso}"]`);
-      if (th) box.scrollLeft += th.offsetLeft - a.links;
-      return;
-    }
-    if (springen.current && geladen) {
-      springen.current = false;
+    if (zumEnde.current && geladen) {
+      box.scrollLeft = box.scrollWidth;
+      zumEnde.current = false;
+    } else {
       box.scrollLeft = 0;
     }
-  }, [start, span, geladen]);
-
-  /** Erste Spalte, die rechts neben dem Namen sichtbar ist. */
-  const ersteSichtbare = useCallback((): { iso: string; links: number } | null => {
-    const box = scrollBox.current;
-    const name = box?.querySelector<HTMLElement>("thead th");
-    if (!box || !name) return null;
-    const rand = box.scrollLeft + name.offsetWidth + 1;
-    for (const th of box.querySelectorAll<HTMLElement>("thead th[data-tag]")) {
-      if (th.offsetLeft + th.offsetWidth > rand) return { iso: th.dataset.tag!, links: th.offsetLeft };
-    }
-    return null;
-  }, []);
-
-  /**
-   * Fenster nach rechts oder links wachsen lassen: nur das neue Stück (30
-   * Tage) wird geholt und angefügt. Der alte Ausschnitt bleibt stehen, bis es
-   * da ist; dann kommen Spalten dazu, ohne dass sich das Bild bewegt. Hat das
-   * Fenster seine Höchstgröße, wandert es mit – die Gegenseite fällt weg.
-   */
-  const waechse = useCallback(
-    async (seite: "rechts" | "links") => {
-      if (waechst.current) return;
-      const ziel = naechstesFenster(seite);
-      const alt = fenster.current;
-      if (!ziel) return;
-      const nr = fensterNr.current;
-      waechst.current = true;
-      try {
-        const stueckStart = seite === "rechts" ? addDays(alt.start, alt.tage) : addDays(alt.start, -CHUNK);
-        const stueckKey = schluesselFuer(stueckStart, CHUNK);
-        let stueck = ausZwischenspeicher<PlanStand>(stueckKey);
-        if (!stueck) {
-          const r = await holeStand(stueckStart, CHUNK, rahmen.current);
-          stueck = r.stand;
-          inZwischenspeicher<PlanStand>(stueckKey, stueck);
-        }
-        // Inzwischen woandershin gesprungen oder neu geladen: das Stück passt nicht mehr.
-        const jetzt = fenster.current;
-        const basis = aktuellerStand.current;
-        if (nr !== fensterNr.current || !basis || jetzt.start !== alt.start || jetzt.tage !== alt.tage) return;
-
-        let neu = seite === "rechts" ? fuegeZusammen(basis, stueck) : fuegeZusammen(stueck, basis);
-        const bis = addDays(ziel.start, ziel.tage - 1);
-        // Höchstgröße: die Gegenseite wegnehmen.
-        if (ziel.tage < alt.tage + CHUNK) neu = kuerze(neu, ziel.start, bis);
-        const schluessel = schluesselFuer(ziel.start, ziel.tage);
-        anker.current = ersteSichtbare();
-        frisch.current = schluessel;
-        rahmen.current = { schluessel, details: neu.details, ferien: neu.ferien };
-        inZwischenspeicher<PlanStand>(schluessel, neu);
-        const fertig = neu;
-        startBlaettern(() => {
-          setStart(ziel.start);
-          setTage(ziel.tage);
-          zeige(fertig);
-        });
-      } catch {
-        // Wachsen ist Beiwerk: klappt es nicht, bleibt der Plan, wie er ist.
-        // Beim nächsten Scrollen wird es noch einmal versucht.
-      } finally {
-        waechst.current = false;
-      }
-    },
-    [naechstesFenster, schluesselFuer, holeStand, ersteSichtbare],
-  );
-  const waechseRef = useRef(waechse);
-  useEffect(() => {
-    waechseRef.current = waechse;
-  });
-
-  // Nähert sich der Plan dem Rand, wächst das Fenster – auch ohne Scrollen,
-  // solange noch Platz im Bild ist (breiter Bildschirm).
-  useEffect(() => {
-    const box = scrollBox.current;
-    if (!box || !geladen) return;
-    let bild = 0;
-    const pruefe = () => {
-      bild = 0;
-      const name = box.querySelector<HTMLElement>("thead th");
-      const spalte = box.querySelector<HTMLElement>("thead th[data-tag]");
-      if (!name || !spalte || !spalte.offsetWidth) return;
-      const breite = spalte.offsetWidth;
-      const links = box.scrollLeft / breite;
-      const rechts = (box.scrollWidth - box.clientWidth - box.scrollLeft) / breite;
-      const grenze = maxTage();
-      // Für „Zuletzt angesehen“ beim nächsten Öffnen.
-      const erste = ersteSichtbare();
-      if (erste) ersterSichtbar.current = erste.iso;
-      if (rechts < RECHTS_TAGE) {
-        // An der Höchstgröße wandert das Fenster nur, wenn dabei links genug übrig bleibt.
-        if (span < grenze || links > CHUNK + LINKS_TAGE) void waechseRef.current("rechts");
-      } else if (links < LINKS_TAGE && angefasst.current) {
-        if (span < grenze || rechts > CHUNK + RECHTS_TAGE) void waechseRef.current("links");
-      }
-    };
-    const aufScrollen = () => {
-      if (!bild) bild = requestAnimationFrame(pruefe);
-    };
-    // Erst wenn die Person den Plan anfasst, bekommt er auch links Luft – so
-    // kostet das bloße Öffnen nur den einen Abruf wie früher.
-    const angefasstMelden = () => {
-      angefasst.current = true;
-      aufScrollen();
-    };
-    box.addEventListener("scroll", angefasstMelden, { passive: true });
-    box.addEventListener("pointerdown", angefasstMelden, { passive: true });
-    box.addEventListener("touchstart", angefasstMelden, { passive: true });
-    box.addEventListener("wheel", angefasstMelden, { passive: true });
-    window.addEventListener("resize", aufScrollen);
-    aufScrollen();
-    return () => {
-      box.removeEventListener("scroll", angefasstMelden);
-      box.removeEventListener("pointerdown", angefasstMelden);
-      box.removeEventListener("touchstart", angefasstMelden);
-      box.removeEventListener("wheel", angefasstMelden);
-      window.removeEventListener("resize", aufScrollen);
-      if (bild) cancelAnimationFrame(bild);
-    };
-  }, [geladen, start, span, maxTage, ersteSichtbare]);
+  }, [start, geladen]);
 
   /** Zeilen nach Schichtgruppe gruppieren – wie die Blöcke A/B/C/D im Excel. */
   const groups = useMemo(() => {
@@ -1258,11 +897,7 @@ export function ShiftPlanGrid({
           cells: new Map(),
         });
       }
-      const zeile = byEmployee.get(cell.employeeId)!;
-      zeile.cells.set(cell.day, cell);
-      // Zellen kommen in Tagesfolge: die letzte entscheidet über die Gruppe,
-      // wie im 30-Tage-Fenster (Gruppenwechsel mitten im Fenster).
-      zeile.team = cell.rotationTeam;
+      byEmployee.get(cell.employeeId)!.cells.set(cell.day, cell);
     }
 
     const teams = new Map<string, GridRow[]>();
@@ -1477,6 +1112,30 @@ export function ShiftPlanGrid({
     }
     return ziele;
   }, [selected, groups, gruppenSchicht, shiftDetails]);
+
+  // Auswahlliste: das laufende Jahr und das kommende. Vergangene Jahre stehen
+  // nicht mehr darin; zurückblättern geht weiter über die Pfeile.
+  const viewYear = fromISO(start).getFullYear();
+  const viewMonth = fromISO(start).getMonth();
+  const monthOptions = useMemo(() => {
+    const base = fromISO(from).getFullYear();
+    const list: { value: string; label: string }[] = [];
+    for (let y = base; y <= base + 1; y += 1) {
+      for (let m = 0; m < 12; m += 1) {
+        list.push({ value: `${y}-${m}`, label: monatKurz(y, m) });
+      }
+    }
+    // Der angezeigte Monat muss in der Liste stehen, sonst springt das Feld
+    // beim Blättern über den Rand auf einen falschen Eintrag.
+    if (!list.some((o) => o.value === `${viewYear}-${viewMonth}`)) {
+      list.push({
+        value: `${viewYear}-${viewMonth}`,
+        label: monatKurz(viewYear, viewMonth),
+      });
+      list.sort((a, b) => a.value.localeCompare(b.value, "de", { numeric: true }));
+    }
+    return list;
+  }, [from, viewYear, viewMonth]);
 
   function applyChange(action: PlanAktion, value: string) {
     if (!selected) return;
@@ -1761,9 +1420,49 @@ export function ShiftPlanGrid({
           die seltener gebrauchten Schalter als kleine Knöpfe. */}
       <div className="relative space-y-2.5 border-b border-line px-3 pb-3 pt-3 sm:px-4">
         <div className="flex items-center gap-2">
-          <MonatsKopf box={scrollBox} start={start} span={span} geladen={geladen} from={from} onWahl={geheZu} />
+          <label className="relative mr-auto flex min-w-0 cursor-pointer items-baseline gap-1.5">
+            <span className="truncate text-[24px] font-bold leading-tight tracking-tight sm:text-[26px]">
+              {new Date(viewYear, viewMonth, 1).toLocaleDateString("de-DE", { month: "long" })}
+            </span>
+            <span className="text-[17px] font-medium text-ink-muted">{viewYear}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-faint" strokeWidth={2.4} />
+            {/* Monat gezielt ansteuern statt sich in Schritten dorthin zu
+                klicken – bei Jahresplanung der schnellste Weg. Unsichtbar
+                über dem Monatsnamen, damit das System-Auswahlfeld aufgeht. */}
+            <select
+              value={`${viewYear}-${viewMonth}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split("-").map(Number);
+                // Nur der Startpunkt springt. Die Fensterbreite bleibt fest –
+                // sonst lüde ein 31-Tage-Monat wieder 31 Tage.
+                geheZu(`${y}-${String(m + 1).padStart(2, "0")}-01`);
+              }}
+              aria-label="Monat auswählen"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              {monthOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {/* Der Weg zurück zum heutigen Tag – oben rechts, neben „Mehr“. */}
-          <HeuteKnopf box={scrollBox} start={start} span={span} geladen={geladen} from={from} onClick={() => geheZu(from)} />
+          <button
+            type="button"
+            onClick={() => {
+              geheZu(from);
+              if (scrollBox.current) scrollBox.current.scrollLeft = 0;
+            }}
+            className={cn(
+              "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-bold transition-colors",
+              start === from
+                ? "bg-brand-600 text-white shadow-card"
+                : "border border-brand-600 bg-brand-50 text-brand-700 hover:bg-brand-100",
+            )}
+          >
+            Heute
+          </button>
           <button
             type="button"
             onClick={() => setMehrOffen((v) => !v)}
@@ -1780,18 +1479,18 @@ export function ShiftPlanGrid({
           <div className="flex h-10 min-w-0 flex-1 items-center rounded-full border border-line bg-surface-muted/60 sm:max-w-xs">
             <button
               type="button"
-              onClick={() => blaettere(-1)}
+              onClick={() => geheZu(zurueck(start))}
               className="flex h-full w-11 shrink-0 items-center justify-center rounded-l-full text-ink hover:bg-surface-sunken"
               aria-label="Vorheriger Zeitraum"
             >
               <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={2.4} />
             </button>
             <span className="tnum min-w-0 flex-1 truncate text-center text-[13.5px] font-semibold">
-              <SichtbarerZeitraum box={scrollBox} start={start} span={span} geladen={geladen} />
+              {`${dayHeader(start)} – ${dayHeader(addDays(start, span - 1))}`}
             </span>
             <button
               type="button"
-              onClick={() => blaettere(1)}
+              onClick={() => geheZu(weiter(start))}
               className="flex h-full w-11 shrink-0 items-center justify-center rounded-r-full text-ink hover:bg-surface-sunken"
               aria-label="Nächster Zeitraum"
             >
@@ -2292,9 +1991,8 @@ export function ShiftPlanGrid({
       <div
         className={cn("overflow-x-auto overscroll-x-contain rounded-b-card", randlos && "max-sm:rounded-none")}
         ref={scrollBox}
-        // Der Browser darf den Stand nicht selbst nachziehen, wenn links Spalten
-        // dazukommen – das übernimmt das Fenster (siehe „anker“).
-        style={{ overflowAnchor: "none" }}
+        onTouchStart={wischBeginn}
+        onTouchEnd={wischEnde}
       >
         <div
           ref={zeigerSchild}
