@@ -25,6 +25,7 @@ import privatNeu from "./privat-neu.test.mjs";
 import umfrage from "./umfrage.test.mjs";
 import zweiFaktor from "./zwei-faktor.test.mjs";
 import meineDaten from "./meine-daten.test.mjs";
+import planScroll from "./plan-scroll.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -47,6 +48,7 @@ const ABLAEUFE = [
   ["Untere Leiste bleibt unten", "betrieb", leiste],
   ["Handy: fester Rahmen, nur der Inhalt scrollt", "betrieb", rahmen],
   ["Zwei-Faktor-Anmeldung und Sperre", "betrieb", zweiFaktor],
+  ["Schichtplan scrollt durchgehend", "betrieb", planScroll],
 ];
 
 const nur = process.argv[2];
