@@ -502,7 +502,10 @@ export default function DatenschutzPage() {
         </Absatz>
         <Absatz>
           <strong>Mitteilungen aufs Handy:</strong> Wer auf einem Gerät Mitteilungen erlaubt,
-          bekommt als Push-Mitteilung: Erinnerungen an Termine und To-dos, die Benachrichtigungen
+          bekommt als Push-Mitteilung: Erinnerungen an Termine und To-dos, im Privatbereich auf
+          Wunsch eine Erinnerung an die eigene Schicht (am Abend vorher um 18 Uhr oder 1 Stunde vor
+          Beginn, mit Name und Uhrzeit der Schicht; dafür wird alle 10 Minuten geprüft, ob morgen
+          bzw. gleich eine Arbeitsschicht eingetragen ist), die Benachrichtigungen
           der Glocke (z. B. Urlaub genehmigt oder abgelehnt, neuer Antrag für die Leitung,
           Frage zum Einspringen), Änderungen des eigenen Plans durch die
           Schichtleitung (Datum und neue Schicht, mehrere Tage zusammengefasst), Hinweise der

@@ -129,8 +129,13 @@ export const MonatsScroller = forwardRef<
     const ro = new ResizeObserver(() => {
       const neu = el.clientHeight;
       if (!neu || neu === alteHoehe) return;
-      // Auf der Seite bleiben, auf der man gerade ist – auch mitten im Wischen.
-      const i = alteHoehe > 1 ? Math.round(el.scrollTop / alteHoehe) : aktuellRef.current;
+      // Auf der Seite bleiben, auf der man gerade ist – auch mitten im Wischen. Beim Einrasten
+      // stellt der Browser manchmal schon selbst auf die neue Höhe um: dann zählt die neue.
+      const ausAlt = alteHoehe > 1 ? el.scrollTop / alteHoehe : aktuellRef.current;
+      const ausNeu = el.scrollTop / neu;
+      const i = Math.round(
+        Math.abs(ausNeu - aktuellRef.current) < Math.abs(ausAlt - aktuellRef.current) ? ausNeu : ausAlt,
+      );
       alteHoehe = neu;
       el.scrollTop = i * neu;
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ErinnerungenGeraet, MitteilungsArten } from "./erinnerungen";
+import { ErinnerungenGeraet, MitteilungsArten, SchichtErinnerungWahl } from "./erinnerungen";
 import { ROLLEN, RollenAuswahl, useVorlieben } from "./vorschlaege";
 import type { Rolle } from "@/lib/data/todos";
 
@@ -9,7 +9,7 @@ import type { Rolle } from "@/lib/data/todos";
  * Einstellungen für den Kalender: Erinnerungen auf diesem Gerät und wofür
  * man den Kalender nutzt (für die Vorschläge). Privat und Firma.
  */
-export function KalenderVorliebenInhalt({ firma = false }: { firma?: boolean }) {
+export function KalenderVorliebenInhalt({ firma = false, privatNutzer }: { firma?: boolean; /** Privatbereich: Erinnerung an die eigene Schicht. */ privatNutzer?: string }) {
   const { vorlieben, setzen } = useVorlieben();
   const [offen, setOffen] = useState(false);
   const [wahl, setWahl] = useState<Rolle[] | null>(null);
@@ -20,6 +20,7 @@ export function KalenderVorliebenInhalt({ firma = false }: { firma?: boolean }) 
   return (
     <div className="space-y-4">
       <ErinnerungenGeraet />
+      {privatNutzer ? <SchichtErinnerungWahl userId={privatNutzer} /> : null}
       <MitteilungsArten firma={firma} />
       <div>
         <div className="flex items-center justify-between gap-3">

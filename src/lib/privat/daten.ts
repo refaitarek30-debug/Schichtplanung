@@ -268,6 +268,23 @@ export async function wendeRotationAn(
   return Number(data ?? 0);
 }
 
+/** Erinnerung an die eigene Schicht (Migration 0241): Abend vorher 18 Uhr, 1 Std. vorher oder aus. */
+export type SchichtErinnerung = "vortag18" | "stunde1" | null;
+
+export async function ladeSchichtErinnerung(): Promise<SchichtErinnerung> {
+  const { data, error } = await createClient()
+    .from("privat_konten")
+    .select("schicht_erinnerung")
+    .maybeSingle<{ schicht_erinnerung: SchichtErinnerung }>();
+  if (error) return null;
+  return data?.schicht_erinnerung ?? null;
+}
+
+export async function setzeSchichtErinnerung(userId: string, wert: SchichtErinnerung) {
+  const { error } = await createClient().from("privat_konten").update({ schicht_erinnerung: wert }).eq("user_id", userId);
+  if (error) fehler(error, "Die Erinnerung konnte nicht gespeichert werden.");
+}
+
 export async function ladeFeiertage(jahr: number): Promise<Feiertag[]> {
   const { data, error } = await createClient().rpc("privat_feiertage", { p_jahr: jahr });
   if (error) return [];

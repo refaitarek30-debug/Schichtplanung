@@ -55,11 +55,13 @@ export function RotationBlatt({
 }: {
   arten: Schichtart[];
   heute: string;
-  onFertig: () => void;
+  /** Mit der Zahl der eingetragenen Tage und dem letzten Tag. */
+  onFertig: (ergebnis: { tage: number; bis: string }) => void;
   onClose: () => void;
 }) {
   const [muster, setMuster] = useState<(string | null)[]>([]);
   const [start, setStart] = useState(heute);
+  const [anderesDatum, setAnderesDatum] = useState(false);
   const [monate, setMonate] = useState(12);
   const [ueberschreiben, setUeberschreiben] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -80,6 +82,8 @@ export function RotationBlatt({
   const vorlagen = VORLAGEN.filter((v) => v.folge.every((k) => nachKuerzel.has(k)));
 
   const bis = plusMonate(start, monate);
+  const erste = muster[0] ? nachId.get(muster[0]) : undefined;
+  const naechsteTage = Array.from({ length: 7 }, (_, i) => addDays(heute, i));
 
   async function anwenden() {
     if (!muster.length) {
@@ -93,8 +97,8 @@ export function RotationBlatt({
     setLaeuft(true);
     setFehler(null);
     try {
-      await wendeRotationAn(start, bis, muster, ueberschreiben);
-      onFertig();
+      const tage = await wendeRotationAn(start, bis, muster, ueberschreiben);
+      onFertig({ tage, bis });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Das hat nicht geklappt.");
       setLaeuft(false);
@@ -124,33 +128,47 @@ export function RotationBlatt({
       {loesch.fenster}
       {vorlagen.length ? (
         <>
-          <p className="mb-2 text-[13px] font-semibold text-ink-muted">Vorlage</p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {vorlagen.map((v) => (
-              <button
-                key={v.kurz}
-                type="button"
-                onClick={() => {
-                  const neu = v.folge.map((k) => nachKuerzel.get(k)!.id);
-                  if (!muster.length) return setMuster(neu);
-                  loesch.frage({
-                    titel: "Vorlage übernehmen?",
-                    text: "Deine bisherige Folge wird dabei ersetzt.",
-                    knopf: "Übernehmen",
-                    onJa: () => setMuster(neu),
-                  });
-                }}
-                className="rounded-[14px] bg-ink/[0.06] px-3 py-2 text-left text-[13px] hover:bg-ink/[0.1]"
-              >
-                {v.name}
-              </button>
-            ))}
+          <p className="mb-2 text-[13px] font-semibold text-ink-muted">Welche Folge passt?</p>
+          <div data-vorlagen className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {vorlagen.map((v) => {
+              const ids = v.folge.map((k) => nachKuerzel.get(k)!.id);
+              const gewaehlt = ids.length === muster.length && ids.every((id, i) => muster[i] === id);
+              return (
+                <button
+                  key={v.kurz}
+                  type="button"
+                  aria-pressed={gewaehlt}
+                  onClick={() => {
+                    if (gewaehlt) return;
+                    if (!muster.length || VORLAGEN.some((x) => x.folge.length === muster.length && x.folge.every((k, i) => nachKuerzel.get(k)?.id === muster[i])))
+                      return setMuster(ids);
+                    loesch.frage({
+                      titel: "Vorlage übernehmen?",
+                      text: "Deine bisherige Folge wird dabei ersetzt.",
+                      knopf: "Übernehmen",
+                      onJa: () => setMuster(ids),
+                    });
+                  }}
+                  className={cn(
+                    "rounded-[16px] px-3 py-2.5 text-left ring-1 transition-colors",
+                    gewaehlt ? "bg-brand-500/[0.1] ring-2 ring-brand-500" : "bg-ink/[0.04] ring-line hover:bg-ink/[0.07]",
+                  )}
+                >
+                  <span className="block text-[13.5px] font-semibold">{v.name}</span>
+                  <span className="mt-1.5 flex gap-[3px]" aria-hidden>
+                    {v.folge.map((k, i) => (
+                      <span key={i} className="h-2.5 flex-1 rounded-[3px]" style={{ background: nachKuerzel.get(k)!.farbe }} />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </>
       ) : null}
 
       <p className="mb-2 text-[13px] font-semibold text-ink-muted">
-        Deine Folge {muster.length ? <span className="font-normal">· {muster.length} Tage</span> : null}
+        {vorlagen.length ? "Oder eigene Folge" : "Deine Folge"} {muster.length ? <span className="font-normal">· {muster.length} Tage</span> : null}
       </p>
       <div className="h-[52px] rounded-[16px] bg-ink/[0.05] p-2">
         {muster.length ? (
@@ -228,16 +246,58 @@ export function RotationBlatt({
         </button>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block min-w-0">
-          <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Erster Tag der Folge</span>
+      <div className="mt-5">
+        <p className="text-[13px] font-semibold text-ink-muted">Wann beginnt die Folge?</p>
+        {erste ? (
+          <p className="text-[12.5px] text-ink-faint">
+            Also der nächste Tag mit „{erste.name}“ ganz vorne in der Folge.
+          </p>
+        ) : null}
+        <div data-start-tage className="mt-2 flex flex-wrap gap-1.5">
+          {naechsteTage.map((iso) => {
+            const d = fromISO(iso);
+            const an = !anderesDatum && start === iso;
+            return (
+              <button
+                key={iso}
+                type="button"
+                aria-pressed={an}
+                onClick={() => {
+                  setAnderesDatum(false);
+                  setStart(iso);
+                }}
+                className={cn(
+                  "h-9 rounded-full px-3 text-[13px] font-semibold",
+                  an ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink",
+                )}
+              >
+                {iso === heute ? "Heute" : `${WT[d.getDay()]} ${d.getDate()}.`}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            aria-pressed={anderesDatum}
+            onClick={() => setAnderesDatum(true)}
+            className={cn(
+              "h-9 rounded-full px-3 text-[13px] font-semibold",
+              anderesDatum ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink",
+            )}
+          >
+            Anderer Tag …
+          </button>
+        </div>
+        {anderesDatum ? (
           <input
             type="date"
+            aria-label="Erster Tag der Folge"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="block w-full min-w-0 max-w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
+            className="mt-2 block w-full min-w-0 max-w-full rounded-[14px] bg-ink/[0.06] px-3.5 py-3 text-[15px] outline-none focus:ring-2 focus:ring-brand-500/40"
           />
-        </label>
+        ) : null}
+      </div>
+      <div className="mt-4">
         <label className="block min-w-0">
           <span className="mb-1 block text-[13px] font-semibold text-ink-muted">Wie lange</span>
           <select

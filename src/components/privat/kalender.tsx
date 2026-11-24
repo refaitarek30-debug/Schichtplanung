@@ -55,6 +55,8 @@ import { cn } from "@/lib/utils";
 import { usePrivat } from "./kontext";
 import { Blatt } from "./blatt";
 import { RotationBlatt } from "./rotation";
+import { EinstiegKarte, FertigBlatt, TeilenKarte } from "./einstieg";
+import type { PersonArt } from "@/lib/data/partner";
 import { merkeImportDateien } from "@/lib/privat/import-dateien";
 import type { Ansicht } from "./ansicht-menue";
 import { KALENDER_HEUTE } from "./rahmen";
@@ -130,20 +132,32 @@ export function PrivatKalender() {
 
   // Hinweise im leeren Kalender lassen sich wegklicken – pro Gerät gemerkt. Bis zum Lesen bleiben sie zu.
   const hinweisKey = `sp_hinweis:${konto.userId}`;
-  const [hinweisZu, setHinweisZu] = useState<{ upload: boolean; los: boolean }>({ upload: true, los: true });
+  // einstieg: wie oft „Wie arbeitest du?“ mit „Später“ zu ging (ab 2: nur noch der Streifen).
+  // teilen: die Karte „Zeig deinen Plan jemandem“ ist für immer zu.
+  const [hinweisZu, setHinweisZu] = useState<{ upload: boolean; los: boolean; einstieg: number; teilen: boolean }>({
+    upload: true,
+    los: true,
+    einstieg: 2,
+    teilen: true,
+  });
   useEffect(() => {
-    let v = { upload: false, los: false };
+    let v = { upload: false, los: false, einstieg: 0, teilen: false };
     try {
       const g = JSON.parse(window.localStorage.getItem(hinweisKey) ?? "{}") as Partial<typeof v>;
-      v = { upload: g.upload === true, los: g.los === true };
+      v = {
+        upload: g.upload === true,
+        los: g.los === true,
+        einstieg: typeof g.einstieg === "number" ? g.einstieg : 0,
+        teilen: g.teilen === true,
+      };
     } catch {
       // ohne Speicher: Hinweise zeigen
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHinweisZu(v);
   }, [hinweisKey]);
-  function hinweisSchliessen(welcher: "upload" | "los") {
-    const v = { ...hinweisZu, [welcher]: true };
+  function hinweisSchliessen(welcher: "upload" | "los" | "teilen" | "einstieg") {
+    const v = welcher === "einstieg" ? { ...hinweisZu, einstieg: hinweisZu.einstieg + 1 } : { ...hinweisZu, [welcher]: true };
     setHinweisZu(v);
     try {
       window.localStorage.setItem(hinweisKey, JSON.stringify(v));
@@ -160,6 +174,13 @@ export function PrivatKalender() {
 
   const [termine, setTermine] = useState<Termin[]>([]);
   const [teilen, setTeilen] = useState(false);
+  /** Teilen-Karte: gleich das Formular mit dieser Art öffnen. */
+  const [teilenNeu, setTeilenNeu] = useState<PersonArt | null>(null);
+  /** „Wie arbeitest du?“ in dieser Sitzung weggeklickt. */
+  const [einstiegZu, setEinstiegZu] = useState(false);
+  /** Nach dem ersten Plan: „Fertig!“ mit der Frage nach der Erinnerung. */
+  const [fertig, setFertig] = useState<{ tage: number; bis: string } | null>(null);
+  const ersterPlan = useRef(false);
   /** Zuletzt geänderte Tage – für „Rückgängig“. */
   const [rueck, setRueck] = useState<{ text: string; vorlage: string; vorher: Record<string, TagEintrag | undefined> } | null>(null);
   const rueckUhr = useRef<number | null>(null);
@@ -720,6 +741,22 @@ export function PrivatKalender() {
 
   // Mit Betriebszugang stehen schon die Betriebsschichten drin – dann keine Einstiegs-Hinweise.
   const leer = !betrieb && schichtarten && !laedt && Object.keys(tage).length === 0;
+  const einstieg = !!leer && hinweisZu.einstieg < 2 && !einstiegZu && !rotation && !pinselAn;
+  // Erst wenn ein Plan steht und noch nichts geteilt ist.
+  const teilenKarte =
+    !betrieb &&
+    !laedt &&
+    !hinweisZu.teilen &&
+    !pinselAn &&
+    ansicht !== "jahr" &&
+    Object.keys(tage).length > 0 &&
+    andere.personen !== null &&
+    andere.personen.length === 0 &&
+    andere.verbindungen.length === 0;
+  function folgeOeffnen() {
+    ersterPlan.current = !!leer;
+    setRotation(true);
+  }
 
   // Plan hochladen: Dateien gleich hier wählen, die Import-Seite liest sie danach.
   const hochladeFeld = useRef<HTMLInputElement>(null);
@@ -817,11 +854,11 @@ export function PrivatKalender() {
 
       {/* Neues Konto: ein schmaler Streifen statt großer Karten – der Kalender bleibt groß.
           Erst „Plan übernehmen“; ist der zu, kommt „Schichtfolge eintragen“. */}
-      {leer && (!hinweisZu.upload || !hinweisZu.los) ? (
+      {leer && !einstieg && (hinweisZu.einstieg >= 2 || einstiegZu) && (!hinweisZu.upload || !hinweisZu.los) ? (
         <div data-hinweis-streifen className="glas mx-3.5 mb-2 flex h-11 items-center rounded-[14px] sm:mx-0">
           <button
             type="button"
-            onClick={() => (!hinweisZu.upload ? hochladeFeld.current?.click() : setRotation(true))}
+            onClick={() => (!hinweisZu.upload ? hochladeFeld.current?.click() : folgeOeffnen())}
             className="flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 text-left text-[14px] font-semibold text-brand-600"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-500 text-white">
@@ -858,6 +895,21 @@ export function PrivatKalender() {
             : { onPointerDown: wischStart, onPointerUp: wischEnde, onPointerCancel: () => (wisch.current = null) })}
         aria-busy={laedt || !schichtarten}
       >
+        {einstieg ? (
+          <EinstiegKarte
+            onFolge={folgeOeffnen}
+            onFoto={() => hochladeFeld.current?.click()}
+            onSelbst={() => {
+              setPinselAn(true);
+              const erste = schichtarten?.find((a) => a.art === "arbeit") ?? schichtarten?.[0];
+              if (!pinsel && erste) setPinsel(erste.id);
+            }}
+            onSpaeter={() => {
+              setEinstiegZu(true);
+              hinweisSchliessen("einstieg");
+            }}
+          />
+        ) : null}
         {ansicht === "monat" ? (
           <MonatsScroller
             ref={scroller}
@@ -930,6 +982,10 @@ export function PrivatKalender() {
           />
         ) : null}
       </div>
+
+      {teilenKarte ? (
+        <TeilenKarte onWahl={setTeilenNeu} onWeg={() => hinweisSchliessen("teilen")} />
+      ) : null}
 
       {pinselAn && schichtarten ? (
         <PinselLeiste
@@ -1079,12 +1135,28 @@ export function PrivatKalender() {
         />
       ) : null}
 
+      {teilenNeu ? (
+        <KalenderTeilen
+          vorname={konto.name.split(/\s+/)[0] ?? konto.name}
+          start="neu"
+          neueArt={teilenNeu}
+          onGeaendert={() => void andere.neuLaden()}
+          onClose={() => setTeilenNeu(null)}
+        />
+      ) : null}
+
+      {fertig ? (
+        <FertigBlatt tage={fertig.tage} bis={fertig.bis} userId={konto.userId} onClose={() => setFertig(null)} />
+      ) : null}
+
       {rotation && schichtarten ? (
         <RotationBlatt
           arten={schichtarten}
           heute={heute}
-          onFertig={() => {
+          onFertig={(e) => {
             setRotation(false);
+            if (ersterPlan.current) setFertig(e);
+            ersterPlan.current = false;
             void ladeJahre([...geladen.current], true);
           }}
           onClose={() => setRotation(false)}
