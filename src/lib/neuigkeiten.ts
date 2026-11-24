@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-24T12:00:00+01:00",
+    titel: "Neu: Erinnerung an deine Schicht",
+    text: "Unter Mehr → Mitteilungen kannst du dich an deine Schicht erinnern lassen – am Abend vorher um 18 Uhr oder 1 Stunde vor Beginn. Die Schichtfolge geht jetzt schneller: Vorlage antippen, Starttag wählen, fertig.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-22T16:00:00+01:00",
     titel: "Neu: Schichten tauschen",
     text: "Im Plan gibt es jetzt den Reiter „Tausch“: Schicht anbieten, Kollegin oder Kollege mit freiem Tag übernimmt – auf Wunsch mit Gegentag –, die Leitung bestätigt mit einem Tipp. Erst dann ändert sich der Plan.",

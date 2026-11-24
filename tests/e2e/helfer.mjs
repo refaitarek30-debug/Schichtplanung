@@ -126,8 +126,16 @@ export const HINWEIS_GESEHEN = () => {
   } catch {}
 };
 
+/** Privatkalender: Einstiegskarte und Teilen-Karte gelten als gesehen (nur wenn noch nichts gemerkt ist). */
+export const EINSTIEG_GESEHEN = (nutzer) => {
+  try {
+    const k = `sp_hinweis:${nutzer}`;
+    if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify({ einstieg: 2, teilen: true }));
+  } catch {}
+};
+
 /** Browser wie ein iPhone, angemeldet. Mit `{ hinweis: true }` darf der Kompakt-Hinweis erscheinen. */
-export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt" } = {}) {
+export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt", einstieg = false } = {}) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
     ...devices["iPhone 13"],
@@ -139,6 +147,8 @@ export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt" 
   });
   await ctx.addCookies([zweiFaktor === "bestaetigt" ? SITZUNG_COOKIE : { ...SITZUNG_COOKIE, value: sitzung(zweiFaktor) }]);
   if (!hinweis) await ctx.addInitScript(HINWEIS_GESEHEN);
+  // „Wie arbeitest du?“ und die Teilen-Karte im Privatkalender stören die übrigen Tests nicht.
+  if (!einstieg) await ctx.addInitScript(EINSTIEG_GESEHEN, NUTZER);
   const seite = await ctx.newPage();
   const seitenFehler = [];
   seite.on("pageerror", (e) => seitenFehler.push(e.message));

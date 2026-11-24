@@ -626,6 +626,7 @@ export function KalenderTeilen({
   vorname,
   onClose,
   start = "liste",
+  neueArt = "partner",
   onGeaendert,
 }: {
   vorname: string;
@@ -634,6 +635,8 @@ export function KalenderTeilen({
   start?: "liste" | "neu" | "gruppeNeu" | "code" | "codeEingeben" | { person: string } | { gruppe: string } | { verbindung: string };
   /** Nach jeder Änderung – z. B. damit eine eingebettete Liste neu lädt. */
   onGeaendert?: () => void;
+  /** Bei start="neu": diese Art ist schon gewählt (Teilen-Karte im Kalender). */
+  neueArt?: PersonArt;
 }) {
   const [ansicht, setAnsicht] = useState<Ansicht>(() =>
     start === "neu"
@@ -875,7 +878,7 @@ export function KalenderTeilen({
             <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
           </button>
           <PersonFormular
-            start={{ name: "", art: "partner", darfEintragen: false, termineSehen: false }}
+            start={{ name: "", art: neueArt, darfEintragen: false, termineSehen: false }}
             knopf="Einladen"
             laeuft={laeuft}
             onSenden={(p) =>

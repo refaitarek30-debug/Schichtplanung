@@ -25,6 +25,7 @@ import privatNeu from "./privat-neu.test.mjs";
 import umfrage from "./umfrage.test.mjs";
 import zweiFaktor from "./zwei-faktor.test.mjs";
 import meineDaten from "./meine-daten.test.mjs";
+import privatEinstieg from "./privat-einstieg.test.mjs";
 
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
@@ -37,6 +38,7 @@ const ABLAEUFE = [
   ["Privat: Wischen, Wen sehe ich", "privat", privatNeu],
   ["Privat: Umfrage nach 3 Tagen", "privat", umfrage],
   ["Privat: Meine Daten herunterladen", "privat", meineDaten],
+  ["Privat: Einstieg, Fertig, Teilen-Karte", "privat", privatEinstieg],
   ["Führung: Mitteilungen und Mitarbeiter", "betrieb", fuehrung],
   ["Aussetzer nach der Anmeldung", "betrieb", aussetzer],
   ["Schichtplan: Fenster wegwischen", "betrieb", wischen],

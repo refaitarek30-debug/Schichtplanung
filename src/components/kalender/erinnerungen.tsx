@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BellRing, X } from "lucide-react";
 import { fetchPushAus, pushAnschalten, pushAusSetzen, pushAusschalten, pushStatus, type MitteilungsArt, type PushStatus } from "@/lib/push";
+import { ladeSchichtErinnerung, setzeSchichtErinnerung, type SchichtErinnerung } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 
 /** Stand der Mitteilungen auf diesem Gerät – mit An und Aus. */
@@ -34,7 +35,7 @@ export function usePush() {
   return { status, laeuft, fehler, umschalten };
 }
 
-const TEXT: Record<Exclude<PushStatus, "an">, string> = {
+export const PUSH_TEXT: Record<Exclude<PushStatus, "an">, string> = {
   aus: "Damit die Erinnerung auf diesem Gerät ankommt, erlaube Mitteilungen.",
   gesperrt: "Mitteilungen sind für diese Seite gesperrt. Erlaube sie in den Einstellungen des Browsers bzw. des Handys.",
   app: "Mitteilungen in der App kommen mit dem nächsten Update.",
@@ -50,7 +51,7 @@ export function ErinnerungHinweis({ className }: { className?: string }) {
     <div className={cn("rounded-[16px] bg-warn-bg px-3.5 py-3 text-[13px] leading-snug text-ink", className)}>
       <p className="flex gap-2">
         <BellRing aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warn-fg" />
-        <span>{TEXT[status]}</span>
+        <span>{PUSH_TEXT[status]}</span>
       </p>
       {status === "aus" ? (
         <button
@@ -78,7 +79,7 @@ export function ErinnerungenGeraet({ className }: { className?: string }) {
         <span className="min-w-0">
           <span className="block text-[15px] font-medium">🔔 Mitteilungen auf diesem Gerät</span>
           <span className="block text-[13px] text-ink-muted">
-            {status === null ? "…" : an ? "An – Wichtiges kommt direkt aufs Handy." : schaltbar ? "Aus" : TEXT[status as Exclude<PushStatus, "an">]}
+            {status === null ? "…" : an ? "An – Wichtiges kommt direkt aufs Handy." : schaltbar ? "Aus" : PUSH_TEXT[status as Exclude<PushStatus, "an">]}
           </span>
         </span>
         {schaltbar ? (
@@ -167,6 +168,59 @@ export function MitteilungsArten({ firma }: { firma: boolean }) {
   );
 }
 
+export const SCHICHT_ERINNERUNG_WAHL: { wert: SchichtErinnerung; titel: string; text: string }[] = [
+  { wert: "vortag18", titel: "Am Abend vorher, 18 Uhr", text: "„Morgen: Früh · 06:00–14:00“" },
+  { wert: "stunde1", titel: "1 Stunde vor Beginn", text: "Nur bei Schichten mit Uhrzeit" },
+  { wert: null, titel: "Aus", text: "Keine Erinnerung an Schichten" },
+];
+
+/** Privatbereich: Erinnerung an die eigene Schicht (Migration 0241). */
+export function SchichtErinnerungWahl({ userId }: { userId: string }) {
+  const [wert, setWert] = useState<SchichtErinnerung | undefined>(undefined);
+  const [fehler, setFehler] = useState<string | null>(null);
+  useEffect(() => {
+    let weg = false;
+    void ladeSchichtErinnerung().then((w) => !weg && setWert(w));
+    return () => {
+      weg = true;
+    };
+  }, []);
+
+  async function waehle(neu: SchichtErinnerung) {
+    const alt = wert;
+    setWert(neu);
+    setFehler(null);
+    try {
+      await setzeSchichtErinnerung(userId, neu);
+    } catch (e) {
+      setWert(alt);
+      setFehler(e instanceof Error ? e.message : "Das konnte nicht gespeichert werden.");
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <label className="flex items-center justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-[14.5px] font-medium">Erinnerung an meine Schicht</span>
+          <span className="block text-[12.5px] text-ink-muted">Als Mitteilung aufs Handy</span>
+        </span>
+        <select
+          value={wert ?? ""}
+          disabled={wert === undefined}
+          onChange={(e) => void waehle((e.target.value || null) as SchichtErinnerung)}
+          className="h-9 shrink-0 rounded-[12px] bg-ink/[0.06] px-2.5 text-[14px] outline-none focus:ring-2 focus:ring-brand-500/40"
+        >
+          <option value="vortag18">Abend vorher</option>
+          <option value="stunde1">1 Std. vorher</option>
+          <option value="">Aus</option>
+        </select>
+      </label>
+      {fehler ? <p className="text-[13px] text-crit-fg">{fehler}</p> : null}
+    </div>
+  );
+}
+
 const ANSTOSS_WEG = "schichtplan.push-anstoss-weg";
 
 /** Kleiner Hinweis (Glocke, Profil): Mitteilungen einschalten. Verschwindet, wenn an oder weggeklickt. */
@@ -211,7 +265,7 @@ export function PushAnstoss({ className }: { className?: string }) {
           {laeuft ? "Einen Moment …" : "Mitteilungen einschalten"}
         </button>
       ) : (
-        <p className="mt-1.5 text-[12.5px]">{TEXT[status]}</p>
+        <p className="mt-1.5 text-[12.5px]">{PUSH_TEXT[status]}</p>
       )}
       {fehler ? <p className="mt-1.5 text-crit-fg">{fehler}</p> : null}
     </div>

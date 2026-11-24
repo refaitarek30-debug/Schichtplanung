@@ -144,7 +144,7 @@ export function PrivatMehr() {
 
       {blatt === "mitteilungen" ? (
         <Blatt titel="Mitteilungen" onClose={() => setBlatt(null)}>
-          <KalenderVorliebenInhalt />
+          <KalenderVorliebenInhalt privatNutzer={konto.userId} />
         </Blatt>
       ) : null}
       {blatt === "abo" ? (
