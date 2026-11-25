@@ -49,3 +49,26 @@ jobs:
           timeout 180 npx playwright install-deps chromium || echo "Systempakete übersprungen (Spiegel nicht erreichbar)"
       - name: Oberflächen-Tests
         run: npm run test:e2e
+
+  sicherheit:
+    # Greift die echte Datenbankstruktur an (tests/sicherheit): nicht angemeldet, fremde
+    # Firma, Privatkonto, Kollege – alle Tabellen, alle Funktionen. Ohne echte Daten.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: pruef
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: pruef
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sicherheitstest
+        run: tests/sicherheit/pruefen.sh

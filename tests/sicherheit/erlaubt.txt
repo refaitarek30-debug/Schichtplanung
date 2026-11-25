@@ -1,0 +1,2 @@
+# Begründete Ausnahmen des Sicherheitstests – je Zeile: angreifer|ziel
+# Jede Ausnahme braucht eine Begründung darüber.

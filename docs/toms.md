@@ -1,7 +1,7 @@
 # Technische und organisatorische Maßnahmen (TOM)
 
 Anlage zum Vertrag über die Auftragsverarbeitung (§ 8) · Art. 32 DSGVO
-Stand: 13.11.2026 · ShiftNexo (shiftnexo.de)
+Stand: 25.11.2026 · ShiftNexo (shiftnexo.de)
 
 Diese Anlage beschreibt, wie die Daten der Beschäftigten geschützt werden. Sie
 nennt, was **heute tatsächlich umgesetzt** ist, und unter „Offene Punkte“ ehrlich,
@@ -133,8 +133,16 @@ was noch fehlt.
 
 - **Automatische Tests bei jeder Änderung**: Oberflächentests der wichtigsten Abläufe
   (u. a. Zwei-Faktor-Anmeldung und Sperre) laufen vor jeder Veröffentlichung.
+- **Automatischer Sicherheitstest der Datenbank** bei jeder Änderung (`tests/sicherheit`):
+  Die echte Datenbankstruktur wird in einer Prüfdatenbank nachgebaut und von fünf
+  Angreifern angegriffen (nicht angemeldet, fremde Firma als Mitarbeiter und als
+  Administration, Privatkonto, Kollege) – alle Tabellen, alle aufrufbaren Funktionen,
+  dazu gezielte Versuche, Rechte auszuweiten. Jeder Fund lässt die Prüfung fehlschlagen.
+  Stand 25.11.2026: keine offenen Funde (behobene Funde: Migration 0242).
 - Prüfskripte für Zugriffsregeln und Mandantentrennung in der Datenbank
   (`supabase/tests/`).
+- **Abhängigkeiten**: `npm audit` ohne bekannte Schwachstellen; wöchentliche
+  Update-Vorschläge (Dependabot), die erst nach allen Tests übernommen werden.
 - Sicherheitshinweise des Datenbankanbieters (Supabase Advisors) nach Änderungen am
   Datenbankschema.
 - Veröffentlichung nur über geprüfte Änderungsanfragen (Pull Requests) mit
@@ -169,5 +177,8 @@ was noch fehlt.
 | Anmeldung mit Firmenkonto (SSO / Entra ID) | nicht vorhanden | mit größerem Tarif des Datenbankanbieters |
 | Prüfung gegen bekannte, geleakte Passwörter | nicht vorhanden | mit Supabase Pro |
 | Zugesagte Verfügbarkeit (SLA) | keine (kostenloser Tarif) | mit Supabase Pro bzw. Vertrag |
-| Externer Sicherheitstest (Penetrationstest) | noch keiner | vor dem Regelbetrieb; Test durch die IT des Auftraggebers ist willkommen |
+| Externer Sicherheitstest (Penetrationstest) | noch keiner; automatischer Angriffstest der Datenbank läuft bei jeder Änderung | vor dem Regelbetrieb; Test durch die IT des Auftraggebers ist willkommen |
+| Direkter Aufruf der Anmelde-Schnittstelle des Anbieters umgeht die Fehlversuch-Sperre der App | Begrenzung des Anbieters; Konten mit Zwei-Faktor sind geschützt | CAPTCHA und Passwortregeln beim Anmeldedienst einschalten |
+| Content-Security-Policy erlaubt eingebettete Skripte (`'unsafe-inline'`) | Verbindungen nur zu eigener Adresse und Datenbank | Umstellung auf Nonces |
+| Alarmierung bei auffälligen Zugriffen | Protokolle vorhanden, kein automatischer Alarm | Auswertung der Anbieter-Protokolle mit Schwellwerten |
 | Abhängigkeit von einer Person | Notfallzugang (nur lesen, protokolliert) und Notfallplan mit zwei versiegelten Umschlägen (`docs/notfallplan.md`) | jährliche Prüfung der Umschläge |
