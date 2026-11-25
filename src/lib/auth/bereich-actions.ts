@@ -44,13 +44,15 @@ export async function betriebBeitreten(_prev: FormState, formData: FormData): Pr
   const { data: anspruch } = await supabase.auth.getClaims();
   const userId = anspruch?.claims?.sub;
   if (!userId) return { error: "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an." };
-  const { error } = await supabase.rpc("beitritt_annehmen", {
+  const { data: angenommen, error } = await supabase.rpc("beitritt_annehmen", {
     p_code: code,
     p_termine: formData.get("termine") === "on",
     p_todos: formData.get("todos") === "on",
     p_schichten: formData.get("schichten") === "on",
   });
   if (error) return { error: datenFehlerText(error, "Der Beitritt hat nicht geklappt. Bitte versuch es noch einmal.") };
+  // Migration 0243: falscher Code = false (der Fehlversuch wird gezählt).
+  if (angenommen === false) return { error: "Dieser Code ist ungültig oder abgelaufen. Bitte frag im Betrieb nach einem neuen." };
   // Startseite wieder der Betrieb (der Merker „privat“ gilt nicht mehr).
   (await cookies()).set(START_COOKIE, startCookieWert(userId, null), {
     path: "/",

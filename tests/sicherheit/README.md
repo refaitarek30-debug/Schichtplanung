@@ -24,6 +24,12 @@ und mit ihren eigenen IDs:
 Dazu gezielte Versuche, Rechte auszuweiten (sich selbst zum Admin machen, Firma
 wechseln, eigenen Urlaub genehmigen, als Schichtleitung Admin-Daten ändern …).
 
+Dazu je 10 Versuche, ein **fremdes Konto zu übernehmen** (`kontouebernahme.sql`) – von der
+Betriebsseite (Passwort-Codes raten, Codes für fremde/höhere Konten erzeugen, Zwei-Faktor
+zurücksetzen oder überspringen, Beitritts-Codes raten, Konto umhängen) und von der Privatseite
+(Partner-, Abo-, Verbindungs- und Gruppen-Links raten, Wiederherstellungs-E-Mail/-Code,
+Lohnzettel, fremde Termine).
+
 Der Test prüft sich selbst: Eingebaute Lücken (offene Funktion, zu weite Regel,
 fremdes Löschen) findet er sofort.
 
@@ -41,7 +47,8 @@ Läuft automatisch bei jeder Änderung (GitHub Actions → Tests → „sicherhe
 - `supabase-ersatz.sql` – Nachbildung von auth, storage, cron, net, vault und den Rollen
 - `schema-stand.sql` – Aufbau der Live-Datenbank (nur Struktur), Stand siehe Kopfzeile
 - `aufbau.sh` – baut die Prüf-Datenbank: Ersatz + Stand + alle neueren Migrationen
-- `angriff.sql` – Testdaten und Angriffe
+- `angriff.sql` – Testdaten und Angriffe auf Tabellen/Funktionen
+- `kontouebernahme.sql` – Versuche, fremde Konten zu übernehmen
 - `erlaubt.txt` – begründete Ausnahmen (derzeit keine)
 - `stand-auslesen.sql` – erzeugt `schema-stand.sql` neu (nur lesend, im Supabase-SQL-Editor)
 
