@@ -18,6 +18,7 @@ import { anmeldeEingabeZuEmail } from "@/lib/privat/spitzname";
 import { geraet, mitFrist, protokolliere } from "./protokoll-server";
 import { GERAET_COOKIE, GESPERRT_TEXT, sitzungAusToken, zielMitWeiter, zweiterFaktorOffen } from "./zwei-faktor";
 import { createHash } from "node:crypto";
+import { CAPTCHA_HINWEIS, captchaOptionen, istCaptchaFehler } from "./captcha";
 
 export type { FormState } from "./form-state";
 
@@ -113,8 +114,13 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   if (await sperreFrage("anmeldung_gesperrt", email)) return { error: GESPERRT_TEXT };
 
   const supabase = await createClient();
-  const { data: angemeldet, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: angemeldet, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: captchaOptionen(formData),
+  });
   if (error) {
+    if (istCaptchaFehler(error.message)) return { error: CAPTCHA_HINWEIS };
     if ((error.message ?? "").toLowerCase().includes("invalid login credentials")) {
       await protokolliereFehlanmeldung(email);
       if (await sperreFrage("anmeldung_fehlversuch", email)) return { error: GESPERRT_TEXT };
@@ -182,6 +188,7 @@ export async function requestPasswordReset(
   const origin = await siteOrigin();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/auth/callback?weiter=/passwort-neu`,
+    ...captchaOptionen(formData),
   });
   // Nur echte Störungen des Dienstes werden gemeldet; ob die Adresse ein
   // Konto hat, bleibt unsichtbar.

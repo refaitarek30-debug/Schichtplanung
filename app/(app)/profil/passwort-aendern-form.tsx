@@ -10,6 +10,7 @@ import { PasswortInput } from "@/components/ui/passwort-input";
 import { changeOwnPassword } from "@/lib/auth/passwort-aendern";
 import type { FormState } from "@/lib/auth/form-state";
 import { PASSWORT_MAX, PASSWORT_MIN } from "@/lib/auth/password-policy";
+import { Turnstile } from "@/components/auth/turnstile";
 
 export function PasswortAendernForm({ readOnly }: { readOnly?: boolean }) {
   const [state, formAction] = useActionState(changeOwnPassword, {} as FormState);
@@ -58,6 +59,7 @@ export function PasswortAendernForm({ readOnly }: { readOnly?: boolean }) {
             {state.error ? <Alert tone="error">{state.error}</Alert> : null}
             {state.success ? <Alert tone="success">{state.success}</Alert> : null}
 
+            <Turnstile neu={state} />
             <p className="text-[12px] text-ink-muted">
               Danach wirst du auf deinen anderen Geräten abgemeldet. Hier bleibst du angemeldet.
             </p>

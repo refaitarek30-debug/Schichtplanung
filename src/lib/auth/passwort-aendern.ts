@@ -8,6 +8,7 @@ import { allow, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { PASSWORT_MAX, passwortProblem } from "./password-policy";
 import { protokolliere } from "./protokoll-server";
 import type { FormState } from "./form-state";
+import { CAPTCHA_HINWEIS, captchaOptionen, istCaptchaFehler } from "./captcha";
 
 const NOT_CONFIGURED: FormState = {
   error: "Supabase ist noch nicht konfiguriert. Im produktiven Betrieb ist der Backend-Zugriff erforderlich.",
@@ -60,8 +61,10 @@ export async function changeOwnPassword(_prev: FormState, formData: FormData): P
   const { data: pruefung, error: pruefFehler } = await pruefer.auth.signInWithPassword({
     email: user.email,
     password: aktuell,
+    options: captchaOptionen(formData),
   });
   if (pruefFehler || !pruefung.session) {
+    if (istCaptchaFehler(pruefFehler?.message)) return { error: CAPTCHA_HINWEIS };
     const text = (pruefFehler?.message ?? "").toLowerCase();
     if (pruefFehler?.code === "invalid_credentials" || text.includes("invalid login credentials")) {
       return { error: FALSCHES_PASSWORT };

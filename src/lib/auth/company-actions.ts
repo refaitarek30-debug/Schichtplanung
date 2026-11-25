@@ -9,6 +9,7 @@ import { LEGAL_VERSIONS } from "@/lib/legal/version";
 import { allow, clientKey, emailKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import { passwortProblem } from "./password-policy";
 import type { FormState } from "./form-state";
+import { CAPTCHA_HINWEIS, captchaOptionen, istCaptchaFehler } from "./captcha";
 
 export type { FormState };
 
@@ -135,10 +136,11 @@ export async function registerCompany(_prev: FormState, formData: FormData): Pro
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+    options: { emailRedirectTo: `${origin}/auth/callback`, ...captchaOptionen(formData) },
   });
 
   if (signUpError) {
+    if (istCaptchaFehler(signUpError.message)) return { error: CAPTCHA_HINWEIS };
     return { error: authErrorMessage(signUpError) ?? "Die Registrierung ist fehlgeschlagen." };
   }
 

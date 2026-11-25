@@ -10,6 +10,7 @@ import { dataErrorMessage } from "@/lib/errors";
 import { ACTIVITY_COOKIE, ACTIVITY_COOKIE_MAX_AGE } from "@/lib/auth/idle";
 import { allow, clientKey, ZU_VIELE_VERSUCHE } from "@/lib/security/rate-limit";
 import type { FormState } from "@/lib/auth/form-state";
+import { captchaOptionen } from "@/lib/auth/captcha";
 
 const NICHT_VERFUEGBAR: FormState = {
   error: "Die Live-Demo ist gerade nicht verfügbar. Bitte versuche es später erneut.",
@@ -23,8 +24,7 @@ const NICHT_VERFUEGBAR: FormState = {
  * an. Das Passwort verlässt den Server nie – angemeldet wird direkt hier.
  * Mandant und Konto löscht die Datenbank nach Ablauf (demo_cleanup).
  */
-export async function startDemo(_prev: FormState, _formData: FormData): Promise<FormState> {
-  void _formData;
+export async function startDemo(_prev: FormState, formData: FormData): Promise<FormState> {
   if (!isSupabaseConfigured) return NICHT_VERFUEGBAR;
 
   const supabase = await createClient();
@@ -76,7 +76,11 @@ export async function startDemo(_prev: FormState, _formData: FormData): Promise<
   // Offene Beispielanträge – schlägt das fehl, läuft die Demo trotzdem.
   await admin.rpc("demo_seed_pending", { p_company: companyId, p_user: userId });
 
-  const { error: anmeldeFehler } = await supabase.auth.signInWithPassword({ email, password });
+  const { error: anmeldeFehler } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: captchaOptionen(formData),
+  });
   if (anmeldeFehler) {
     console.error("Demo-Anmeldung:", anmeldeFehler.message);
     return NICHT_VERFUEGBAR;
