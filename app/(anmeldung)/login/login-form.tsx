@@ -19,6 +19,7 @@ import {
   merkeUnlesbareAnmeldung,
 } from "@/lib/anmelde-aussetzer";
 import { safeInternalPath } from "@/lib/security/safe-path";
+import { Turnstile } from "@/components/auth/turnstile";
 
 const initialState: FormState = {};
 
@@ -93,6 +94,7 @@ export function LoginForm({ next, disabled }: { next: string; disabled?: boolean
       ) : null}
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 
+      <Turnstile neu={state} />
       <SubmitButton disabled={disabled} />
 
       <p className="text-center">

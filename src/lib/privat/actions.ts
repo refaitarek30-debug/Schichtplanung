@@ -12,6 +12,7 @@ import { PRIVAT_DOMAIN, pruefeSpitzname, spitznameZuEmail } from "./spitzname";
 import { passwortProblem } from "@/lib/auth/password-policy";
 import { safeInternalPath } from "@/lib/security/safe-path";
 import type { FormState } from "@/lib/auth/form-state";
+import { captchaOptionen } from "@/lib/auth/captcha";
 
 /** Konto wieder entfernen, wenn das Anlegen danach scheitert – nur frische, leere Konten. */
 async function verwirfNeuesKonto(userId: string, angelegtAm: string | undefined) {
@@ -87,7 +88,11 @@ export async function registrierePrivat(_prev: FormState, formData: FormData): P
   }
 
   const supabase = await createClient();
-  const { error: anmeldeFehler } = await supabase.auth.signInWithPassword({ email, password });
+  const { error: anmeldeFehler } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: captchaOptionen(formData),
+  });
   if (anmeldeFehler) {
     return { error: "Das Konto ist angelegt. Bitte melde dich jetzt mit Spitzname und Passwort an." };
   }

@@ -6,12 +6,14 @@ import { ArrowRight } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { startDemo } from "@/lib/demo/actions";
 import type { FormState } from "@/lib/auth/form-state";
+import { Turnstile } from "@/components/auth/turnstile";
 
 /** Knopf „Live-Demo starten“ – legt den Demo-Bereich an und meldet an. */
 export function DemoStart() {
   const [state, action] = useActionState(startDemo, {} as FormState);
   return (
     <form action={action} className="space-y-3">
+      <Turnstile neu={state} />
       <StartKnopf />
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
     </form>

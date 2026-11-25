@@ -9,6 +9,7 @@ import { PasswortInput } from "@/components/ui/passwort-input";
 import { registrierePrivat } from "@/lib/privat/actions";
 import { pruefeSpitzname } from "@/lib/privat/spitzname";
 import type { FormState } from "@/lib/auth/form-state";
+import { Turnstile } from "@/components/auth/turnstile";
 
 const anfang: FormState = {};
 
@@ -103,6 +104,7 @@ export function PrivatRegistrierung({
 
       {state.error ? <Alert tone="error">{state.error}</Alert> : null}
 
+      <Turnstile neu={state} />
       <Button type="submit" className="h-11 w-full" disabled={pending || disabled}>
         {pending ? "Wird angelegt …" : knopf}
       </Button>

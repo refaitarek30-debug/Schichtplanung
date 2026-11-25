@@ -11,6 +11,7 @@ import { VersionTag } from "@/components/legal/prose";
 import { registerCompany } from "@/lib/auth/company-actions";
 import type { FormState } from "@/lib/auth/form-state";
 import { AVV_VERSION, DATENSCHUTZ_VERSION, NUTZUNGSBEDINGUNGEN_VERSION } from "@/lib/legal/version";
+import { Turnstile } from "@/components/auth/turnstile";
 
 const initialState: FormState = {};
 
@@ -205,6 +206,7 @@ export function RegisterForm({ disabled }: { disabled?: boolean }) {
           <>
             {state.error ? <Alert tone="error">{state.error}</Alert> : null}
             {state.success ? <Alert tone="success">{state.success}</Alert> : null}
+            <Turnstile neu={state} />
           </>
         }
         abschluss={
