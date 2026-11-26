@@ -16,7 +16,7 @@ export const KALENDER_HEUTE = "sp-kalender-heute";
 
 const NAV = [
   { href: "/privat", text: "Kalender", icon: CalendarDays },
-  { href: "/privat/schichten", text: "Schichten", icon: Layers },
+  { href: "/privat/schichten", text: "Mein Monat", icon: Layers },
   { href: "/privat/teilen", text: "Teilen", icon: Users },
   { href: "/privat/todos", text: "To-dos", icon: ListChecks },
   { href: "/privat/mehr", text: "Mehr", icon: Ellipsis },

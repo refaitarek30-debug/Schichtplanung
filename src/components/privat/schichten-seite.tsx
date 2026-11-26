@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BarChart3, CalendarHeart, ChevronLeft, ChevronRight, Layers, Palmtree, Sparkles, Timer, Upload, Wallet } from "lucide-react";
+import { CalendarHeart, Check, ChevronLeft, ChevronRight, Palmtree, Timer, Wallet } from "lucide-react";
 import { nachOben } from "@/lib/app-scroller";
 import { heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { rechne } from "@/lib/privat/gehalt";
@@ -22,8 +22,9 @@ const std = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 
 const euroGanz = (n: number) => n.toLocaleString("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
 /**
- * Schichten: oben die Stunden des Monats groß, darunter eine ruhige Liste
- * (Übersicht, Geld, Urlaub, Gemeinsam frei · Meine Schichten, Plan hochladen).
+ * Mein Monat (Entwurf B): eine Karte für den Monat – Stunden mit Farbbalken je
+ * Schicht (antippen = Übersicht) und Lohn (antippen = Lohn) –, darunter vier
+ * Zeilen. „Meine Schichten“ und „Plan hochladen“ stehen unter „Mehr“.
  * Ein Eintrag öffnet den Bereich auf eigener Seite (`?reiter=…`), „Zurück“
  * führt wieder zur Liste – auch mit der Zurück-Geste des Handys.
  */
@@ -40,7 +41,7 @@ export function PrivatSchichtenSeite({ start = null }: { start?: Reiter | null }
           className="-ml-1 inline-flex h-9 items-center gap-0.5 rounded-full pr-3 text-[15px] font-semibold text-brand-600"
           data-zurueck-schichten
         >
-          <ChevronLeft className="h-5 w-5" /> Schichten
+          <ChevronLeft className="h-5 w-5" /> Mein Monat
         </Link>
         <div data-bereich={reiter}>
           {reiter === "uebersicht" ? (
@@ -62,7 +63,7 @@ export function PrivatSchichtenSeite({ start = null }: { start?: Reiter | null }
 }
 
 function Startliste() {
-  const { konto, schichtarten } = usePrivat();
+  const { konto } = usePrivat();
   const heute = heuteInBerlin();
   const [monat, setMonat] = useState(() => new Date(Number(heute.slice(0, 4)), Number(heute.slice(5, 7)) - 1, 1));
   const { einst } = useGehalt(konto.userId);
@@ -76,14 +77,21 @@ function Startliste() {
     return rechne({ tage, von, bis, arten: lohnArten, feiertage, wochenstunden: konto.wochenstunden, einst, zeiten });
   }, [tage, zeiten, lohnArten, feiertage, konto.wochenstunden, einst, von, bis]);
 
-  // Anzahl der Arbeitsschichten im Monat.
-  const anzahl = useMemo(() => {
-    if (!tage || !lohnArten) return null;
-    const arbeit = new Set(lohnArten.filter((a) => a.art === "arbeit").map((a) => a.id));
-    let n = 0;
-    for (const e of Object.values(tage)) for (const id of [e.schicht, e.zusatz, e.dritte]) if (id && arbeit.has(id)) n += 1;
-    return n;
-  }, [tage, lohnArten]);
+  // Arbeitsschichten im Monat, je Schichtart gezählt (für den Farbbalken).
+  const verteilung = useMemo(() => {
+    if (!tage || !lohnArten) return [];
+    const nach = new Map(lohnArten.filter((a) => a.art === "arbeit").map((a) => [a.id, a]));
+    const zahl = new Map<string, number>();
+    for (const [tag, e] of Object.entries(tage)) {
+      if (tag < von || tag > bis) continue;
+      for (const id of [e.schicht, e.zusatz, e.dritte]) if (id && nach.has(id)) zahl.set(id, (zahl.get(id) ?? 0) + 1);
+    }
+    return [...zahl.entries()]
+      .map(([id, n]) => ({ id, anzahl: n, name: nach.get(id)!.name, farbe: nach.get(id)!.farbe }))
+      .sort((a, b) => b.anzahl - a.anzahl);
+  }, [tage, lohnArten, von, bis]);
+  const anzahlSumme = verteilung.reduce((s, v) => s + v.anzahl, 0);
+  const anzahl = tage && lohnArten ? anzahlSumme : null;
 
   // Übrige Urlaubstage stehen nur auf diesem Gerät.
   const [urlaubTage, setUrlaubTage] = useState<number | null>(null);
@@ -99,11 +107,7 @@ function Startliste() {
   const auszahlung = re && mitGeld.length ? rechneAuszahlung(re, lohn.steuer ?? STEUER_STANDARD, extras, konto.bundesland) : null;
   // Der echte Betrag von der Abrechnung ersetzt die Schätzung, sobald er eingetragen ist.
   const echt = lohn.monate[monatKey]?.echt ?? null;
-  const geldUnter = !auszahlung
-    ? echt !== null
-      ? `Ausgezahlt · ${monthName(monat.getMonth())}`
-      : "Lohn einrichten"
-    : `${echt !== null ? "Ausgezahlt" : auszahlung.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"} · ${monthName(monat.getMonth())}`;
+  const lohnWert = echt ?? auszahlung?.netto ?? null;
   // Erst Text zeigen, wenn alles geladen ist: Safari malt sich ändernden Text
   // unter Glasflächen sonst übereinander (alter Text bleibt stehen).
   const bereit = re !== null;
@@ -114,12 +118,38 @@ function Startliste() {
   const soll = re?.soll ?? null;
   const diff = re?.differenz ?? null;
   const ist = re?.ist ?? 0;
-  const anteilIst = soll && soll > 0 ? Math.min(100, (Math.min(ist, soll) / Math.max(ist, soll)) * 100) : 100;
+
+  const lohnZeile = (
+    <Link
+      href={`/privat/schichten?reiter=geld&monat=${monatKey}`}
+      className="glas-linie flex items-end justify-between gap-3 border-t px-4 pb-3.5 pt-3 active:bg-ink/[0.04]"
+      data-monat-lohn
+    >
+      <div className="min-w-0">
+        <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">Lohn</div>
+        <div className="tnum mt-0.5 text-[28px] font-bold leading-none tracking-[-0.02em]">
+          {lohnWert !== null ? euroGanz(lohnWert) : bereit ? <span className="text-[15px] font-semibold text-brand-600">Lohn einrichten</span> : "…"}
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        {echt !== null ? (
+          <>
+            <span className="inline-flex items-center gap-1 rounded-full bg-ok-bg px-2 py-0.5 text-[11.5px] font-bold text-ok-fg">
+              <Check className="h-3 w-3" strokeWidth={3} /> ausgezahlt
+            </span>
+            {auszahlung ? <div className="tnum mt-0.5 text-[12.5px] text-ink-muted">geschätzt {euroGanz(auszahlung.netto)}</div> : null}
+          </>
+        ) : auszahlung ? (
+          <div className="text-[12.5px] text-ink-muted">{auszahlung.mitSteuer ? "Auszahlung ca." : "wird ausgezahlt"}</div>
+        ) : null}
+      </div>
+    </Link>
+  );
 
   return (
     <div className="space-y-4">
       <PrivatKopf
-        titel="Schichten"
+        titel="Mein Monat"
         rechts={
           <div className="glas flex items-center rounded-full p-1" role="group" aria-label="Monat">
             <button type="button" aria-label="Vorheriger Monat" onClick={() => springe(-1)} className="grid h-8 w-8 place-items-center rounded-full text-ink-muted">
@@ -137,74 +167,81 @@ function Startliste() {
 
       {re && anzahl === 0 && ist === 0 ? (
         // Leerer Monat: statt „0 Std“ ein klarer Hinweis mit dem nächsten Schritt.
-        <section className="glas glas-ruhig flex items-center gap-3 rounded-[24px] px-4 py-4" data-stunden-karte data-schichten-leer>
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-semibold">Noch keine Schichten im {monthName(monat.getMonth())}</div>
-            <div className="text-[12.5px] text-ink-muted">Trag deine Schichtfolge ein – dann füllt sich der Kalender von selbst.</div>
+        <section className="glas glas-ruhig overflow-hidden rounded-[24px]" data-stunden-karte data-schichten-leer>
+          <div className="flex items-center gap-3 px-4 py-4">
+            <div className="min-w-0 flex-1">
+              <div className="text-[15px] font-semibold">Noch keine Schichten im {monthName(monat.getMonth())}</div>
+              <div className="text-[12.5px] text-ink-muted">Trag deine Schichtfolge ein – dann füllt sich der Kalender von selbst.</div>
+            </div>
+            <Link href="/privat" className="shrink-0 rounded-full bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white">
+              Zum Kalender
+            </Link>
           </div>
-          <Link href="/privat" className="shrink-0 rounded-full bg-brand-600 px-3.5 py-2 text-[13px] font-semibold text-white">
-            Zum Kalender
-          </Link>
+          {/* Festes Gehalt gibt es auch ohne Schichten. */}
+          {lohnWert !== null ? lohnZeile : null}
         </section>
       ) : (
-      <section className="glas glas-ruhig space-y-3 rounded-[24px] px-4 pb-4 pt-3.5" data-stunden-karte>
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">Gearbeitet</div>
-            <div className="tnum mt-0.5 text-[36px] font-bold leading-none tracking-[-0.02em]">
-              {re ? std(ist) : "…"} <span className="text-[17px] font-semibold text-ink-muted">Std</span>
-            </div>
-          </div>
-          <div className="text-right">
-            {diff !== null ? (
-              <div className={cn("tnum text-[16px] font-bold", diff > 0.05 ? "text-warn-fg" : "text-ink-muted")}>
-                {diff > 0.05 ? "+" : ""}
-                {std(Math.abs(diff) < 0.05 ? 0 : diff)} Std
+        // Eine Karte erzählt den Monat: Stunden (antippen = Übersicht) und Lohn (antippen = Lohn).
+        <section className="glas glas-ruhig overflow-hidden rounded-[24px]" data-stunden-karte data-monatskarte>
+          <Link href="/privat/schichten?reiter=uebersicht" className="block space-y-2.5 px-4 pb-3.5 pt-3.5 active:bg-ink/[0.04]" data-monat-stunden>
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[11.5px] font-bold uppercase tracking-[0.05em] text-ink-muted">Gearbeitet</div>
+                <div className="tnum mt-0.5 text-[36px] font-bold leading-none tracking-[-0.02em]">
+                  {re ? std(ist) : "…"} <span className="text-[17px] font-semibold text-ink-muted">Std</span>
+                </div>
               </div>
-            ) : null}
-            <div className="tnum text-[12.5px] text-ink-muted">
-              {soll !== null ? `Soll ${std(soll)}` : anzahl !== null ? `${anzahl} Schichten` : ""}
+              <div className="text-right">
+                {diff !== null ? (
+                  <div className={cn("tnum text-[16px] font-bold", diff > 0.05 ? "text-warn-fg" : "text-ink-muted")}>
+                    {diff > 0.05 ? "+" : ""}
+                    {std(Math.abs(diff) < 0.05 ? 0 : diff)} Std
+                  </div>
+                ) : null}
+                <div className="tnum text-[12.5px] text-ink-muted">
+                  {soll !== null ? `Soll ${std(soll)}` : bereit && anzahl !== null ? `${anzahl} Schichten` : ""}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-        {soll !== null ? (
-          <div className="flex h-2 overflow-hidden rounded-full bg-ink/[0.08]" aria-hidden>
-            <span className="h-full bg-brand-500" style={{ width: `${diff !== null && diff > 0 ? anteilIst : Math.min(100, (ist / soll) * 100)}%` }} />
-            {diff !== null && diff > 0.05 ? <span className="h-full bg-warn-dot" style={{ width: `${100 - anteilIst}%` }} /> : null}
-          </div>
-        ) : (
-          <p className="text-[12.5px] text-ink-muted">
-            Wochenstunden unter{" "}
-            <Link href="/privat/mehr" className="font-semibold text-brand-600">
-              Mehr
-            </Link>{" "}
-            eintragen, dann siehst du hier deine Überstunden.
-          </p>
-        )}
-      </section>
+            {/* Balken: Anteil je Schicht (Früh, Spät, Nacht …) in deren Farbe. */}
+            {verteilung.length ? (
+              <>
+                <div className="flex h-2 gap-[2px] overflow-hidden rounded-full bg-ink/[0.08]" aria-hidden>
+                  {verteilung.map((v) => (
+                    <span key={v.id} className="h-full" style={{ width: `${(v.anzahl / anzahlSumme) * 100}%`, backgroundColor: v.farbe }} />
+                  ))}
+                </div>
+                <div className="tnum flex flex-wrap gap-x-3 gap-y-0.5 text-[12px] text-ink-muted" data-monat-verteilung>
+                  {verteilung.map((v) => (
+                    <span key={v.id} className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: v.farbe }} />
+                      {v.anzahl} {v.name}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            {soll === null && bereit ? (
+              <p className="text-[12.5px] text-ink-muted">Wochenstunden unter Mehr eintragen, dann siehst du hier deine Überstunden.</p>
+            ) : null}
+          </Link>
+          {lohnZeile}
+        </section>
       )}
 
       <Gruppe>
         <Eintrag
-          href="/privat/schichten?reiter=uebersicht"
-          icon={<BarChart3 className="h-[18px] w-[18px]" />}
-          farbe="bg-brand-500/15 text-brand-600"
-          name="Übersicht"
-          unter={bereit && anzahl !== null ? `${anzahl} Schichten im ${monthName(monat.getMonth())}` : ""}
-        />
-        <Eintrag
           href={`/privat/schichten?reiter=geld&monat=${monatKey}`}
           icon={<Wallet className="h-[18px] w-[18px]" />}
           farbe="bg-ok-bg text-ok-fg"
-          name="Lohn"
-          unter={bereit ? geldUnter : ""}
-          wert={echt !== null ? euroGanz(echt) : auszahlung ? euroGanz(auszahlung.netto) : undefined}
+          name="Lohn & Steuer"
+          unter="Abrechnung, Jahr"
         />
         <Eintrag
           href="/privat/schichten?reiter=urlaub"
           icon={<Palmtree className="h-[18px] w-[18px]" />}
           farbe="bg-[rgb(124_77_214/0.15)] text-[rgb(124_77_214)]"
-          name="Urlaubsplaner"
+          name="Urlaub planen"
           unter="Brückentage finden"
           wert={bereit && urlaubTage !== null ? `${urlaubTage} Tage` : undefined}
         />
@@ -216,35 +253,11 @@ function Startliste() {
           unter="Bis zur nächsten Schicht"
         />
         <Eintrag
-          href="/privat/zahlen"
-          icon={<Sparkles className="h-[18px] w-[18px]" />}
-          farbe="bg-[rgb(47_91_234/0.15)] text-[rgb(47_91_234)]"
-          name="Meine Zahlen"
-          unter="Sonntage · Nächte · dein Jahr"
-        />
-        <Eintrag
           href="/privat/schichten?reiter=gemeinsam"
           icon={<CalendarHeart className="h-[18px] w-[18px]" />}
           farbe="bg-[rgb(214_64_159/0.15)] text-[rgb(184_50_137)]"
           name="Gemeinsam frei"
           unter="Wann habt ihr beide frei?"
-        />
-      </Gruppe>
-
-      <Gruppe>
-        <Eintrag
-          href="/privat/schichten?reiter=liste"
-          icon={<Layers className="h-[18px] w-[18px]" />}
-          farbe="bg-ink/[0.07] text-ink-muted"
-          name="Meine Schichten"
-          unter={bereit && schichtarten ? `${schichtarten.length} Schichten · Farben, Zeiten` : ""}
-        />
-        <Eintrag
-          href="/privat/import"
-          icon={<Upload className="h-[18px] w-[18px]" />}
-          farbe="bg-warn-bg text-warn-fg"
-          name="Plan hochladen"
-          unter="Screenshot oder .ics-Datei"
         />
       </Gruppe>
     </div>

@@ -130,6 +130,10 @@ export default async function geld() {
     // Kachel „Lohn“ und Lohn-Seite: derselbe Monat (vorheriger Monat über ?monat=).
     await seite.goto(`${APP}/privat/schichten`, { waitUntil: "networkidle" });
     await warte(1200);
+    pruefe((await seite.locator("h1").first().innerText()).trim() === "Mein Monat" && (await seite.locator("[data-monatskarte]").count()) === 1, "Mein Monat: eine Karte für den Monat");
+    pruefe(/Tanke/.test(await seite.locator("[data-monat-verteilung]").innerText()), "Mein Monat: Schichten je Art im Farbbalken");
+    pruefe(/ausgezahlt/.test(await seite.locator("[data-monat-lohn]").innerText()), "Mein Monat: echter Lohn als „ausgezahlt“");
+    pruefe((await seite.locator('[data-eintrag="Meine Schichten"], [data-eintrag="Plan hochladen"]').count()) === 0, "Mein Monat: Schichtarten und Hochladen stehen unter Mehr");
     await seite.getByRole("button", { name: "Vorheriger Monat" }).first().click().catch(() => {});
     await warte(1200);
     const lohnLink = seite.locator('a[href*="reiter=geld"]').first();
@@ -146,6 +150,7 @@ export default async function geld() {
     await seite.goto(`${APP}/privat/mehr`, { waitUntil: "networkidle" });
     await warte(800);
     pruefe((await seite.locator("[data-mehr-kacheln] > *").count()) === 4, "Mehr: vier Kacheln oben");
+    pruefe((await seite.getByRole("button", { name: /Meine Schichten/ }).count()) === 1 && (await seite.getByRole("button", { name: /Plan hochladen/ }).count()) === 1, "Mehr: Meine Schichten und Plan hochladen");
     await seite.getByRole("button", { name: /Feiertage/ }).click();
     await warte(500);
     pruefe(await seite.locator("#privat-bundesland").isVisible(), "Mehr: Feiertage öffnen Bundesland im Blatt");
