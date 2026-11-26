@@ -36,7 +36,7 @@ export default function DatenschutzPage() {
     <LegalPage
       title="Datenschutzerklärung"
       intro="Diese Erklärung beschreibt, welche personenbezogenen Daten in ShiftNexo verarbeitet werden, wer dafür verantwortlich ist und welche Rechte betroffene Personen haben."
-      updated="22. November 2026"
+      updated="26. November 2026"
       version={DATENSCHUTZ_VERSION}
     >
       <Hinweis titel="Wer ist wofür verantwortlich?">
@@ -270,6 +270,14 @@ export default function DatenschutzPage() {
             gezählt, nicht mit Klartext. Die Einträge werden nach spätestens einem Tag gelöscht
           </li>
           <li>
+            Sicherheitsprüfung gegen automatisierte Anmeldeversuche (Cloudflare Turnstile) bei
+            Anmeldung, Registrierung, Start der Demo und Passwortänderung: Der Browser lädt dazu
+            ein Prüfskript von Cloudflare. Cloudflare verarbeitet dabei IP-Adresse, Browser- und
+            Gerätemerkmale sowie technische Signale der Seitenbenutzung, um Menschen von
+            Programmen zu unterscheiden, und gibt nur ein einmal gültiges Prüfzeichen zurück.
+            Plan-, Konto- oder Abwesenheitsdaten erhält Cloudflare nicht
+          </li>
+          <li>
             Zugriffsprotokolle der Hosting-Dienstleister mit IP-Adresse, Zeitpunkt,
             aufgerufenem Pfad und Browserkennung
           </li>
@@ -405,7 +413,7 @@ export default function DatenschutzPage() {
             Vertragsannahme)
           </li>
           <li>
-            <strong>Zugriffsprotokolle, Ratenbegrenzung, Missbrauchs- und Angriffsabwehr:</strong>{" "}
+            <strong>Zugriffsprotokolle, Ratenbegrenzung, Sicherheitsprüfung bei der Anmeldung, Missbrauchs- und Angriffsabwehr:</strong>{" "}
             Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren und
             funktionsfähigen Betrieb)
           </li>
@@ -788,19 +796,25 @@ Verantwortlich für diese freiwilligen Kalenderdaten ist der Betreiber
             14 Tagen automatisch gelöscht.
           </li>
           <li>
+            <strong>Cloudflare</strong> (Cloudflare, Inc.) – Sicherheitsprüfung bei Anmeldung,
+            Registrierung, Demo-Start und Passwortänderung (Turnstile, Abschnitt 3). Verarbeitet
+            werden IP-Adresse, Browser- und Gerätemerkmale; die Prüfung läuft im weltweiten
+            Netz von Cloudflare, in der Regel am nächstgelegenen Standort.
+          </li>
+          <li>
             <strong>Brevo</strong> (Sendinblue SAS, Paris, Frankreich) – Versand der Anmelde-Mails
             (Bestätigung der Registrierung, Einladung, Passwort). Verarbeitet werden E-Mail-Adresse
             und Inhalt dieser Mails; Verarbeitung in der EU.
           </li>
         </Liste>
         <Absatz>
-          <strong>Drittlandbezug:</strong> Supabase, Inc., Vercel, Inc. und GitHub, Inc. haben
+          <strong>Drittlandbezug:</strong> Supabase, Inc., Vercel, Inc., GitHub, Inc. und Cloudflare, Inc. haben
           Sitz in den USA. Die Verarbeitung erfolgt in der EU; soweit ein Zugriff aus einem Drittland nicht
           ausgeschlossen werden kann, stützt er sich auf einen Angemessenheitsbeschluss der
           Europäischen Kommission (EU-US Data Privacy Framework) oder auf
           Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO. Mit Supabase besteht eine
           Vereinbarung zur Auftragsverarbeitung einschließlich Standardvertragsklauseln; für den
-          Datentransfer liegt eine Transfer-Folgenabschätzung vor. Mit Vercel und GitHub gelten
+          Datentransfer liegt eine Transfer-Folgenabschätzung vor. Mit Vercel, GitHub und Cloudflare gelten
           die in deren Bedingungen enthaltenen Auftragsverarbeitungsvereinbarungen.
         </Absatz>
         <Absatz>
