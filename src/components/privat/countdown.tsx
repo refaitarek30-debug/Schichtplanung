@@ -34,7 +34,24 @@ const FENSTER_TAGE = 60;
 /** Geburtstage erscheinen so viele Tage vorher. */
 const GEBURTSTAG_TAGE = 31;
 
-const istGeburtstag = (t: Termin) => t.wiederholung === "jaehrlich" && (t.titel.trimStart().startsWith("🎂") || /geburtstag/i.test(t.titel));
+/**
+ * Geburtstage von selbst erkennen: jeder ganztägige Termin, der sich jedes Jahr
+ * wiederholt (so legt der Import Geburtstage an). Mit 🎂 oder „Geburtstag“ im
+ * Namen ist es sicher einer; sonst ist es ein Jahrestag und bekommt 🎉.
+ */
+const istJahrestermin = (t: Termin) => t.wiederholung === "jaehrlich" && t.ganztaegig;
+const siehtNachGeburtstagAus = (t: Termin) =>
+  t.titel.trimStart().startsWith("🎂") || /geburtstag|\bgeb\.?\b|birthday|bday/i.test(t.titel) || !/\d|jahrestag|hochzeit|todestag/i.test(t.titel);
+
+/** Restzeit in der gewählten Einheit – Antippen der Zahl wechselt (aus Spaß). */
+const EINHEITEN = ["auto", "std", "min", "sek"] as const;
+function inEinheit(ms: number, einheit: (typeof EINHEITEN)[number], auto: string): string {
+  const z = (n: number) => Math.max(0, Math.floor(n)).toLocaleString("de-DE");
+  if (einheit === "std") return `${z(ms / 3.6e6)} Std`;
+  if (einheit === "min") return `${z(ms / 6e4)} Min`;
+  if (einheit === "sek") return `${z(ms / 1e3)} Sek`;
+  return auto;
+}
 
 /** Nächster Jahrestag ab heute ("YYYY-MM-DD"); 29.02. in Nicht-Schaltjahren am 28.02. */
 function naechsterJahrestag(datum: string, heute: string): string {
@@ -58,6 +75,10 @@ export function PrivatCountdown() {
   const [termine, setTermine] = useState<Termin[]>([]);
   /** offenes Blatt: "neu" oder der Schlüssel des Eintrags */
   const [offen, setOffen] = useState<string | null>(null);
+  /** Einheit der großen Zahl je Eintrag (Index in EINHEITEN). */
+  const [einheit, setEinheit] = useState<Record<string, number>>({});
+  const weiterEinheit = (key: string) => setEinheit((e) => ({ ...e, [key]: ((e[key] ?? 0) + 1) % EINHEITEN.length }));
+  const zahl = (key: string, ms: number, auto: string) => inEinheit(ms, EINHEITEN[einheit[key] ?? 0]!, auto);
 
   useEffect(() => {
     fetchMeineTermine()
@@ -104,7 +125,7 @@ export function PrivatCountdown() {
     if (!countdowns.geburtstage) return [];
     const grenze = addDays(heute, GEBURTSTAG_TAGE);
     return termine
-      .filter(istGeburtstag)
+      .filter(istJahrestermin)
       .map((t) => ({ t, tag: naechsterJahrestag(t.datum, heute) }))
       .filter(({ t, tag }) => tag <= grenze && !(t.ausfaelle ?? []).includes(tag) && !(t.serieAb && tag >= t.serieAb));
   }, [countdowns.geburtstage, termine, heute]);
@@ -120,14 +141,14 @@ export function PrivatCountdown() {
     })),
     ...geburtstage.map(({ t, tag }) => ({
       key: `g-${t.id}`,
-      emoji: "🎂",
+      emoji: siehtNachGeburtstagAus(t) ? "🎂" : "🎉",
       titel: t.titel.replace(/^\s*🎂\s*/, "") || "Geburtstag",
       wann: tag === heute ? "heute" : formatDE(tag),
       ziel: zeitpunkt(tag),
       farbe: "#ec4899",
     })),
     ...termine
-      .filter((t) => countdowns.termine.includes(t.id) && !(countdowns.geburtstage && istGeburtstag(t)))
+      .filter((t) => countdowns.termine.includes(t.id) && !(countdowns.geburtstage && istJahrestermin(t)))
       .map((t) => ({
         key: `t-${t.id}`,
         emoji: "📅",
@@ -192,8 +213,13 @@ export function PrivatCountdown() {
 
       <div className="flex items-center justify-between px-1">
         <p className="text-[12.5px] font-semibold text-ink-muted">Worauf du wartest</p>
-        <button type="button" onClick={() => setOffen("neu")} className="flex items-center gap-1 text-[13.5px] font-semibold text-brand-600" data-countdown-neu>
-          <Plus className="h-4 w-4" /> Hinzufügen
+        <button
+          type="button"
+          onClick={() => setOffen("neu")}
+          className="flex h-11 items-center gap-1.5 rounded-full bg-brand-500 px-4 text-[15px] font-semibold text-white shadow-sm active:scale-[0.97] transition-transform"
+          data-countdown-neu
+        >
+          <Plus className="h-5 w-5" strokeWidth={2.4} /> Hinzufügen
         </button>
       </div>
       <div className="-mt-1 flex gap-1.5 px-1">
@@ -219,11 +245,13 @@ export function PrivatCountdown() {
             const bild = countdowns.bilder[e.key];
             if (bild) {
               return (
-                <button
+                <div
                   key={e.key}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setOffen(e.key)}
-                  className="relative block h-[148px] w-full overflow-hidden rounded-[22px] text-left text-white active:scale-[0.99] transition-transform"
+                  onKeyDown={(k) => (k.key === "Enter" || k.key === " ") && setOffen(e.key)}
+                  className="relative block h-[148px] w-full cursor-pointer overflow-hidden rounded-[22px] text-left text-white active:scale-[0.99] transition-transform"
                   data-countdown-eintrag
                   data-countdown-foto
                 >
@@ -240,20 +268,33 @@ export function PrivatCountdown() {
                         {aufteilungText(aufteilen(e.ziel, jetzt))}
                       </span>
                     </span>
-                    <span className="tnum shrink-0 text-[22px] font-bold leading-none">{restText(r)}</span>
+                    <button
+                      type="button"
+                      onClick={(k) => {
+                        k.stopPropagation();
+                        weiterEinheit(e.key);
+                      }}
+                      aria-label="Andere Einheit"
+                      className="tnum -m-2 shrink-0 p-2 text-[22px] font-bold leading-none"
+                      data-countdown-zahl
+                    >
+                      {zahl(e.key, r.ms, restText(r))}
+                    </button>
                   </span>
                   <span className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
                     <span className="block h-full bg-white/90 transition-[width] duration-700" style={{ width: `${p * 100}%` }} />
                   </span>
-                </button>
+                </div>
               );
             }
             return (
-              <button
+              <div
                 key={e.key}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setOffen(e.key)}
-                className="glas flex w-full items-center gap-3 rounded-[18px] px-4 py-3 text-left active:scale-[0.99] transition-transform"
+                onKeyDown={(k) => (k.key === "Enter" || k.key === " ") && setOffen(e.key)}
+                className="glas flex w-full cursor-pointer items-center gap-3 rounded-[18px] px-4 py-3 text-left active:scale-[0.99] transition-transform"
                 data-countdown-eintrag
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] text-[18px]" style={{ backgroundColor: `${e.farbe}22` }}>
@@ -269,8 +310,19 @@ export function PrivatCountdown() {
                     <span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${p * 100}%`, backgroundColor: e.farbe }} />
                   </span>
                 </span>
-                <span className="tnum shrink-0 text-right text-[16px] font-bold">{restText(r)}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={(k) => {
+                    k.stopPropagation();
+                    weiterEinheit(e.key);
+                  }}
+                  aria-label="Andere Einheit"
+                  className="tnum -my-2 -mr-2 shrink-0 p-2 text-right text-[16px] font-bold"
+                  data-countdown-zahl
+                >
+                  {zahl(e.key, r.ms, restText(r))}
+                </button>
+              </div>
             );
           })}
         </div>

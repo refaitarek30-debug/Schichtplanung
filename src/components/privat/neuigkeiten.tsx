@@ -13,5 +13,5 @@ export function PrivatNeuigkeiten({ rund = true, nurWennNeu = false, className }
     setGesehen(new Date().toISOString());
     void createClient().rpc("privat_neuigkeiten_gelesen");
   });
-  return <NeuigkeitenBasis rund={rund} nurWennNeu={nurWennNeu} className={className} {...stand} />;
+  return <NeuigkeitenBasis rund={rund} nurWennNeu={nurWennNeu} className={className} leuchtenWaehlbar {...stand} />;
 }

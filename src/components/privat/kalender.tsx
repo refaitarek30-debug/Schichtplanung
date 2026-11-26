@@ -63,6 +63,7 @@ import { KALENDER_HEUTE } from "./rahmen";
 import { WochenSpalten } from "./woche-spalten";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
+import { PrivatProfilKnopf } from "./profil-knopf";
 import { meldeBereichBereit } from "@/lib/bereich";
 
 /**
@@ -828,6 +829,7 @@ export function PrivatKalender() {
               <ChevronRight className="h-5 w-5" />
             </GlasKnopf>
           </span>
+          <PrivatProfilKnopf />
         </div>
       </header>
       <OfflinePille wartend={offline.anzahl} />
