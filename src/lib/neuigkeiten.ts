@@ -27,6 +27,18 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-27T09:30:00+01:00",
+    titel: "Neue Tagesansicht",
+    text: "Tippe auf einen Tag: oben die Woche, darunter deine Schicht zum Antippen und die Termine nach Uhrzeit. Wischen = anderer Tag. Termin gedrückt halten = verschieben, an den Punkten oben und unten Beginn oder Ende ziehen. Lange in eine freie Uhrzeit drücken = neuer Termin. Das „i“ oben öffnet die Details wie bisher.",
+    bereich: "beide",
+  },
+  {
+    zeit: "2026-11-27T09:29:00+01:00",
+    titel: "Für andere eintragen",
+    text: "Unter Teilen → Person kannst du erlauben, dass jemand bei dir Termine oder Schichten einträgt. Hast du die Erlaubnis, wählst du in der Tagesansicht oben die Person aus. Die Person bekommt kurz Bescheid. Vor dem Löschen wird immer gefragt.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-27T09:00:00+01:00",
     titel: "Neu hier? Kurzer Rundgang",
     text: "Beim ersten Öffnen fragt ShiftNexo jetzt, ob du es hell, dunkel oder wie dein Handy möchtest – und zeigt in vier Schritten, wo du was findest. Neue Konten starten mit Arbeit, Urlaub, Arzt und Krank; Früh, Spät und Nacht kommen mit der Schichtfolge von selbst dazu.",

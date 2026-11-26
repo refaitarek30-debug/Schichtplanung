@@ -18,10 +18,13 @@ import {
   Tagesansicht,
   TodoBlatt,
   useLangDruck,
+  type LeisteDaten,
 } from "@/components/kalender/tag";
+import { useFremdeSchichten } from "@/components/kalender/fuer-andere";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
 import { useAnzeige } from "@/lib/anzeige";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
+import type { PartnerCode } from "@/lib/data/partner";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
@@ -191,6 +194,8 @@ export function PrivatKalender() {
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
   /** Tagesansicht mit Zeitleiste */
   const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
+  /** Wessen Schichten die Tagesansicht setzt: „ich“ oder das Konto einer verbundenen Person. */
+  const [leistePerson, setLeistePerson] = useState("ich");
 
   // Unten noch mal „Kalender“ getippt: zurück zu heute (offene Tagesansicht zu).
   useEffect(() => {
@@ -399,11 +404,14 @@ export function PrivatKalender() {
     }
     setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, bisDatum, von, bis, ganztaegig } : x)));
     try {
-      await speichereTermin({ ...t, datum, bisDatum, von, bis, ganztaegig });
+      // Termin bei einer verbundenen Person: über deren Freigabe speichern.
+      if (t.inhaber) await terminSichernUeberall({ ...t, datum, bisDatum, von, bis, ganztaegig, ziel: null }, t);
+      else await speichereTermin({ ...t, datum, bisDatum, von, bis, ganztaegig });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
     }
     void ladeTermine();
+    if (t.inhaber) void andere.neuLaden();
   }
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
@@ -441,7 +449,10 @@ export function PrivatKalender() {
     [termine, offline.termine, andere.fremdeTermine, andere.terminSichtbar],
   );
   /** Eigene Termine und Einträge bei Verbundenen darf man löschen – Termine anderer nur ansehen. */
-  const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === konto.userId : !(t.vonPartner && !t.vonUser));
+  const darfTerminLoeschen = (t: Termin) =>
+    t.inhaber
+      ? t.vonUser === konto.userId || !!andere.verbindungen.find((v) => v.partner === t.inhaber)?.erDarf
+      : !(t.vonPartner && !t.vonUser);
   async function terminWeg(t: Termin, modus: LoeschModus, datum: string) {
     if (istWartend(t)) {
       offline.entfernen(t.id);
@@ -624,7 +635,24 @@ export function PrivatKalender() {
 
   function tagAntippen(iso: string) {
     if (pinselAn && pinsel) return pinselStrich([iso]);
-    setTagBlatt(iso);
+    // Ein Tag öffnet die Tagesansicht; alles Weitere über „i“ (das bisherige Tagesblatt).
+    setTagAnsicht(iso);
+  }
+
+  /** Eigene Schicht in der Tagesansicht an- oder abwählen (höchstens drei je Tag). */
+  function eigeneWahl(iso: string, id: string) {
+    const ids = idsVon(tage[iso]);
+    const a = artNach.get(id);
+    if (!a) return;
+    if (ids.includes(id)) {
+      merke([iso], `${a.name} entfernt`);
+      void aendern({ [iso]: eintragAus(ids.filter((x) => x !== id)) });
+    } else if (ids.length >= MAX_JE_TAG) {
+      setFehler(`Höchstens ${MAX_JE_TAG} Einträge am Tag – tippe erst einen weg.`);
+    } else {
+      merke([iso], "{n} geändert");
+      void aendern({ [iso]: eintragAus([...ids, id]) });
+    }
   }
 
   // ---- Navigation ------------------------------------------------------------
@@ -770,6 +798,36 @@ export function PrivatKalender() {
     router.push("/privat/import");
   }
 
+  // Tagesansicht: Schichten setzen – eigene oder die einer Person, die es erlaubt (Migration 0246).
+  const schichtZiele = andere.verbindungen.filter((v) => v.erSchichten);
+  const leisteKey = leistePerson !== "ich" && schichtZiele.some((v) => v.partner === leistePerson) ? leistePerson : "ich";
+  const fremde = useFremdeSchichten(tagAnsicht && leisteKey !== "ich" ? leisteKey : null, tagAnsicht ?? heute, () => void andere.neuLaden());
+  const leisteName = schichtZiele.find((v) => v.partner === leisteKey)?.name || "Verbunden";
+  const leiste: LeisteDaten | null =
+    tagAnsicht && schichtarten
+      ? {
+          personen: [{ key: "ich", name: "Ich" }, ...schichtZiele.map((v) => ({ key: v.partner, name: v.name || "Verbunden" }))],
+          person: leisteKey,
+          onPerson: setLeistePerson,
+          ...(leisteKey === "ich"
+            ? {
+                eintraege: schichtarten.map((a) => ({ id: a.id, name: a.name, farbe: a.farbe })),
+                aktiv: idsVon(tage[tagAnsicht]),
+                onWahl: (id: string) => eigeneWahl(tagAnsicht, id),
+                hinweis: betriebSchichten.am(tagAnsicht).length
+                  ? `Betrieb · nur ansehen: ${betriebSchichten.am(tagAnsicht).map((a) => a.name).join(", ")}`
+                  : undefined,
+              }
+            : {
+                eintraege: fremde.eintraege,
+                aktiv: fremde.aktiv,
+                onWahl: fremde.waehle,
+                laedt: fremde.laedt,
+                hinweis: fremde.fehler ?? `Schichten von ${leisteName} – ${leisteName} bekommt kurz Bescheid.`,
+              }),
+        }
+      : null;
+
   /** Was die Tagesansicht braucht – als Vollbild und als „Woche“. */
   const tagesProps = {
     heute,
@@ -790,6 +848,9 @@ export function PrivatKalender() {
     onLoeschen: (t: Termin, modus: LoeschModus, datum: string) => void terminWeg(t, modus, datum),
     darfLoeschen: darfTerminLoeschen,
     onTodo: (id: string, an: boolean) => void todoSetzen(id, an),
+    darfVerschieben: (t: Termin) => t.wiederholung === "nie" && darfTerminLoeschen(t),
+    andere: (iso: string) =>
+      andere.amTag(iso).map((e) => ({ key: e.key, kurz: e.kurz, farbe: e.farbe, text: `${e.name} · ${CODE_NAME[e.code]}` })),
   };
 
   return (
@@ -1061,6 +1122,11 @@ export function PrivatKalender() {
           onTermin={(t, startZeit) => setTerminBlatt({ datum: tagAnsicht, termin: t, startZeit })}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
           onClose={() => setTagAnsicht(null)}
+          leiste={leiste}
+          onDetails={() => {
+            setTagBlatt(tagAnsicht);
+            setTagAnsicht(null);
+          }}
         />
       ) : null}
 
@@ -1103,7 +1169,7 @@ export function PrivatKalender() {
           }
           nurLesen={
             terminBlatt.termin?.inhaber
-              ? terminBlatt.termin.vonUser !== konto.userId
+              ? !darfTerminLoeschen(terminBlatt.termin)
               : terminBlatt.termin?.vonPartner === true && !terminBlatt.termin.vonUser
           }
           onSpeichern={(t: TerminEingabe) => {
@@ -1173,6 +1239,9 @@ export function PrivatKalender() {
     </div>
   );
 }
+
+/** Schichtkürzel verbundener Personen in Worten. */
+const CODE_NAME: Record<PartnerCode, string> = { F: "Früh", S: "Spät", N: "Nacht", T: "Tag", U: "Urlaub", X: "Frei" };
 
 // ---------------------------------------------------------------------------
 

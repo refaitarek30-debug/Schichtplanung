@@ -5,7 +5,7 @@ import { Check, ChevronRight, Link2, QrCode, Share2 } from "lucide-react";
 import { PERSON_ARTEN, type PersonArt } from "@/lib/data/partner";
 import {
   codeAnzeige,
-  verbindungAendern,
+  verbindungEinstellen,
   verbindungAnnehmen,
   verbindungBeenden,
   verbindungCodeErstellen,
@@ -299,6 +299,8 @@ export function VerbindungEinstellen({ v, onFertig }: { v: Verbindung; onFertig:
   const [art, setArt] = useState<PersonArt>(v.art);
   const [termine, setTermine] = useState(v.ichTermine);
   const [darf, setDarf] = useState(v.ichDarf);
+  const [schichten, setSchichten] = useState(v.ichSchichten ?? false);
+  const [melden, setMelden] = useState(v.ichMelden ?? true);
   const [laeuft, setLaeuft] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
   const [beendenFrage, setBeendenFrage] = useState(false);
@@ -329,7 +331,7 @@ export function VerbindungEinstellen({ v, onFertig }: { v: Verbindung; onFertig:
     <div className="space-y-5 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <p className="px-1 text-[13px] text-ink-muted">
         Verbunden seit {formatZeitpunkt(v.seit)} · {v.name} {v.erTermine ? "zeigt dir die Termine" : "zeigt dir keine Termine"}
-        {v.erDarf ? " und du darfst eintragen." : "."}
+        {v.erDarf || v.erSchichten ? ` und du darfst ${v.erDarf && v.erSchichten ? "Termine und Schichten" : v.erDarf ? "Termine" : "Schichten"} eintragen.` : "."}
       </p>
       <div className="space-y-2">
         <span className="text-[13px] font-semibold text-ink-muted">Wer ist das?</span>
@@ -350,13 +352,15 @@ export function VerbindungEinstellen({ v, onFertig }: { v: Verbindung; onFertig:
       </div>
       <div className="overflow-hidden rounded-[18px] bg-surface ring-1 ring-line [&>label+label]:border-t [&>label+label]:border-line">
         {schalter(termine, setTermine, "Meine Termine zeigen", `${v.name} sieht deine Termine – sonst nur deine Schichten`)}
-        {schalter(darf, setDarf, "Darf bei mir eintragen", `${v.name} kann Termine in deinen Kalender eintragen`)}
+        {schalter(darf, setDarf, "Darf Termine eintragen", `${v.name} kann Termine bei dir eintragen, ändern und löschen`)}
+        {schalter(schichten, setSchichten, "Darf Schichten eintragen", `${v.name} kann deine Schichten setzen und löschen`)}
+        {schalter(melden, setMelden, "Mitteilung, wenn sich etwas ändert", `Kurz Bescheid, wenn ${v.name} bei dir etwas einträgt oder löscht`)}
       </div>
       {fehler ? <p className="rounded-xl bg-crit-bg px-3 py-2 text-[14px] text-crit-fg">{fehler}</p> : null}
       <button
         type="button"
         disabled={laeuft}
-        onClick={() => void los(() => verbindungAendern(v.id, art, termine, darf))}
+        onClick={() => void los(() => verbindungEinstellen(v.id, { art, termine, darf, schichten, melden }))}
         className="h-14 w-full rounded-full bg-brand-500 text-[17px] font-semibold text-white disabled:opacity-60"
       >
         {laeuft ? "Einen Moment …" : "Speichern"}
