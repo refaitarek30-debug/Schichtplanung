@@ -5,7 +5,8 @@ import { Delete, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import { addDays, formatDE, fromISO, toISO } from "@/lib/dates";
-import { farbStil, wendeRotationAn, type Schichtart } from "@/lib/privat/daten";
+import { farbStil, speichereSchichtart, wendeRotationAn, type Schichtart, type SchichtartEingabe } from "@/lib/privat/daten";
+import { usePrivat } from "./kontext";
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
 
@@ -41,6 +42,14 @@ const VORLAGEN: Vorlage[] = [
   },
   { name: "Mo–Fr Früh, Wochenende frei", kurz: "Mo–Fr", folge: ["F", "F", "F", "F", "F", "X", "X"] },
 ];
+
+/** Standard-Schichten für die Vorlagen – werden nur angelegt, wenn sie fehlen. */
+const STANDARD: Record<string, SchichtartEingabe> = {
+  F: { id: null, name: "Früh", kuerzel: "F", farbe: "#F5A524", art: "arbeit", beginn: "06:00", ende: "14:00", stunden: 8, reihenfolge: 0 },
+  S: { id: null, name: "Spät", kuerzel: "S", farbe: "#22A06B", art: "arbeit", beginn: "14:00", ende: "22:00", stunden: 8, reihenfolge: 0 },
+  N: { id: null, name: "Nacht", kuerzel: "N", farbe: "#2F6FDE", art: "arbeit", beginn: "22:00", ende: "06:00", stunden: 8, reihenfolge: 0 },
+  X: { id: null, name: "Frei", kuerzel: "X", farbe: "#E5484D", art: "frei", beginn: "", ende: "", stunden: 0, reihenfolge: 0 },
+};
 
 function plusMonate(iso: string, monate: number): string {
   const d = fromISO(iso);
@@ -78,8 +87,33 @@ export function RotationBlatt({
   const nachKuerzel = useMemo(() => new Map(arten.map((a) => [a.kuerzel.toUpperCase(), a])), [arten]);
   const nachId = useMemo(() => new Map(arten.map((a) => [a.id, a])), [arten]);
 
-  // Nur Vorlagen anbieten, deren Kürzel es gibt.
-  const vorlagen = VORLAGEN.filter((v) => v.folge.every((k) => nachKuerzel.has(k)));
+  // Alle Vorlagen anbieten. Fehlt eine Schicht (neue Konten starten nur mit
+  // Arbeit, Urlaub, Arzt, Krank), wird sie beim Antippen mit Standardzeiten angelegt.
+  const vorlagen = VORLAGEN;
+  const { ladeArtenNeu } = usePrivat();
+  const [wartet, setWartet] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!wartet || !wartet.every((k) => nachKuerzel.has(k))) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMuster(wartet.map((k) => nachKuerzel.get(k)!.id));
+    setWartet(null);
+  }, [wartet, nachKuerzel]);
+  async function vorlageMitFehlenden(folge: string[]) {
+    const fehlen = [...new Set(folge)].filter((k) => !nachKuerzel.has(k));
+    if (!fehlen.length) return setMuster(folge.map((k) => nachKuerzel.get(k)!.id));
+    setFehler(null);
+    try {
+      let rf = arten.reduce((m, a) => Math.max(m, a.reihenfolge), 0);
+      for (const k of fehlen) {
+        const s = STANDARD[k];
+        if (s) await speichereSchichtart({ ...s, reihenfolge: ++rf });
+      }
+      await ladeArtenNeu();
+      setWartet(folge);
+    } catch (e) {
+      setFehler(e instanceof Error ? e.message : "Die Schichten konnten nicht angelegt werden.");
+    }
+  }
 
   const bis = plusMonate(start, monate);
   const erste = muster[0] ? nachId.get(muster[0]) : undefined;
@@ -131,8 +165,8 @@ export function RotationBlatt({
           <p className="mb-2 text-[13px] font-semibold text-ink-muted">Welche Folge passt?</p>
           <div data-vorlagen className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {vorlagen.map((v) => {
-              const ids = v.folge.map((k) => nachKuerzel.get(k)!.id);
-              const gewaehlt = ids.length === muster.length && ids.every((id, i) => muster[i] === id);
+              const ids = v.folge.map((k) => nachKuerzel.get(k)?.id ?? null);
+              const gewaehlt = ids.every((id) => id) && ids.length === muster.length && ids.every((id, i) => muster[i] === id);
               return (
                 <button
                   key={v.kurz}
@@ -141,12 +175,12 @@ export function RotationBlatt({
                   onClick={() => {
                     if (gewaehlt) return;
                     if (!muster.length || VORLAGEN.some((x) => x.folge.length === muster.length && x.folge.every((k, i) => nachKuerzel.get(k)?.id === muster[i])))
-                      return setMuster(ids);
+                      return void vorlageMitFehlenden(v.folge);
                     loesch.frage({
                       titel: "Vorlage übernehmen?",
                       text: "Deine bisherige Folge wird dabei ersetzt.",
                       knopf: "Übernehmen",
-                      onJa: () => setMuster(ids),
+                      onJa: () => void vorlageMitFehlenden(v.folge),
                     });
                   }}
                   className={cn(
@@ -157,7 +191,7 @@ export function RotationBlatt({
                   <span className="block text-[13.5px] font-semibold">{v.name}</span>
                   <span className="mt-1.5 flex gap-[3px]" aria-hidden>
                     {v.folge.map((k, i) => (
-                      <span key={i} className="h-2.5 flex-1 rounded-[3px]" style={{ background: nachKuerzel.get(k)!.farbe }} />
+                      <span key={i} className="h-2.5 flex-1 rounded-[3px]" style={{ background: nachKuerzel.get(k)?.farbe ?? STANDARD[k]?.farbe }} />
                     ))}
                   </span>
                 </button>

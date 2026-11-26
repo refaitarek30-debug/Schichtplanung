@@ -1,8 +1,10 @@
 // Privatbereich: vom leeren Kalender zum ersten Plan – „Wie arbeitest du?“, Folge in zwei Tipps,
 // „Fertig!“, Teilen-Karte und die Erinnerung an die Schicht in den Mitteilungen.
-import { APP, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
+import { APP, DB, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 export default async function privatEinstieg() {
+  // Neue Konten starten nur mit Arbeit, Urlaub, Arzt, Krank (Migration 0245): Früh/Spät/Nacht/Frei fehlen.
+  await fetch(`${DB}/rest/v1/privat_schichtarten?kuerzel=in.(F,S,N,X)`, { method: "DELETE" });
   const { browser, seite, seitenFehler } = await neuerBrowser({ einstieg: true });
   try {
     // Noch nichts geteilt: so tun, als gäbe es keine Personen und Verbindungen.
@@ -31,7 +33,10 @@ export default async function privatEinstieg() {
     const vorlage = seite.locator("[data-vorlagen] button").first();
     pruefe(await vorlage.isVisible(), "Folge: Vorlagen als Farbstreifen");
     await vorlage.click();
+    await warte(1500);
     pruefe((await vorlage.getAttribute("aria-pressed")) === "true", "Folge: Vorlage gewählt");
+    const angelegt = (await (await fetch(`${DB}/rest/v1/privat_schichtarten`)).json()).map((a) => a.kuerzel);
+    pruefe(["F", "S", "N", "X"].every((k) => angelegt.includes(k)), `Folge: fehlende Schichten von selbst angelegt (${angelegt.join(",")})`);
     const heuteKnopf = seite.locator("[data-start-tage] button", { hasText: "Heute" });
     pruefe((await heuteKnopf.getAttribute("aria-pressed")) === "true", "Startdatum: Heute ist vorgewählt");
     pruefe((await seite.locator("[data-start-tage] button").count()) === 8, "Startdatum: 7 Tage + anderer Tag");
