@@ -553,9 +553,8 @@ function DatumWahl({ heute, wert, onWahl }: { heute: string; wert: string; onWah
               {k}
             </span>
           ))}
-          {monthGrid(blatt.j, blatt.m)
-            .filter((iso, i, alle) => alle.slice(i - (i % 7), i - (i % 7) + 7).some((x) => Number(x.slice(5, 7)) - 1 === blatt.m))
-            .map((iso) => {
+          {/* Immer sechs Wochen: der Kalender behält beim Blättern seine Größe. */}
+          {monthGrid(blatt.j, blatt.m).map((iso) => {
             const drin = Number(iso.slice(5, 7)) - 1 === blatt.m;
             const vorbei = iso < heute;
             const gewaehlt = iso === wert;
