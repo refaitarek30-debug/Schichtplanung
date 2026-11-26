@@ -117,10 +117,18 @@ export function LohnMonat({
       <section className="overflow-hidden rounded-[22px] bg-gradient-to-br from-[#2563eb] to-[#7c3aed] p-4 text-white shadow-[0_18px_40px_-22px_rgba(76,60,220,0.8)]">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[12.5px] font-medium text-white/80">{aus.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"}</p>
-            <p className="tnum text-[32px] font-bold leading-tight tracking-[-0.02em]" data-lohn-netto>
-              {euro(aus.netto)}
+            {/* Steht der echte Betrag von der Abrechnung da, zählt der – die Schätzung rückt nach unten. */}
+            <p className="text-[12.5px] font-medium text-white/80">
+              {gespeichert?.echt != null ? "Ausgezahlt laut Abrechnung" : aus.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"}
             </p>
+            <p className="tnum text-[32px] font-bold leading-tight tracking-[-0.02em]" data-lohn-netto>
+              {euro(gespeichert?.echt ?? aus.netto)}
+            </p>
+            {gespeichert?.echt != null ? (
+              <p className="tnum text-[12.5px] text-white/80" data-lohn-geschaetzt>
+                geschätzt {euro(aus.netto)}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"

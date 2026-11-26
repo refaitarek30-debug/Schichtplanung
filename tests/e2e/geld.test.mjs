@@ -119,6 +119,7 @@ export default async function geld() {
     await seite.locator("#lohn-echt").fill("2800");
     await seite.locator("#lohn-echt").press("Tab");
     await warte(300);
+    pruefe(/2\.800,00/.test(await seite.locator("[data-lohn-netto]").innerText()) && (await seite.locator("[data-lohn-geschaetzt]").count()) === 1, "Lohn: echter Betrag ersetzt die Schätzung oben");
     await seite.getByRole("radiogroup", { name: "Ansicht" }).getByRole("radio", { name: "Jahr" }).click();
     await warte(400);
     const jahrText = await seite.locator("[data-lohn-jahr]").first().innerText();
