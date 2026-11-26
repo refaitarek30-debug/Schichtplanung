@@ -64,6 +64,7 @@ import { WochenSpalten } from "./woche-spalten";
 import { mitBetrieb, useBetriebsschichten } from "./betrieb";
 import { PrivatNeuigkeiten } from "./neuigkeiten";
 import { PrivatProfilKnopf } from "./profil-knopf";
+import { Willkommen, useWillkommenFertig } from "./willkommen";
 import { meldeBereichBereit } from "@/lib/bereich";
 
 /**
@@ -742,7 +743,9 @@ export function PrivatKalender() {
 
   // Mit Betriebszugang stehen schon die Betriebsschichten drin – dann keine Einstiegs-Hinweise.
   const leer = !betrieb && schichtarten && !laedt && Object.keys(tage).length === 0;
-  const einstieg = !!leer && hinweisZu.einstieg < 2 && !einstiegZu && !rotation && !pinselAn;
+  // Erst nach dem ersten Start (Darstellung + Rundgang) kommt „Wie arbeitest du?“.
+  const willkommenFertig = useWillkommenFertig();
+  const einstieg = !!leer && willkommenFertig && hinweisZu.einstieg < 2 && !einstiegZu && !rotation && !pinselAn;
   // Erst wenn ein Plan steht und noch nichts geteilt ist.
   const teilenKarte =
     !betrieb &&
@@ -881,6 +884,7 @@ export function PrivatKalender() {
       ) : null}
 
       <div
+        data-rundgang="kalender"
         className={cn(
           "relative min-h-0 flex-1 select-none transition-opacity duration-150",
           !bereit && "opacity-0",
@@ -1164,6 +1168,8 @@ export function PrivatKalender() {
           onClose={() => setRotation(false)}
         />
       ) : null}
+      {/* Erster Start: Darstellung und kurzer Rundgang (einmal pro Gerät). */}
+      {kalenderDa ? <Willkommen /> : null}
     </div>
   );
 }
