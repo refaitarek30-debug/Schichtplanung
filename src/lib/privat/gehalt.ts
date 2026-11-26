@@ -63,15 +63,32 @@ export const STANDARD_WOCHENSTUNDEN = 37.5;
 
 export interface GehaltEinstellungen {
   jobs: Job[];
-  /** Job, für den Wochenstunden und Überstunden gelten; Schichten ohne Job gehören dazu. */
+  /** Job, für den Wochenstunden und Überstunden gelten; die Schichten aus dem Betrieb gehören dazu. */
   hauptjob: string | null;
   /** Schichtart -> Job */
   zuordnung: Record<string, string>;
   /** Der Assistent ist durch (oder wurde übersprungen). */
   eingerichtet: boolean;
+  /**
+   * true: Eine eigene Schicht zählt nur für den Job, bei dem sie angehakt ist.
+   * false (ältere Speicherstände): Schichten ohne Job zählen zum Hauptjob – so
+   * bleiben die Zahlen gleich, bis jemand die Auswahl zum ersten Mal ändert.
+   */
+  nurGewaehlt: boolean;
 }
 
-export const GEHALT_STANDARD: GehaltEinstellungen = { jobs: [], hauptjob: null, zuordnung: {}, eingerichtet: false };
+export const GEHALT_STANDARD: GehaltEinstellungen = { jobs: [], hauptjob: null, zuordnung: {}, eingerichtet: false, nurGewaehlt: true };
+
+/** Schichten aus dem Betrieb (Kennung „betrieb:…“) gehören immer zum Hauptjob. */
+const ausBetrieb = (schichtartId: string) => schichtartId.startsWith("betrieb:");
+
+/** Zu welchem Job gehört eine Schichtart? null = zu keinem. */
+export function jobIdVon(einst: GehaltEinstellungen, schichtartId: string): string | null {
+  if (ausBetrieb(schichtartId)) return einst.hauptjob;
+  const j = einst.zuordnung[schichtartId];
+  if (j && einst.jobs.some((x) => x.id === j)) return j;
+  return einst.nurGewaehlt ? null : einst.hauptjob;
+}
 
 export const JOB_STANDARD: Omit<Job, "id" | "name" | "art"> = {
   stundenlohn: null,
@@ -203,7 +220,13 @@ export function bereinigeGehalt(roh: unknown): GehaltEinstellungen {
       typeof r.hauptjob === "string" && ids.has(r.hauptjob)
         ? r.hauptjob
         : (jobs.find((j) => j.art === "brutto") ?? jobs.find((j) => j.art === "ohne"))?.id ?? null;
-    return { jobs, hauptjob: haupt, zuordnung, eingerichtet: r.eingerichtet === true || jobs.length > 0 };
+    return {
+      jobs,
+      hauptjob: haupt,
+      zuordnung,
+      eingerichtet: r.eingerichtet === true || jobs.length > 0,
+      nurGewaehlt: r.nurGewaehlt === true || jobs.length === 0,
+    };
   }
   // Alter Stand: ein Lohn, ein Schalter „in Schicht“.
   const lohn = lohnOder(r.stundenlohn);
@@ -226,7 +249,7 @@ export function bereinigeGehalt(roh: unknown): GehaltEinstellungen {
     einheit: "prozent",
     stundenwert: null,
   };
-  return { jobs: [job], hauptjob: job.id, zuordnung: {}, eingerichtet: true };
+  return { jobs: [job], hauptjob: job.id, zuordnung: {}, eingerichtet: true, nurGewaehlt: false };
 }
 
 export function ladeGehaltEinstellungen(userId: string): GehaltEinstellungen {
@@ -263,9 +286,9 @@ export function zahlAusText(t: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Zu welchem Job gehört eine Schicht? null = zu keinem (dann zählt der Hauptjob). */
+/** Zu welchem Job gehört eine Schicht? null = zu keinem. */
 export function jobVon(einst: GehaltEinstellungen, schichtartId: string): Job | null {
-  const id = einst.zuordnung[schichtartId] ?? einst.hauptjob;
+  const id = jobIdVon(einst, schichtartId);
   return einst.jobs.find((j) => j.id === id) ?? null;
 }
 
@@ -463,10 +486,10 @@ export function rechne(args: {
   const zeiten = args.zeiten ?? {};
   const nach = new Map(args.arten.map((a) => [a.id, a]));
   const haupt = einst.jobs.find((j) => j.id === einst.hauptjob) ?? null;
-  // Zählt zum Soll/Ist: alles, was nicht ausdrücklich einem anderen Job gehört.
+  // Zählt zum Soll/Ist: was zum Hauptjob gehört (ohne Hauptjob: alles ohne anderen Job).
   const zumHaupt = (a: Schichtart) => {
-    const j = einst.zuordnung[a.id];
-    return !j || j === haupt?.id || !einst.jobs.some((x) => x.id === j);
+    const j = jobIdVon(einst, a.id);
+    return haupt ? j === haupt.id : j === null;
   };
 
   let ist = 0;
@@ -500,7 +523,7 @@ export function rechne(args: {
   const jahr = Number(bis.slice(0, 4));
   const jobs: JobRechnung[] = einst.jobs.map((job) => {
     const istHaupt = job.id === haupt?.id;
-    const gehoert = (a: Schichtart) => a.art === "arbeit" && (istHaupt ? zumHaupt(a) : einst.zuordnung[a.id] === job.id);
+    const gehoert = (a: Schichtart) => a.art === "arbeit" && jobIdVon(einst, a.id) === job.id;
     let stunden = 0;
     let schichten = 0;
     for (const [tag, e] of Object.entries(tage)) {

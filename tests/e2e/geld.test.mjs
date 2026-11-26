@@ -88,6 +88,10 @@ export default async function geld() {
     await seite.locator("#job-nacht").fill("5,25");
     await seite.locator("#job-nacht").press("Tab");
     await warte(300);
+    // Als Hauptjob: nur angehakte Schichten zählen, nichts ist von selbst ausgewählt.
+    const wahl = seite.locator("[data-schicht-wahl]");
+    pruefe((await wahl.getByRole("checkbox", { name: /Tanke/ }).getAttribute("aria-checked")) === "true", "Hauptjob: Tanke bleibt angehakt");
+    pruefe((await wahl.getByRole("checkbox", { name: /Früh/ }).getAttribute("aria-checked")) === "false", "Hauptjob: Früh nicht von selbst angehakt");
     await seite.keyboard.press("Escape");
     await warte(500);
     // Normaler Job = Hauptjob: steht ganz in der Lohn-Rechnung, keine eigene Karte mehr.

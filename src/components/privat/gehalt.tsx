@@ -20,6 +20,7 @@ import {
   rechne,
   GEHALT_STANDARD,
   JOB_STANDARD,
+  jobIdVon,
   ladeGehaltEinstellungen,
   minijobGrenze,
   speichereGehaltEinstellungen,
@@ -227,11 +228,9 @@ const ART_TEXT: Record<JobArt, { name: string; kurz: string; unter: string }> = 
   ohne: { name: "Ohne Geld", kurz: "nur Stunden", unter: "Z. B. Ausbildung mit festem Betrag: nur Stunden zählen." },
 };
 
-/** Arbeitsschichten, die zu diesem Job gehören (ohne Zuordnung: zum Hauptjob). */
+/** Arbeitsschichten, die zu diesem Job gehören. */
 function schichtenVon(job: Job, einst: GehaltEinstellungen, arten: readonly Schichtart[]): Schichtart[] {
-  return arten.filter(
-    (a) => a.art === "arbeit" && (einst.zuordnung[a.id] === job.id || (!einst.zuordnung[a.id] && einst.hauptjob === job.id)),
-  );
+  return arten.filter((a) => a.art === "arbeit" && jobIdVon(einst, a.id) === job.id);
 }
 
 const jobFarbe = (job: Job, einst: GehaltEinstellungen, arten: readonly Schichtart[]) =>
@@ -537,7 +536,7 @@ function SchichtWahl({
     <ul className="divide-y divide-line" data-schicht-wahl>
       {arbeit.map((a) => {
         const an = gewaehlt.has(a.id);
-        const anderer = einst.jobs.find((j) => j.id === einst.zuordnung[a.id] && j.id !== job.id);
+        const anderer = einst.jobs.find((j) => j.id === jobIdVon(einst, a.id) && j.id !== job.id);
         return (
           <li key={a.id}>
             <button type="button" role="checkbox" aria-checked={an} onClick={() => onTipp(a.id)} className="flex w-full items-center gap-3 py-2.5 text-left">
@@ -586,16 +585,16 @@ function JobBlatt({
   const istHaupt = einst.hauptjob === job.id;
   const gewaehlt = new Set(schichtenVon(job, einst, arten).map((a) => a.id));
   const tipp = (id: string) => {
+    // Ältere Stände zählten Schichten ohne Job still zum Hauptjob. Beim ersten
+    // Tippen diese Zuordnung festschreiben – danach zählt nur, was angehakt ist.
     const z = { ...einst.zuordnung };
-    if (gewaehlt.has(id)) {
-      // Abwählen: beim Hauptjob ausdrücklich „keinem Job“ geht nicht – dann nur die Zuordnung lösen.
-      delete z[id];
-      if (istHaupt) {
-        const anderer = einst.jobs.find((j) => j.id !== job.id);
-        if (anderer) z[id] = anderer.id;
-      }
-    } else z[id] = job.id;
-    setze({ zuordnung: z });
+    for (const a of arten) {
+      const j = a.art === "arbeit" ? jobIdVon(einst, a.id) : null;
+      if (j) z[a.id] = j;
+    }
+    if (gewaehlt.has(id)) delete z[id];
+    else z[id] = job.id;
+    setze({ zuordnung: z, nurGewaehlt: true });
   };
   const beispiel = arten.find((a) => gewaehlt.has(a.id) && a.beginn && a.ende);
   const jahr = new Date().getFullYear();
@@ -692,7 +691,7 @@ function JobBlatt({
               Hauptjob
             </div>
             <div className="text-[12.5px] leading-snug text-ink-muted">
-              Deine Wochenstunden und Überstunden gelten hier. Schichten ohne Job zählen auch dazu.
+              Deine Wochenstunden und Überstunden gelten hier.{einst.nurGewaehlt ? "" : " Schichten ohne Job zählen auch dazu."}
             </div>
           </div>
           <Schalter an={istHaupt} onChange={(an) => setze({ hauptjob: an ? job.id : null })} labelId="job-haupt" />
@@ -1019,7 +1018,7 @@ export function useLohnDaten(von: string, bis: string, einst: GehaltEinstellunge
         const a = nach.get(id);
         if (!a) return false;
         if (istAbwesenheit(a)) return true;
-        const job = einst.zuordnung[id];
+        const job = jobIdVon(einst, id);
         return !!job && job !== einst.hauptjob;
       });
       const e = eintragAus([...betriebIds, ...eigene].slice(0, 3));
