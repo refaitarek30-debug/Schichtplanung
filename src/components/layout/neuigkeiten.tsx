@@ -82,8 +82,39 @@ export function useNeuigkeitenStand(
     },
   };
 }
+const LEUCHTEN = "sp_neuigkeiten_leuchten";
+
+/** Ob die Glühbirne bei Neuem leuchten soll (auf dem Gerät gemerkt, Standard: ja). */
+function useLeuchten(): [boolean, (an: boolean) => void] {
+  const an = useSyncExternalStore(
+    (rueckruf) => {
+      window.addEventListener(LOKAL_EREIGNIS, rueckruf);
+      return () => window.removeEventListener(LOKAL_EREIGNIS, rueckruf);
+    },
+    () => {
+      try {
+        return window.localStorage.getItem(LEUCHTEN) !== "0";
+      } catch {
+        return true;
+      }
+    },
+    () => false,
+  );
+  const setze = (wert: boolean) => {
+    try {
+      window.localStorage.setItem(LEUCHTEN, wert ? "1" : "0");
+    } catch {
+      // ohne Speicher bleibt es beim Standard
+    }
+    window.dispatchEvent(new Event(LOKAL_EREIGNIS));
+  };
+  return [an, setze];
+}
+
 interface KnopfProps {
   rund?: boolean;
+  /** Leuchtet bei Neuem; im Blatt ein- und ausschaltbar (Privatbereich). */
+  leuchtenWaehlbar?: boolean;
   /** Nur zeigen, solange es Neues gibt – für volle Kopfzeilen (Kalender). */
   nurWennNeu?: boolean;
   className?: string;
@@ -99,6 +130,7 @@ export function NeuigkeitenKnopf(props: KnopfProps) {
 export function NeuigkeitenBasis({
   rund = false,
   nurWennNeu = false,
+  leuchtenWaehlbar = false,
   className,
   eintraege,
   neu,
@@ -113,6 +145,8 @@ export function NeuigkeitenBasis({
   const [offen, setOffen] = useState(false);
   // Was beim Öffnen neu war, bleibt in der Liste markiert, bis sie zugeht.
   const [gesehenVorher, setGesehenVorher] = useState<string | null>(null);
+  const [leuchtenAn, setLeuchten] = useLeuchten();
+  const leuchtet = leuchtenWaehlbar && leuchtenAn && neu;
   if (eintraege.length === 0) return null;
   if (nurWennNeu && !neu && !offen) return null;
 
@@ -127,9 +161,11 @@ export function NeuigkeitenBasis({
       <button
         type="button"
         onClick={oeffnen}
-        // Kein Leuchten mehr – die Glühbirne ist einfach das Nachrichtenfeld der App.
+        // Im Betrieb kein Leuchten – dort ist die Glühbirne einfach das Nachrichtenfeld.
+        // Im Privatbereich leuchtet sie bei Neuem, wenn man das nicht abgeschaltet hat.
         data-neuigkeiten=""
-        aria-label="Neuigkeiten"
+        data-leuchtet={leuchtet ? "" : undefined}
+        aria-label={leuchtet ? "Neuigkeiten, etwas Neues" : "Neuigkeiten"}
         title="Neu bei ShiftNexo"
         className={cn(
           "relative flex shrink-0 items-center justify-center rounded-full transition-colors",
@@ -137,11 +173,28 @@ export function NeuigkeitenBasis({
           className,
         )}
       >
-        <Lightbulb className="h-[19px] w-[19px] text-ink-muted" strokeWidth={1.9} />
+        {leuchtet ? <span aria-hidden className="absolute inset-1 animate-pulse rounded-full bg-[#ffd60a]/35 blur-[6px]" /> : null}
+        <Lightbulb
+          className={cn("relative h-[19px] w-[19px]", leuchtet ? "fill-[#ffd60a] text-[#b38f00]" : "text-ink-muted")}
+          strokeWidth={1.9}
+        />
       </button>
       {offen ? (
         <Blatt titel="Neu bei ShiftNexo" onClose={() => setOffen(false)}>
           <p className="-mt-1 pb-3 text-[13.5px] text-ink-muted">Was sich zuletzt geändert hat.</p>
+          {leuchtenWaehlbar ? (
+            <label className="mb-3 flex items-center justify-between gap-3 rounded-[16px] bg-ink/[0.04] px-4 py-3">
+              <span className="text-[14.5px] font-medium">Glühbirne leuchtet bei Neuem</span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={leuchtenAn}
+                onChange={(e) => setLeuchten(e.target.checked)}
+                className="h-5 w-5 accent-brand-500"
+                data-neuigkeiten-leuchten
+              />
+            </label>
+          ) : null}
           <ul className="space-y-2">
             {eintraege.map((n) => {
               const frisch = istNeu(n, gesehenVorher);

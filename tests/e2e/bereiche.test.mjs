@@ -26,7 +26,7 @@ export default async function bereiche() {
     const frueh = await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).count();
     pruefe(frueh > 5, `Privat: Betriebsschichten stehen im Kalender (${frueh} Tage „Früh“)`);
     pruefe((await seite.locator("[data-neuigkeiten]:visible").count()) === 1, "Privat: Glühbirne auf der Startseite (Kalender)");
-    pruefe((await seite.locator('[data-neuigkeiten="neu"]').count()) === 0, "Privat: Glühbirne leuchtet nicht");
+    pruefe((await seite.locator("[data-neuigkeiten][data-leuchtet]:visible").count()) === 1, "Privat: Glühbirne leuchtet bei Neuem");
     const frei = await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Frei/ }).count();
     pruefe(frei > 5, `Privat: freie Tage aus dem Betrieb stehen da (${frei} Tage „Frei“)`);
     await seite.locator("[data-neuigkeiten]:visible").click();

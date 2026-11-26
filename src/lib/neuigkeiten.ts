@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-26T15:00:00+01:00",
+    titel: "Profil im Kalender, Glühbirne leuchtet",
+    text: "Oben im Kalender steht jetzt dein Profil: von dort zum Betrieb, in die Einstellungen oder abmelden. Die Glühbirne leuchtet, wenn es etwas Neues gibt – abschalten kannst du das in der Glühbirne. Im Countdown wechselt ein Tipp auf die Zahl zu Stunden, Minuten oder Sekunden; Geburtstage aus deinem Kalender werden von selbst erkannt.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-26T12:00:00+01:00",
     titel: "Countdown: genauer und mit Geburtstagen",
     text: "Jeder Countdown zeigt jetzt Jahre, Wochen, Tage, Stunden, Minuten und Sekunden – live. Urlaub über Feiertage hinweg steht nur noch einmal da. Mit „🎂 Geburtstage“ blendest du die Geburtstage der nächsten 31 Tage ein oder aus.",

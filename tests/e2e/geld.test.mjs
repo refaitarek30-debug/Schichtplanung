@@ -256,6 +256,15 @@ export default async function geld() {
     await warte(1600);
     const g2 = await genau.innerText();
     pruefe(/\d+ Wo · .*Std · \d{2} Min · \d{2} Sek/.test(g1) && g1 !== g2, `Countdown: Wochen bis Sekunden, läuft mit (${g1} → ${g2})`);
+    const einheitZahl = seite.locator("[data-countdown-foto] [data-countdown-zahl]");
+    await einheitZahl.click();
+    await warte(200);
+    const inStd = await einheitZahl.innerText();
+    await einheitZahl.click();
+    await einheitZahl.click();
+    await warte(200);
+    const inSek = await einheitZahl.innerText();
+    pruefe(/^[\d.]+ Std$/.test(inStd) && /^[\d.]+ Sek$/.test(inSek) && (await seite.locator("[data-countdown-vorschau]").count()) === 0, `Countdown: Zahl antippen wechselt die Einheit (${inStd} → ${inSek}), ohne das Blatt zu öffnen`);
     await seite.locator("[data-countdown-foto]").click();
     await warte(500);
     pruefe((await seite.getByLabel("Titel").inputValue()) === "Konzert", "Countdown: Antippen öffnet zum Bearbeiten");
@@ -268,6 +277,23 @@ export default async function geld() {
     await warte(300);
     pruefe((await geb.getAttribute("aria-pressed")) === "true", "Countdown: Geburtstage einschalten");
     pruefe(await seite.evaluate(() => JSON.parse(localStorage.getItem("sp_countdown") ?? "{}").geburtstage === true), "Countdown: Filter bleibt gemerkt");
+
+    // Kalender: Profil oben, Glühbirne mit Schalter fürs Leuchten.
+    await seite.goto(`${APP}/privat`, { waitUntil: "networkidle" });
+    await warte(1000);
+    await seite.locator("[data-privat-profil]").click();
+    await warte(400);
+    pruefe((await seite.locator("[data-profil-einstellungen]").count()) === 1, "Kalender: Profil öffnet Einstellungen und Abmelden");
+    await seite.keyboard.press("Escape");
+    await warte(400);
+    await seite.locator("[data-neuigkeiten]").click();
+    await warte(400);
+    const leuchten = seite.locator("[data-neuigkeiten-leuchten]");
+    pruefe(await leuchten.isChecked(), "Glühbirne: Leuchten ist an");
+    await leuchten.click();
+    pruefe(await seite.evaluate(() => localStorage.getItem("sp_neuigkeiten_leuchten") === "0"), "Glühbirne: Leuchten abschaltbar");
+    await seite.keyboard.press("Escape");
+    await warte(300);
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));
