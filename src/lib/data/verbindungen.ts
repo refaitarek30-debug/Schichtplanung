@@ -24,6 +24,12 @@ export interface Verbindung {
   erTermine: boolean;
   /** Ich darf bei ihr eintragen */
   erDarf: boolean;
+  /** Die andere Person darf meine Schichten setzen (Migration 0246) */
+  ichSchichten?: boolean;
+  /** Ich bekomme eine Mitteilung, wenn sie bei mir etwas ändert */
+  ichMelden?: boolean;
+  /** Ich darf ihre Schichten setzen (nur mit eigenem Schichtkalender) */
+  erSchichten?: boolean;
   seit: string;
 }
 
@@ -82,6 +88,54 @@ export async function verbindungAendern(id: string, art: PersonArt, termine: boo
     p_darf: darf,
   });
   if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
+/** Alle eigenen Einstellungen einer Verbindung (Migration 0246). */
+export async function verbindungEinstellen(
+  id: string,
+  e: { art: PersonArt; termine: boolean; darf: boolean; schichten: boolean; melden: boolean },
+) {
+  const { error } = await createClient().rpc("verbindung_einstellen", {
+    p_id: id,
+    p_art: e.art,
+    p_termine: e.termine,
+    p_darf: e.darf,
+    p_schichten: e.schichten,
+    p_melden: e.melden,
+  });
+  if (error) fehler(error, "Das konnte nicht gespeichert werden.");
+}
+
+/** Schicht einer Person, die es erlaubt hat. */
+export interface FremdeSchichtart {
+  id: string;
+  name: string;
+  kuerzel: string;
+  farbe: string;
+  art: "arbeit" | "frei" | "urlaub" | "krank";
+  beginn: string | null;
+  ende: string | null;
+}
+
+export async function fetchFremdeSchichtarten(partner: string): Promise<FremdeSchichtart[]> {
+  const { data, error } = await createClient().rpc("verbindung_schichtarten", { p_partner: partner });
+  if (error) fehler(error, "Die Schichten der Person konnten nicht geladen werden.");
+  return (data ?? []) as FremdeSchichtart[];
+}
+
+/** Eingetragene Schichten der Person (höchstens 62 Tage): Tag → Ebene → Schicht. */
+export async function fetchFremdeSchichttage(partner: string, von: string, bis: string): Promise<Record<string, Record<number, string>>> {
+  const { data, error } = await createClient().rpc("verbindung_schichttage", { p_partner: partner, p_von: von, p_bis: bis });
+  if (error) fehler(error, "Die Schichten der Person konnten nicht geladen werden.");
+  const aus: Record<string, Record<number, string>> = {};
+  for (const z of (data ?? []) as { tag: string; ebene: number; art: string }[]) (aus[z.tag] ??= {})[z.ebene] = z.art;
+  return aus;
+}
+
+/** Schicht der Person setzen (art) oder löschen (null). */
+export async function fremdeSchichtSetzen(partner: string, tag: string, ebene: number, art: string | null) {
+  const { error } = await createClient().rpc("verbindung_schicht_setzen", { p_partner: partner, p_tag: tag, p_ebene: ebene, p_art: art });
+  if (error) fehler(error, "Die Schicht konnte nicht gespeichert werden.");
 }
 
 export async function verbindungBeenden(id: string) {

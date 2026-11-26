@@ -56,6 +56,10 @@ export default async function geld() {
     await warte(1200);
     await seite.locator(`[data-iso="${monat}02"]`).first().click();
     await warte(800);
+    // Tag öffnet die Tagesansicht; „i“ zeigt alles zum Tag (dort: andere Uhrzeit).
+    pruefe((await seite.locator(`[data-tagesansicht="${monat}02"]`).count()) === 1, "Tag antippen: Tagesansicht");
+    await seite.locator("[data-tag-details]").click();
+    await warte(600);
     const zeile = seite.locator("[data-andere-uhrzeit] li").first();
     await zeile.getByRole("button", { name: "Andere Zeit" }).click();
     await zeile.getByLabel("Beginn").fill("17:00");

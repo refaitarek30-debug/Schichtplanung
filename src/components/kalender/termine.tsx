@@ -533,7 +533,7 @@ export function TerminBlatt({
 
           {!termin && !nurLesen && ziele.length ? (
             <div className="space-y-1.5 pt-4">
-              <p className="text-[12.5px] font-semibold text-ink-muted">Eintragen bei</p>
+              <p className="text-[12.5px] font-semibold text-ink-muted">Für</p>
               <div className="flex flex-wrap gap-1.5">
                 {[{ id: null as string | null, name: "Mir" }, ...ziele].map((z) => (
                   <button key={z.id ?? "ich"} type="button" onClick={() => setZiel(z.id)} className={pille(ziel === z.id)}>
@@ -554,6 +554,8 @@ export function TerminBlatt({
               onChange={(e) => setTitel(geburt ? `🎂 ${ohneTorte(e.target.value)}` : e.target.value)}
               placeholder={geburt ? "Wessen Geburtstag?" : "Ohne Titel"}
               maxLength={80}
+              // Neuer Termin: gleich lostippen (die Tagesansicht hält die Tastatur dafür offen).
+              autoFocus={!termin && !nurLesen}
               autoComplete="off"
               className={eingabe}
             />
@@ -754,7 +756,8 @@ export function TerminBlatt({
           {termin && !nurLesen ? (
             <button
               type="button"
-              onClick={() => (serieLoeschen && termin.wiederholung !== "nie" ? setLoeschFrage(true) : onLoeschen(termin.id))}
+              // Vor dem Löschen wird immer gefragt.
+              onClick={() => setLoeschFrage(true)}
               aria-label="Termin löschen"
               className="flex h-14 w-14 items-center justify-center text-crit-fg"
             >
@@ -777,9 +780,9 @@ export function TerminBlatt({
       </form>
       {loeschFrage && termin ? (
         <TerminLoeschenFrage
-          termin={termin}
+          termin={serieLoeschen ? termin : { ...termin, wiederholung: "nie" }}
           datum={vorkommenAm(termin, datum)}
-          onJa={(modus) => onLoeschen(termin.id, modus, vorkommenAm(termin, datum))}
+          onJa={(modus) => onLoeschen(termin.id, serieLoeschen ? modus : "alle", vorkommenAm(termin, datum))}
           onClose={() => setLoeschFrage(false)}
         />
       ) : null}
@@ -860,7 +863,9 @@ export function TerminLoeschenFrage({
             ))}
           </div>
         ) : (
-          <p className="mt-1 text-[14px] text-ink-muted">{name} wird gelöscht.</p>
+          <p className="mt-1 text-[14px] text-ink-muted">
+            {name} wird gelöscht.{termin.inhaber ? " Die Person bekommt kurz Bescheid." : ""}
+          </p>
         )}
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button type="button" onClick={onClose} className="h-12 rounded-[16px] bg-ink/[0.07] text-[15px] font-semibold">

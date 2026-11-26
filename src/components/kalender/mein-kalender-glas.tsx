@@ -15,6 +15,7 @@ import { fetchHolidays } from "@/lib/data/holidays";
 import {
   fetchMeineTermine,
   personTageSetzen,
+  type PartnerCode,
   setzeMeinePartnerTage,
   speichereTermin,
 } from "@/lib/data/partner";
@@ -49,7 +50,8 @@ import { cn } from "@/lib/utils";
 import { neuGesehenSchluessel } from "@/components/layout/neu-marke";
 import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termine";
 import { useZellenHoehe, terminZeilen } from "./zellen";
-import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band } from "./tag";
+import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band, type LeisteDaten } from "./tag";
+import { useFremdeSchichten } from "./fuer-andere";
 import { useVorlieben } from "./vorschlaege";
 import { setzeEinfuehrungGesehen, useAnzeige, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
@@ -489,7 +491,8 @@ export function MeinKalenderGlas() {
   const ziele = andere.verbindungen.filter((v) => v.erDarf).map((v) => ({ id: v.partner, name: v.name || "Verbunden" }));
 
   /** Eigene Termine und Einträge bei Verbundenen darf man löschen, fremde nicht. */
-  const darfTerminLoeschen = (t: Termin) => (t.inhaber ? t.vonUser === profile.id : true);
+  const darfTerminLoeschen = (t: Termin) =>
+    t.inhaber ? t.vonUser === profile.id || !!andere.verbindungen.find((v) => v.partner === t.inhaber)?.erDarf : true;
 
   async function terminVerschieben(t: Termin, von: string, bis: string, datum = t.datum, ganztaegig = t.ganztaegig) {
     // Mehrtägig: das Ende wandert um dieselben Tage mit.
@@ -668,6 +671,8 @@ export function MeinKalenderGlas() {
   const [tagBlatt, setTagBlatt] = useState<{ iso: string; auswahl: boolean } | null>(null);
   const [terminBlatt, setTerminBlatt] = useState<{ datum: string; termin: Termin | null; startZeit?: string } | null>(null);
   const [tagAnsicht, setTagAnsicht] = useState<string | null>(null);
+  /** Wessen Schichten die Tagesansicht setzt: „ich“ oder das Konto einer verbundenen Person. */
+  const [leistePerson, setLeistePerson] = useState("ich");
   const [todoBlatt, setTodoBlatt] = useState<{ datum: string | null } | null>(null);
   const [partnerBlatt, setPartnerBlatt] = useState<{ iso: string; person: string | null } | null>(null);
   const [anpassen, setAnpassen] = useState(false);
@@ -812,7 +817,8 @@ export function MeinKalenderGlas() {
       if (!strich.geschluckt()) pinselStrich([iso]);
       return;
     }
-    setTagBlatt({ iso, auswahl: false });
+    // Ein Tag öffnet die Tagesansicht; alles Weitere über „i“ (das bisherige Tagesblatt).
+    setTagAnsicht(iso);
   }
 
   // ---- Darstellung -------------------------------------------------------
@@ -820,6 +826,41 @@ export function MeinKalenderGlas() {
   const sichtbar =
     stand?.schluessel === aktuellerSchluessel ? stand : (ausZwischenspeicher<Stand>(aktuellerSchluessel) ?? null);
   const zellen = sichtbar?.tage ?? new Map<string, LiveShiftPlanCell>();
+
+  // ---- Tagesansicht: Schichten setzen (eigene oder bei einer Person, die es erlaubt) ----
+  const schichtZiele = andere.verbindungen.filter((v) => v.erSchichten);
+  const leisteKey = leistePerson !== "ich" && schichtZiele.some((v) => v.partner === leistePerson) ? leistePerson : "ich";
+  const fremde = useFremdeSchichten(tagAnsicht && leisteKey !== "ich" ? leisteKey : null, tagAnsicht ?? heute, () => void andere.neuLaden());
+  const leisteName = schichtZiele.find((v) => v.partner === leisteKey)?.name || "Verbunden";
+  // Schicht aus dem Plan (nur ansehen) – erst beim Zeichnen ausgewertet.
+  const planName = (iso: string) => tagInfo(zellen.get(iso)).schichtName;
+  const leiste: LeisteDaten | null =
+    tagAnsicht && (arten?.length || schichtZiele.length)
+      ? {
+          personen: [{ key: "ich", name: "Ich" }, ...schichtZiele.map((v) => ({ key: v.partner, name: v.name || "Verbunden" }))],
+          person: leisteKey,
+          onPerson: setLeistePerson,
+          ...(leisteKey === "ich"
+            ? {
+                eintraege: (arten ?? []).map((a) => ({ id: a.id, name: a.name, farbe: a.farbe })),
+                aktiv: eigene[tagAnsicht] ? [eigene[tagAnsicht]!] : [],
+                onWahl: (id: string) => {
+                  const weg = eigene[tagAnsicht] === id;
+                  merke([tagAnsicht], weg ? "Eintrag entfernt" : "{n} geändert");
+                  void eigenSetzen([tagAnsicht], weg ? null : id);
+                },
+                hinweis: planName(tagAnsicht) ? `Plan: ${planName(tagAnsicht)} · nur ansehen` : undefined,
+              }
+            : {
+                eintraege: fremde.eintraege,
+                aktiv: fremde.aktiv,
+                onWahl: fremde.waehle,
+                laedt: fremde.laedt,
+                hinweis: fremde.fehler ?? `Schichten von ${leisteName} – ${leisteName} bekommt kurz Bescheid.`,
+              }),
+        }
+      : null;
+
   // Wechsel aus dem Privatbereich: erst umschalten, wenn der Monat dasteht.
   const geladenGemeldet = useRef(false);
   useEffect(() => {
@@ -1250,6 +1291,13 @@ export function MeinKalenderGlas() {
           onTodo={(id, an) => void todoSetzen(id, an)}
           onTodos={() => setTodoBlatt({ datum: tagAnsicht })}
           onClose={() => setTagAnsicht(null)}
+          leiste={leiste}
+          darfVerschieben={(t) => t.wiederholung === "nie" && darfTerminLoeschen(t)}
+          andere={(iso) => andere.amTag(iso).map((e) => ({ key: e.key, kurz: e.kurz, farbe: e.farbe, text: `${e.name} · ${CODE_NAME[e.code]}` }))}
+          onDetails={() => {
+            setTagBlatt({ iso: tagAnsicht, auswahl: false });
+            setTagAnsicht(null);
+          }}
         />
       ) : null}
 
@@ -1321,7 +1369,7 @@ export function MeinKalenderGlas() {
                 ? `Von ${andere.terminVon(terminBlatt.termin)?.name ?? "einer eingeladenen Person"} eingetragen. Ihr seht ihn beide.`
                 : "Eingeladene sehen deine Termine nur, wenn du es beim Teilen erlaubst."
           }
-          nurLesen={terminBlatt.termin?.inhaber ? terminBlatt.termin.vonUser !== profile.id : false}
+          nurLesen={terminBlatt.termin?.inhaber ? !darfTerminLoeschen(terminBlatt.termin) : false}
           onSpeichern={(t) => {
             void terminSpeichern(t, terminBlatt.termin);
             setTerminBlatt(null);
@@ -1385,6 +1433,9 @@ export function MeinKalenderGlas() {
 }
 
 // ---- Bausteine -------------------------------------------------------------
+
+/** Schichtkürzel verbundener Personen in Worten. */
+const CODE_NAME: Record<PartnerCode, string> = { F: "Früh", S: "Spät", N: "Nacht", T: "Tag", U: "Urlaub", X: "Frei" };
 
 function GlasKnopf({
   label,

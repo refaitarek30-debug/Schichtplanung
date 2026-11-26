@@ -33,6 +33,13 @@ function sitzung(zweiFaktor = "bestaetigt") {
 const SITZUNG = sitzung();
 
 /** Heute in deutscher Zeit, z. B. { iso: "2026-10-26", jahr: 2026, monat: 10, tage: 31, name: "Oktober" }. */
+/** Tage zu einem Datum "YYYY-MM-DD" addieren. */
+export function addTage(iso, n) {
+  const [j, m, t] = iso.split("-").map(Number);
+  const d = new Date(Date.UTC(j, m - 1, t + n));
+  return d.toISOString().slice(0, 10);
+}
+
 export function heute() {
   const iso = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date());
   const [jahr, monat] = iso.split("-").map(Number);
