@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-26T12:00:00+01:00",
+    titel: "Countdown: genauer und mit Geburtstagen",
+    text: "Jeder Countdown zeigt jetzt Jahre, Wochen, Tage, Stunden, Minuten und Sekunden – live. Urlaub über Feiertage hinweg steht nur noch einmal da. Mit „🎂 Geburtstage“ blendest du die Geburtstage der nächsten 31 Tage ein oder aus.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-24T12:00:00+01:00",
     titel: "Neu: Erinnerung an deine Schicht",
     text: "Unter Mehr → Mitteilungen kannst du dich an deine Schicht erinnern lassen – am Abend vorher um 18 Uhr oder 1 Stunde vor Beginn. Die Schichtfolge geht jetzt schneller: Vorlage antippen, Starttag wählen, fertig.",
