@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-27T09:00:00+01:00",
+    titel: "Neu hier? Kurzer Rundgang",
+    text: "Beim ersten Öffnen fragt ShiftNexo jetzt, ob du es hell, dunkel oder wie dein Handy möchtest – und zeigt in vier Schritten, wo du was findest. Neue Konten starten mit Arbeit, Urlaub, Arzt und Krank; Früh, Spät und Nacht kommen mit der Schichtfolge von selbst dazu.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-26T18:00:00+01:00",
     titel: "„Schichten“ heißt jetzt „Mein Monat“",
     text: "Eine Karte zeigt deinen Monat: Stunden, Früh/Spät/Nacht als Farbbalken und den Lohn – sobald du den echten Betrag von der Abrechnung einträgst, steht der dort mit „ausgezahlt“. „Meine Schichten“ und „Plan hochladen“ findest du jetzt unter Mehr.",

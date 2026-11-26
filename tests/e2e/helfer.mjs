@@ -135,7 +135,7 @@ export const EINSTIEG_GESEHEN = (nutzer) => {
 };
 
 /** Browser wie ein iPhone, angemeldet. Mit `{ hinweis: true }` darf der Kompakt-Hinweis erscheinen. */
-export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt", einstieg = false } = {}) {
+export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt", einstieg = false, willkommen = false } = {}) {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
     ...devices["iPhone 13"],
@@ -149,6 +149,12 @@ export async function neuerBrowser({ hinweis = false, zweiFaktor = "bestaetigt",
   if (!hinweis) await ctx.addInitScript(HINWEIS_GESEHEN);
   // „Wie arbeitest du?“ und die Teilen-Karte im Privatkalender stören die übrigen Tests nicht.
   if (!einstieg) await ctx.addInitScript(EINSTIEG_GESEHEN, NUTZER);
+  // Erster Start (Darstellung + Rundgang) gilt als gesehen – außer im Test dafür.
+  if (!willkommen) await ctx.addInitScript(() => {
+    try {
+      localStorage.setItem("sp_willkommen", "1");
+    } catch {}
+  });
   const seite = await ctx.newPage();
   const seitenFehler = [];
   seite.on("pageerror", (e) => seitenFehler.push(e.message));

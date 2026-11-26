@@ -5,7 +5,7 @@ import { APP, DB, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 export default async function privatEinstieg() {
   // Neue Konten starten nur mit Arbeit, Urlaub, Arzt, Krank (Migration 0245): Früh/Spät/Nacht/Frei fehlen.
   await fetch(`${DB}/rest/v1/privat_schichtarten?kuerzel=in.(F,S,N,X)`, { method: "DELETE" });
-  const { browser, seite, seitenFehler } = await neuerBrowser({ einstieg: true });
+  const { browser, seite, seitenFehler } = await neuerBrowser({ einstieg: true, willkommen: true });
   try {
     // Noch nichts geteilt: so tun, als gäbe es keine Personen und Verbindungen.
     await seite.route("**/rest/v1/rpc/meine_personen", (r) => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
@@ -13,6 +13,21 @@ export default async function privatEinstieg() {
 
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1000);
+
+    // Erster Start: Darstellung wählen, dann vier Stationen Rundgang, erst danach „Wie arbeitest du?“.
+    pruefe(await seite.locator("[data-willkommen]").isVisible(), "Erster Start: „Wie soll ShiftNexo aussehen?“");
+    pruefe((await seite.locator("[data-einstieg]").count()) === 0, "Erster Start: Einstieg wartet");
+    await seite.getByRole("radio", { name: /Dunkel/ }).click();
+    pruefe((await seite.evaluate(() => document.documentElement.getAttribute("data-theme"))) === "dark", "Erster Start: Dunkel sofort sichtbar");
+    await seite.getByRole("radio", { name: /Wie Handy/ }).click();
+    await seite.locator("[data-willkommen-weiter]").click();
+    for (const n of [1, 2, 3, 4]) {
+      pruefe((await seite.locator(`[data-rundgang-schritt="${n}"]`).count()) === 1, `Rundgang: Station ${n}`);
+      await seite.locator("[data-willkommen-weiter]").click();
+      await warte(150);
+    }
+    pruefe(await seite.evaluate(() => localStorage.getItem("sp_willkommen") === "1"), "Rundgang: einmal pro Gerät gemerkt");
+    await warte(300);
     const karte = seite.locator("[data-einstieg]");
     pruefe(await karte.isVisible(), `Leerer Kalender: „Wie arbeitest du?“ (${await seitenText(seite)})`);
     pruefe((await seite.locator("[data-hinweis-streifen]").count()) === 0, "Einstieg: kein schmaler Streifen daneben");
