@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, ImagePlus, Plus } from "lucide-react";
 import { fetchMeineTermine, type Termin } from "@/lib/data/partner";
 import { addDays, formatDE, heuteInBerlin, monthGrid, monthName, weekdayLong } from "@/lib/dates";
-import { bildVerkleinern, restBis, restText, tageBis, useCountdowns, useJetzt, zeitpunkt, type EigenerCountdown } from "@/lib/countdown";
+import { aufteilen, aufteilungText, bildVerkleinern, restBis, restText, tageBis, useCountdowns, useJetzt, zeitpunkt, type EigenerCountdown } from "@/lib/countdown";
 import { idsVon, istAbwesenheit, type Schichtart } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
@@ -14,8 +14,9 @@ import { PrivatKopf } from "./rahmen";
 
 /**
  * Countdown (Entwurf A): oben die nächste Schicht als Ring, darunter alles,
- * worauf man wartet – Urlaub von selbst, gemerkte Termine und eigene
- * Countdowns. Läuft live mit; gemerkt wird nur auf diesem Gerät.
+ * worauf man wartet – der nächste Urlaub von selbst, gemerkte Termine, auf
+ * Wunsch Geburtstage und eigene Countdowns. Läuft sekundengenau mit; gemerkt
+ * wird nur auf diesem Gerät.
  */
 
 interface Eintrag {
@@ -30,6 +31,21 @@ interface Eintrag {
 }
 
 const FENSTER_TAGE = 60;
+/** Geburtstage erscheinen so viele Tage vorher. */
+const GEBURTSTAG_TAGE = 31;
+
+const istGeburtstag = (t: Termin) => t.wiederholung === "jaehrlich" && (t.titel.trimStart().startsWith("🎂") || /geburtstag/i.test(t.titel));
+
+/** Nächster Jahrestag ab heute ("YYYY-MM-DD"); 29.02. in Nicht-Schaltjahren am 28.02. */
+function naechsterJahrestag(datum: string, heute: string): string {
+  const md = datum.slice(5);
+  const am = (j: number) => {
+    const schalt = (j % 4 === 0 && j % 100 !== 0) || j % 400 === 0;
+    return `${j}-${md === "02-29" && !schalt ? "02-28" : md}`;
+  };
+  const j = Number(heute.slice(0, 4));
+  return am(j) >= heute ? am(j) : am(j + 1);
+}
 
 export function PrivatCountdown() {
   const { konto } = usePrivat();
@@ -37,7 +53,7 @@ export function PrivatCountdown() {
   const bis = addDays(heute, 365);
   const { einst } = useGehalt(konto.userId);
   const { tage, arten } = useLohnDaten(heute, bis, einst);
-  const jetzt = useJetzt(15_000);
+  const jetzt = useJetzt(1000);
   const { countdowns, setze } = useCountdowns();
   const [termine, setTermine] = useState<Termin[]>([]);
   /** offenes Blatt: "neu" oder der Schlüssel des Eintrags */
@@ -68,19 +84,30 @@ export function PrivatCountdown() {
     return null;
   }, [tage, nach, heute, jetzt]);
 
-  // Urlaub am Stück (eigene Einträge), ab morgen.
+  // Der nächste Urlaub am Stück, ab morgen. Freie Tage dazwischen (Wochenende,
+  // Feiertag, frei) trennen ihn nicht – 24.12. und 28.–31.12. sind ein Urlaub.
   const urlaub = useMemo(() => {
     if (!tage) return [] as { von: string; bis: string }[];
-    const bloecke: { von: string; bis: string }[] = [];
+    const arbeitAm = (d: string) => idsVon(tage[d]).some((id) => nach.get(id)?.art === "arbeit");
+    let block: { von: string; bis: string } | null = null;
     for (let d = addDays(heute, 1); d <= bis; d = addDays(d, 1)) {
       const istUrlaub = idsVon(tage[d]).some((id) => nach.get(id)?.art === "urlaub");
-      if (!istUrlaub) continue;
-      const letzter = bloecke[bloecke.length - 1];
-      if (letzter && addDays(letzter.bis, 1) === d) letzter.bis = d;
-      else bloecke.push({ von: d, bis: d });
+      if (istUrlaub) {
+        if (block) block.bis = d;
+        else block = { von: d, bis: d };
+      } else if (block && (arbeitAm(d) || d > addDays(block.bis, 4))) break;
     }
-    return bloecke.slice(0, 5);
+    return block ? [block] : [];
   }, [tage, nach, heute, bis]);
+
+  const geburtstage = useMemo(() => {
+    if (!countdowns.geburtstage) return [];
+    const grenze = addDays(heute, GEBURTSTAG_TAGE);
+    return termine
+      .filter(istGeburtstag)
+      .map((t) => ({ t, tag: naechsterJahrestag(t.datum, heute) }))
+      .filter(({ t, tag }) => tag <= grenze && !(t.ausfaelle ?? []).includes(tag) && !(t.serieAb && tag >= t.serieAb));
+  }, [countdowns.geburtstage, termine, heute]);
 
   const eintraege: Eintrag[] = [
     ...urlaub.map((u) => ({
@@ -91,8 +118,16 @@ export function PrivatCountdown() {
       ziel: zeitpunkt(u.von),
       farbe: "#f59e0b",
     })),
+    ...geburtstage.map(({ t, tag }) => ({
+      key: `g-${t.id}`,
+      emoji: "🎂",
+      titel: t.titel.replace(/^\s*🎂\s*/, "") || "Geburtstag",
+      wann: tag === heute ? "heute" : formatDE(tag),
+      ziel: zeitpunkt(tag),
+      farbe: "#ec4899",
+    })),
     ...termine
-      .filter((t) => countdowns.termine.includes(t.id))
+      .filter((t) => countdowns.termine.includes(t.id) && !(countdowns.geburtstage && istGeburtstag(t)))
       .map((t) => ({
         key: `t-${t.id}`,
         emoji: "📅",
@@ -142,10 +177,15 @@ export function PrivatCountdown() {
             {naechste ? naechste.art.name : "keine geplant"}
           </p>
           {naechste ? (
-            <p className="text-[13px] text-ink-muted">
-              {naechste.tag === heute ? "heute" : formatDE(naechste.tag)} · {naechste.art.beginn}
-              {naechste.art.ende ? `–${naechste.art.ende}` : ""}
-            </p>
+            <>
+              <p className="text-[13px] text-ink-muted">
+                {naechste.tag === heute ? "heute" : formatDE(naechste.tag)} · {naechste.art.beginn}
+                {naechste.art.ende ? `–${naechste.art.ende}` : ""}
+              </p>
+              <p className="tnum mt-0.5 text-[12px] text-ink-muted" data-countdown-genau>
+                {aufteilungText(aufteilen(naechste.start, jetzt))}
+              </p>
+            </>
           ) : null}
         </div>
       </section>
@@ -154,6 +194,20 @@ export function PrivatCountdown() {
         <p className="text-[12.5px] font-semibold text-ink-muted">Worauf du wartest</p>
         <button type="button" onClick={() => setOffen("neu")} className="flex items-center gap-1 text-[13.5px] font-semibold text-brand-600" data-countdown-neu>
           <Plus className="h-4 w-4" /> Hinzufügen
+        </button>
+      </div>
+      <div className="-mt-1 flex gap-1.5 px-1">
+        <button
+          type="button"
+          aria-pressed={countdowns.geburtstage}
+          onClick={() => setze((c) => ({ ...c, geburtstage: !c.geburtstage }))}
+          className={cn(
+            "h-8 rounded-full px-3 text-[13px] font-semibold transition-colors",
+            countdowns.geburtstage ? "bg-brand-500 text-white" : "bg-ink/[0.06] text-ink-muted",
+          )}
+          data-countdown-geburtstage
+        >
+          🎂 Geburtstage {countdowns.geburtstage ? "an" : "aus"}
         </button>
       </div>
 
@@ -182,6 +236,9 @@ export function PrivatCountdown() {
                         {e.emoji} {e.titel}
                       </span>
                       <span className="block truncate text-[12.5px] opacity-85">{e.wann}</span>
+                      <span className="tnum block truncate text-[11.5px] opacity-85" data-countdown-genau>
+                        {aufteilungText(aufteilen(e.ziel, jetzt))}
+                      </span>
                     </span>
                     <span className="tnum shrink-0 text-[22px] font-bold leading-none">{restText(r)}</span>
                   </span>
@@ -205,6 +262,9 @@ export function PrivatCountdown() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14.5px] font-semibold">{e.titel}</span>
                   <span className="block truncate text-[12px] text-ink-muted">{e.wann}</span>
+                  <span className="tnum block truncate text-[11.5px] text-ink-muted" data-countdown-genau>
+                    {aufteilungText(aufteilen(e.ziel, jetzt))}
+                  </span>
                   <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-ink/[0.07]">
                     <span className="block h-full rounded-full transition-[width] duration-700" style={{ width: `${p * 100}%`, backgroundColor: e.farbe }} />
                   </span>
@@ -246,6 +306,7 @@ export function PrivatCountdown() {
                     const bilder = { ...c.bilder };
                     delete bilder[aktiv.key];
                     return {
+                      ...c,
                       termine: c.termine.filter((x) => x !== aktiv.termin),
                       eigene: c.eigene.filter((x) => x.id !== aktiv.eigen),
                       bilder,
@@ -325,7 +386,7 @@ function CountdownBlatt({
         {fest ? <p className="text-[13px] text-ink-muted">{fest.wann}</p> : null}
 
         {bild ? (
-          <div className="relative h-[150px] overflow-hidden rounded-[18px]" data-countdown-vorschau>
+          <div className="relative h-[120px] overflow-hidden rounded-[18px]" data-countdown-vorschau>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={bild} alt="Gewähltes Foto" className="h-full w-full object-cover" />
             <div className="absolute inset-x-2 bottom-2 flex justify-between">
@@ -336,7 +397,7 @@ function CountdownBlatt({
             </div>
           </div>
         ) : (
-          <label className="flex h-[72px] cursor-pointer items-center justify-center gap-2 rounded-[18px] border border-dashed border-line text-[14px] font-semibold text-ink-muted">
+          <label className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-dashed border-line text-[14px] font-semibold text-ink-muted">
             <ImagePlus className="h-5 w-5" /> {laedt ? "Foto wird geladen …" : "Foto hinzufügen"}
             <input type="file" accept="image/*" className="sr-only" aria-label="Foto hinzufügen" onChange={(e) => void fotoWahl(e.target.files?.[0])} />
           </label>
@@ -362,9 +423,12 @@ function CountdownBlatt({
 
         {fehler ? <p className="text-[13px] text-crit-fg">{fehler}</p> : null}
 
-        <button type="submit" disabled={laedt || (!fest && !titel.trim())} className="h-12 w-full rounded-[14px] bg-brand-500 text-[15px] font-semibold text-white disabled:opacity-40">
-          {fest || start ? "Speichern" : "Countdown starten"}
-        </button>
+        {/* Bleibt unten im Blatt sichtbar, auch wenn Foto und Kalender lang sind. */}
+        <div className="sticky -bottom-5 z-10 -mx-5 bg-gradient-to-t from-surface via-surface/95 to-surface/0 px-5 pb-5 pt-3">
+          <button type="submit" disabled={laedt || (!fest && !titel.trim())} className="h-12 w-full rounded-[14px] bg-brand-500 text-[15px] font-semibold text-white shadow-sm disabled:opacity-40">
+            {fest || start ? "Speichern" : "Countdown starten"}
+          </button>
+        </div>
         {onEntfernen ? (
           <button type="button" onClick={onEntfernen} className="h-11 w-full rounded-[14px] text-[14.5px] font-semibold text-crit-fg">
             {start ? "Countdown löschen" : "Nicht mehr merken"}
@@ -437,7 +501,9 @@ function DatumWahl({ heute, wert, onWahl }: { heute: string; wert: string; onWah
               {k}
             </span>
           ))}
-          {monthGrid(blatt.j, blatt.m).map((iso) => {
+          {monthGrid(blatt.j, blatt.m)
+            .filter((iso, i, alle) => alle.slice(i - (i % 7), i - (i % 7) + 7).some((x) => Number(x.slice(5, 7)) - 1 === blatt.m))
+            .map((iso) => {
             const drin = Number(iso.slice(5, 7)) - 1 === blatt.m;
             const vorbei = iso < heute;
             const gewaehlt = iso === wert;
@@ -449,7 +515,7 @@ function DatumWahl({ heute, wert, onWahl }: { heute: string; wert: string; onWah
                 onClick={() => onWahl(iso)}
                 data-datum={iso}
                 className={cn(
-                  "tnum mx-auto flex h-9 w-9 items-center justify-center rounded-full text-[14px]",
+                  "tnum mx-auto flex h-8 w-8 items-center justify-center rounded-full text-[14px]",
                   !drin && "invisible",
                   vorbei && "text-ink-faint/60",
                   iso === heute && !gewaehlt && "ring-1 ring-ink/30",

@@ -251,12 +251,23 @@ export default async function geld() {
     await warte(600);
     pruefe(/Konzert/.test(await seite.locator("[data-countdown]").innerText()), "Countdown: eigener Countdown erscheint");
     pruefe((await seite.locator("[data-countdown-foto]").count()) === 1, "Countdown: mit Foto als Karte");
+    const genau = seite.locator("[data-countdown-foto] [data-countdown-genau]");
+    const g1 = await genau.innerText();
+    await warte(1600);
+    const g2 = await genau.innerText();
+    pruefe(/\d+ Wo · .*Std · \d{2} Min · \d{2} Sek/.test(g1) && g1 !== g2, `Countdown: Wochen bis Sekunden, läuft mit (${g1} → ${g2})`);
     await seite.locator("[data-countdown-foto]").click();
     await warte(500);
     pruefe((await seite.getByLabel("Titel").inputValue()) === "Konzert", "Countdown: Antippen öffnet zum Bearbeiten");
     await seite.getByRole("button", { name: "Countdown löschen" }).click();
     await warte(500);
     pruefe(!/Konzert/.test(await seite.locator("[data-countdown]").innerText()), "Countdown: löschen");
+    const geb = seite.locator("[data-countdown-geburtstage]");
+    pruefe((await geb.getAttribute("aria-pressed")) === "false", "Countdown: Geburtstage zuerst aus");
+    await geb.click();
+    await warte(300);
+    pruefe((await geb.getAttribute("aria-pressed")) === "true", "Countdown: Geburtstage einschalten");
+    pruefe(await seite.evaluate(() => JSON.parse(localStorage.getItem("sp_countdown") ?? "{}").geburtstage === true), "Countdown: Filter bleibt gemerkt");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));

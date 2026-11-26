@@ -44,6 +44,43 @@ export function restText(r: Rest): string {
   return `${r.min} Min`;
 }
 
+export interface Aufteilung {
+  jahre: number;
+  wochen: number;
+  tage: number;
+  std: number;
+  min: number;
+  sek: number;
+}
+
+/** Restzeit aufgeteilt in Jahre, Wochen, Tage, Stunden, Minuten und Sekunden (Jahre nach Kalender). */
+export function aufteilen(ziel: Date, jetzt: Date): Aufteilung {
+  let jahre = 0;
+  const ab = new Date(jetzt.getTime());
+  for (;;) {
+    const n = new Date(ab.getTime());
+    n.setFullYear(n.getFullYear() + 1);
+    if (n > ziel) break;
+    jahre++;
+    ab.setTime(n.getTime());
+  }
+  let s = Math.max(0, Math.floor((ziel.getTime() - ab.getTime()) / 1000));
+  const tage = Math.floor(s / 86400);
+  s %= 86400;
+  return { jahre, wochen: Math.floor(tage / 7), tage: tage % 7, std: Math.floor(s / 3600), min: Math.floor((s % 3600) / 60), sek: s % 60 };
+}
+
+/** „1 J · 3 Wo · 2 T · 5 Std · 04 Min · 09 Sek“ – leere große Einheiten fallen weg. */
+export function aufteilungText(a: Aufteilung): string {
+  const teile: string[] = [];
+  if (a.jahre) teile.push(`${a.jahre} J`);
+  if (a.wochen) teile.push(`${a.wochen} Wo`);
+  if (a.tage) teile.push(`${a.tage} T`);
+  if (a.std || teile.length) teile.push(`${a.std} Std`);
+  teile.push(`${String(a.min).padStart(2, "0")} Min`, `${String(a.sek).padStart(2, "0")} Sek`);
+  return teile.join(" · ");
+}
+
 /** Datum + Uhrzeit (lokal) als Zeitpunkt. */
 export function zeitpunkt(iso: string, uhr = "00:00"): Date {
   const [j, mo, t] = iso.split("-").map(Number);
@@ -79,7 +116,11 @@ export interface CountdownSpeicher {
   eigene: EigenerCountdown[];
   /** Fotos je Eintrag (Schlüssel wie „e-…“, „t-…“, „u-…“), verkleinert als JPEG-Daten-URL. */
   bilder: Record<string, string>;
+  /** Geburtstage aus dem Kalender mit anzeigen (Filter, aus = Standard). */
+  geburtstage: boolean;
 }
+
+const LEER: CountdownSpeicher = { termine: [], eigene: [], bilder: {}, geburtstage: false };
 
 const BILD_MAX = 250_000;
 const istBild = (x: unknown): x is string => typeof x === "string" && x.startsWith("data:image/jpeg;base64,") && x.length <= BILD_MAX;
@@ -123,9 +164,9 @@ export function ladeCountdowns(): CountdownSpeicher {
     if (roh?.bilder && typeof roh.bilder === "object") {
       for (const [k, v] of Object.entries(roh.bilder).slice(0, 30)) if (istBild(v)) bilder[k] = v;
     }
-    return { termine, eigene, bilder };
+    return { termine, eigene, bilder, geburtstage: roh?.geburtstage === true };
   } catch {
-    return { termine: [], eigene: [], bilder: {} };
+    return LEER;
   }
 }
 
@@ -141,7 +182,7 @@ export function speichereCountdowns(c: CountdownSpeicher): boolean {
 }
 
 export function useCountdowns() {
-  const [c, setC] = useState<CountdownSpeicher>({ termine: [], eigene: [], bilder: {} });
+  const [c, setC] = useState<CountdownSpeicher>(LEER);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setC(ladeCountdowns());
