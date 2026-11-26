@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { BarChart3, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import { farbStil, idsVon, istAbwesenheit, ladeFeiertage, ladeTage, ladeTagZeiten, tagZeitSchluessel, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
@@ -162,6 +163,18 @@ export function PrivatAuswertung({ titel = "Auswertung", unterKopf, eingebettet 
           <SchichtListe zeilen={werte?.zeilen ?? null} stunden={werte?.gesamtStunden ?? 0} />
         </PrivatKarte>
         {rechnung ? <UeberstundenKarte re={rechnung} /> : null}
+        {eingebettet ? (
+          <Link href="/privat/zahlen" className="glas flex items-center gap-3 rounded-[22px] px-4 py-3" data-zu-meine-zahlen>
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[rgb(47_91_234/0.15)] text-[rgb(47_91_234)]">
+              <Sparkles className="h-[18px] w-[18px]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-semibold leading-tight">Meine Zahlen</span>
+              <span className="block truncate text-[12.5px] text-ink-muted">Sonntage · Nächte · dein Jahr</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-ink-faint" />
+          </Link>
+        ) : null}
       </div>
     </div>
   );

@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-26T18:00:00+01:00",
+    titel: "„Schichten“ heißt jetzt „Mein Monat“",
+    text: "Eine Karte zeigt deinen Monat: Stunden, Früh/Spät/Nacht als Farbbalken und den Lohn – sobald du den echten Betrag von der Abrechnung einträgst, steht der dort mit „ausgezahlt“. „Meine Schichten“ und „Plan hochladen“ findest du jetzt unter Mehr.",
+    bereich: "privat",
+  },
+  {
     zeit: "2026-11-26T15:00:00+01:00",
     titel: "Profil im Kalender, Glühbirne leuchtet",
     text: "Oben im Kalender steht jetzt dein Profil: von dort zum Betrieb, in die Einstellungen oder abmelden. Die Glühbirne leuchtet, wenn es etwas Neues gibt – abschalten kannst du das in der Glühbirne. Im Countdown wechselt ein Tipp auf die Zahl zu Stunden, Minuten oder Sekunden; Geburtstage aus deinem Kalender werden von selbst erkannt.",

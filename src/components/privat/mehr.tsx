@@ -5,7 +5,7 @@ import { MeineDatenKnopf } from "@/components/privacy/meine-daten-knopf";
 import { BetreiberLink } from "@/components/layout/betreiber-link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { Bell, Building2, CalendarArrowDown, ChevronRight, Clock, Contrast, KeyRound, LogOut, Repeat, Star, Trash2 } from "lucide-react";
+import { Bell, Building2, CalendarArrowDown, ChevronRight, Clock, Contrast, KeyRound, Layers, LogOut, Repeat, Star, Trash2, Upload } from "lucide-react";
 import { KalenderAboCard } from "@/components/settings/kalender-abo-card";
 import { cn } from "@/lib/utils";
 import { Blatt } from "./blatt";
@@ -120,6 +120,14 @@ export function PrivatMehr() {
       <PrivatKarte>
         <p className="px-4 pt-3 text-[12.5px] font-semibold text-ink-muted">Einstellungen</p>
         <div className="divide-y divide-line">
+          <Zeile
+            icon={<Layers className="h-4 w-4" />}
+            farbe="bg-[#78716c]"
+            text="Meine Schichten"
+            wert={schichtarten ? `${schichtarten.length} · Farben, Zeiten` : undefined}
+            onClick={() => router.push("/privat/schichten?reiter=liste")}
+          />
+          <Zeile icon={<Upload className="h-4 w-4" />} farbe="bg-[#d97706]" text="Plan hochladen" wert="Screenshot, .ics" onClick={() => router.push("/privat/import")} />
           <Zeile icon={<Star className="h-4 w-4" />} farbe="bg-[#ef4444]" text="Feiertage" wert={konto.feiertageZeigen ? land : "aus"} onClick={() => setBlatt("feiertage")} />
           <Zeile
             icon={<Clock className="h-4 w-4" />}

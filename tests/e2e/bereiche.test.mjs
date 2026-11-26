@@ -43,7 +43,7 @@ export default async function bereiche() {
     await warte(400);
 
     // Nach dem Wechsel lässt sich jede Seite wieder scrollen (nichts hält sie fest).
-    await seite.getByRole("link", { name: "Schichten" }).click();
+    await seite.getByRole("link", { name: "Mein Monat" }).click();
     await seite.waitForURL(/\/privat\/schichten/);
     await warte(800);
     pruefe(
