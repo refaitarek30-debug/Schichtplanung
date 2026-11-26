@@ -97,9 +97,13 @@ function Startliste() {
   // Genau wie auf der Lohn-Seite: derselbe Monat, mit den Extras dieses Monats.
   const extras = lohn.extras?.monat === monatKey ? lohn.extras : null;
   const auszahlung = re && mitGeld.length ? rechneAuszahlung(re, lohn.steuer ?? STEUER_STANDARD, extras, konto.bundesland) : null;
+  // Der echte Betrag von der Abrechnung ersetzt die Schätzung, sobald er eingetragen ist.
+  const echt = lohn.monate[monatKey]?.echt ?? null;
   const geldUnter = !auszahlung
-    ? "Lohn einrichten"
-    : `${auszahlung.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"} · ${monthName(monat.getMonth())}`;
+    ? echt !== null
+      ? `Ausgezahlt · ${monthName(monat.getMonth())}`
+      : "Lohn einrichten"
+    : `${echt !== null ? "Ausgezahlt" : auszahlung.mitSteuer ? "Auszahlung ca." : "Wird ausgezahlt"} · ${monthName(monat.getMonth())}`;
   // Erst Text zeigen, wenn alles geladen ist: Safari malt sich ändernden Text
   // unter Glasflächen sonst übereinander (alter Text bleibt stehen).
   const bereit = re !== null;
@@ -194,7 +198,7 @@ function Startliste() {
           farbe="bg-ok-bg text-ok-fg"
           name="Lohn"
           unter={bereit ? geldUnter : ""}
-          wert={auszahlung ? euroGanz(auszahlung.netto) : undefined}
+          wert={echt !== null ? euroGanz(echt) : auszahlung ? euroGanz(auszahlung.netto) : undefined}
         />
         <Eintrag
           href="/privat/schichten?reiter=urlaub"
