@@ -35,7 +35,7 @@ export default function AvvPage() {
     <LegalPage
       title="Auftragsverarbeitungsvertrag"
       intro="Vertrag über die Verarbeitung personenbezogener Daten im Auftrag nach Art. 28 DSGVO."
-      updated="13. November 2026"
+      updated="26. November 2026"
       version={AVV_VERSION}
     >
       <Hinweis titel="Abschluss und Entwurfsstatus">
@@ -206,6 +206,12 @@ export default function AvvPage() {
             Löschung nach 14 Tagen.
           </li>
           <li>
+            <strong>Cloudflare, Inc.</strong> (USA) – Sicherheitsprüfung gegen automatisierte
+            Anmeldeversuche (Turnstile) bei Anmeldung, Registrierung und Passwortänderung;
+            verarbeitet werden IP-Adresse sowie Browser- und Gerätemerkmale, keine Plan- oder
+            Kontodaten. Ort der Verarbeitung: weltweites Netz des Anbieters.
+          </li>
+          <li>
             <strong>Sendinblue SAS (Brevo)</strong> (Paris, Frankreich, EU) – Versand der
             Anmelde-Mails (Bestätigung, Einladung, Passwort); verarbeitet werden E-Mail-Adresse
             und Inhalt dieser Mails.
@@ -221,7 +227,7 @@ export default function AvvPage() {
           Angemessenheitsbeschluss (EU-US Data Privacy Framework) oder Standardvertragsklauseln
           nach Art. 46 Abs. 2 lit. c DSGVO mit ergänzenden Maßnahmen. Mit Supabase besteht eine
           Vereinbarung zur Auftragsverarbeitung einschließlich Standardvertragsklauseln und einer
-          Transfer-Folgenabschätzung; mit Vercel und GitHub gelten die in deren Bedingungen
+          Transfer-Folgenabschätzung; mit Vercel, GitHub und Cloudflare gelten die in deren Bedingungen
           enthaltenen Auftragsverarbeitungsvereinbarungen.
         </Absatz>
         <Absatz>
