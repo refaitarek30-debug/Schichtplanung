@@ -38,6 +38,8 @@ export default async function bereiche() {
     // Tag antippen: die Betriebsschicht steht da, nur zum Ansehen.
     await seite.locator("[data-iso]:visible").filter({ hasText: /^\d+Früh/ }).first().click();
     await warte(700);
+    await seite.locator("[data-tag-pinsel]").click();
+    await warte(300);
     pruefe(await seite.getByText("Betrieb · nur ansehen").first().isVisible(), "Privat: Tag zeigt die Betriebsschicht als „nur ansehen“");
     await seite.keyboard.press("Escape");
     await warte(400);
