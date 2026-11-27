@@ -246,3 +246,22 @@ export async function terminLoeschenModus(t: Termin, modus: LoeschModus, datum: 
   if (modus === "alle" || t.wiederholung === "nie") return terminLoeschenUeberall(t);
   await terminAusnahme(t.id, datum, modus === "ab");
 }
+
+/** Was verbundene Personen ohne Mitteilung bei mir geändert haben (ab der 4. Änderung, Migration 0248). */
+export interface VerbundenHinweis {
+  name: string;
+  anzahl: number;
+}
+
+export async function fetchVerbundenHinweise(): Promise<VerbundenHinweis[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await createClient().rpc("verbunden_hinweise");
+  if (error) throw new Error(datenFehlerText(error, "Die Hinweise konnten nicht geladen werden."));
+  return ((data ?? []) as VerbundenHinweis[]).filter((h) => h.anzahl > 0);
+}
+
+export async function verbundenHinweiseGesehen() {
+  if (!isSupabaseConfigured) return;
+  const { error } = await createClient().rpc("verbunden_hinweise_gesehen");
+  if (error) throw new Error(datenFehlerText(error, "Der Hinweis konnte nicht geschlossen werden."));
+}

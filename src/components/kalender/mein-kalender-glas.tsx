@@ -52,6 +52,7 @@ import { TerminBlatt, termineAm, type Termin, type TerminEingabe } from "./termi
 import { useZellenHoehe, terminZeilen } from "./zellen";
 import { AmTag, EintragPille, SchichtLeiste, TagKnoepfe, Tagesansicht, TodoBlatt, useLangDruck, type Band, type LeisteDaten } from "./tag";
 import { useFremdeSchichten } from "./fuer-andere";
+import { VerbundenHinweisStreifen } from "./verbunden-hinweis";
 import { useVorlieben } from "./vorschlaege";
 import { setzeEinfuehrungGesehen, useAnzeige, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
@@ -1125,6 +1126,7 @@ export function MeinKalenderGlas() {
       </header>
 
       <OfflinePille wartend={offline.anzahl} />
+      <VerbundenHinweisStreifen />
       {fehler ? (
         <div className="px-3.5 pb-2 sm:px-0">
           <Alert tone="error">{fehler}</Alert>

@@ -202,6 +202,9 @@ http.createServer((req, res) => {
       if (f === "verbindung_code_erstellen") return send(200, { code: "K7P4QX", gueltig_bis: "2026-10-17T12:00:00Z" });
       if (f === "verbindung_code_info") return send(200, body.p_code === "ABC234" ? { gueltig: true, name: "Mia", eigener: false, schon: false, uebernahme: false } : { gueltig: false });
       if (f === "verbindung_annehmen") { if (body.p_code !== "ABC234") return send(200, null); db.verbindungen.push({ id: "v2", partner: "p3", name: "Mia", art: "partner", ichTermine: false, ichDarf: false, erTermine: false, erDarf: false, seit: new Date().toISOString() }); return send(200, "v2"); }
+      // Gesammelte Änderungen verbundener Personen (0248): im Test einmal „Lea 4“, bis weggetippt.
+      if (f === "verbunden_hinweise") return send(200, db.hinweisGesehen || !db.verbundenHinweis ? [] : [{ name: "Lea", anzahl: 4 }]);
+      if (f === "verbunden_hinweise_gesehen") { db.hinweisGesehen = true; return send(204); }
       if (f === "verbindung_einstellen") { const v = db.verbindungen.find((x) => x.id === body.p_id); Object.assign(v, { art: body.p_art, ichTermine: body.p_termine, ichDarf: body.p_darf, ichSchichten: body.p_schichten, ichMelden: body.p_melden }); return send(204); }
       if (f === "verbindung_aendern") { const v = db.verbindungen.find((x) => x.id === body.p_id); Object.assign(v, { art: body.p_art, ichTermine: body.p_termine, ichDarf: body.p_darf }); return send(204); }
       if (f === "verbindung_termin_speichern") { db.fremd.push({ id: randomUUID(), inhaber: body.p_partner, von_user: U, datum: body.p_datum, bis_datum: null, titel: body.p_titel, ganztaegig: body.p_ganztaegig, beginn: body.p_beginn, ende: body.p_ende, wiederholung: "nie", notiz: "", ort: "" }); return send(200, "x"); }

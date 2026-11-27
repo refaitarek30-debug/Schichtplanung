@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/client";
 import { currentIdentity } from "@/lib/supabase/identity";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
+import { heuteInBerlin } from "@/lib/dates";
 import type {
   LeaveBalanceViewRow,
   LeaveRequestWithEmployee,
@@ -98,23 +99,42 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
 export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!isSupabaseConfigured) return [];
   const supabase = createClient();
+  // Die Liste zeigt nur das laufende Jahr und später (vergangene Jahre nicht
+  // mehr) – offene Anträge immer. Und seitenweise: die Datenbank liefert je
+  // Abfrage höchstens 1000 Zeilen, sonst fehlten in großen Betrieben irgendwann
+  // ausgerechnet die neuesten Anträge.
+  const abJahr = `${heuteInBerlin().slice(0, 4)}-01-01`;
+  async function alleAntraege(): Promise<LeaveRequestWithEmployee[]> {
+    const alle: LeaveRequestWithEmployee[] = [];
+    for (let von = 0; ; von += ANTRAEGE_SEITE) {
+      const { data, error } = await supabase
+        .from("leave_requests")
+        .select(SELECT_WITH_EMPLOYEE)
+        .or(`status.eq.pending,end_date.gte.${abJahr}`)
+        .order("start_date", { ascending: true })
+        .order("id", { ascending: true })
+        .range(von, von + ANTRAEGE_SEITE - 1)
+        .returns<LeaveRequestWithEmployee[]>();
+      if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+      alle.push(...(data ?? []));
+      if ((data ?? []).length < ANTRAEGE_SEITE) return alle;
+    }
+  }
   const [antraege, erlaubt] = await Promise.all([
-    supabase
-      .from("leave_requests")
-      .select(SELECT_WITH_EMPLOYEE)
-      .order("start_date", { ascending: true })
-      .returns<LeaveRequestWithEmployee[]>(),
+    alleAntraege(),
     // Nur, worüber man entscheiden darf: die Schichtleitung sieht die
     // eigene Schicht (die eigenen Anträge eingeschlossen), die Administration alles.
     // Die Regel steht in der Datenbank (darf_urlaub_entscheiden).
     supabase.rpc("entscheidbare_mitarbeiter"),
   ]);
 
-  if (antraege.error) throw new DataError(dataErrorMessage(antraege.error) ?? "Unbekannter Fehler");
   if (erlaubt.error) throw new DataError(dataErrorMessage(erlaubt.error) ?? "Unbekannter Fehler");
   const ids = new Set(((erlaubt.data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
-  return (antraege.data ?? []).filter((r) => ids.has(r.employee_id)).map(mapRequest);
+  return antraege.filter((r) => ids.has(r.employee_id)).map(mapRequest);
 }
+
+/** So viele Zeilen liefert die Datenbank höchstens je Abfrage (Supabase-Standard). */
+const ANTRAEGE_SEITE = 1000;
 
 /**
  * Wie viele offene Anträge warten auf eine Entscheidung von mir? Dieselbe
