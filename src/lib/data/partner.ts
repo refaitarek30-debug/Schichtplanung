@@ -140,9 +140,14 @@ export async function fetchMeineTermine(): Promise<Termin[]> {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await createClient().rpc("meine_termine");
   if (error) fehler(error, "Die Termine konnten nicht geladen werden.");
+  return termineAusZeilen(data ?? []);
+}
+
+/** Zeilen wie aus meine_termine() → Termine (auch für privat_paket, Migration 0249). */
+export function termineAusZeilen(zeilen: unknown[]): Termin[] {
   // Beim Beitritt nicht übernommene Termine bleiben im Privatbereich.
   const betrieb = imBetrieb();
-  return ((data ?? []) as TerminZeile[]).filter((z) => !(betrieb && z.nur_privat)).map((z) => ({
+  return (zeilen as TerminZeile[]).filter((z) => !(betrieb && z.nur_privat)).map((z) => ({
     id: z.id,
     vonPartner: z.von_partner,
     personId: z.person_id ?? null,

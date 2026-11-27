@@ -10,21 +10,36 @@ export function offeneBisHeute(todos: Todo[], heute: string): number {
   return todos.filter((t) => !t.erledigt && t.datum !== null && t.datum <= heute).length;
 }
 
+/** Zuletzt gezählt (für alle Reiter gemeinsam). */
+const zuletzt = { zahl: 0, zeit: 0 };
+
 /** Offene To-dos bis heute – für die Zahl am Reiter; lädt neu bei Seitenwechsel und wenn sich To-dos ändern. */
 export function useTodoZahl(pfad: string): number {
-  const [zahl, setZahl] = useState(0);
+  const [zahl, setZahl] = useState(() => zuletzt.zahl);
   useEffect(() => {
     let aktiv = true;
-    const laden = () => {
+    const laden = (immer: boolean) => {
+      // Beim Seitenwechsel höchstens jede Minute neu fragen; ändern sich To-dos, sofort.
+      if (!immer && Date.now() - zuletzt.zeit < 60_000) {
+        setZahl(zuletzt.zahl);
+        return;
+      }
+      zuletzt.zeit = Date.now();
       fetchTodos()
-        .then((t) => aktiv && setZahl(offeneBisHeute(t, heuteInBerlin())))
-        .catch(() => {});
+        .then((t) => {
+          zuletzt.zahl = offeneBisHeute(t, heuteInBerlin());
+          if (aktiv) setZahl(zuletzt.zahl);
+        })
+        .catch(() => {
+          zuletzt.zeit = 0;
+        });
     };
-    laden();
-    window.addEventListener("todos-geaendert", laden);
+    const geaendert = () => laden(true);
+    laden(false);
+    window.addEventListener("todos-geaendert", geaendert);
     return () => {
       aktiv = false;
-      window.removeEventListener("todos-geaendert", laden);
+      window.removeEventListener("todos-geaendert", geaendert);
     };
   }, [pfad]);
   return zahl;

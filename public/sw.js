@@ -34,6 +34,18 @@ const START_PFAD = "/start";
 const START_MARKE = "/__start-ziel";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];
+/**
+ * Die Programmdateien tragen einen Hash im Namen – jede neue Version bringt neue
+ * Dateien, die alten würden sonst ewig liegen bleiben. Gemerkt werden höchstens
+ * so viele, die ältesten gehen zuerst (eine Version braucht deutlich weniger).
+ */
+const STATIC_MAX = 200;
+
+async function kuerzen(cache) {
+  const keys = await cache.keys();
+  const weg = keys.filter((r) => !PRECACHE.includes(new URL(r.url).pathname));
+  for (const r of weg.slice(0, Math.max(0, weg.length - STATIC_MAX))) await cache.delete(r);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -77,7 +89,10 @@ self.addEventListener("fetch", (event) => {
           fetch(request).then((response) => {
             if (response.ok) {
               const copy = response.clone();
-              caches.open(CACHE).then((cache) => cache.put(request, copy));
+              caches
+                .open(CACHE)
+                .then((cache) => cache.put(request, copy).then(() => kuerzen(cache)))
+                .catch(() => {});
             }
             return response;
           }),

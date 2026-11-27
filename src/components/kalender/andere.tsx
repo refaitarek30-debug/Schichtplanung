@@ -118,6 +118,13 @@ function leseSicht(benutzer: string): Sicht {
   }
 }
 
+/** Höchstens 24 Zeiträume merken – die ältesten gehen zuerst. */
+function merke<T>(m: Map<string, T>, k: string, wert: T) {
+  m.delete(k);
+  m.set(k, wert);
+  while (m.size > 24) m.delete(m.keys().next().value as string);
+}
+
 export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: string; von: string; bis: string; aktiv?: boolean }) {
   const [personen, setPersonen] = useState<Person[] | null>(null);
   const [tage, setTage] = useState<Record<string, Record<string, PartnerCode>>>({});
@@ -131,6 +138,13 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   const [vTage, setVTage] = useState<Record<string, { tage: Record<string, PartnerCode>; farben: FarbenCodes }>>({});
   const [fremdeTermine, setFremdeTermine] = useState<Termin[]>([]);
   const tageAnzahl = Math.round((fromISO(bis).getTime() - fromISO(von).getTime()) / 864e5) + 1;
+  // Je Zeitraum gemerkt: beim Hin- und Zurückwischen nicht jedes Mal neu fragen.
+  // Frisch geladen wird bei neuLaden (Zurückkommen in die App, eigene Änderungen).
+  const vMerk = useRef(new Map<string, Record<string, { tage: Record<string, PartnerCode>; farben: FarbenCodes }>>());
+  const gMerk = useRef(new Map<string, GruppenAnderer[]>());
+  /** Termine der Verbundenen hängen nicht vom Monat ab – einmal laden reicht (bis neuLaden). */
+  const vTermineDa = useRef(false);
+  const zuletztGefragt = useRef({ v: "", g: "" });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -163,33 +177,53 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     if (v.status === "fulfilled") setVerbindungen(v.value);
   }, []);
 
-  const ladeVerbunden = useCallback(async () => {
+  const ladeVerbunden = useCallback(async (erneut = false) => {
     if (tageAnzahl < 1 || tageAnzahl > 62) return;
+    const k = `${von}:${tageAnzahl}`;
+    zuletztGefragt.current.v = k;
+    const da = erneut ? undefined : vMerk.current.get(k);
+    if (da) setVTage(da);
+    if (da && vTermineDa.current) return;
     try {
-      const [t, termine] = await Promise.all([fetchVerbundeneTage(von, tageAnzahl), fetchVerbundeneTermine()]);
-      setVTage(t);
-      setFremdeTermine(termine);
+      const [t, termine] = await Promise.all([
+        da ? Promise.resolve(da) : fetchVerbundeneTage(von, tageAnzahl),
+        vTermineDa.current && !erneut ? Promise.resolve(null) : fetchVerbundeneTermine(),
+      ]);
+      merke(vMerk.current, k, t);
+      // Inzwischen weitergewischt: nur merken, nicht anzeigen.
+      if (zuletztGefragt.current.v === k) setVTage(t);
+      if (termine) {
+        setFremdeTermine(termine);
+        vTermineDa.current = true;
+      }
     } catch {
       // Verbindungen sind Beiwerk
     }
   }, [von, tageAnzahl]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (aktiv && verbindungen.length) void ladeVerbunden();
   }, [aktiv, verbindungen.length, ladeVerbunden]);
 
-  const ladeGruppenTage = useCallback(async () => {
+  const ladeGruppenTage = useCallback(async (erneut = false) => {
     if (tageAnzahl < 1 || tageAnzahl > 62) return;
+    const k = `${von}:${tageAnzahl}`;
+    zuletztGefragt.current.g = k;
+    const da = erneut ? undefined : gMerk.current.get(k);
+    if (da) {
+      setGruppenAndere(da);
+      return;
+    }
     try {
-      setGruppenAndere(await fetchGruppenAndere(von, tageAnzahl));
+      const g = await fetchGruppenAndere(von, tageAnzahl);
+      merke(gMerk.current, k, g);
+      if (zuletztGefragt.current.g === k) setGruppenAndere(g);
     } catch {
       // Gruppen sind Beiwerk
     }
   }, [von, tageAnzahl]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (aktiv && gruppen.length) void ladeGruppenTage();
   }, [aktiv, gruppen.length, ladeGruppenTage]);
 
@@ -401,7 +435,10 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     /** Nach Änderungen (Einladen, Eintragen) neu laden. */
     neuLaden: async () => {
       geladen.current.clear();
-      await Promise.all([ladePersonen(), ladeTage(true), ladeGruppenTage(), ladeVerbunden()]);
+      vMerk.current.clear();
+      gMerk.current.clear();
+      vTermineDa.current = false;
+      await Promise.all([ladePersonen(), ladeTage(true), ladeGruppenTage(true), ladeVerbunden(true)]);
     },
     /** Wer gerade eingeblendet ist (jede Person einmal). */
     eingeblendet: [...new Map(zweige.flatMap((z) => z.knoten).map((k) => [k.key, k])).values()].filter(

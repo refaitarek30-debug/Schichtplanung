@@ -26,7 +26,7 @@ import { useVorlieben } from "@/components/kalender/vorschlaege";
 import { useAnzeige } from "@/lib/anzeige";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import type { PartnerCode } from "@/lib/data/partner";
-import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
+import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, todosAusZeilen, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
 import { KalenderTeilen } from "@/components/kalender/teilen";
 import { terminZeilen, useZellenHoehe } from "@/components/kalender/zellen";
@@ -36,6 +36,7 @@ import { useLoeschFrage } from "@/components/kalender/loesch-frage";
 import {
   fetchMeineTermine,
   speichereTermin,
+  termineAusZeilen,
 } from "@/lib/data/partner";
 import { addDays, tageAbstand, formatDE, formatDEShort, fromISO, heuteInBerlin, monthName, toISO } from "@/lib/dates";
 import {
@@ -44,8 +45,10 @@ import {
   farbStil,
   idsVon,
   ladeFeiertage,
+  ladePrivatPaket,
   ladePrivatStand,
   ladeTage,
+  tageAusZeilen,
   ladeTagZeiten,
   leereTage,
   setzeTagZeit,
@@ -270,11 +273,71 @@ export function PrivatKalender() {
   // Änderungsstand der eigenen Daten (Migration 0249): eine kleine Zahl statt aller Daten.
   // Höchstens alle 15 Sekunden gefragt; null = unbekannt, dann wird wie früher geladen.
   const standCache = useRef<{ wert: number | null; zeit: number; laeuft: Promise<number | null> | null }>({ wert: null, zeit: 0, laeuft: null });
+  /** Wann und bei welchem Stand jedes Jahr zuletzt vom Server kam (für den Gerätespeicher). */
+  const jahrInfo = useRef(new Map<number, { z: number; s: number | null }>());
+  const bereichRef = useRef(bereich);
+  useEffect(() => {
+    bereichRef.current = bereich;
+  });
+
+  /**
+   * Erster Blick beim Öffnen: ein Paket (Migration 0249). Hat sich seit dem gemerkten Stand
+   * nichts geändert, kommt nur die Zahl zurück; sonst kommen die nahen Jahre, Termine und
+   * To-dos gleich mit – in einer Abfrage statt vieler einzelner.
+   */
+  const startPaket = useCallback(async (): Promise<number | null> => {
+    const merkSchluessel = `${konto.userId}:privat:stand:paket`;
+    const gemerkt = ausGeraet<StandGemerkt>(merkSchluessel);
+    const dieses = new Date().getFullYear();
+    const b = bereichRef.current;
+    const jahre = [...new Set([dieses - 1, dieses, dieses + 1, fromISO(b.von).getFullYear(), fromISO(b.bis).getFullYear()])].sort();
+    const paket = await ladePrivatPaket(gemerkt && Date.now() - gemerkt.z < EIN_TAG ? gemerkt.s : null, jahre);
+    if (!paket) return ladePrivatStand(); // Datenbank noch ohne Paket: wie bisher
+    const jetzt = Date.now();
+    const neuJahre = paket.jahre ? Object.entries(paket.jahre) : [];
+    if (neuJahre.length) {
+      setTage((alt) => {
+        const neu = { ...alt };
+        for (const [j, inhalt] of neuJahre) {
+          for (const k of Object.keys(neu)) if (k.startsWith(`${j}-`)) delete neu[k];
+          Object.assign(neu, tageAusZeilen(inhalt.tage ?? []));
+        }
+        return neu;
+      });
+      setFeiertage((alt) => {
+        const neu = { ...alt };
+        for (const [, inhalt] of neuJahre) for (const h of inhalt.feiertage ?? []) neu[h.tag] = h.name;
+        return neu;
+      });
+      for (const [j] of neuJahre) {
+        geladen.current.add(Number(j));
+        jahrInfo.current.set(Number(j), { z: jetzt, s: paket.stand });
+      }
+    }
+    if (paket.termine) {
+      const t = termineAusZeilen(paket.termine);
+      setTermine(t);
+      aufGeraet(`${konto.userId}:privat:termine`, t);
+      aufGeraet(`${konto.userId}:privat:stand:termine`, { s: paket.stand, z: jetzt } satisfies StandGemerkt);
+    }
+    if (paket.todos) {
+      const d = todosAusZeilen(paket.todos);
+      setTodos(d);
+      aufGeraet(`${konto.userId}:privat:todos`, d);
+      aufGeraet(`${konto.userId}:privat:stand:todos`, { s: paket.stand, z: jetzt } satisfies StandGemerkt);
+    }
+    if (paket.termine || paket.todos || neuJahre.length) aufGeraet(merkSchluessel, { s: paket.stand, z: jetzt } satisfies StandGemerkt);
+    return paket.stand;
+  }, [konto.userId]);
+  const paketGefragt = useRef(false);
+
   const holeStand = useCallback((frisch = false): Promise<number | null> => {
     const c = standCache.current;
     if (c.laeuft) return c.laeuft;
     if (!frisch && c.zeit && Date.now() - c.zeit < 15_000) return Promise.resolve(c.wert);
-    c.laeuft = ladePrivatStand()
+    const erstes = !paketGefragt.current;
+    paketGefragt.current = true;
+    c.laeuft = (erstes ? startPaket() : ladePrivatStand())
       .catch(() => null)
       .then((w) => {
         c.wert = w;
@@ -283,9 +346,7 @@ export function PrivatKalender() {
         return w;
       });
     return c.laeuft;
-  }, []);
-  /** Wann und bei welchem Stand jedes Jahr zuletzt vom Server kam (für den Gerätespeicher). */
-  const jahrInfo = useRef(new Map<number, { z: number; s: number | null }>());
+  }, [startPaket]);
 
   const ladeJahre = useCallback(async (jahre: number[], erneut = false, still = false) => {
     let fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
@@ -307,6 +368,8 @@ export function PrivatKalender() {
       const jetzt = Date.now();
       const dieses = new Date().getFullYear();
       fehlend = fehlend.filter((j) => {
+        // Schon mit genau diesem Stand geladen (z. B. eben im Start-Paket).
+        if (stand !== null && geladen.current.has(j) && jahrInfo.current.get(j)?.s === stand) return false;
         const g = gemerkt.get(j);
         if (!g?.z) return true;
         const alter = jetzt - g.z;
@@ -322,7 +385,12 @@ export function PrivatKalender() {
         // Ferner Vorrat im Hintergrund: höchstens einmal am Tag.
         return !(still && !nah && alter < EIN_TAG);
       });
-      if (!fehlend.length) return;
+      if (!fehlend.length) {
+        // Nichts zu holen: der Kalender ist fertig (sonst bliebe „lädt“ vom Start stehen –
+        // dann würde nichts mehr auf dem Gerät gemerkt und der Einstieg nie gezeigt).
+        if (!still) setLaedt(false);
+        return;
+      }
     }
     // Vorrat im Hintergrund: keine Ladeanzeige, nichts verschiebt sich.
     if (!still) setLaedt(true);
@@ -496,11 +564,13 @@ export function PrivatKalender() {
   const auffrischen = useRef<() => void>(() => undefined);
   useEffect(() => {
     auffrischen.current = () => {
+      // Erst den Stand frisch fragen – Termine und To-dos hängen sich an dieselbe Abfrage.
+      const frisch = holeStand(true);
       void ladeTermine(true);
       void ladeTodos(true);
       void andere.neuLaden();
       // Eigene Schichten: nur wenn sich seit dem Laden etwas geändert hat (z. B. eine verbundene Person).
-      void holeStand(true).then((stand) => {
+      void frisch.then((stand) => {
         const jahre = [...geladen.current];
         if (stand === null || jahre.every((j) => jahrInfo.current.get(j)?.s === stand)) return;
         void ladeJahre(jahre, true, true);
