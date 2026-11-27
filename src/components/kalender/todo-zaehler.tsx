@@ -10,38 +10,60 @@ export function offeneBisHeute(todos: Todo[], heute: string): number {
   return todos.filter((t) => !t.erledigt && t.datum !== null && t.datum <= heute).length;
 }
 
-/** Zuletzt gezählt (für alle Reiter gemeinsam). */
-const zuletzt = { zahl: 0, zeit: 0 };
+/**
+ * Zuletzt gezählt – für alle Reiter gemeinsam (Seitenleiste und untere Leiste
+ * zeigen dieselbe Zahl). Jede Anzeige meldet sich an und bekommt jede neue Zahl,
+ * egal welche von ihnen gefragt hat.
+ */
+const zaehler = { zahl: 0, zeit: 0, laeuft: false, nochmal: false, hoerer: new Set<(n: number) => void>() };
+
+function zaehle(immer: boolean) {
+  // Läuft schon eine Abfrage, die vor der Änderung begann: danach gleich noch einmal.
+  if (zaehler.laeuft) {
+    if (immer) zaehler.nochmal = true;
+    return;
+  }
+  // Beim Seitenwechsel höchstens jede Minute neu fragen; ändern sich To-dos, sofort.
+  if (!immer && Date.now() - zaehler.zeit < 60_000) return;
+  zaehler.laeuft = true;
+  zaehler.zeit = Date.now();
+  fetchTodos()
+    .then((t) => {
+      zaehler.zahl = offeneBisHeute(t, heuteInBerlin());
+      for (const h of zaehler.hoerer) h(zaehler.zahl);
+    })
+    .catch(() => {
+      zaehler.zeit = 0;
+    })
+    .finally(() => {
+      zaehler.laeuft = false;
+      if (zaehler.nochmal) {
+        zaehler.nochmal = false;
+        zaehle(true);
+      }
+    });
+}
 
 /** Offene To-dos bis heute – für die Zahl am Reiter; lädt neu bei Seitenwechsel und wenn sich To-dos ändern. */
 export function useTodoZahl(pfad: string): number {
-  const [zahl, setZahl] = useState(() => zuletzt.zahl);
+  const [zahl, setZahl] = useState(0);
   useEffect(() => {
-    let aktiv = true;
-    const laden = (immer: boolean) => {
-      // Beim Seitenwechsel höchstens jede Minute neu fragen; ändern sich To-dos, sofort.
-      if (!immer && Date.now() - zuletzt.zeit < 60_000) {
-        setZahl(zuletzt.zahl);
-        return;
-      }
-      zuletzt.zeit = Date.now();
-      fetchTodos()
-        .then((t) => {
-          zuletzt.zahl = offeneBisHeute(t, heuteInBerlin());
-          if (aktiv) setZahl(zuletzt.zahl);
-        })
-        .catch(() => {
-          zuletzt.zeit = 0;
-        });
-    };
-    const geaendert = () => laden(true);
-    laden(false);
-    window.addEventListener("todos-geaendert", geaendert);
+    zaehler.hoerer.add(setZahl);
+    // Was schon gezählt ist, gleich zeigen (nach dem ersten Bild – sonst passt es nicht zum Server).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (zaehler.zeit) setZahl(zaehler.zahl);
     return () => {
-      aktiv = false;
-      window.removeEventListener("todos-geaendert", geaendert);
+      zaehler.hoerer.delete(setZahl);
     };
+  }, []);
+  useEffect(() => {
+    zaehle(false);
   }, [pfad]);
+  useEffect(() => {
+    const geaendert = () => zaehle(true);
+    window.addEventListener("todos-geaendert", geaendert);
+    return () => window.removeEventListener("todos-geaendert", geaendert);
+  }, []);
   return zahl;
 }
 

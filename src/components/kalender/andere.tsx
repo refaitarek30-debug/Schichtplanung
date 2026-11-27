@@ -145,6 +145,8 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
   /** Termine der Verbundenen hängen nicht vom Monat ab – einmal laden reicht (bis neuLaden). */
   const vTermineDa = useRef(false);
   const zuletztGefragt = useRef({ v: "", g: "" });
+  /** Steigt bei neuLaden: Antworten von Abfragen, die davor begannen, werden verworfen. */
+  const generation = useRef(0);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -181,6 +183,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     if (tageAnzahl < 1 || tageAnzahl > 62) return;
     const k = `${von}:${tageAnzahl}`;
     zuletztGefragt.current.v = k;
+    const gen = generation.current;
     const da = erneut ? undefined : vMerk.current.get(k);
     if (da) setVTage(da);
     if (da && vTermineDa.current) return;
@@ -189,6 +192,8 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
         da ? Promise.resolve(da) : fetchVerbundeneTage(von, tageAnzahl),
         vTermineDa.current && !erneut ? Promise.resolve(null) : fetchVerbundeneTermine(),
       ]);
+      // Inzwischen neu geladen (neuLaden): diese Antwort ist älter – weg damit.
+      if (gen !== generation.current) return;
       merke(vMerk.current, k, t);
       // Inzwischen weitergewischt: nur merken, nicht anzeigen.
       if (zuletztGefragt.current.v === k) setVTage(t);
@@ -209,6 +214,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     if (tageAnzahl < 1 || tageAnzahl > 62) return;
     const k = `${von}:${tageAnzahl}`;
     zuletztGefragt.current.g = k;
+    const gen = generation.current;
     const da = erneut ? undefined : gMerk.current.get(k);
     if (da) {
       setGruppenAndere(da);
@@ -216,6 +222,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     }
     try {
       const g = await fetchGruppenAndere(von, tageAnzahl);
+      if (gen !== generation.current) return;
       merke(gMerk.current, k, g);
       if (zuletztGefragt.current.g === k) setGruppenAndere(g);
     } catch {
@@ -434,6 +441,7 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     terminVon,
     /** Nach Änderungen (Einladen, Eintragen) neu laden. */
     neuLaden: async () => {
+      generation.current += 1;
       geladen.current.clear();
       vMerk.current.clear();
       gMerk.current.clear();

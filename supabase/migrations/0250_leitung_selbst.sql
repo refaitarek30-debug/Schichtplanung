@@ -6,7 +6,9 @@
 -- Abwesenheit (z. B. Urlaub) für sich eintragen, den eigenen Urlaubsanspruch
 -- und das eigene AF-Stundenkonto ändern. Krank melden darf sich jede Leitung
 -- weiter selbst. Für alle anderen Personen bleibt alles wie es ist
--- (Leitung darf bei jedem eintragen). Die Funktionen sind sonst unverändert
+-- (Leitung darf bei jedem eintragen). Gilt auch beim direkten Schreiben in die
+-- Abwesenheiten (das eigene AF-Konto direkt in employees schützt schon die
+-- bestehende Regel „Führungsrolle nur durch die Administration“). Die Funktionen sind sonst unverändert
 -- (Stand live: 0224, 0013, 0109 mit heute()).
 -- =============================================================
 
@@ -16,7 +18,28 @@ returns boolean language sql stable security definer set search_path to 'public'
                   and p_employee_id = auth_employee_id()
                   and not leitung_eigene_antraege_erlaubt(), false)
 $$;
-revoke all on function public._leitung_selbst_gesperrt(uuid) from public, anon, authenticated;
+revoke all on function public._leitung_selbst_gesperrt(uuid) from public, anon;
+-- Wird in den Zugriffsregeln unten gebraucht (läuft dort mit den Rechten der Person);
+-- verrät nur, ob die angefragte Person man selbst ist und die Regel greift.
+grant execute on function public._leitung_selbst_gesperrt(uuid) to authenticated;
+
+-- Auch direkt an der Tabelle: Führung darf Abwesenheiten sonst ohne Funktion schreiben
+-- (Regel „Abwesenheiten pflegt Fuehrung“). Einschränkend – gilt zusätzlich zu den
+-- bestehenden Regeln; krank bleibt erlaubt.
+drop policy if exists "Leitung bei sich selbst nur mit Erlaubnis (neu)" on public.absences;
+create policy "Leitung bei sich selbst nur mit Erlaubnis (neu)" on public.absences as restrictive
+  for insert to authenticated
+  with check (type = 'krank' or not public._leitung_selbst_gesperrt(employee_id));
+drop policy if exists "Leitung bei sich selbst nur mit Erlaubnis (aendern)" on public.absences;
+create policy "Leitung bei sich selbst nur mit Erlaubnis (aendern)" on public.absences as restrictive
+  for update to authenticated
+  using (type = 'krank' or not public._leitung_selbst_gesperrt(employee_id))
+  with check (type = 'krank' or not public._leitung_selbst_gesperrt(employee_id));
+drop policy if exists "Leitung bei sich selbst nur mit Erlaubnis (loeschen)" on public.absences;
+create policy "Leitung bei sich selbst nur mit Erlaubnis (loeschen)" on public.absences as restrictive
+  for delete to authenticated
+  using (type = 'krank' or not public._leitung_selbst_gesperrt(employee_id));
+
 
 create or replace function public.create_absence_range(
   p_employee_id uuid,

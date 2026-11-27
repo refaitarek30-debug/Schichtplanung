@@ -305,8 +305,12 @@ export function PrivatKalender() {
         return neu;
       });
       setFeiertage((alt) => {
+        // Ganze Jahre ersetzen – nach einem Wechsel des Bundeslands fallen alte Feiertage weg.
         const neu = { ...alt };
-        for (const [, inhalt] of neuJahre) for (const h of inhalt.feiertage ?? []) neu[h.tag] = h.name;
+        for (const [j, inhalt] of neuJahre) {
+          for (const k of Object.keys(neu)) if (k.startsWith(`${j}-`)) delete neu[k];
+          for (const h of inhalt.feiertage ?? []) neu[h.tag] = h.name;
+        }
         return neu;
       });
       for (const [j] of neuJahre) {
@@ -410,8 +414,12 @@ export function PrivatKalender() {
         return neu;
       });
       setFeiertage((alt) => {
+        // Ganze Jahre ersetzen – nach einem Wechsel des Bundeslands fallen alte Feiertage weg.
         const neu = { ...alt };
-        for (const { f } of ergebnisse) for (const h of f) neu[h.tag] = h.name;
+        for (const { j, f } of ergebnisse) {
+          for (const k of Object.keys(neu)) if (k.startsWith(`${j}-`)) delete neu[k];
+          for (const h of f) neu[h.tag] = h.name;
+        }
         return neu;
       });
       for (const { j } of ergebnisse) {

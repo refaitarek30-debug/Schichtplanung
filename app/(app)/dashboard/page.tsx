@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useHeute } from "@/lib/use-heute";
 import {
   CalendarCheck,
   CalendarClock,
@@ -45,7 +46,6 @@ import type {
 } from "@/lib/types";
 import { useSession } from "@/context/session";
 import {
-  TODAY,
   absences as demoAbsences,
   announcements as demoAnnouncements,
   allPendingRequests,
@@ -113,6 +113,8 @@ function useSehrBreit(): boolean {
 
 export default function DashboardPage() {
   const sehrBreit = useSehrBreit();
+  // Heute je Aufruf (nicht beim Serverstart) – sonst Vortag nach Mitternacht.
+  const TODAY = useHeute();
   const t = useBegriffe();
   const za = useZeitausgleich();
   const gruss = useGruss();
@@ -224,7 +226,7 @@ export default function DashboardPage() {
     setLivePendingCount(stand.pendingCount);
     setLiveCriticalDays(stand.criticalDays);
     inZwischenspeicher(speicherSchluessel, stand);
-  }, [mode, role, company.id, speicherSchluessel]);
+  }, [mode, role, company.id, speicherSchluessel, TODAY]);
 
   useEffect(() => {
     void loadLive();
@@ -345,7 +347,7 @@ export default function DashboardPage() {
       level: item.level,
     }));
     return [...fromBlocks, ...fromNotices];
-  }, [mode, liveAnnouncements, liveBlocks, shiftNames]);
+  }, [mode, liveAnnouncements, liveBlocks, shiftNames, TODAY]);
 
   return (
     // Einheitliche Abstände: „Kompakt“ hat überall 16 px zwischen den Blöcken

@@ -8,14 +8,15 @@
 -- Gezählt wird jede Änderung an den eigenen Schichttagen, Terminen (auch an
 -- einzelnen gelöschten Tagen einer Serie) und To-dos – auch wenn eine
 -- verbundene Person sie macht – und ein Wechsel des Bundeslands (Feiertage).
--- Der Zähler darf eine Änderung nie verhindern.
+-- Fehler werden bewusst nicht verschluckt: eine Änderung ohne Zählerstand
+-- würde auf anderen Geräten sonst bis zu einem Tag fehlen.
 --
 -- privat_paket: alles für den Start in einer Abfrage. Ist der Stand gleich dem
 -- mitgeschickten, kommt nur der Stand zurück.
 -- =============================================================
 
--- Mit dem Konto gelöscht (keine Reste). Beim Löschen eines Kontos schlägt das
--- Hochzählen fehl – das fängt der Auslöser ab, es ist dann ohnehin egal.
+-- Mit dem Konto gelöscht (keine Reste). Während ein Konto gelöscht wird, zählt
+-- _privat_stand_erhoehen nicht mehr (das Konto ist dann schon weg).
 create table if not exists public.privat_stand (
   user_id uuid primary key references auth.users(id) on delete cascade,
   stand bigint not null default 0
@@ -26,7 +27,8 @@ revoke all on table public.privat_stand from public, anon, authenticated;
 create or replace function public._privat_stand_erhoehen(p_user uuid)
 returns void language plpgsql security definer set search_path to 'public' as $$
 begin
-  if p_user is null then
+  -- Konto gerade gelöscht (Löschung läuft): nichts mehr zu zählen.
+  if p_user is null or not exists (select 1 from auth.users u where u.id = p_user) then
     return;
   end if;
   insert into privat_stand (user_id, stand) values (p_user, 1)
@@ -42,20 +44,16 @@ declare
   neu_konto uuid;
   alt_konto uuid;
 begin
-  begin
-    if tg_op <> 'DELETE' then
-      neu_konto := (to_jsonb(new) ->> tg_argv[0])::uuid;
-    end if;
-    if tg_op <> 'INSERT' then
-      alt_konto := (to_jsonb(old) ->> tg_argv[0])::uuid;
-    end if;
-    perform _privat_stand_erhoehen(neu_konto);
-    if alt_konto is distinct from neu_konto then
-      perform _privat_stand_erhoehen(alt_konto);
-    end if;
-  exception when others then
-    null;
-  end;
+  if tg_op <> 'DELETE' then
+    neu_konto := (to_jsonb(new) ->> tg_argv[0])::uuid;
+  end if;
+  if tg_op <> 'INSERT' then
+    alt_konto := (to_jsonb(old) ->> tg_argv[0])::uuid;
+  end if;
+  perform _privat_stand_erhoehen(neu_konto);
+  if alt_konto is distinct from neu_konto then
+    perform _privat_stand_erhoehen(alt_konto);
+  end if;
   return null;
 end;
 $$;
@@ -79,16 +77,12 @@ returns trigger language plpgsql security definer set search_path to 'public' as
 declare
   termin uuid;
 begin
-  begin
-    if tg_op = 'DELETE' then
-      termin := old.termin_id;
-    else
-      termin := new.termin_id;
-    end if;
-    perform _privat_stand_erhoehen((select t.owner_id from kalender_termine t where t.id = termin));
-  exception when others then
-    null;
-  end;
+  if tg_op = 'DELETE' then
+    termin := old.termin_id;
+  else
+    termin := new.termin_id;
+  end if;
+  perform _privat_stand_erhoehen((select t.owner_id from kalender_termine t where t.id = termin));
   return null;
 end;
 $$;
