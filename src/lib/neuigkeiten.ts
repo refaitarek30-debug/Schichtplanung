@@ -29,13 +29,13 @@ export const NEUIGKEITEN: Neuigkeit[] = [
   {
     zeit: "2026-11-27T09:30:00+01:00",
     titel: "Neue Tagesansicht",
-    text: "Tippe auf einen Tag: oben die Woche, darunter deine Schicht zum Antippen und die Termine nach Uhrzeit. Wischen = anderer Tag. Termin gedrückt halten = verschieben, an den Punkten oben und unten Beginn oder Ende ziehen. Lange in eine freie Uhrzeit drücken = neuer Termin. Das „i“ oben öffnet die Details wie bisher.",
+    text: "Tippe auf einen Tag: oben die Woche, darunter die Termine nach Uhrzeit. Mit dem Pinsel oben setzt du deine Schicht. Wischen = anderer Tag. Termin gedrückt halten = verschieben, an den Punkten oben und unten Beginn oder Ende ziehen. Lange in eine freie Uhrzeit drücken = neuer Termin. Das „i“ oben öffnet die Details wie bisher.",
     bereich: "beide",
   },
   {
     zeit: "2026-11-27T09:29:00+01:00",
     titel: "Für andere eintragen",
-    text: "Unter Teilen → Person kannst du erlauben, dass jemand bei dir Termine oder Schichten einträgt. Hast du die Erlaubnis, wählst du in der Tagesansicht oben die Person aus. Die Person bekommt kurz Bescheid. Vor dem Löschen wird immer gefragt.",
+    text: "Unter Teilen → Person kannst du erlauben, dass jemand bei dir Termine oder Schichten einträgt. Hast du die Erlaubnis, tippst du in der Tagesansicht auf den Pinsel und wählst die Person aus. Die Person bekommt kurz Bescheid. Vor dem Löschen wird immer gefragt.",
     bereich: "beide",
   },
   {
