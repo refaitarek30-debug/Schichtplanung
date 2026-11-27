@@ -279,27 +279,23 @@ export function Tagesansicht({
   }
 
   // Termine lassen sich normal scrollen (pan-y); erst wenn einer angehoben ist,
-  // hält dieses Abfangen die Seite still, damit nur der Termin wandert.
-  useEffect(() => {
-    const halten = (e: TouchEvent) => {
-      if (zugRef.current && e.cancelable) e.preventDefault();
-    };
-    window.addEventListener("touchmove", halten, { passive: false });
-    return () => window.removeEventListener("touchmove", halten);
-  }, []);
+  // hält die Seite still, damit nur der Termin wandert.
+  // Auf dem Handy läuft ein angehobener Termin über die Touch-Ereignisse: iOS
+  // bricht die Pointer-Ereignisse dabei gern ab (pointercancel) – dann blieb der
+  // Termin zwar optisch verschoben, gespeichert wurde aber nicht.
+  const finger = useRef(false);
 
   // Alle Bewegungen laufen über das Fenster – auch wenn der Finger den Termin verlässt.
   useEffect(() => {
-    function bewegen(e: PointerEvent) {
-      const g = geste.current;
-      const z = zugRef.current;
+    /** Angehobenen Termin der Fingerhöhe nachführen (15-Minuten-Raster). */
+    function ziehen(z: Zug, y: number) {
       const el = flaeche.current;
-      if (z && el) {
-        e.preventDefault();
+      if (!el) return;
+      {
         const r = el.getBoundingClientRect();
-        if (e.clientY < r.top + 32) el.scrollTop -= 6;
-        else if (e.clientY > r.bottom - 32) el.scrollTop += 6;
-        const delta = ((e.clientY - z.y0 + (el.scrollTop - z.scroll0)) / STUNDE) * 60;
+        if (y < r.top + 32) el.scrollTop -= 6;
+        else if (y > r.bottom - 32) el.scrollTop += 6;
+        const delta = ((y - z.y0 + (el.scrollTop - z.scroll0)) / STUNDE) * 60;
         const auf = (m: number) => Math.round(m / RASTER) * RASTER;
         let s = z.start;
         let en = z.ende;
@@ -310,8 +306,26 @@ export function Tagesansicht({
         else en = Math.min(1440, Math.max(z.start + RASTER, auf(z.ende + delta)));
         if (s !== z.neuStart || en !== z.neuEnde) {
           if (s !== z.neuStart && z.art !== "ende") vibrieren();
-          setZug({ ...z, neuStart: s, neuEnde: en });
+          const neu = { ...z, neuStart: s, neuEnde: en };
+          zugRef.current = neu; // sofort, damit das Loslassen die letzte Stelle kennt
+          setZug(neu);
         }
+      }
+    }
+    /** Termin absetzen und speichern – genau einmal, egal welches Ereignis zuerst kommt. */
+    function absetzen(z: Zug) {
+      zugRef.current = null;
+      setZug(null);
+      const t = termine.find((x) => x.id === z.id);
+      if (t && (z.neuStart !== z.start || z.neuEnde !== z.ende)) onVerschieben(t, hhmm(z.neuStart), hhmm(Math.min(1439, z.neuEnde)));
+    }
+    function bewegen(e: PointerEvent) {
+      const g = geste.current;
+      const z = zugRef.current;
+      if (z) {
+        e.preventDefault();
+        // Finger auf dem Glas: das übernehmen die Touch-Ereignisse.
+        if (!(finger.current && e.pointerType === "touch")) ziehen(z, e.clientY);
         return;
       }
       if (!g) return;
@@ -344,9 +358,7 @@ export function Tagesansicht({
       geste.current = null;
       const z = zugRef.current;
       if (z) {
-        setZug(null);
-        const t = termine.find((x) => x.id === z.id);
-        if (t && (z.neuStart !== z.start || z.neuEnde !== z.ende)) onVerschieben(t, hhmm(z.neuStart), hhmm(Math.min(1439, z.neuEnde)));
+        if (!(finger.current && e.pointerType === "touch")) absetzen(z);
         return;
       }
       const n = neuRef.current;
@@ -379,10 +391,35 @@ export function Tagesansicht({
         if (e.type === "pointerup") setAuswahl(null);
       }
     }
+    function fingerAn() {
+      finger.current = true;
+    }
+    function fingerZieht(e: TouchEvent) {
+      const z = zugRef.current;
+      if (!z) return;
+      // Die Seite hält still, nur der Termin wandert.
+      if (e.cancelable) e.preventDefault();
+      const p = e.touches[0];
+      if (p) ziehen(z, p.clientY);
+    }
+    function fingerWeg(e: TouchEvent) {
+      if (e.touches.length) return;
+      finger.current = false;
+      const z = zugRef.current;
+      if (z) absetzen(z);
+    }
     window.addEventListener("pointermove", bewegen, { passive: false });
     window.addEventListener("pointerup", los);
     window.addEventListener("pointercancel", los);
+    window.addEventListener("touchstart", fingerAn, { passive: true });
+    window.addEventListener("touchmove", fingerZieht, { passive: false });
+    window.addEventListener("touchend", fingerWeg);
+    window.addEventListener("touchcancel", fingerWeg);
     return () => {
+      window.removeEventListener("touchstart", fingerAn);
+      window.removeEventListener("touchmove", fingerZieht);
+      window.removeEventListener("touchend", fingerWeg);
+      window.removeEventListener("touchcancel", fingerWeg);
       window.removeEventListener("pointermove", bewegen);
       window.removeEventListener("pointerup", los);
       window.removeEventListener("pointercancel", los);
