@@ -140,6 +140,11 @@ export async function ladeTage(von: string, bis: string): Promise<Record<string,
     zeilen.push(...((data ?? []) as typeof zeilen));
     if ((data ?? []).length < SEITE) break;
   }
+  return tageAusZeilen(zeilen);
+}
+
+/** Zeilen aus privat_tage (tag, ebene, schichtart_id) → Tag -> Einträge. */
+export function tageAusZeilen(zeilen: { tag: string; ebene: number; schichtart_id: string }[]): Record<string, TagEintrag> {
   const tage: Record<string, TagEintrag> = {};
   for (const z of zeilen) {
     const e = (tage[z.tag] ??= { schicht: null, zusatz: null, dritte: null });
@@ -398,3 +403,35 @@ export const BUNDESLAENDER: { code: string; name: string }[] = [
   { code: "SH", name: "Schleswig-Holstein" },
   { code: "TH", name: "Thüringen" },
 ];
+
+/**
+ * Änderungsstand der eigenen Privatdaten (Migration 0249): eine Zahl, die bei
+ * jeder Änderung an Schichten, Terminen, To-dos oder dem Bundesland steigt.
+ * null, wenn die Datenbank ihn (noch) nicht kennt – dann lädt die App wie bisher.
+ */
+export async function ladePrivatStand(): Promise<number | null> {
+  const { data, error } = await createClient().rpc("mein_privat_stand");
+  if (error || data === null || data === undefined) return null;
+  const n = Number(data);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Antwort von privat_paket (Migration 0249). Ohne Änderung nur `stand`. */
+export interface PrivatPaket {
+  stand: number;
+  termine?: unknown[];
+  todos?: unknown[];
+  jahre?: Record<string, { tage: { tag: string; ebene: number; schichtart_id: string }[]; feiertage: Feiertag[] }>;
+}
+
+/**
+ * Alles für den Start in einer Abfrage. `stand`: der auf dem Handy gemerkte –
+ * ist er gleich, kommt nur der Stand zurück. null, wenn die Datenbank das noch
+ * nicht kann (dann wird wie bisher einzeln geladen).
+ */
+export async function ladePrivatPaket(stand: number | null, jahre: number[]): Promise<PrivatPaket | null> {
+  const { data, error } = await createClient().rpc("privat_paket", { p_stand: stand, p_jahre: jahre });
+  if (error || !data || typeof data !== "object") return null;
+  const p = data as PrivatPaket;
+  return Number.isFinite(Number(p.stand)) ? { ...p, stand: Number(p.stand) } : null;
+}

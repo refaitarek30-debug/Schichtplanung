@@ -141,6 +141,16 @@ http.createServer((req, res) => {
       if (f === "verbindung_code_info") return send(200, body.p_code === "ABC234" ? { gueltig: true, name: "Mia", eigener: false, schon: false, uebernahme: false } : { gueltig: false });
       if (f === "verbindung_annehmen") { if (body.p_code !== "ABC234") return send(200, null); db.verbindungen.push({ id: "v2", partner: "p3", name: "Mia", art: "partner", ichTermine: false, ichDarf: false, erTermine: false, erDarf: false, seit: new Date().toISOString() }); return send(200, "v2"); }
       // Gesammelte Änderungen verbundener Personen (0248): im Test einmal „Lea 4“, bis weggetippt.
+      // Änderungsstand (0249): ohne Testvorgabe jedes Mal neu = immer laden wie früher.
+      // Start-Paket (0249): gleicher Stand = nur der Stand, sonst alles in einem.
+      if (f === "privat_paket") {
+        const st = db.standFest ?? Date.now();
+        if (body.p_stand !== null && body.p_stand === st) return send(200, { stand: st });
+        const zeilen = [...db.tage].map(([k, schichtart_id]) => ({ tag: k.split("|")[0], ebene: Number(k.split("|")[1]), schichtart_id }));
+        const jahre = Object.fromEntries(body.p_jahre.map((j) => [String(j), { tage: zeilen.filter((z) => z.tag.startsWith(`${j}-`)), feiertage: feiertage(j) }]));
+        return send(200, { stand: st, termine: db.termine, todos: db.todos, jahre });
+      }
+      if (f === "mein_privat_stand") return send(200, db.standFest ?? Date.now());
       if (f === "verbunden_hinweise") return send(200, db.hinweisGesehen || !db.verbundenHinweis ? [] : [{ name: "Lea", anzahl: 4 }]);
       if (f === "verbunden_hinweise_gesehen") { db.hinweisGesehen = true; return send(204); }
       if (f === "verbindung_einstellen") { const v = db.verbindungen.find((x) => x.id === body.p_id); Object.assign(v, { art: body.p_art, ichTermine: body.p_termine, ichDarf: body.p_darf, ichSchichten: body.p_schichten, ichMelden: body.p_melden }); return send(204); }
@@ -186,6 +196,7 @@ http.createServer((req, res) => {
       if (f === "_beitritt") return send(200, db.beitritt ?? null);
       return send(200, null);
     }
+    if (p === "/__test/stand" && m === "POST") { db.standFest = body?.wert ?? null; return send(204); }
     if (p === "/__test/hinweis" && m === "POST") { db.verbundenHinweis = true; db.hinweisGesehen = false; return send(204); }
     send(404, { message: "unbekannt " + p });
   });

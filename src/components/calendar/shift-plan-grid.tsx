@@ -747,6 +747,8 @@ export function ShiftPlanGrid({
     [holeStand, schluesselFuer],
   );
   const vorladeUhr = useRef<number | undefined>(undefined);
+  const letzterStart = useRef<string | null>(null);
+  const zurueckGeblaettert = useRef(false);
 
   /**
    * Plan laden. `nurDaten`: nur, was andere geändert haben können – Plan und
@@ -789,10 +791,15 @@ export function ShiftPlanGrid({
       if (!nurDaten) {
         // Kurz warten, damit das Vorladen nicht mit dem Aufbau der Tabelle
         // um die Leitung konkurriert.
+        // Vorgeladen wird nach vorn (dahin blättert man fast immer); zurück erst,
+        // wenn jemand einmal zurückgeblättert hat – das spart beim Öffnen eine
+        // ganze Planabfrage.
+        if (letzterStart.current && start < letzterStart.current) zurueckGeblaettert.current = true;
+        letzterStart.current = start;
         window.clearTimeout(vorladeUhr.current);
         vorladeUhr.current = window.setTimeout(() => {
           vorladen(addDays(start, span));
-          vorladen(addDays(start, -span));
+          if (zurueckGeblaettert.current) vorladen(addDays(start, -span));
         }, 600);
       }
     } catch (caught) {

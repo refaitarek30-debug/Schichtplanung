@@ -3,6 +3,7 @@ import { currentIdentity } from "@/lib/supabase/identity";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import { heuteInBerlin } from "@/lib/dates";
+import { gemeinsam } from "./gemeinsam";
 import type {
   LeaveBalanceViewRow,
   LeaveRequestWithEmployee,
@@ -98,6 +99,20 @@ export async function fetchMyLeaveRequests(): Promise<LiveLeaveRequest[]> {
  */
 export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
   if (!isSupabaseConfigured) return [];
+  // Startseite und Kachel „Offene Anträge“ fragen gleichzeitig – einmal reicht.
+  return gemeinsam("antraege-fuehrung", ladeReviewAntraege);
+}
+
+/** Wen darf ich entscheiden? (Regel in der Datenbank: darf_urlaub_entscheiden) */
+function ladeEntscheidbare() {
+  return gemeinsam("entscheidbare", async () => {
+    const { data, error } = await createClient().rpc("entscheidbare_mitarbeiter");
+    if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");
+    return new Set(((data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
+  });
+}
+
+async function ladeReviewAntraege(): Promise<LiveLeaveRequest[]> {
   const supabase = createClient();
   // Die Liste zeigt nur das laufende Jahr und später (vergangene Jahre nicht
   // mehr) – offene Anträge immer. Und seitenweise: die Datenbank liefert je
@@ -120,16 +135,12 @@ export async function fetchReviewLeaveRequests(): Promise<LiveLeaveRequest[]> {
       if ((data ?? []).length < ANTRAEGE_SEITE) return alle;
     }
   }
-  const [antraege, erlaubt] = await Promise.all([
+  const [antraege, ids] = await Promise.all([
     alleAntraege(),
     // Nur, worüber man entscheiden darf: die Schichtleitung sieht die
     // eigene Schicht (die eigenen Anträge eingeschlossen), die Administration alles.
-    // Die Regel steht in der Datenbank (darf_urlaub_entscheiden).
-    supabase.rpc("entscheidbare_mitarbeiter"),
+    ladeEntscheidbare(),
   ]);
-
-  if (erlaubt.error) throw new DataError(dataErrorMessage(erlaubt.error) ?? "Unbekannter Fehler");
-  const ids = new Set(((erlaubt.data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
   return antraege.filter((r) => ids.has(r.employee_id)).map(mapRequest);
 }
 
@@ -143,13 +154,11 @@ const ANTRAEGE_SEITE = 1000;
 export async function fetchOffeneEntscheidungen(): Promise<number> {
   if (!isSupabaseConfigured) return 0;
   const supabase = createClient();
-  const [offen, erlaubt] = await Promise.all([
+  const [offen, ids] = await Promise.all([
     supabase.from("leave_requests").select("employee_id").eq("status", "pending").returns<{ employee_id: string }[]>(),
-    supabase.rpc("entscheidbare_mitarbeiter"),
+    ladeEntscheidbare(),
   ]);
   if (offen.error) throw new DataError(dataErrorMessage(offen.error) ?? "Unbekannter Fehler");
-  if (erlaubt.error) throw new DataError(dataErrorMessage(erlaubt.error) ?? "Unbekannter Fehler");
-  const ids = new Set(((erlaubt.data ?? []) as { employee_id: string }[]).map((r) => r.employee_id));
   return (offen.data ?? []).filter((r) => ids.has(r.employee_id)).length;
 }
 
@@ -563,6 +572,10 @@ export interface LiveNaechsterUrlaub {
  */
 export async function fetchNaechsterUrlaub(): Promise<LiveNaechsterUrlaub | null> {
   if (!isSupabaseConfigured) return null;
+  return gemeinsam("naechster-urlaub", ladeNaechsterUrlaub);
+}
+
+async function ladeNaechsterUrlaub(): Promise<LiveNaechsterUrlaub | null> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("mein_naechster_urlaub");
   if (error) throw new DataError(dataErrorMessage(error) ?? "Unbekannter Fehler");

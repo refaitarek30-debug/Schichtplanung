@@ -10,11 +10,13 @@ import { ShiftPlanGrid } from "@/components/calendar/shift-plan-grid";
 import { ShiftPlanExport } from "@/components/calendar/shift-plan-export";
 import { PlanEintragForm } from "@/components/leave/plan-eintrag-form";
 import { useSession } from "@/context/session";
-import { TODAY } from "@/lib/demo-data";
+import { useHeute } from "@/lib/use-heute";
 import { fetchEmployees } from "@/lib/data/employees";
 import type { EmployeeRecord } from "@/lib/types";
 
 export default function ShiftPlanPage() {
+  // Heute je Aufruf (nicht beim Serverstart) – sonst Vortag nach Mitternacht.
+  const TODAY = useHeute();
   const { mode, role, company, profile } = useSession();
   const canEdit = role === "admin" || role === "shift_leader";
 

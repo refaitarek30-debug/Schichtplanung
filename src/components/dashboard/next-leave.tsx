@@ -35,6 +35,9 @@ export function NextLeaveCard({
 }) {
   const [zeitraum, setZeitraum] = useState<LiveNaechsterUrlaub | null | undefined>(undefined);
 
+  // Nur neu fragen, wenn sich die eigenen Anträge wirklich geändert haben – nicht schon,
+  // weil dieselbe Liste frisch geladen wurde.
+  const ausloeser = antraege ? antraege.map((a) => `${a.id}:${a.status}:${a.startDate}:${a.endDate}`).join(",") : "";
   useEffect(() => {
     let abgebrochen = false;
     fetchNaechsterUrlaub()
@@ -43,7 +46,7 @@ export function NextLeaveCard({
     return () => {
       abgebrochen = true;
     };
-  }, [antraege]);
+  }, [ausloeser]);
 
   const laeuft = zeitraum ? zeitraum.von <= heute : false;
 

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { gemeinsam } from "./gemeinsam";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
 import { imBetrieb } from "@/lib/bereich";
@@ -31,11 +32,21 @@ function fehler(error: Parameters<typeof dataErrorMessage>[0], standard: string)
 
 export async function fetchTodos(): Promise<Todo[]> {
   if (!isSupabaseConfigured) return [];
+  // Kalender und die Zahl am Reiter fragen beim Öffnen gleichzeitig – einmal reicht.
+  return gemeinsam("todos", ladeTodos);
+}
+
+async function ladeTodos(): Promise<Todo[]> {
   const { data, error } = await createClient().rpc("meine_todos");
   if (error) fehler(error, "Die To-dos konnten nicht geladen werden.");
+  return todosAusZeilen(data ?? []);
+}
+
+/** Zeilen wie aus meine_todos() → To-dos (auch für privat_paket, Migration 0249). */
+export function todosAusZeilen(zeilen: unknown[]): Todo[] {
   // Beim Beitritt nicht übernommene To-dos bleiben im Privatbereich.
   const betrieb = imBetrieb();
-  return ((data ?? []) as { id: string; titel: string; datum: string | null; uhrzeit: string | null; erledigt: boolean; nur_privat?: boolean }[])
+  return (zeilen as { id: string; titel: string; datum: string | null; uhrzeit: string | null; erledigt: boolean; nur_privat?: boolean }[])
     .filter((z) => !(betrieb && z.nur_privat))
     .map((z) => ({ id: z.id, titel: z.titel, datum: z.datum, uhrzeit: z.uhrzeit, erledigt: z.erledigt }));
 }

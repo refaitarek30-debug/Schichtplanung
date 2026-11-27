@@ -3,7 +3,7 @@
  * Wird in Phase 2 vollständig durch Supabase-Queries ersetzt – die Signaturen
  * der Selektoren am Ende dieser Datei bleiben dabei erhalten.
  */
-import { toISO } from "./dates";
+import { heuteInBerlin } from "./dates";
 import type {
   Absence,
   Announcement,
@@ -15,7 +15,13 @@ import type {
   Shift,
 } from "./types";
 
-export const TODAY = toISO(new Date());
+/**
+ * Heute in deutscher Zeit – auf dem Server (rechnet in UTC) und im Browser
+ * gleich. Mit `toISO(new Date())` zeigte der Server zwischen 0 und 1 Uhr
+ * (Sommerzeit bis 2 Uhr) noch den Vortag, der Browser schon den neuen Tag:
+ * React-Fehler 418, Plan und Startseite wurden im Browser neu aufgebaut.
+ */
+export const TODAY = heuteInBerlin();
 
 export const company: Company = {
   id: "co-1",

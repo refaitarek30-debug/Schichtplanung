@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { gemeinsam } from "./gemeinsam";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 
@@ -38,6 +39,11 @@ interface ShiftDetailRow {
 /** Vollständige Schichtdaten des eigenen Unternehmens (für Anzeige/Berechnung). */
 export async function fetchShiftDetails(): Promise<ShiftDetail[]> {
   if (!isSupabaseConfigured) return [];
+  // Mehrere Kacheln brauchen die Schichten gleichzeitig – einmal fragen.
+  return gemeinsam("schichten", ladeSchichtDetails);
+}
+
+async function ladeSchichtDetails(): Promise<ShiftDetail[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("shifts")
