@@ -99,6 +99,26 @@ export default async function tagesansicht() {
     await warte(900);
     pruefe(/11:00–12:30/.test(await block.innerText()), `Ende ziehen verlängert (${await block.innerText()})`);
 
+    // Mit echtem Finger (Touch) – auch wenn das Handy die Pointer-Ereignisse abbricht, wird gespeichert.
+    await seite.locator('[data-auswahl-leiste]').getByRole("button", { name: "Fertig" }).click();
+    await warte(300);
+    const tb = await block.boundingBox();
+    const cdp = await seite.context().newCDPSession(seite);
+    const fx = tb.x + 30;
+    const fy = tb.y + 12;
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: fx, y: fy }] });
+    await warte(500);
+    for (let i = 1; i <= 8; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: fx, y: fy + i * 7 }] });
+      await warte(20);
+      if (i === 2) await seite.evaluate(() => window.dispatchEvent(new PointerEvent("pointercancel", { pointerType: "touch", bubbles: true })));
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await warte(900);
+    pruefe(/12:00–13:30/.test(await block.innerText()), `Mit dem Finger verschoben und gespeichert (${await block.innerText()})`);
+    await seite.locator("[data-tag-raster]").evaluate((el) => (el.scrollTop = 9 * 56));
+    await warte(200);
+
     // Löschen nur mit Rückfrage.
     await seite.locator("[data-auswahl-leiste]").getByRole("button", { name: "Löschen" }).click();
     await warte(300);
