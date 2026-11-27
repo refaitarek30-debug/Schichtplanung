@@ -97,7 +97,22 @@ function useGruss(): string {
   return useSyncExternalStore(keinAbo, greeting, () => "Hallo");
 }
 
+/** Breiter Bildschirm (xl): dort steht „Nächster Urlaub“ in der Kachelreihe statt oben. */
+const XL = "(min-width: 1280px)";
+function useSehrBreit(): boolean {
+  return useSyncExternalStore(
+    (melde) => {
+      const m = window.matchMedia(XL);
+      m.addEventListener("change", melde);
+      return () => m.removeEventListener("change", melde);
+    },
+    () => window.matchMedia(XL).matches,
+    () => false,
+  );
+}
+
 export default function DashboardPage() {
+  const sehrBreit = useSehrBreit();
   const t = useBegriffe();
   const za = useZeitausgleich();
   const gruss = useGruss();
@@ -391,7 +406,8 @@ export default function DashboardPage() {
           <div className={cn(kompakt ? "space-y-3" : "space-y-4")} data-start-urlaub>
             {zeige("naechsterurlaub") ? (
               <KachelHuelle id="naechsterurlaub" name="Nächster Urlaub">
-                <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />
+                {/* Am PC steht die Kachel in der Reihe unten – dann hier nicht noch einmal laden. */}
+                {sehrBreit ? null : <NextLeaveCard antraege={liveMyRequests} heute={TODAY} kompakt={kompakt} />}
               </KachelHuelle>
             ) : null}
 
@@ -656,7 +672,7 @@ export default function DashboardPage() {
         {/* Nur am PC: nächster Urlaub und „Urlaub beantragen“ in der Kachelreihe. */}
         {mode === "live" && profile.employeeId && zeige("naechsterurlaub") ? (
           <div className="hidden min-w-0 xl:col-span-2 xl:block [&>*]:h-full" data-start-urlaub-pc>
-            <NextLeaveCard antraege={liveMyRequests} heute={TODAY} reihe />
+            {sehrBreit ? <NextLeaveCard antraege={liveMyRequests} heute={TODAY} reihe /> : null}
           </div>
         ) : null}
         {mode === "live" && profile.employeeId && !kompakt ? (

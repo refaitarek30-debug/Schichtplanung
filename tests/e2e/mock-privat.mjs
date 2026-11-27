@@ -141,6 +141,8 @@ http.createServer((req, res) => {
       if (f === "verbindung_code_info") return send(200, body.p_code === "ABC234" ? { gueltig: true, name: "Mia", eigener: false, schon: false, uebernahme: false } : { gueltig: false });
       if (f === "verbindung_annehmen") { if (body.p_code !== "ABC234") return send(200, null); db.verbindungen.push({ id: "v2", partner: "p3", name: "Mia", art: "partner", ichTermine: false, ichDarf: false, erTermine: false, erDarf: false, seit: new Date().toISOString() }); return send(200, "v2"); }
       // Gesammelte Änderungen verbundener Personen (0248): im Test einmal „Lea 4“, bis weggetippt.
+      // Änderungsstand (0249): ohne Testvorgabe jedes Mal neu = immer laden wie früher.
+      if (f === "mein_privat_stand") return send(200, db.standFest ?? Date.now());
       if (f === "verbunden_hinweise") return send(200, db.hinweisGesehen || !db.verbundenHinweis ? [] : [{ name: "Lea", anzahl: 4 }]);
       if (f === "verbunden_hinweise_gesehen") { db.hinweisGesehen = true; return send(204); }
       if (f === "verbindung_einstellen") { const v = db.verbindungen.find((x) => x.id === body.p_id); Object.assign(v, { art: body.p_art, ichTermine: body.p_termine, ichDarf: body.p_darf, ichSchichten: body.p_schichten, ichMelden: body.p_melden }); return send(204); }
@@ -186,6 +188,7 @@ http.createServer((req, res) => {
       if (f === "_beitritt") return send(200, db.beitritt ?? null);
       return send(200, null);
     }
+    if (p === "/__test/stand" && m === "POST") { db.standFest = body?.wert ?? null; return send(204); }
     if (p === "/__test/hinweis" && m === "POST") { db.verbundenHinweis = true; db.hinweisGesehen = false; return send(204); }
     send(404, { message: "unbekannt " + p });
   });

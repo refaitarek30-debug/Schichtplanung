@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { gemeinsam } from "./gemeinsam";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage } from "@/lib/errors";
 import type { NotificationRow } from "@/lib/supabase/database.types";
@@ -65,6 +66,11 @@ export async function fetchNotifications(
   limit = 15,
 ): Promise<LiveNotification[]> {
   if (!isSupabaseConfigured) return [];
+  // Glocke, Profil und Startseite fragen beim Öffnen gleichzeitig – einmal reicht.
+  return gemeinsam(`mitteilungen:${employeeId}:${limit}`, () => ladeMitteilungen(employeeId, limit));
+}
+
+async function ladeMitteilungen(employeeId: string, limit: number): Promise<LiveNotification[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("notifications")

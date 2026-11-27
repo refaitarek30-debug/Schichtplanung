@@ -22,6 +22,7 @@ import rahmen from "./rahmen.test.mjs";
 import geld from "./geld.test.mjs";
 import urlaub from "./urlaub.test.mjs";
 import privatNeu from "./privat-neu.test.mjs";
+import speicher from "./speicher.test.mjs";
 import tagesansicht from "./tagesansicht.test.mjs";
 import umfrage from "./umfrage.test.mjs";
 import zweiFaktor from "./zwei-faktor.test.mjs";
@@ -38,6 +39,7 @@ const ABLAEUFE = [
   ["Privat: Urlaubsplaner", "privat", urlaub],
   ["Privat: Wischen, Wen sehe ich", "privat", privatNeu],
   ["Privat: Tagesansicht", "privat", tagesansicht],
+  ["Privat: Nur bei Änderung laden", "privat", speicher],
   ["Privat: Umfrage nach 3 Tagen", "privat", umfrage],
   ["Privat: Meine Daten herunterladen", "privat", meineDaten],
   ["Privat: Einstieg, Fertig, Teilen-Karte", "privat", privatEinstieg],

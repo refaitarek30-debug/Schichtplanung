@@ -44,6 +44,7 @@ import {
   farbStil,
   idsVon,
   ladeFeiertage,
+  ladePrivatStand,
   ladeTage,
   ladeTagZeiten,
   leereTage,
@@ -118,6 +119,16 @@ function arten(e: TagEintrag | undefined, artNach: Map<string, Schichtart>): Sch
 }
 
 const OHNE_NETZ = "Ohne Netz kannst du nur neue Termine anlegen – Ändern und Löschen geht wieder mit Netz.";
+
+const EIN_TAG = 24 * 3600_000;
+/** Ein Jahr auf dem Gerät: Schichten, Feiertage – und wann (z) bzw. bei welchem Änderungsstand (s) vom Server geladen. */
+type JahrGemerkt = { t: Record<string, TagEintrag>; f: Record<string, string>; z?: number; s?: number | null };
+/** Bei welchem Änderungsstand Termine bzw. To-dos zuletzt geladen wurden. */
+type StandGemerkt = { s: number; z: number } | null;
+/** Gleicher Stand und höchstens einen Tag alt (Sicherheitsnetz): dann reicht das Gemerkte. */
+function unveraendert(g: StandGemerkt | undefined, stand: number): boolean {
+  return !!g && g.s === stand && Date.now() - g.z < EIN_TAG;
+}
 
 export function PrivatKalender() {
   const router = useRouter();
@@ -256,20 +267,65 @@ export function PrivatKalender() {
     [artNach, betriebSchichten.arten],
   );
 
+  // Änderungsstand der eigenen Daten (Migration 0249): eine kleine Zahl statt aller Daten.
+  // Höchstens alle 15 Sekunden gefragt; null = unbekannt, dann wird wie früher geladen.
+  const standCache = useRef<{ wert: number | null; zeit: number; laeuft: Promise<number | null> | null }>({ wert: null, zeit: 0, laeuft: null });
+  const holeStand = useCallback((frisch = false): Promise<number | null> => {
+    const c = standCache.current;
+    if (c.laeuft) return c.laeuft;
+    if (!frisch && c.zeit && Date.now() - c.zeit < 15_000) return Promise.resolve(c.wert);
+    c.laeuft = ladePrivatStand()
+      .catch(() => null)
+      .then((w) => {
+        c.wert = w;
+        c.zeit = Date.now();
+        c.laeuft = null;
+        return w;
+      });
+    return c.laeuft;
+  }, []);
+  /** Wann und bei welchem Stand jedes Jahr zuletzt vom Server kam (für den Gerätespeicher). */
+  const jahrInfo = useRef(new Map<number, { z: number; s: number | null }>());
+
   const ladeJahre = useCallback(async (jahre: number[], erneut = false, still = false) => {
-    const fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
+    let fehlend = jahre.filter((j) => erneut || !geladen.current.has(j));
     if (!fehlend.length) return;
-    // Vorrat im Hintergrund: keine Ladeanzeige, nichts verschiebt sich.
-    if (!still) setLaedt(true);
+    const gemerkt = new Map<number, JahrGemerkt>();
     if (!erneut) {
       // Gleich nach dem Öffnen: der zuletzt gemerkte Stand dieses Geräts, bis die frischen Daten da sind.
       for (const j of fehlend) {
-        const g = ausGeraet<{ t: Record<string, TagEintrag>; f: Record<string, string> }>(`${konto.userId}:privat:jahr:${j}`);
+        const g = ausGeraet<JahrGemerkt>(`${konto.userId}:privat:jahr:${j}`);
         if (!g?.t || !g.f) continue;
+        gemerkt.set(j, g);
         setTage((alt) => (Object.keys(alt).some((k) => k.startsWith(`${j}-`)) ? alt : { ...alt, ...g.t }));
         setFeiertage((alt) => ({ ...g.f, ...alt }));
       }
     }
+    // Erst den Stand, dann die Daten: so ist der gemerkte Stand nie neuer als die Daten.
+    const stand = await holeStand(erneut);
+    if (!erneut) {
+      const jetzt = Date.now();
+      const dieses = new Date().getFullYear();
+      fehlend = fehlend.filter((j) => {
+        const g = gemerkt.get(j);
+        if (!g?.z) return true;
+        const alter = jetzt - g.z;
+        const nah = Math.abs(j - dieses) <= 1;
+        // Sicherheitsnetz: nahe Jahre spätestens nach einem Tag frisch, ferne nach einer Woche.
+        if (alter > (nah ? EIN_TAG : 7 * EIN_TAG)) return true;
+        // Nichts geändert seit dem gemerkten Stand: das Handy hat schon alles.
+        if (stand !== null && g.s === stand) {
+          geladen.current.add(j);
+          jahrInfo.current.set(j, { z: g.z, s: g.s });
+          return false;
+        }
+        // Ferner Vorrat im Hintergrund: höchstens einmal am Tag.
+        return !(still && !nah && alter < EIN_TAG);
+      });
+      if (!fehlend.length) return;
+    }
+    // Vorrat im Hintergrund: keine Ladeanzeige, nichts verschiebt sich.
+    if (!still) setLaedt(true);
     try {
       const ergebnisse = await Promise.all(
         fehlend.map(async (j) => {
@@ -290,7 +346,10 @@ export function PrivatKalender() {
         for (const { f } of ergebnisse) for (const h of f) neu[h.tag] = h.name;
         return neu;
       });
-      for (const { j } of ergebnisse) geladen.current.add(j);
+      for (const { j } of ergebnisse) {
+        geladen.current.add(j);
+        jahrInfo.current.set(j, { z: Date.now(), s: stand });
+      }
       setFehler(null);
     } catch (e) {
       // Ohne Netz zeigt der Kalender den gemerkten Stand (Banner „Offline“) – keine Fehlermeldung.
@@ -298,7 +357,7 @@ export function PrivatKalender() {
     } finally {
       if (!still) setLaedt(false);
     }
-  }, [konto.userId]);
+  }, [konto.userId, holeStand]);
 
   // Den aktuellen Stand je Jahr auf dem Gerät merken (eigene Schichten und Feiertage, siehe geraete-speicher.ts).
   // Nur Jahre schreiben, die sich geändert haben (es sind bis zu 7 Jahre gemerkt).
@@ -310,10 +369,11 @@ export function PrivatKalender() {
       for (const [k, v] of Object.entries(tage)) if (k.startsWith(`${j}-`)) t[k] = v;
       const f: Record<string, string> = {};
       for (const [k, v] of Object.entries(feiertage)) if (k.startsWith(`${j}-`)) f[k] = v;
-      const wert = JSON.stringify({ t, f });
+      const info = jahrInfo.current.get(j);
+      const wert = JSON.stringify({ t, f, z: info?.z, s: info?.s });
       if (zuletztGemerkt.current.get(j) === wert) continue;
       zuletztGemerkt.current.set(j, wert);
-      aufGeraet(`${konto.userId}:privat:jahr:${j}`, { t, f });
+      aufGeraet(`${konto.userId}:privat:jahr:${j}`, { t, f, z: info?.z ?? Date.now(), s: info?.s ?? null } satisfies JahrGemerkt);
     }
   }, [tage, feiertage, laedt, konto.userId]);
 
@@ -343,17 +403,25 @@ export function PrivatKalender() {
     void ladeJahre([...jahre]);
   }, [bereich, ansicht, ladeJahre]);
 
-  const ladeTermine = useCallback(async () => {
+  /**
+   * Termine laden. `nurWennGeaendert` (Öffnen, Zurückkommen): mit gleichem Stand wie beim
+   * letzten Mal bleiben die gemerkten Termine – ohne Abfrage. Nach eigenen Änderungen immer laden.
+   */
+  const ladeTermine = useCallback(async (nurWennGeaendert = false) => {
+    const standSchluessel = `${konto.userId}:privat:stand:termine`;
+    const stand = nurWennGeaendert ? await holeStand() : null;
+    if (stand !== null && unveraendert(ausGeraet<StandGemerkt>(standSchluessel), stand) && ausGeraet(`${konto.userId}:privat:termine`)) return;
     try {
       const neu = await fetchMeineTermine();
       setTermine(neu);
       aufGeraet(`${konto.userId}:privat:termine`, neu);
+      aufGeraet(standSchluessel, stand !== null ? ({ s: stand, z: Date.now() } satisfies StandGemerkt) : null);
     } catch {
       // Termine sind Beiwerk – der Kalender bleibt nutzbar. Ohne Netz: der gemerkte Stand dieses Geräts.
       const gemerkt = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
       if (gemerkt) setTermine((alt) => (alt.length ? alt : gemerkt));
     }
-  }, [konto.userId]);
+  }, [konto.userId, holeStand]);
   useLayoutEffect(() => {
     // Gleich nach dem Öffnen (vor dem ersten Bild): die gemerkten eigenen Termine und To-dos dieses Geräts, bis die frischen da sind.
     const t = ausGeraet<Termin[]>(`${konto.userId}:privat:termine`);
@@ -363,23 +431,27 @@ export function PrivatKalender() {
     if (Array.isArray(d)) setTodos((alt) => (alt.length ? alt : d));
   }, [konto.userId]);
   useEffect(() => {
-    void ladeTermine();
+    void ladeTermine(true);
   }, [ladeTermine]);
 
-  const ladeTodos = useCallback(async () => {
+  const ladeTodos = useCallback(async (nurWennGeaendert = false) => {
+    const standSchluessel = `${konto.userId}:privat:stand:todos`;
+    const stand = nurWennGeaendert ? await holeStand() : null;
+    if (stand !== null && unveraendert(ausGeraet<StandGemerkt>(standSchluessel), stand) && ausGeraet(`${konto.userId}:privat:todos`)) return;
     try {
       const neu = await fetchTodos();
       setTodos(neu);
       aufGeraet(`${konto.userId}:privat:todos`, neu);
+      aufGeraet(standSchluessel, stand !== null ? ({ s: stand, z: Date.now() } satisfies StandGemerkt) : null);
     } catch {
       // To-dos sind Beiwerk. Ohne Netz: der gemerkte Stand dieses Geräts.
       const gemerkt = ausGeraet<Todo[]>(`${konto.userId}:privat:todos`);
       if (gemerkt) setTodos((alt) => (alt.length ? alt : gemerkt));
     }
-  }, [konto.userId]);
+  }, [konto.userId, holeStand]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void ladeTodos();
+    void ladeTodos(true);
   }, [ladeTodos]);
 
   async function todoSetzen(id: string, an: boolean) {
@@ -424,9 +496,15 @@ export function PrivatKalender() {
   const auffrischen = useRef<() => void>(() => undefined);
   useEffect(() => {
     auffrischen.current = () => {
-      void ladeTermine();
-      void ladeTodos();
+      void ladeTermine(true);
+      void ladeTodos(true);
       void andere.neuLaden();
+      // Eigene Schichten: nur wenn sich seit dem Laden etwas geändert hat (z. B. eine verbundene Person).
+      void holeStand(true).then((stand) => {
+        const jahre = [...geladen.current];
+        if (stand === null || jahre.every((j) => jahrInfo.current.get(j)?.s === stand)) return;
+        void ladeJahre(jahre, true, true);
+      });
     };
   });
   useEffect(() => {

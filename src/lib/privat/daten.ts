@@ -398,3 +398,15 @@ export const BUNDESLAENDER: { code: string; name: string }[] = [
   { code: "SH", name: "Schleswig-Holstein" },
   { code: "TH", name: "Thüringen" },
 ];
+
+/**
+ * Änderungsstand der eigenen Privatdaten (Migration 0249): eine Zahl, die bei
+ * jeder Änderung an Schichten, Terminen, To-dos oder dem Bundesland steigt.
+ * null, wenn die Datenbank ihn (noch) nicht kennt – dann lädt die App wie bisher.
+ */
+export async function ladePrivatStand(): Promise<number | null> {
+  const { data, error } = await createClient().rpc("mein_privat_stand");
+  if (error || data === null || data === undefined) return null;
+  const n = Number(data);
+  return Number.isFinite(n) ? n : null;
+}
