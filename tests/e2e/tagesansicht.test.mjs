@@ -38,12 +38,15 @@ export default async function tagesansicht() {
     pruefe((await ansicht.getAttribute("data-tagesansicht")) === tag, `Tag antippen öffnet die Tagesansicht (${await seitenText(seite)})`);
     pruefe((await seite.getByRole("button", { name: /^(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag), \d+\.$/ }).count()) === 7, "Oben die Woche (7 Tage)");
 
-    // Schicht setzen über die Leiste.
+    // Schicht setzen über den Pinsel oben.
+    pruefe((await seite.locator("[data-tag-leiste]").count()) === 0, "Schicht-Leiste ist erst zu");
+    await seite.locator("[data-tag-pinsel]").click();
+    await warte(300);
     const chip = seite.locator("[data-tag-leiste] button[aria-pressed]").first();
     const vorher = await chip.getAttribute("aria-pressed");
     await chip.click();
     await warte(500);
-    pruefe((await chip.getAttribute("aria-pressed")) !== vorher, "Schicht-Leiste: Tippen setzt bzw. entfernt die Schicht");
+    pruefe((await chip.getAttribute("aria-pressed")) !== vorher, "Pinsel: Tippen setzt bzw. entfernt die Schicht");
     await chip.click();
     await warte(500);
 
@@ -56,6 +59,12 @@ export default async function tagesansicht() {
     await ziehe(seite, { x: mitte.x - 120, y: mitte.y }, { x: mitte.x + 120, y: mitte.y });
     await warte(700);
     pruefe((await ansicht.getAttribute("data-tagesansicht")) === tag, "Nach rechts wischen: zurück");
+    // Kurzer Wisch reicht.
+    await ziehe(seite, { x: mitte.x + 35, y: mitte.y }, { x: mitte.x - 35, y: mitte.y + 10 }, { schritte: 5 });
+    await warte(700);
+    pruefe((await ansicht.getAttribute("data-tagesansicht")) === addTage(tag, 1), "Kurzer Wisch blättert auch");
+    await ziehe(seite, { x: mitte.x - 35, y: mitte.y }, { x: mitte.x + 35, y: mitte.y }, { schritte: 5 });
+    await warte(700);
 
     // Lang in eine freie Uhrzeit drücken: „Neuer Termin“, das Blatt geht auf, Titel im Fokus.
     const flaeche = await seite.locator("[data-tag-flaeche]").boundingBox();

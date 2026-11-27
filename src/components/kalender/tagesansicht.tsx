@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type React from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, Info, Plus } from "lucide-react";
+import { ChevronLeft, Info, Paintbrush, Plus } from "lucide-react";
 import { addDays, fromISO, monthName } from "@/lib/dates";
 import { textFarbe } from "@/lib/privat/daten";
 import type { Todo } from "@/lib/data/todos";
@@ -13,11 +13,12 @@ import { useWischZu } from "@/components/privat/blatt";
 import { minutenZwischen, terminTitel, TerminLoeschenFrage, vorkommenAm, type Termin } from "./termine";
 
 /**
- * Tagesansicht (Privat und Betrieb): oben die Woche, darunter die Schichten
- * zum schnellen Setzen, Ganztägiges und die Uhrzeiten.
+ * Tagesansicht (Privat und Betrieb): oben die Woche, darunter Ganztägiges und
+ * die Uhrzeiten. Der Pinsel oben blendet die Schichten zum Antippen ein.
  *
  * - Nach links/rechts wischen: anderer Tag (die Woche oben: andere Woche)
- * - Termin antippen: öffnen · halten: anheben und verschieben, danach an den
+ * - Termin antippen: öffnen · darüber scrollen geht wie überall
+ * - Termin halten: anheben und verschieben, danach an den
  *   Punkten oben/unten Beginn oder Ende ziehen
  * - Lang in eine freie Uhrzeit drücken: neuer Termin dort
  */
@@ -130,8 +131,8 @@ function flaechen(heute: Band[], gestern: Band[]) {
 type Geste =
   | { art: "termin"; t: Termin; x0: number; y0: number; uhr: number }
   | { art: "leer"; x0: number; y0: number; min: number; uhr: number }
-  | { art: "wisch"; x0: number; woche: boolean }
-  | { art: "woche"; x0: number; y0: number };
+  | { art: "wisch"; x0: number; woche: boolean; x: number; t: number; vx: number }
+  | { art: "woche"; x0: number; y0: number; woche?: boolean };
 
 interface Zug {
   id: string;
@@ -210,6 +211,8 @@ export function Tagesansicht({
   const [zug, setZug] = useState<Zug | null>(null);
   const [neu, setNeu] = useState<number | null>(null);
   const [frage, setFrage] = useState<Termin | null>(null);
+  /** Pinsel oben: zeigt die Schichten zum Antippen (bleibt beim Wischen offen). */
+  const [pinsel, setPinsel] = useState(false);
   const geste = useRef<Geste | null>(null);
   const zugRef = useRef(zug);
   const neuRef = useRef(neu);
@@ -275,6 +278,16 @@ export function Tagesansicht({
     onTermin(null, hhmm(min));
   }
 
+  // Termine lassen sich normal scrollen (pan-y); erst wenn einer angehoben ist,
+  // hält dieses Abfangen die Seite still, damit nur der Termin wandert.
+  useEffect(() => {
+    const halten = (e: TouchEvent) => {
+      if (zugRef.current && e.cancelable) e.preventDefault();
+    };
+    window.addEventListener("touchmove", halten, { passive: false });
+    return () => window.removeEventListener("touchmove", halten);
+  }, []);
+
   // Alle Bewegungen laufen über das Fenster – auch wenn der Finger den Termin verlässt.
   useEffect(() => {
     function bewegen(e: PointerEvent) {
@@ -304,6 +317,10 @@ export function Tagesansicht({
       if (!g) return;
       const dx = e.clientX - g.x0;
       if (g.art === "wisch") {
+        // Tempo merken: ein kurzer schneller Wisch reicht zum Blättern.
+        const jetztT = performance.now();
+        const dt = Math.max(1, jetztT - g.t);
+        geste.current = { ...g, x: e.clientX, t: jetztT, vx: 0.6 * ((e.clientX - g.x) / dt) + 0.4 * g.vx };
         // Am Ende weicher (Gummiband-Gefühl).
         const v = Math.abs(dx) > 120 ? Math.sign(dx) * (120 + (Math.abs(dx) - 120) * 0.5) : dx;
         if (g.woche) setWocheVersatz(v);
@@ -312,10 +329,10 @@ export function Tagesansicht({
       }
       if (g.art === "termin" || g.art === "leer" || g.art === "woche") {
         const dy = e.clientY - g.y0;
-        if (Math.hypot(dx, dy) < 9) return;
+        if (Math.hypot(dx, dy) < 7) return;
         if (g.art === "termin" || g.art === "leer") window.clearTimeout(g.uhr);
-        if (Math.abs(dx) > Math.abs(dy) * 1.2) {
-          geste.current = { art: "wisch", x0: g.x0, woche: g.art === "woche" };
+        if (Math.abs(dx) > Math.abs(dy)) {
+          geste.current = { art: "wisch", x0: g.x0, woche: g.art === "woche" && g.woche !== false, x: e.clientX, t: performance.now(), vx: 0 };
           setWeich(false);
         } else {
           geste.current = null;
@@ -340,8 +357,10 @@ export function Tagesansicht({
       }
       if (!g) return;
       if (g.art === "wisch") {
-        const dx = e.clientX - g.x0;
-        if (Math.abs(dx) > Math.min(90, breite.current * 0.22)) wechsle(dx < 0 ? 1 : -1, g.woche);
+        // Bei Abbruch (pointercancel) zählt die letzte bekannte Position.
+        const dx = (e.type === "pointerup" ? e.clientX : g.x) - g.x0;
+        const schnell = Math.abs(g.vx) > 0.3 && Math.abs(dx) > 20 && Math.sign(g.vx) === Math.sign(dx);
+        if (Math.abs(dx) > Math.min(60, breite.current * 0.15) || schnell) wechsle(dx < 0 ? 1 : -1, g.woche);
         else {
           setWeich(true);
           setVersatz(0);
@@ -388,7 +407,9 @@ export function Tagesansicht({
       }
       vibrieren();
       setAuswahl(l.t.id);
-      setZug({ id: l.t.id, art: "verschieben", start: l.start, ende: l.ende, neuStart: l.start, neuEnde: l.ende, y0, scroll0: flaeche.current?.scrollTop ?? 0 });
+      const z: Zug = { id: l.t.id, art: "verschieben", start: l.start, ende: l.ende, neuStart: l.start, neuEnde: l.ende, y0, scroll0: flaeche.current?.scrollTop ?? 0 };
+      zugRef.current = z; // sofort, damit die Seite ab dem ersten Zucken stillhält
+      setZug(z);
     }, 320);
     geste.current = { art: "termin", t: l.t, x0, y0, uhr };
   }
@@ -397,7 +418,9 @@ export function Tagesansicht({
     e.stopPropagation();
     e.preventDefault();
     vibrieren();
-    setZug({ id: l.t.id, art: welcher, start: l.start, ende: l.ende, neuStart: l.start, neuEnde: l.ende, y0: e.clientY, scroll0: flaeche.current?.scrollTop ?? 0 });
+    const z: Zug = { id: l.t.id, art: welcher, start: l.start, ende: l.ende, neuStart: l.start, neuEnde: l.ende, y0: e.clientY, scroll0: flaeche.current?.scrollTop ?? 0 };
+    zugRef.current = z;
+    setZug(z);
   }
 
   function leerDruck(e: React.PointerEvent<HTMLDivElement>) {
@@ -455,6 +478,18 @@ export function Tagesansicht({
           <ChevronLeft className="h-5 w-5" /> {monthName(d.getMonth())}
         </button>
         <div className="glas flex h-10 items-center rounded-full px-1">
+          {leiste ? (
+            <button
+              type="button"
+              onClick={() => setPinsel((p) => !p)}
+              aria-label="Schicht eintragen"
+              aria-expanded={pinsel}
+              className={cn("flex h-9 w-9 items-center justify-center rounded-full transition-colors", pinsel && "bg-brand-500 text-white")}
+              data-tag-pinsel
+            >
+              <Paintbrush className="h-[18px] w-[18px]" />
+            </button>
+          ) : null}
           {onDetails ? (
             <button type="button" onClick={onDetails} aria-label="Alles zu diesem Tag" className="flex h-9 w-9 items-center justify-center rounded-full" data-tag-details>
               <Info className="h-[19px] w-[19px]" />
@@ -523,8 +558,12 @@ export function Tagesansicht({
       <div
         className={cn("flex min-h-0 flex-1 flex-col", weich && "transition-transform duration-200 ease-out")}
         style={{ transform: `translateX(${versatz}px)` }}
+        onPointerDown={(e) => {
+          // Überall im Tag wischen – Termine und freie Zeit setzen ihre Geste vorher selbst.
+          if (!geste.current && !zugRef.current) geste.current = { art: "woche", x0: e.clientX, y0: e.clientY, woche: false };
+        }}
       >
-        {leiste ? (
+        {leiste && pinsel ? (
           <div className="px-3 pt-2" data-tag-leiste>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {leiste.personen.length > 1 ? (
@@ -702,7 +741,7 @@ export function Tagesansicht({
                     aria-label={`${terminTitel(l.t, iso)}, ${l.t.von}${l.t.bis ? ` bis ${l.t.bis}` : ""}${von ? `, ${von.name}` : ""}`}
                     data-termin-block={l.t.id}
                     className={cn(
-                      "absolute flex touch-none select-none flex-col overflow-hidden rounded-[10px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
+                      "absolute flex touch-pan-y select-none flex-col overflow-hidden rounded-[10px] px-2.5 py-1 text-left [-webkit-touch-callout:none]",
                       an || zieht ? "z-[5] shadow-[0_14px_30px_rgba(31,41,77,0.3)]" : "z-[2]",
                       zieht ? "scale-[1.015]" : "transition-[top,height] duration-150",
                     )}
