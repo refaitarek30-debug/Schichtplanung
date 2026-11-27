@@ -1,6 +1,6 @@
 // Privatbereich: neue Tagesansicht – Tag öffnen, Schicht setzen, wischen, lang drücken = neuer Termin
 // (Titel gleich im Fokus), Termin anheben und verschieben, Ende ziehen, Löschen nur mit Rückfrage.
-import { APP, addTage, heute, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
+import { APP, DB, addTage, heute, neuerBrowser, pruefe, seitenText, warte } from "./helfer.mjs";
 
 /** Pointer-Ereignisse an einer Stelle (das Handy-Profil schickt bei Maus-Gesten keine). */
 async function zeiger(seite, typ, x, y) {
@@ -30,8 +30,18 @@ export default async function tagesansicht() {
   const tag = `${jetzt.iso.slice(0, 8)}15`;
   const { browser, seite, seitenFehler } = await neuerBrowser();
   try {
+    // Mehr als 3 Änderungen von einer verbundenen Person: der Rest kommt als Hinweis beim Öffnen.
+    await fetch(`${DB}/__test/hinweis`, { method: "POST" });
     await seite.goto(`${APP}/privat`, { waitUntil: "networkidle", timeout: 120_000 });
     await warte(1200);
+    const hinweis = seite.locator("[data-verbunden-hinweis]");
+    pruefe(/Lea hat noch 4 weitere Änderungen bei dir gemacht/.test((await hinweis.innerText().catch(() => "")) ?? ""), "Gesammelte Änderungen als Hinweis beim Öffnen");
+    await hinweis.getByRole("button", { name: "Hinweis schließen" }).click();
+    await warte(400);
+    pruefe((await hinweis.count()) === 0, "Hinweis lässt sich wegtippen");
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe((await seite.locator("[data-verbunden-hinweis]").count()) === 0, "Weggetippt bleibt weg");
     await seite.locator(`[data-iso="${tag}"]`).first().click();
     await warte(700);
     const ansicht = seite.locator("[data-tagesansicht]");

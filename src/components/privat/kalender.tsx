@@ -21,6 +21,7 @@ import {
   type LeisteDaten,
 } from "@/components/kalender/tag";
 import { useFremdeSchichten } from "@/components/kalender/fuer-andere";
+import { VerbundenHinweisStreifen } from "@/components/kalender/verbunden-hinweis";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
 import { useAnzeige } from "@/lib/anzeige";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
@@ -917,6 +918,8 @@ export function PrivatKalender() {
           e.target.value = "";
         }}
       />
+
+      <VerbundenHinweisStreifen />
 
       {/* Neues Konto: ein schmaler Streifen statt großer Karten – der Kalender bleibt groß.
           Erst „Plan übernehmen“; ist der zu, kommt „Schichtfolge eintragen“. */}
