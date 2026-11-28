@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-28T17:00:00+01:00",
+    titel: "Ein Termin für mehrere",
+    text: "Beim neuen Termin kannst du unter „Für“ mehrere antippen – zum Beispiel „Mir“ und deinen Partner. Dann steht der Termin bei euch beiden.",
+    bereich: "beide",
+  },
+  {
     zeit: "2026-11-28T15:00:00+01:00",
     titel: "Erinnerung selbst einstellen, Wiederholung mit Ende",
     text: "Bei der Erinnerung gibt es wenige Vorgaben und „Eigene …“: z. B. 45 Minuten vorher oder am Vortag um 19:30. Bei „Wiederholen“ kannst du jetzt ein Ende setzen – etwa „Werktags“ bis 23.12., dann bleiben Samstag und Sonntag frei. In der Woche verdeckt ein Termin nicht mehr die Schrift einer Schicht.",
