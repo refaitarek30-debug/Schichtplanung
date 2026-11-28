@@ -233,6 +233,28 @@ export async function terminSichernUeberall(t: TerminEingabe, alt: Termin | null
   await speichereTermin(t);
 }
 
+/**
+ * Termin bei einer verbundenen Person: so, wie er nach dem Speichern aussieht –
+ * damit er sofort im Kalender steht. null = eigener Termin.
+ */
+export function fremdVorschau(t: TerminEingabe, alt: Termin | null, ich: string): Termin | null {
+  const inhaber = alt?.inhaber ?? (!alt ? t.ziel : null);
+  if (!inhaber) return null;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { ziel, id, ...rest } = t;
+  return {
+    ...rest,
+    id: alt?.id ?? `vorab:${Date.now()}`,
+    vonPartner: true,
+    personId: null,
+    inhaber,
+    vonUser: alt?.vonUser ?? ich,
+    ausfaelle: alt?.ausfaelle ?? [],
+    serieAb: alt?.serieAb ?? null,
+    erinnerung: null,
+  };
+}
+
 export async function terminLoeschenUeberall(t: Termin) {
   if (t.inhaber) return verbindungTerminLoeschen(t.id);
   await loescheTermin(t.id);

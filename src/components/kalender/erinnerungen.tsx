@@ -43,10 +43,38 @@ export const PUSH_TEXT: Record<Exclude<PushStatus, "an">, string> = {
   "nicht-moeglich": "Dieser Browser kann keine Mitteilungen. Probier es in Chrome, Edge, Firefox oder Safari (iPhone: vom Home-Bildschirm).",
 };
 
+/** Kurzfassung für die leise Zeile im Termin-Fenster. */
+const PUSH_KURZ: Record<Exclude<PushStatus, "an" | "aus">, string> = {
+  gesperrt: "Mitteilungen sind gesperrt – in den Handy-Einstellungen erlauben.",
+  app: "In der App kommt die Erinnerung mit dem nächsten Update.",
+  "ios-home": "Erinnerung kommt nur, wenn du die App vom Home-Bildschirm öffnest.",
+  "nicht-moeglich": "Dieser Browser kann keine Mitteilungen.",
+};
+
 /** Kleiner Hinweis im Formular, wenn eine Erinnerung gewählt ist, aber noch keine Mitteilungen gehen. */
-export function ErinnerungHinweis({ className }: { className?: string }) {
+export function ErinnerungHinweis({ className, klein = false }: { className?: string; klein?: boolean }) {
   const { status, laeuft, fehler, umschalten } = usePush();
   if (!status || status === "an") return null;
+  // Im Termin-Fenster: nur eine leise Zeile, ein Knopf, wenn man selbst etwas tun kann.
+  if (klein) {
+    return (
+      <div className={cn("flex items-center gap-2 py-2 text-[12.5px] leading-snug text-ink-muted", className)}>
+        <BellRing aria-hidden className="h-3.5 w-3.5 shrink-0" />
+        <span className="min-w-0 flex-1">{status === "aus" ? "Mitteilungen sind auf diesem Gerät aus." : PUSH_KURZ[status]}</span>
+        {status === "aus" ? (
+          <button
+            type="button"
+            disabled={laeuft}
+            onClick={() => void umschalten(true)}
+            className="h-8 shrink-0 rounded-full bg-ink px-3 text-[12.5px] font-bold text-surface disabled:opacity-60"
+          >
+            {laeuft ? "…" : "Erlauben"}
+          </button>
+        ) : null}
+        {fehler ? <span className="text-crit-fg">{fehler}</span> : null}
+      </div>
+    );
+  }
   return (
     <div className={cn("rounded-[16px] bg-warn-bg px-3.5 py-3 text-[13px] leading-snug text-ink", className)}>
       <p className="flex gap-2">
