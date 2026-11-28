@@ -439,6 +439,24 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
     amTag,
     terminSichtbar,
     terminVon,
+    /**
+     * Eingetragen bzw. geändert bei einer verbundenen Person: sofort zeigen und
+     * danach nur die Termine der Verbundenen frisch holen – nicht alles neu laden.
+     */
+    fremdGespeichert: async (t: Termin, speichern: Promise<unknown>) => {
+      setFremdeTermine((alt) => [...alt.filter((x) => x.id !== t.id), t]);
+      const gen = generation.current;
+      try {
+        await speichern;
+      } finally {
+        try {
+          const neu = await fetchVerbundeneTermine();
+          if (gen === generation.current) setFremdeTermine(neu);
+        } catch {
+          // beim nächsten Öffnen
+        }
+      }
+    },
     /** Nach Änderungen (Einladen, Eintragen) neu laden. */
     neuLaden: async () => {
       generation.current += 1;

@@ -30,14 +30,16 @@ export function farbenAus(roh: unknown): FarbenCodes {
   return aus;
 }
 
-export type Wiederholung = "nie" | "taeglich" | "woechentlich" | "monatlich" | "jaehrlich";
+export type Wiederholung = "nie" | "taeglich" | "werktags" | "woechentlich" | "zweiwoechentlich" | "monatlich" | "jaehrlich";
 
 /**
  * Erinnerung vor einem Termin (Migration 0154). Mit Uhrzeit: 10 Minuten,
  * 1 Stunde, 1 Tag vorher, morgens um 8. Ganztägig: am Vortag um 18 Uhr,
  * am Tag um 8 Uhr, 2 Tage vorher.
  */
-export type Erinnerung = "m10" | "h1" | "d1" | "morgens8" | "vortag18" | "tag8" | "d2";
+export type Erinnerung =
+  | "m0" | "m5" | "m10" | "m15" | "m30" | "h1" | "h2" | "h3" | "d1" | "d2" | "w1"
+  | "morgens8" | "tag7" | "tag8" | "vortag18" | "vortag20";
 
 export interface Termin {
   id: string;

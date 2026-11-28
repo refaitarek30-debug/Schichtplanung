@@ -24,7 +24,7 @@ import { useFremdeSchichten } from "@/components/kalender/fuer-andere";
 import { VerbundenHinweisStreifen } from "@/components/kalender/verbunden-hinweis";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
 import { useAnzeige } from "@/lib/anzeige";
-import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
+import { fremdVorschau, terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import type { PartnerCode } from "@/lib/data/partner";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, todosAusZeilen, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
@@ -551,16 +551,21 @@ export function PrivatKalender() {
       setFehler(OHNE_NETZ);
       return;
     }
+    // Termin bei einer verbundenen Person: über deren Freigabe speichern, sofort verschoben zeigen.
+    if (t.inhaber) {
+      const speichern = terminSichernUeberall({ ...t, datum, bisDatum, von, bis, ganztaegig, ziel: null }, t);
+      void andere.fremdGespeichert({ ...t, datum, bisDatum, von, bis, ganztaegig }, speichern).catch((e: unknown) =>
+        setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden."),
+      );
+      return;
+    }
     setTermine((alt) => alt.map((x) => (x.id === t.id ? { ...x, datum, bisDatum, von, bis, ganztaegig } : x)));
     try {
-      // Termin bei einer verbundenen Person: über deren Freigabe speichern.
-      if (t.inhaber) await terminSichernUeberall({ ...t, datum, bisDatum, von, bis, ganztaegig, ziel: null }, t);
-      else await speichereTermin({ ...t, datum, bisDatum, von, bis, ganztaegig });
+      await speichereTermin({ ...t, datum, bisDatum, von, bis, ganztaegig });
     } catch (e) {
       setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht verschoben werden.");
     }
     void ladeTermine();
-    if (t.inhaber) void andere.neuLaden();
   }
 
   // Partner, Familie, Freunde – was sie eintragen, und wen man gerade sieht.
@@ -1345,9 +1350,12 @@ export function PrivatKalender() {
               setFehler(OHNE_NETZ);
               return;
             }
-            void terminSichernUeberall(t, alt)
-              .then(() => Promise.all([ladeTermine(), andere.neuLaden()]))
-              .catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));
+            const speichern = terminSichernUeberall(t, alt);
+            speichern.catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));
+            // Bei einer verbundenen Person: sofort zeigen, nur deren Termine nachladen.
+            const vorab = fremdVorschau(t, alt, konto.userId);
+            if (vorab) void andere.fremdGespeichert(vorab, speichern).catch(() => {});
+            else void speichern.then(() => ladeTermine(), () => {});
           }}
           serieLoeschen
           onLoeschen={(_id, modus, datum) => {

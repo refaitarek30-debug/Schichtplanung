@@ -90,6 +90,31 @@ export default async function tagesansicht() {
     pruefe(await titel.isVisible(), "Loslassen öffnet das Termin-Blatt");
     pruefe(await titel.evaluate((el) => el === document.activeElement), "Titel ist gleich ausgewählt (Tastatur)");
     await titel.fill("Zahnarzt");
+
+    // Erinnerung und Wiederholen: Zeile antippen, Auswahl klappt auf, Antippen wählt und klappt zu.
+    const erinnerung = seite.getByRole("button", { name: /Erinnerung/ });
+    await erinnerung.click();
+    await warte(250);
+    for (const n of ["Zum Beginn", "15 Min.", "3 Std.", "Vortag 20:00", "1 Woche vorher"]) {
+      pruefe(await seite.getByRole("button", { name: n, exact: true }).isVisible(), `Erinnerung zur Wahl: ${n}`);
+    }
+    await seite.getByRole("button", { name: "15 Min.", exact: true }).click();
+    await warte(250);
+    pruefe(/15 Min\. vorher/.test(await erinnerung.innerText()), `Erinnerung gewählt (${await erinnerung.innerText()})`);
+    pruefe((await seite.getByRole("button", { name: "3 Std.", exact: true }).count()) === 0, "Auswahl klappt nach dem Tippen zu");
+    const wdh = seite.getByRole("button", { name: /Wiederholen/ });
+    await wdh.click();
+    await warte(250);
+    for (const n of ["Werktags", "Alle 2 Wochen", "Jährlich"]) {
+      pruefe(await seite.getByRole("button", { name: n, exact: true }).isVisible(), `Wiederholen zur Wahl: ${n}`);
+    }
+    await seite.getByRole("button", { name: "Alle 2 Wochen", exact: true }).click();
+    await warte(250);
+    pruefe(/Alle 2 Wochen/.test(await wdh.innerText()), "Wiederholen gewählt");
+    await wdh.click();
+    await warte(200);
+    await seite.getByRole("button", { name: "Nie", exact: true }).click();
+    await warte(200);
     await seite.getByRole("button", { name: "Speichern" }).click();
     await warte(900);
     const block = seite.locator("[data-termin-block]").filter({ hasText: "Zahnarzt" });
@@ -141,6 +166,19 @@ export default async function tagesansicht() {
     await seite.getByRole("button", { name: "Monat", exact: true }).click();
     await warte(400);
     pruefe((await seite.locator("[data-tagesansicht]").count()) === 0, "„Monat“ schließt die Tagesansicht");
+
+    // Für eine verbundene Person eintragen: steht sofort im eigenen Kalender (mit ihrem Namen).
+    await seite.locator(`[data-iso="${tag}"]`).first().click();
+    await warte(700);
+    await seite.locator('[aria-label="Neuer Termin"]').first().click({ timeout: 5000 });
+    await warte(700);
+    await seite.getByRole("button", { name: "Sam", exact: true }).click({ timeout: 5000 });
+    await seite.getByPlaceholder("Ohne Titel").fill("Kino für Sam");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await warte(350);
+    pruefe((await seite.locator("[data-termin-block]").filter({ hasText: "Kino für Sam" }).count()) === 1, "Bei Sam eingetragen: sofort im eigenen Kalender sichtbar");
+    await warte(900);
+    pruefe((await seite.locator("[data-termin-block]").filter({ hasText: "Kino für Sam" }).count()) === 1, "… und bleibt nach dem Nachladen");
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));

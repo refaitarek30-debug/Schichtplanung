@@ -3,7 +3,8 @@
 import { restBis, useCountdowns, useJetzt, zeitpunkt } from "@/lib/countdown";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, X } from "lucide-react";
+import { ChevronDown, Trash2, X } from "lucide-react";
+import type React from "react";
 import { useWischZu } from "@/components/privat/blatt";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,7 @@ export function alteLokaleTermine(benutzer: string): TerminEingabe[] | null {
         ganztaegig: t.ganztaegig === true,
         von: typeof t.von === "string" ? t.von : "",
         bis: typeof t.bis === "string" ? t.bis : "",
-        wiederholung: (["nie", "taeglich", "woechentlich", "monatlich", "jaehrlich"].includes(t.wiederholung)
+        wiederholung: (["nie", "taeglich", "werktags", "woechentlich", "zweiwoechentlich", "monatlich", "jaehrlich"].includes(t.wiederholung)
           ? t.wiederholung
           : "nie") as Wiederholung,
         notiz: String(t.notiz ?? "").slice(0, 500),
@@ -77,8 +78,14 @@ function beginntAm(t: Termin, iso: string): boolean {
   switch (t.wiederholung) {
     case "taeglich":
       return true;
+    case "werktags": {
+      const w = fromISO(iso).getDay();
+      return w >= 1 && w <= 5;
+    }
     case "woechentlich":
       return tageZwischen(t.datum, iso) % 7 === 0;
+    case "zweiwoechentlich":
+      return tageZwischen(t.datum, iso) % 14 === 0;
     case "monatlich":
       return fromISO(iso).getDate() === fromISO(t.datum).getDate();
     case "jaehrlich": {
@@ -189,19 +196,80 @@ export function minutenZwischen(von: string, bis: string): number {
   return m;
 }
 
-const ERINNERUNG_MIT_ZEIT: { id: Erinnerung | null; name: string }[] = [
-  { id: null, name: "Keine" },
-  { id: "m10", name: "10 Min." },
-  { id: "h1", name: "1 Std. vorher" },
-  { id: "d1", name: "1 Tag vorher" },
-  { id: "morgens8", name: "Morgens 8:00" },
+type Wahl<T> = { id: T; name: string; kurz?: string };
+/** Erinnerungen in Gruppen – zum Antippen (Migration 0251). */
+const ERINNERUNG_MIT_ZEIT: { titel: string; wahl: Wahl<Erinnerung | null>[] }[] = [
+  {
+    titel: "Kurz vorher",
+    wahl: [
+      { id: null, name: "Keine" },
+      { id: "m0", name: "Zum Beginn" },
+      { id: "m5", name: "5 Min.", kurz: "5 Min. vorher" },
+      { id: "m10", name: "10 Min.", kurz: "10 Min. vorher" },
+      { id: "m15", name: "15 Min.", kurz: "15 Min. vorher" },
+      { id: "m30", name: "30 Min.", kurz: "30 Min. vorher" },
+    ],
+  },
+  {
+    titel: "Stunden vorher",
+    wahl: [
+      { id: "h1", name: "1 Std.", kurz: "1 Std. vorher" },
+      { id: "h2", name: "2 Std.", kurz: "2 Std. vorher" },
+      { id: "h3", name: "3 Std.", kurz: "3 Std. vorher" },
+    ],
+  },
+  {
+    titel: "Am Tag",
+    wahl: [
+      { id: "tag7", name: "7:00", kurz: "Am Tag 7:00" },
+      { id: "morgens8", name: "8:00", kurz: "Am Tag 8:00" },
+    ],
+  },
+  {
+    titel: "Früher",
+    wahl: [
+      { id: "vortag18", name: "Vortag 18:00" },
+      { id: "vortag20", name: "Vortag 20:00" },
+      { id: "d1", name: "1 Tag vorher" },
+      { id: "d2", name: "2 Tage vorher" },
+      { id: "w1", name: "1 Woche vorher" },
+    ],
+  },
 ];
-const ERINNERUNG_GANZ: { id: Erinnerung | null; name: string }[] = [
-  { id: null, name: "Keine" },
-  { id: "vortag18", name: "Am Vortag 18:00" },
-  { id: "tag8", name: "Am Tag 8:00" },
-  { id: "d2", name: "2 Tage vorher" },
+const ERINNERUNG_GANZ: { titel: string; wahl: Wahl<Erinnerung | null>[] }[] = [
+  {
+    titel: "Am Tag",
+    wahl: [
+      { id: null, name: "Keine" },
+      { id: "tag7", name: "7:00", kurz: "Am Tag 7:00" },
+      { id: "tag8", name: "8:00", kurz: "Am Tag 8:00" },
+    ],
+  },
+  {
+    titel: "Früher",
+    wahl: [
+      { id: "vortag18", name: "Vortag 18:00" },
+      { id: "vortag20", name: "Vortag 20:00" },
+      { id: "d2", name: "2 Tage vorher" },
+      { id: "w1", name: "1 Woche vorher" },
+    ],
+  },
 ];
+const WIEDERHOLUNGEN: Wahl<Wiederholung>[] = [
+  { id: "nie", name: "Nie" },
+  { id: "taeglich", name: "Täglich" },
+  { id: "werktags", name: "Werktags", kurz: "Werktags (Mo–Fr)" },
+  { id: "woechentlich", name: "Wöchentlich" },
+  { id: "zweiwoechentlich", name: "Alle 2 Wochen" },
+  { id: "monatlich", name: "Monatlich" },
+  { id: "jaehrlich", name: "Jährlich" },
+];
+
+/** Name einer Wiederholung, z. B. „Alle 2 Wochen“. */
+export function wiederholungText(w: Wiederholung): string {
+  const x = WIEDERHOLUNGEN.find((v) => v.id === w);
+  return x?.kurz ?? x?.name ?? "Nie";
+}
 const DAUERN = [
   { tage: 1, name: "1 Tag" },
   { tage: 2, name: "2 Tage" },
@@ -212,7 +280,8 @@ const DAUERN = [
 /** Kurzer Text zur Erinnerung, z. B. für das Tagesblatt. */
 export function erinnerungText(e: Erinnerung | null | undefined): string | null {
   if (!e) return null;
-  return [...ERINNERUNG_MIT_ZEIT, ...ERINNERUNG_GANZ].find((x) => x.id === e)?.name ?? null;
+  const x = [...ERINNERUNG_MIT_ZEIT, ...ERINNERUNG_GANZ].flatMap((g) => g.wahl).find((w) => w.id === e);
+  return x ? (x.kurz ?? x.name) : null;
 }
 
 const pille = (an: boolean) =>
@@ -220,6 +289,55 @@ const pille = (an: boolean) =>
     "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-semibold transition-colors",
     an ? "bg-ink text-surface" : "bg-ink/[0.06] text-ink",
   );
+
+/** Zeile mit gewähltem Wert rechts; Antippen klappt die Auswahl darunter auf. */
+function Ausklapp({
+  zeile,
+  titel,
+  wert,
+  offen,
+  onToggle,
+  gesperrt,
+  children,
+}: {
+  zeile: string;
+  titel: string;
+  wert: string;
+  offen: boolean;
+  onToggle: () => void;
+  gesperrt?: boolean;
+  children: React.ReactNode;
+}) {
+  const auswahl = useRef<HTMLDivElement>(null);
+  // Aufgeklappt: die Auswahl ganz zeigen, auch wenn sie unten aus dem Blatt ragt.
+  useEffect(() => {
+    if (offen) auswahl.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [offen]);
+  return (
+    <div className={cn(zeile, "flex-col items-stretch gap-0")}>
+      <button
+        type="button"
+        disabled={gesperrt}
+        aria-expanded={offen}
+        onClick={onToggle}
+        className="flex min-h-[52px] w-full items-center justify-between gap-3 text-left disabled:opacity-100"
+      >
+        <span>{titel}</span>
+        <span className="flex items-center gap-1.5 text-ink-muted">
+          <span className="font-medium text-ink">{wert}</span>
+          {gesperrt ? null : (
+            <ChevronDown aria-hidden className={cn("h-4 w-4 transition-transform", offen && "rotate-180")} />
+          )}
+        </span>
+      </button>
+      {offen ? (
+        <div ref={auswahl} className="space-y-3 pb-3.5">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function TerminBlatt({
   datum,
@@ -269,6 +387,8 @@ export function TerminBlatt({
   const tag = termin?.datum ?? datum;
   const [bisDatum, setBisDatum] = useState<string>(termin?.bisDatum && termin.bisDatum > tag ? termin.bisDatum : tag);
   const [erinnerung, setErinnerung] = useState<Erinnerung | null>(termin?.erinnerung ?? null);
+  /** Welche Auswahl gerade aufgeklappt ist. */
+  const [offen, setOffen] = useState<"erinnerung" | "wdh" | null>(null);
   const titelFeld = useRef<HTMLInputElement>(null);
   // Geburtstag: jährlich, 🎂 vorn – dann fragt das Formular nach dem Geburtsjahr.
   const geburt = wdh === "jaehrlich" && istGeburtstagTitel(titel);
@@ -332,7 +452,7 @@ export function TerminBlatt({
   const tageAnzahl = tageZwischen(tag, bisDatum) + 1;
   const erinnerungen = ganz ? ERINNERUNG_GANZ : ERINNERUNG_MIT_ZEIT;
   // Passt die gewählte Erinnerung nicht mehr (ganztägig umgeschaltet), keine.
-  const erinnerungGueltig = erinnerungen.some((e) => e.id === erinnerung) ? erinnerung : null;
+  const erinnerungGueltig = erinnerungen.some((g) => g.wahl.some((e) => e.id === erinnerung)) ? erinnerung : null;
 
   // Beim Geburtstag beginnt die Serie im Geburtsjahr (oder 1904, wenn es unbekannt ist).
   const startJahr = gjahrZahl && !(tagMonat === "02-29" && !istSchaltjahr(gjahrZahl)) ? gjahrZahl : GEBURTSJAHR_UNBEKANNT;
@@ -692,39 +812,66 @@ export function TerminBlatt({
           ) : null}
 
           {vorschlaege && !ziel && !termin?.inhaber ? (
-          <div className={cn(zeile, "flex-col items-stretch gap-2 py-3")}>
-            <span>🔔 Erinnerung</span>
+          <>
+          <Ausklapp
+            zeile={zeile}
+            titel="🔔 Erinnerung"
+            wert={erinnerungText(erinnerungGueltig) ?? "Keine"}
+            offen={offen === "erinnerung"}
+            onToggle={() => setOffen((o) => (o === "erinnerung" ? null : "erinnerung"))}
+            gesperrt={nurLesen}
+          >
+            {erinnerungen.map((g) => (
+              <div key={g.titel}>
+                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-ink-muted">{g.titel}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {g.wahl.map((e) => (
+                    <button
+                      key={e.id ?? "keine"}
+                      type="button"
+                      aria-pressed={erinnerungGueltig === e.id}
+                      onClick={() => {
+                        setErinnerung(e.id);
+                        setOffen(null);
+                      }}
+                      className={pille(erinnerungGueltig === e.id)}
+                    >
+                      {e.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </Ausklapp>
+          {erinnerungGueltig && !nurLesen ? <ErinnerungHinweis klein /> : null}
+          </>
+          ) : null}
+
+          <Ausklapp
+            zeile={zeile}
+            titel="🔁 Wiederholen"
+            wert={wiederholungText(wdh)}
+            offen={offen === "wdh"}
+            onToggle={() => setOffen((o) => (o === "wdh" ? null : "wdh"))}
+            gesperrt={nurLesen}
+          >
             <div className="flex flex-wrap gap-1.5">
-              {erinnerungen.map((e) => (
+              {WIEDERHOLUNGEN.map((w) => (
                 <button
-                  key={e.id ?? "keine"}
+                  key={w.id}
                   type="button"
-                  onClick={() => setErinnerung(e.id)}
-                  className={pille(erinnerungGueltig === e.id)}
+                  aria-pressed={wdh === w.id}
+                  onClick={() => {
+                    setWdh(w.id);
+                    setOffen(null);
+                  }}
+                  className={pille(wdh === w.id)}
                 >
-                  {e.name}
+                  {w.name}
                 </button>
               ))}
             </div>
-            {erinnerungGueltig && !nurLesen ? <ErinnerungHinweis /> : null}
-          </div>
-          ) : null}
-
-          <label className={zeile}>
-            <span>Wiederholen</span>
-            <select
-              id={`${id}-wdh`}
-              value={wdh}
-              onChange={(e) => setWdh(e.target.value as Wiederholung)}
-              className={cn(eingabe, "text-right")}
-            >
-              <option value="nie">Niemals</option>
-              <option value="taeglich">Täglich</option>
-              <option value="woechentlich">Wöchentlich</option>
-              <option value="monatlich">Monatlich</option>
-              <option value="jaehrlich">Jährlich</option>
-            </select>
-          </label>
+          </Ausklapp>
 
           <div className={cn("my-4 overflow-hidden rounded-2xl", glas ? "bg-ink/[0.05]" : "border border-line")}>
             <textarea
