@@ -3,7 +3,7 @@
 import { restBis, useCountdowns, useJetzt, zeitpunkt } from "@/lib/countdown";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Trash2, X } from "lucide-react";
 import type React from "react";
 import { useWischZu } from "@/components/privat/blatt";
 import { addDays, formatDE, fromISO, heuteInBerlin, monthName } from "@/lib/dates";
@@ -526,7 +526,15 @@ export function TerminBlatt({
   const tagMonat = (termin?.datum ?? datum).slice(5);
   const gjahrZahl = /^\d{4}$/.test(gjahr) && Number(gjahr) >= FRUEHESTES_GEBURTSJAHR && Number(gjahr) <= SPAETESTES_GEBURTSJAHR ? Number(gjahr) : null;
   /** null = mein Kalender, sonst das Konto einer verbundenen Person */
-  const [ziel, setZiel] = useState<string | null>(null);
+  /** Für wen: „ich“ und/oder verbundene Konten – mehrere gleichzeitig möglich. */
+  const [fuer, setFuer] = useState<string[]>(["ich"]);
+  const mir = fuer.includes("ich");
+  const partnerWahl = fuer.filter((x) => x !== "ich");
+  // Der erste Eintrag wie bisher (eigener Kalender oder eine Person), alle weiteren zusätzlich.
+  const ziel = mir ? null : (partnerWahl[0] ?? null);
+  const weitere = mir ? partnerWahl : partnerWahl.slice(1);
+  const fuerUmschalten = (key: string) =>
+    setFuer((alt) => (alt.includes(key) ? (alt.length > 1 ? alt.filter((x) => x !== key) : alt) : [...alt, key]));
 
   const mitVorschlaegen = vorschlaege && !termin && !nurLesen;
   const { vorlieben, setzen } = useVorlieben();
@@ -610,6 +618,7 @@ export function TerminBlatt({
       ort: ort.trim(),
       erinnerung: ziel ? null : erinnerungGueltig,
       ziel,
+      weitere: weitere.length ? weitere : undefined,
       // Ende der Wiederholung nur mitschicken, wenn es sich geändert hat.
       serieEnde: wdh !== "nie" && ende !== altEnde ? (ende && ende >= startDatum ? ende : null) : undefined,
     });
@@ -788,10 +797,19 @@ export function TerminBlatt({
 
           {!termin && !nurLesen && ziele.length ? (
             <div className="space-y-1.5 pt-4">
-              <p className="text-[12.5px] font-semibold text-ink-muted">Für</p>
+              <p className="text-[12.5px] font-semibold text-ink-muted">
+                Für <span className="font-normal">· auch mehrere antippen</span>
+              </p>
               <div className="flex flex-wrap gap-1.5">
-                {[{ id: null as string | null, name: "Mir" }, ...ziele].map((z) => (
-                  <button key={z.id ?? "ich"} type="button" onClick={() => setZiel(z.id)} className={pille(ziel === z.id)}>
+                {[{ id: "ich", name: "Mir" }, ...ziele].map((z) => (
+                  <button
+                    key={z.id}
+                    type="button"
+                    aria-pressed={fuer.includes(z.id)}
+                    onClick={() => fuerUmschalten(z.id)}
+                    className={cn(pille(fuer.includes(z.id)), "inline-flex items-center gap-1")}
+                  >
+                    {fuer.includes(z.id) ? <Check aria-hidden className="h-3.5 w-3.5" /> : null}
                     {z.name}
                   </button>
                 ))}

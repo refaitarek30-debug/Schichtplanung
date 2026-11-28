@@ -186,12 +186,27 @@ export default async function tagesansicht() {
     await seite.locator('[aria-label="Neuer Termin"]').first().click({ timeout: 5000 });
     await warte(700);
     await seite.getByRole("button", { name: "Sam", exact: true }).click({ timeout: 5000 });
+    await seite.getByRole("button", { name: "Mir", exact: true }).click();
     await seite.getByPlaceholder("Ohne Titel").fill("Kino für Sam");
     await seite.getByRole("button", { name: "Speichern" }).click();
     await warte(350);
     pruefe((await seite.locator("[data-termin-block]").filter({ hasText: "Kino für Sam" }).count()) === 1, "Bei Sam eingetragen: sofort im eigenen Kalender sichtbar");
     await warte(900);
     pruefe((await seite.locator("[data-termin-block]").filter({ hasText: "Kino für Sam" }).count()) === 1, "… und bleibt nach dem Nachladen");
+
+    // Für mehrere auf einmal: Mir + Sam → bei mir und bei Sam.
+    await seite.locator('[aria-label="Neuer Termin"]').first().click({ timeout: 5000 });
+    await warte(700);
+    await seite.getByRole("button", { name: "Sam", exact: true }).click();
+    pruefe(
+      (await seite.getByRole("button", { name: "Mir", exact: true }).getAttribute("aria-pressed")) === "true" &&
+        (await seite.getByRole("button", { name: "Sam", exact: true }).getAttribute("aria-pressed")) === "true",
+      "Für: Mir und Sam zugleich gewählt",
+    );
+    await seite.getByPlaceholder("Ohne Titel").fill("Essen zusammen");
+    await seite.getByRole("button", { name: "Speichern" }).click();
+    await warte(1500);
+    pruefe((await seite.locator("[data-termin-block]").filter({ hasText: "Essen zusammen" }).count()) === 2, `Für beide: bei mir und bei Sam eingetragen (${await seite.locator("[data-termin-block]").filter({ hasText: "Essen zusammen" }).count()})`);
 
     pruefe(seitenFehler.length === 0, `keine Skriptfehler ${seitenFehler.join(" | ")}`);
     if (seitenFehler.length) console.log("   Seite:", await seitenText(seite));

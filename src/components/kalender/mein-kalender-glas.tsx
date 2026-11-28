@@ -56,7 +56,7 @@ import { VerbundenHinweisStreifen } from "./verbunden-hinweis";
 import { useVorlieben } from "./vorschlaege";
 import { setzeEinfuehrungGesehen, useAnzeige, useEinfuehrungImKonto } from "@/lib/anzeige";
 import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
-import { fremdVorschau, terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
+import { terminLoeschenModus, terminSpeichernFuerAlle, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
 import { KALENDER_TEILEN } from "@/lib/kalender-teilen";
@@ -458,17 +458,16 @@ export function MeinKalenderGlas() {
       setFehler(OHNE_NETZ);
       return;
     }
-    const speichern = terminSichernUeberall(t, alt);
-    // Bei einer verbundenen Person: sofort zeigen, nur deren Termine nachladen.
-    const vorab = fremdVorschau(t, alt, profile.id);
-    if (vorab) void andere.fremdGespeichert(vorab, speichern).catch(() => {});
+    // Für eine oder mehrere Personen; bei Verbundenen sofort zeigen, nur deren Termine nachladen.
+    const { speichern, vorab, eigen } = terminSpeichernFuerAlle(t, alt, profile.id);
+    if (vorab.length) void andere.fremdGespeichert(vorab, speichern).catch(() => {});
     try {
       await speichern;
       setFehler(null);
     } catch (err) {
       setFehler(err instanceof Error ? err.message : "Der Termin konnte nicht gespeichert werden.");
     }
-    if (!vorab) void ladeTermine();
+    if (eigen) void ladeTermine();
   }
   async function terminLoeschen(t: Termin, modus: LoeschModus, datum: string) {
     if (istWartend(t)) {

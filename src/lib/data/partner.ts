@@ -76,6 +76,8 @@ export interface Termin {
 /** Neuer Termin hat noch keine Id. */
 export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inhaber" | "vonUser" | "ausfaelle" | "serieAb"> & {
   id: string | null;
+  /** Neuer Termin zusätzlich bei diesen verbundenen Konten eintragen. */
+  weitere?: string[];
   /** Letzter Tag einer Wiederholung; null = ohne Ende, fehlt = nicht ändern (Migration 0252). */
   serieEnde?: string | null;
   /** In den Kalender eines verbundenen Kontos eintragen (dessen Konto). */

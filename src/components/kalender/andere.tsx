@@ -443,8 +443,9 @@ export function useAndere({ benutzer, von, bis, aktiv = true }: { benutzer: stri
      * Eingetragen bzw. geändert bei einer verbundenen Person: sofort zeigen und
      * danach nur die Termine der Verbundenen frisch holen – nicht alles neu laden.
      */
-    fremdGespeichert: async (t: Termin, speichern: Promise<unknown>) => {
-      setFremdeTermine((alt) => [...alt.filter((x) => x.id !== t.id), t]);
+    fremdGespeichert: async (t: Termin | Termin[], speichern: Promise<unknown>) => {
+      const neu = Array.isArray(t) ? t : [t];
+      setFremdeTermine((alt) => [...alt.filter((x) => !neu.some((n) => n.id === x.id)), ...neu]);
       const gen = generation.current;
       try {
         await speichern;
