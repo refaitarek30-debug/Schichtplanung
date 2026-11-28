@@ -5,6 +5,7 @@ import type { Termin } from "@/components/kalender/termine";
 import { addDays, tageAbstand } from "@/lib/dates";
 import { idsVon, istAbwesenheit, tagZeitSchluessel, textFarbe, type Schichtart, type TagEintrag, type TagZeit } from "@/lib/privat/daten";
 import { cn } from "@/lib/utils";
+import { AndereTags, type AndererEintrag, type Anzeige } from "@/components/kalender/andere";
 
 /**
  * Woche als Zeitraster: 7 Spalten, 0–24 Uhr, füllt die ganze Höhe. Schichten
@@ -133,6 +134,8 @@ export function WochenSpalten({
   onVerschieben,
   onSchichtVerschieben,
   onWoche,
+  andereAm,
+  anzeige,
 }: {
   /** Montag der Woche */
   von: string;
@@ -155,6 +158,9 @@ export function WochenSpalten({
   onSchichtVerschieben: (id: string, von: string, nach: string, zeit?: TagZeit) => void;
   /** Zur Seite wischen: +1 nächste Woche, -1 vorherige. Ohne: kein Wischen hier. */
   onWoche?: (richtung: 1 | -1) => void;
+  /** Schichten der anderen (Partner, Familie, Kollegen) – wie im Monat unter dem Datum. */
+  andereAm?: (iso: string) => AndererEintrag[];
+  anzeige?: Anzeige;
 }) {
   const raster = useRef<HTMLDivElement>(null);
   const druck = useRef<{ uhr: number | null; x: number; y: number; id: number } | null>(null);
@@ -253,7 +259,8 @@ export function WochenSpalten({
       const b = minuten(z.beginn);
       const e = minuten(z.ende);
       const eigen = !a.id.startsWith("betrieb:");
-      const titel = a.kuerzel || a.name.slice(0, 1);
+      // Wie im Monat der Name („Früh“), nur lange Namen als Kürzel.
+      const titel = a.name.length <= 6 ? a.name : a.kuerzel || a.name.slice(0, 1);
       // Urlaub/Krank ersetzen die Arbeitsschicht an dem Tag.
       if (abwesend && a.art === "arbeit") continue;
       if (b === null || e === null || a.art !== "arbeit") {
@@ -437,6 +444,7 @@ export function WochenSpalten({
                   <span className={cn("block text-[10.5px] font-medium", istHeute ? "opacity-80" : feiertag ? "text-crit-fg" : "text-ink-muted")}>{KURZ[i]}</span>
                   <span className="tnum block text-[15px] font-bold leading-tight">{Number(iso.slice(8))}</span>
                 </span>
+                {andereAm ? <AndereTags eintraege={andereAm(iso)} anzeige={anzeige} className="px-0.5" /> : null}
               </button>
             );
           })}
@@ -492,7 +500,8 @@ export function WochenSpalten({
                       style={{
                         top: `${(b.von / 1440) * 100}%`,
                         height: `calc(${((b.bis - b.von) / 1440) * 100}% - 1px)`,
-                        minHeight: 14,
+                        // Kurze Termine (1 Stunde ≈ eine Zeile) bekommen Platz für zwei Zeilen Titel.
+                        minHeight: b.termin && !b.ganz ? 30 : 14,
                         left: `${b.links}%`,
                         width: `calc(${b.breite}% - ${b.breite < 100 ? 1 : 0}px)`,
                         // Ganztägiges zart im Hintergrund, Termine deckend obenauf.
@@ -513,7 +522,10 @@ export function WochenSpalten({
                           "block font-bold",
                           b.ganz
                             ? cn("line-clamp-3 break-words leading-[1.15] [hyphens:auto]", b.vorn ? "text-[9px]" : "text-[10px]")
-                            : "truncate text-[11px] font-extrabold",
+                            : b.termin
+                              ? // Termine ganz lesbar: umbrechen statt nach drei Buchstaben abschneiden.
+                                "line-clamp-4 break-words text-[10px] leading-[1.15] [hyphens:auto]"
+                              : "truncate text-[11px] font-extrabold",
                         )}
                         lang="de"
                       >

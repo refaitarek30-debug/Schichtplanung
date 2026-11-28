@@ -969,9 +969,9 @@ export function WenSeheIch({
               onVerwalten();
             }}
             aria-label="Personen einladen"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-surface"
+            className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-ink pl-2 pr-3 text-[13px] font-bold text-surface"
           >
-            <Plus className="h-[18px] w-[18px]" strokeWidth={2.6} />
+            <Plus className="h-[16px] w-[16px]" strokeWidth={2.6} /> Teilen
           </button>
         ) : null}
       </div>

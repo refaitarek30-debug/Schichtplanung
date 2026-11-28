@@ -14,6 +14,7 @@ import {
   ScrollText,
   Search,
   Settings,
+  Share2,
   Sparkles,
   Users,
   X,
@@ -25,6 +26,7 @@ import { useWischZu } from "@/components/privat/blatt";
 import { suche } from "@/lib/suche";
 import { useBegriffe } from "@/lib/begriffe";
 import { cn } from "@/lib/utils";
+import { KALENDER_TEILEN } from "@/lib/kalender-teilen";
 
 interface Punkt {
   href: string;
@@ -68,6 +70,8 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
       ]
     : [];
   const liste: Punkt[] = [
+    // Kalender mit Partner, Familie, Kollegen teilen – Code zeigen oder eingeben.
+    { href: "/meine-schichten?teilen=1", titel: "Kalender teilen", icon: Share2 },
     { href: "/todos", titel: "To-dos", icon: ListChecks, todo: true },
     { href: "/meine-zahlen", titel: "Meine Zahlen", icon: Sparkles },
     ...(fuehrung ? [{ href: "/ausbildung", titel: "Ausbildung", icon: GraduationCap }] : []),
@@ -164,7 +168,15 @@ export function MehrBlatt({ onClose }: { onClose: () => void }) {
                 <ul className="overflow-hidden rounded-[14px] bg-surface/60">
                   {liste.map((p) => (
                     <li key={p.href} className="border-t border-line first:border-t-0">
-                      <Link href={p.href} onClick={onClose} className={cn(zeile, pathname === p.href && "font-semibold text-brand-700")}>
+                      <Link
+                        href={p.href}
+                        onClick={() => {
+                          onClose();
+                          // Schon im Kalender: die Seite lädt nicht neu – das Teilen-Blatt per Ereignis öffnen.
+                          if (p.href.includes("teilen=1")) window.dispatchEvent(new Event(KALENDER_TEILEN));
+                        }}
+                        className={cn(zeile, pathname === p.href && "font-semibold text-brand-700")}
+                      >
                         <p.icon className="h-[18px] w-[18px] shrink-0 text-ink-muted" strokeWidth={1.9} />
                         <span className="min-w-0 flex-1 truncate">{t(p.titel)}</span>
                         {p.todo ? <TodoZahlMarke pfad={pathname} /> : null}

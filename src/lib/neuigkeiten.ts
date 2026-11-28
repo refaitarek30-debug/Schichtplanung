@@ -27,6 +27,12 @@ export interface Neuigkeit {
 
 export const NEUIGKEITEN: Neuigkeit[] = [
   {
+    zeit: "2026-11-28T10:00:00+01:00",
+    titel: "Kalender teilen leichter",
+    text: "Unter „Mehr“ steht jetzt ganz oben „Kalender teilen“. Im Kalender findest du außerdem den Knopf „＋ Teilen“. Die Wochenansicht zeigt jetzt dasselbe wie der Monat: freie Tage, eigene Einträge und die Schichten der anderen unter dem Datum. Termine werden ausgeschrieben.",
+    bereich: "betrieb",
+  },
+  {
     zeit: "2026-11-27T09:30:00+01:00",
     titel: "Neue Tagesansicht",
     text: "Tippe auf einen Tag: oben die Woche, darunter die Termine nach Uhrzeit. Mit dem Pinsel oben setzt du deine Schicht. Wischen = anderer Tag. Termin gedrückt halten = verschieben, an den Punkten oben und unten Beginn oder Ende ziehen. Lange in eine freie Uhrzeit drücken = neuer Termin. Das „i“ oben öffnet die Details wie bisher.",
