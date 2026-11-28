@@ -64,6 +64,8 @@ interface Block {
   links: number;
   breite: number;
   ebene: number;
+  /** Schicht: Schrift erst so viele Minuten unter dem Beginn (oben liegt ein Termin). */
+  textAb?: number;
 }
 
 type Roh = Omit<Block, "links" | "breite" | "ebene">;
@@ -114,6 +116,24 @@ function anordnen(liste: Roh[]): Block[] {
     const links = Math.min((ueberSchicht ? 30 : 0) + stufe * 18, 62);
     aus.push({ ...t, links, breite: 100 - links, ebene: 2 + stufe });
     gesetzt.push(t);
+  }
+  // Kein Termin über der Schrift einer Schicht: liegt einer oben auf der Schicht,
+  // rückt die Schrift unter ihn. Ist darunter zu wenig Platz, stehen beide nebeneinander.
+  for (const sch of aus) {
+    if (sch.termin || sch.ganz) continue;
+    const oben = aus.filter((t) => t.termin && t.ebene >= 2 && t.von <= sch.von + 45 && t.bis > sch.von && ueberlappt(t, sch));
+    if (!oben.length) continue;
+    const frei = Math.max(...oben.map((t) => t.bis));
+    if (sch.bis - frei >= 45) {
+      sch.textAb = frei - sch.von;
+    } else {
+      const halb = sch.links + sch.breite / 2;
+      sch.breite = halb - sch.links;
+      for (const t of oben) {
+        t.links = Math.max(t.links, halb);
+        t.breite = 100 - t.links;
+      }
+    }
   }
   return aus;
 }
@@ -486,6 +506,7 @@ export function WochenSpalten({
                       data-tag={b.termin ? iso : b.schicht?.tag}
                       data-zeitbar={b.schicht?.zeitbar ? "1" : undefined}
                       data-ganz={b.ganz ? "" : undefined}
+                      data-text-ab={b.textAb ? "" : undefined}
                       data-termin-id={b.termin?.id}
                       className={cn(
                         "absolute overflow-hidden px-1 pt-0.5 text-left leading-tight transition-opacity",
@@ -517,6 +538,7 @@ export function WochenSpalten({
                         zIndex: b.ebene,
                       }}
                     >
+                      {b.textAb ? <span aria-hidden className="block" style={{ height: `${(b.textAb / (b.bis - b.von)) * 100}%` }} /> : null}
                       <span
                         className={cn(
                           "block font-bold",

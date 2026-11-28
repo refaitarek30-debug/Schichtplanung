@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { dataErrorMessage, datenFehlerText } from "@/lib/errors";
-import { farbenAus, loescheTermin, speichereTermin, terminAusnahme, type FarbenCodes, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
+import { farbenAus, loescheTermin, serieEndeSetzen, speichereTermin, terminAusnahme, type FarbenCodes, type PartnerCode, type PersonArt, type Termin, type TerminEingabe } from "./partner";
 
 /**
  * Verbundene Konten (Migration 0157): zwei Personen mit eigenem Kalender
@@ -202,7 +202,7 @@ export async function fetchVerbundeneTermine(): Promise<Termin[]> {
 
 /** Termin im Kalender einer verbundenen Person eintragen bzw. dort ändern. */
 export async function verbindungTerminSpeichern(partner: string, t: TerminEingabe) {
-  const { error } = await createClient().rpc("verbindung_termin_speichern", {
+  const { data, error } = await createClient().rpc("verbindung_termin_speichern", {
     p_partner: partner,
     p_id: t.id,
     p_datum: t.datum,
@@ -216,6 +216,7 @@ export async function verbindungTerminSpeichern(partner: string, t: TerminEingab
     p_ort: t.ort,
   });
   if (error) fehler(error, "Der Termin konnte nicht gespeichert werden.");
+  await serieEndeSetzen(data as string, t);
 }
 
 export async function verbindungTerminLoeschen(id: string) {
@@ -233,6 +234,12 @@ export async function terminSichernUeberall(t: TerminEingabe, alt: Termin | null
   await speichereTermin(t);
 }
 
+function naechsterTag(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
  * Termin bei einer verbundenen Person: so, wie er nach dem Speichern aussieht –
  * damit er sofort im Kalender steht. null = eigener Termin.
@@ -241,7 +248,7 @@ export function fremdVorschau(t: TerminEingabe, alt: Termin | null, ich: string)
   const inhaber = alt?.inhaber ?? (!alt ? t.ziel : null);
   if (!inhaber) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { ziel, id, ...rest } = t;
+  const { ziel, id, serieEnde, ...rest } = t;
   return {
     ...rest,
     id: alt?.id ?? `vorab:${Date.now()}`,
@@ -250,7 +257,7 @@ export function fremdVorschau(t: TerminEingabe, alt: Termin | null, ich: string)
     inhaber,
     vonUser: alt?.vonUser ?? ich,
     ausfaelle: alt?.ausfaelle ?? [],
-    serieAb: alt?.serieAb ?? null,
+    serieAb: serieEnde === undefined ? (alt?.serieAb ?? null) : serieEnde ? naechsterTag(serieEnde) : null,
     erinnerung: null,
   };
 }

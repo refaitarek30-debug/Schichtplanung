@@ -39,7 +39,11 @@ export type Wiederholung = "nie" | "taeglich" | "werktags" | "woechentlich" | "z
  */
 export type Erinnerung =
   | "m0" | "m5" | "m10" | "m15" | "m30" | "h1" | "h2" | "h3" | "d1" | "d2" | "w1"
-  | "morgens8" | "tag7" | "tag8" | "vortag18" | "vortag20";
+  | "morgens8" | "tag7" | "tag8" | "vortag18" | "vortag20"
+  /** eigene: Minuten vor dem Beginn (Migration 0252) */
+  | `v${number}`
+  /** eigene: Tage vorher um HHMM, z. B. t1-1930 (Migration 0252) */
+  | `t${number}-${string}`;
 
 export interface Termin {
   id: string;
@@ -72,6 +76,8 @@ export interface Termin {
 /** Neuer Termin hat noch keine Id. */
 export type TerminEingabe = Omit<Termin, "id" | "vonPartner" | "personId" | "inhaber" | "vonUser" | "ausfaelle" | "serieAb"> & {
   id: string | null;
+  /** Letzter Tag einer Wiederholung; null = ohne Ende, fehlt = nicht ändern (Migration 0252). */
+  serieEnde?: string | null;
   /** In den Kalender eines verbundenen Kontos eintragen (dessen Konto). */
   ziel?: string | null;
 };
@@ -176,7 +182,15 @@ export async function speichereTermin(t: TerminEingabe): Promise<string> {
     p_erinnerung: t.erinnerung ?? null,
   });
   if (error) fehler(error, "Der Termin konnte nicht gespeichert werden.");
+  await serieEndeSetzen(data as string, t);
   return data as string;
+}
+
+/** Ende einer Wiederholung setzen oder wegnehmen – nur wenn es sich geändert hat. */
+export async function serieEndeSetzen(id: string, t: Pick<TerminEingabe, "serieEnde" | "wiederholung">) {
+  if (t.serieEnde === undefined || t.wiederholung === "nie" || !id) return;
+  const { error } = await createClient().rpc("termin_serie_ende", { p_id: id, p_ende: t.serieEnde });
+  if (error) fehler(error, "Das Ende der Wiederholung konnte nicht gespeichert werden.");
 }
 
 export async function loescheTermin(id: string) {

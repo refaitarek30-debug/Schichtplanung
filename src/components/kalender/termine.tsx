@@ -197,64 +197,64 @@ export function minutenZwischen(von: string, bis: string): number {
 }
 
 type Wahl<T> = { id: T; name: string; kurz?: string };
-/** Erinnerungen in Gruppen – zum Antippen (Migration 0251). */
-const ERINNERUNG_MIT_ZEIT: { titel: string; wahl: Wahl<Erinnerung | null>[] }[] = [
-  {
-    titel: "Kurz vorher",
-    wahl: [
-      { id: null, name: "Keine" },
-      { id: "m0", name: "Zum Beginn" },
-      { id: "m5", name: "5 Min.", kurz: "5 Min. vorher" },
-      { id: "m10", name: "10 Min.", kurz: "10 Min. vorher" },
-      { id: "m15", name: "15 Min.", kurz: "15 Min. vorher" },
-      { id: "m30", name: "30 Min.", kurz: "30 Min. vorher" },
-    ],
-  },
-  {
-    titel: "Stunden vorher",
-    wahl: [
-      { id: "h1", name: "1 Std.", kurz: "1 Std. vorher" },
-      { id: "h2", name: "2 Std.", kurz: "2 Std. vorher" },
-      { id: "h3", name: "3 Std.", kurz: "3 Std. vorher" },
-    ],
-  },
-  {
-    titel: "Am Tag",
-    wahl: [
-      { id: "tag7", name: "7:00", kurz: "Am Tag 7:00" },
-      { id: "morgens8", name: "8:00", kurz: "Am Tag 8:00" },
-    ],
-  },
-  {
-    titel: "Früher",
-    wahl: [
-      { id: "vortag18", name: "Vortag 18:00" },
-      { id: "vortag20", name: "Vortag 20:00" },
-      { id: "d1", name: "1 Tag vorher" },
-      { id: "d2", name: "2 Tage vorher" },
-      { id: "w1", name: "1 Woche vorher" },
-    ],
-  },
+/** Wenige feste Erinnerungen – alles andere stellt man unter „Eigene“ selbst ein. */
+const ERINNERUNG_MIT_ZEIT: Wahl<Erinnerung | null>[] = [
+  { id: null, name: "Keine" },
+  { id: "m10", name: "10 Min. vorher" },
+  { id: "h1", name: "1 Std. vorher" },
+  { id: "d1", name: "1 Tag vorher" },
 ];
-const ERINNERUNG_GANZ: { titel: string; wahl: Wahl<Erinnerung | null>[] }[] = [
-  {
-    titel: "Am Tag",
-    wahl: [
-      { id: null, name: "Keine" },
-      { id: "tag7", name: "7:00", kurz: "Am Tag 7:00" },
-      { id: "tag8", name: "8:00", kurz: "Am Tag 8:00" },
-    ],
-  },
-  {
-    titel: "Früher",
-    wahl: [
-      { id: "vortag18", name: "Vortag 18:00" },
-      { id: "vortag20", name: "Vortag 20:00" },
-      { id: "d2", name: "2 Tage vorher" },
-      { id: "w1", name: "1 Woche vorher" },
-    ],
-  },
+const ERINNERUNG_GANZ: Wahl<Erinnerung | null>[] = [
+  { id: null, name: "Keine" },
+  { id: "tag8", name: "Am Tag 8:00" },
+  { id: "vortag18", name: "Vortag 18:00" },
 ];
+/** Namen der festen Werte, die es nur noch in alten Terminen gibt (0251). */
+const FEST_NAME: Record<string, string> = {
+  m0: "Zum Beginn",
+  m5: "5 Min. vorher",
+  m10: "10 Min. vorher",
+  m15: "15 Min. vorher",
+  m30: "30 Min. vorher",
+  h1: "1 Std. vorher",
+  h2: "2 Std. vorher",
+  h3: "3 Std. vorher",
+  d1: "1 Tag vorher",
+  d2: "2 Tage vorher, 8:00",
+  w1: "1 Woche vorher, 8:00",
+  morgens8: "Am Tag 8:00",
+  tag7: "Am Tag 7:00",
+  tag8: "Am Tag 8:00",
+  vortag18: "Vortag 18:00",
+  vortag20: "Vortag 20:00",
+};
+
+/** Braucht die Erinnerung eine Uhrzeit des Termins (… vor dem Beginn)? */
+function brauchtBeginn(e: Erinnerung): boolean {
+  return /^(m\d+|h\d|d1|v\d+)$/.test(e);
+}
+
+/** Minuten-Text: 90 → „1 Std. 30 Min.“, 2880 → „2 Tage“. */
+function dauerText(min: number): string {
+  if (min === 0) return "0 Min.";
+  if (min % 1440 === 0) return min === 1440 ? "1 Tag" : `${min / 1440} Tage`;
+  if (min % 60 === 0) return `${min / 60} Std.`;
+  return min > 60 ? `${Math.floor(min / 60)} Std. ${min % 60} Min.` : `${min} Min.`;
+}
+
+/** Eigene Erinnerung „t<Tage>-<HHMM>“ zerlegen. */
+function uhrzeitTeile(e: string): { tage: number; zeit: string } | null {
+  const m = /^t(\d{1,2})-(\d{2})(\d{2})$/.exec(e);
+  return m ? { tage: Number(m[1]), zeit: `${m[2]}:${m[3]}` } : null;
+}
+
+const UHRZEIT_TAGE = [
+  { tage: 0, name: "Am Tag" },
+  { tage: 1, name: "Vortag" },
+  { tage: 2, name: "2 Tage vorher" },
+  { tage: 7, name: "1 Woche vorher" },
+];
+
 const WIEDERHOLUNGEN: Wahl<Wiederholung>[] = [
   { id: "nie", name: "Nie" },
   { id: "taeglich", name: "Täglich" },
@@ -280,8 +280,12 @@ const DAUERN = [
 /** Kurzer Text zur Erinnerung, z. B. für das Tagesblatt. */
 export function erinnerungText(e: Erinnerung | null | undefined): string | null {
   if (!e) return null;
-  const x = [...ERINNERUNG_MIT_ZEIT, ...ERINNERUNG_GANZ].flatMap((g) => g.wahl).find((w) => w.id === e);
-  return x ? (x.kurz ?? x.name) : null;
+  if (FEST_NAME[e]) return FEST_NAME[e]!;
+  const v = /^v(\d+)$/.exec(e);
+  if (v) return Number(v[1]) === 0 ? "Zum Beginn" : `${dauerText(Number(v[1]))} vorher`;
+  const u = uhrzeitTeile(e);
+  if (u) return `${u.tage === 0 ? "Am Tag" : u.tage === 1 ? "Vortag" : `${u.tage} Tage vorher,`} ${u.zeit.replace(/^0/, "")}`;
+  return null;
 }
 
 const pille = (an: boolean) =>
@@ -289,6 +293,127 @@ const pille = (an: boolean) =>
     "h-9 shrink-0 rounded-full px-3.5 text-[13.5px] font-semibold transition-colors",
     an ? "bg-ink text-surface" : "bg-ink/[0.06] text-ink",
   );
+
+/** Neu Aufgetauchtes ganz zeigen, auch wenn es unten aus dem Blatt ragt. */
+function InSicht({ children, className, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
+  return (
+    <div ref={ref} className={className} {...rest}>
+      {children}
+    </div>
+  );
+}
+
+/** Erinnerung selbst einstellen: so lange vor dem Beginn oder an einem Tag zu einer Uhrzeit. */
+function EigeneErinnerung({
+  ganz,
+  wert,
+  onWahl,
+}: {
+  ganz: boolean;
+  wert: Erinnerung | null;
+  onWahl: (e: Erinnerung) => void;
+}) {
+  const u = wert ? uhrzeitTeile(wert) : null;
+  const v = wert ? /^v(\d+)$/.exec(wert) : null;
+  const startMin = v ? Number(v[1]) : 30;
+  const startEinheit: "min" | "std" | "tage" =
+    startMin > 0 && startMin % 1440 === 0 ? "tage" : startMin > 0 && startMin % 60 === 0 ? "std" : "min";
+  const FAKTOR = { min: 1, std: 60, tage: 1440 } as const;
+  const [art, setArt] = useState<"vorher" | "uhrzeit">(ganz || u ? "uhrzeit" : "vorher");
+  const [zahl, setZahl] = useState(String(startMin / FAKTOR[startEinheit]));
+  const [einheit, setEinheit] = useState(startEinheit);
+  const [tage, setTage] = useState(u?.tage ?? 1);
+  const [zeit, setZeit] = useState(u?.zeit ?? "19:00");
+  const n = Number(zahl.replace(",", "."));
+  const minuten = Number.isInteger(n) && n >= 0 ? n * FAKTOR[einheit] : -1;
+  const okVorher = minuten >= 0 && minuten <= 20160;
+  const okZeit = /^([01]\d|2[0-3]):[0-5]\d$/.test(zeit);
+  const vorher = art === "vorher" && !ganz;
+  const ok = vorher ? okVorher : okZeit;
+
+  return (
+    <InSicht className="space-y-3 rounded-2xl bg-ink/[0.045] p-3" data-eigene-erinnerung>
+      {ganz ? null : (
+        <div className="grid grid-cols-2 gap-1 rounded-full bg-ink/[0.06] p-1">
+          {(
+            [
+              ["vorher", "Vor dem Beginn"],
+              ["uhrzeit", "Zu einer Uhrzeit"],
+            ] as const
+          ).map(([id, name]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={art === id}
+              onClick={() => setArt(id)}
+              className={cn("h-8 rounded-full text-[13px] font-semibold", art === id ? "bg-surface text-ink shadow-sm" : "text-ink-muted")}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
+      {vorher ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            value={zahl}
+            onChange={(e) => setZahl(e.target.value)}
+            aria-label="Wie lange vorher"
+            className="h-9 w-16 rounded-full bg-surface text-center text-[16px] font-semibold text-ink outline-none ring-1 ring-line focus-visible:ring-2 focus-visible:ring-brand-500"
+          />
+          {(
+            [
+              ["min", "Min."],
+              ["std", "Std."],
+              ["tage", "Tage"],
+            ] as const
+          ).map(([id, name]) => (
+            <button key={id} type="button" aria-pressed={einheit === id} onClick={() => setEinheit(id)} className={pille(einheit === id)}>
+              {name}
+            </button>
+          ))}
+          <span className="text-[13.5px] text-ink-muted">vorher</span>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {UHRZEIT_TAGE.map((t) => (
+              <button key={t.tage} type="button" aria-pressed={tage === t.tage} onClick={() => setTage(t.tage)} className={pille(tage === t.tage)}>
+                {t.name}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-[13.5px] text-ink-muted">
+            um
+            <input
+              type="time"
+              value={zeit}
+              onChange={(e) => setZeit(e.target.value)}
+              aria-label="Uhrzeit der Erinnerung"
+              className="h-9 rounded-full bg-surface px-3 text-[16px] font-semibold text-ink outline-none ring-1 ring-line focus-visible:ring-2 focus-visible:ring-brand-500"
+            />
+          </label>
+        </div>
+      )}
+      {vorher && !okVorher ? <p className="text-[12.5px] text-crit-fg">Höchstens 14 Tage vorher, ganze Zahlen.</p> : null}
+      <button
+        type="button"
+        disabled={!ok}
+        onClick={() => onWahl(vorher ? (`v${minuten}` as Erinnerung) : (`t${tage}-${zeit.replace(":", "")}` as Erinnerung))}
+        className="h-10 w-full rounded-full bg-ink text-[14px] font-bold text-surface disabled:opacity-40"
+      >
+        Übernehmen
+      </button>
+    </InSicht>
+  );
+}
 
 /** Zeile mit gewähltem Wert rechts; Antippen klappt die Auswahl darunter auf. */
 function Ausklapp({
@@ -389,6 +514,11 @@ export function TerminBlatt({
   const [erinnerung, setErinnerung] = useState<Erinnerung | null>(termin?.erinnerung ?? null);
   /** Welche Auswahl gerade aufgeklappt ist. */
   const [offen, setOffen] = useState<"erinnerung" | "wdh" | null>(null);
+  /** Letzter Tag einer Wiederholung (null = ohne Ende). */
+  const altEnde = termin?.serieAb ? addDays(termin.serieAb, -1) : null;
+  const [ende, setEnde] = useState<string | null>(altEnde);
+  /** „Eigene …“ angetippt: Erinnerung selbst einstellen. */
+  const [eigenOffen, setEigenOffen] = useState(false);
   const titelFeld = useRef<HTMLInputElement>(null);
   // Geburtstag: jährlich, 🎂 vorn – dann fragt das Formular nach dem Geburtsjahr.
   const geburt = wdh === "jaehrlich" && istGeburtstagTitel(titel);
@@ -449,10 +579,13 @@ export function TerminBlatt({
     }
   }
 
-  const tageAnzahl = tageZwischen(tag, bisDatum) + 1;
+  // Täglich/werktags und mehrtägig zugleich ergibt keinen Sinn: dann nur ein Tag je Wiederholung.
+  const mehrtaegigGeht = wdh !== "taeglich" && wdh !== "werktags";
+  const tageAnzahl = mehrtaegigGeht ? tageZwischen(tag, bisDatum) + 1 : 1;
   const erinnerungen = ganz ? ERINNERUNG_GANZ : ERINNERUNG_MIT_ZEIT;
-  // Passt die gewählte Erinnerung nicht mehr (ganztägig umgeschaltet), keine.
-  const erinnerungGueltig = erinnerungen.some((g) => g.wahl.some((e) => e.id === erinnerung)) ? erinnerung : null;
+  // Passt die gewählte Erinnerung nicht mehr (ganztägig: nichts „vor dem Beginn“), keine.
+  const erinnerungGueltig = erinnerung && !(ganz && brauchtBeginn(erinnerung)) ? erinnerung : null;
+  const eigeneGewaehlt = !!erinnerungGueltig && !erinnerungen.some((e) => e.id === erinnerungGueltig);
 
   // Beim Geburtstag beginnt die Serie im Geburtsjahr (oder 1904, wenn es unbekannt ist).
   const startJahr = gjahrZahl && !(tagMonat === "02-29" && !istSchaltjahr(gjahrZahl)) ? gjahrZahl : GEBURTSJAHR_UNBEKANNT;
@@ -467,7 +600,7 @@ export function TerminBlatt({
     onSpeichern({
       id: termin?.id ?? null,
       datum: startDatum,
-      bisDatum: !geburt && ganz && bisDatum > tag ? bisDatum : null,
+      bisDatum: !geburt && ganz && mehrtaegigGeht && bisDatum > tag ? bisDatum : null,
       titel: titel.trim(),
       ganztaegig: ganz,
       von,
@@ -477,6 +610,8 @@ export function TerminBlatt({
       ort: ort.trim(),
       erinnerung: ziel ? null : erinnerungGueltig,
       ziel,
+      // Ende der Wiederholung nur mitschicken, wenn es sich geändert hat.
+      serieEnde: wdh !== "nie" && ende !== altEnde ? (ende && ende >= startDatum ? ende : null) : undefined,
     });
   }
 
@@ -778,7 +913,7 @@ export function TerminBlatt({
                 />
               </label>
             </>
-          ) : vorschlaege && !geburt ? (
+          ) : vorschlaege && !geburt && mehrtaegigGeht ? (
             <div className={cn(zeile, "flex-col items-stretch gap-2 py-3")}>
               <span>Wie lange?</span>
               <div className="flex flex-wrap gap-1.5">
@@ -821,27 +956,43 @@ export function TerminBlatt({
             onToggle={() => setOffen((o) => (o === "erinnerung" ? null : "erinnerung"))}
             gesperrt={nurLesen}
           >
-            {erinnerungen.map((g) => (
-              <div key={g.titel}>
-                <p className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-ink-muted">{g.titel}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {g.wahl.map((e) => (
-                    <button
-                      key={e.id ?? "keine"}
-                      type="button"
-                      aria-pressed={erinnerungGueltig === e.id}
-                      onClick={() => {
-                        setErinnerung(e.id);
-                        setOffen(null);
-                      }}
-                      className={pille(erinnerungGueltig === e.id)}
-                    >
-                      {e.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="flex flex-wrap gap-1.5">
+              {erinnerungen.map((e) => (
+                <button
+                  key={e.id ?? "keine"}
+                  type="button"
+                  aria-pressed={!eigenOffen && erinnerungGueltig === e.id}
+                  onClick={() => {
+                    setErinnerung(e.id);
+                    setEigenOffen(false);
+                    setOffen(null);
+                  }}
+                  className={pille(!eigenOffen && erinnerungGueltig === e.id)}
+                >
+                  {e.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={eigenOffen || eigeneGewaehlt}
+                onClick={() => setEigenOffen(true)}
+                className={pille(eigenOffen || eigeneGewaehlt)}
+              >
+                Eigene …
+              </button>
+            </div>
+            {eigenOffen || eigeneGewaehlt ? (
+              <EigeneErinnerung
+                key={ganz ? "ganz" : "zeit"}
+                ganz={ganz}
+                wert={eigeneGewaehlt ? erinnerungGueltig : null}
+                onWahl={(e) => {
+                  setErinnerung(e);
+                  setEigenOffen(false);
+                  setOffen(null);
+                }}
+              />
+            ) : null}
           </Ausklapp>
           {erinnerungGueltig && !nurLesen ? <ErinnerungHinweis klein /> : null}
           </>
@@ -850,7 +1001,7 @@ export function TerminBlatt({
           <Ausklapp
             zeile={zeile}
             titel="🔁 Wiederholen"
-            wert={wiederholungText(wdh)}
+            wert={wdh !== "nie" && ende ? `${wiederholungText(wdh).replace(/ \(.*\)$/, "")} · bis ${formatDE(ende).slice(0, 6)}` : wiederholungText(wdh)}
             offen={offen === "wdh"}
             onToggle={() => setOffen((o) => (o === "wdh" ? null : "wdh"))}
             gesperrt={nurLesen}
@@ -863,7 +1014,8 @@ export function TerminBlatt({
                   aria-pressed={wdh === w.id}
                   onClick={() => {
                     setWdh(w.id);
-                    setOffen(null);
+                    // Mit Wiederholung bleibt die Auswahl offen – darunter kann man das Ende setzen.
+                    if (w.id === "nie") setOffen(null);
                   }}
                   className={pille(wdh === w.id)}
                 >
@@ -871,6 +1023,32 @@ export function TerminBlatt({
                 </button>
               ))}
             </div>
+            {wdh !== "nie" ? (
+              <InSicht className="space-y-1.5" data-serie-ende>
+                <p className="text-[12.5px] font-semibold text-ink-muted">Endet</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" aria-pressed={!ende} onClick={() => setEnde(null)} className={pille(!ende)}>
+                    Nie
+                  </button>
+                  <label className={cn(pille(!!ende), "relative flex items-center gap-1.5")}>
+                    Am
+                    <input
+                      type="date"
+                      value={ende ?? ""}
+                      min={startDatum}
+                      onChange={(e) => {
+                        const w = e.target.value;
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(w) && w >= startDatum) setEnde(w);
+                        else if (!w) setEnde(null);
+                      }}
+                      aria-label="Letzter Tag der Wiederholung"
+                      className="w-[7.4rem] bg-transparent text-[13.5px] font-semibold outline-none"
+                    />
+                  </label>
+                </div>
+              </InSicht>
+            ) : null}
+
           </Ausklapp>
 
           <div className={cn("my-4 overflow-hidden rounded-2xl", glas ? "bg-ink/[0.05]" : "border border-line")}>

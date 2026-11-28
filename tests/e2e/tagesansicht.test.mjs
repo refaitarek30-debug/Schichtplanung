@@ -91,29 +91,42 @@ export default async function tagesansicht() {
     pruefe(await titel.evaluate((el) => el === document.activeElement), "Titel ist gleich ausgewählt (Tastatur)");
     await titel.fill("Zahnarzt");
 
-    // Erinnerung und Wiederholen: Zeile antippen, Auswahl klappt auf, Antippen wählt und klappt zu.
+    // Erinnerung: wenige Vorgaben, Rest selbst einstellen.
     const erinnerung = seite.getByRole("button", { name: /Erinnerung/ });
     await erinnerung.click();
     await warte(250);
-    for (const n of ["Zum Beginn", "15 Min.", "3 Std.", "Vortag 20:00", "1 Woche vorher"]) {
+    for (const n of ["Keine", "10 Min. vorher", "1 Std. vorher", "1 Tag vorher", "Eigene …"]) {
       pruefe(await seite.getByRole("button", { name: n, exact: true }).isVisible(), `Erinnerung zur Wahl: ${n}`);
     }
-    await seite.getByRole("button", { name: "15 Min.", exact: true }).click();
+    await seite.getByRole("button", { name: "Eigene …", exact: true }).click();
     await warte(250);
-    pruefe(/15 Min\. vorher/.test(await erinnerung.innerText()), `Erinnerung gewählt (${await erinnerung.innerText()})`);
-    pruefe((await seite.getByRole("button", { name: "3 Std.", exact: true }).count()) === 0, "Auswahl klappt nach dem Tippen zu");
+    await seite.getByLabel("Wie lange vorher").fill("45");
+    await seite.locator("[data-eigene-erinnerung]").getByRole("button", { name: "Übernehmen" }).click();
+    await warte(250);
+    pruefe(/45 Min\. vorher/.test(await erinnerung.innerText()), `Eigene Erinnerung: 45 Min. vorher (${await erinnerung.innerText()})`);
+    await erinnerung.click();
+    await warte(250);
+    await seite.getByRole("button", { name: "Zu einer Uhrzeit" }).click();
+    await seite.getByRole("button", { name: "Vortag", exact: true }).click();
+    await seite.getByLabel("Uhrzeit der Erinnerung").fill("19:30");
+    await seite.locator("[data-eigene-erinnerung]").getByRole("button", { name: "Übernehmen" }).click();
+    await warte(250);
+    pruefe(/Vortag 19:30/.test(await erinnerung.innerText()), `Eigene Erinnerung: Vortag 19:30 (${await erinnerung.innerText()})`);
+
+    // Wiederholen mit Ende.
     const wdh = seite.getByRole("button", { name: /Wiederholen/ });
     await wdh.click();
     await warte(250);
     for (const n of ["Werktags", "Alle 2 Wochen", "Jährlich"]) {
       pruefe(await seite.getByRole("button", { name: n, exact: true }).isVisible(), `Wiederholen zur Wahl: ${n}`);
     }
-    await seite.getByRole("button", { name: "Alle 2 Wochen", exact: true }).click();
+    await seite.getByRole("button", { name: "Werktags", exact: true }).click();
     await warte(250);
-    pruefe(/Alle 2 Wochen/.test(await wdh.innerText()), "Wiederholen gewählt");
-    await wdh.click();
-    await warte(200);
-    await seite.getByRole("button", { name: "Nie", exact: true }).click();
+    pruefe(await seite.getByLabel("Letzter Tag der Wiederholung").isVisible(), "Wiederholen: „Endet am“ wählbar");
+    await seite.getByLabel("Letzter Tag der Wiederholung").fill(addTage(tag, 10));
+    await warte(150);
+    pruefe(/Werktags · bis/.test(await wdh.innerText()), `Wiederholen mit Ende (${await wdh.innerText()})`);
+    await seite.getByRole("button", { name: "Nie", exact: true }).first().click();
     await warte(200);
     await seite.getByRole("button", { name: "Speichern" }).click();
     await warte(900);
