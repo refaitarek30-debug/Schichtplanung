@@ -1184,6 +1184,8 @@ export function PrivatKalender() {
             onVerschieben={(t, datum, von, bis, ganz) => void terminVerschieben(t, von, bis, datum, ganz)}
             onSchichtVerschieben={(id, von, nach, zeit) => void schichtVerschieben(id, von, nach, zeit)}
             onWoche={(r) => setAnker(addDays(anker, 7 * r))}
+            andereAm={(iso) => andere.amTag(iso)}
+            anzeige={andere.anzeige}
           />
         ) : (
           <JahresAnsicht

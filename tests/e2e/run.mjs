@@ -23,6 +23,7 @@ import geld from "./geld.test.mjs";
 import urlaub from "./urlaub.test.mjs";
 import privatNeu from "./privat-neu.test.mjs";
 import speicher from "./speicher.test.mjs";
+import wocheBetrieb from "./woche-betrieb.test.mjs";
 import tagesansicht from "./tagesansicht.test.mjs";
 import umfrage from "./umfrage.test.mjs";
 import zweiFaktor from "./zwei-faktor.test.mjs";
@@ -32,6 +33,7 @@ import privatEinstieg from "./privat-einstieg.test.mjs";
 const ABLAEUFE = [
   ["Privatbereich", "privat", privat],
   ["Betrieb", "betrieb", betrieb],
+  ["Betrieb: Woche wie Monat, Teilen über Mehr", "betrieb", wocheBetrieb],
   ["Startseite und Profil", "betrieb", startseite],
   ["Betrieb und Privat", "betrieb", bereiche],
   ["Beitritt", "privat", beitritt],

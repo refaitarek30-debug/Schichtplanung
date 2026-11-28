@@ -59,6 +59,7 @@ import { PlanFarbenSchalter, WochenendeWahl } from "./anzeige-wahl";
 import { terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, type Todo } from "@/lib/data/todos";
 import { KalenderTeilen } from "./teilen";
+import { KALENDER_TEILEN } from "@/lib/kalender-teilen";
 import { PartnerBlatt, type PartnerSchicht } from "./partner";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type AndererEintrag } from "./andere";
 import { setzeLokal, useLokalNachLaden } from "./lokal";
@@ -530,6 +531,37 @@ export function MeinKalenderGlas() {
 
   // ---- Teilen ------------------------------------------------------------
   const [einladen, setEinladen] = useState(false);
+  // Aus „Mehr → Kalender teilen“ (…?teilen=1): gleich das Teilen-Blatt öffnen.
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("teilen") !== "1") return;
+      url.searchParams.delete("teilen");
+      window.history.replaceState(null, "", url.pathname + url.search);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEinladen(true);
+    } catch {
+      // ohne lesbare Adresse eben nicht
+    }
+  }, []);
+  useEffect(() => {
+    const oeffnen = () => {
+      setEinladen(true);
+      // Die Adresse ohne ?teilen=1 – sonst ginge das Blatt beim Neuladen wieder auf.
+      window.setTimeout(() => {
+        try {
+          const url = new URL(window.location.href);
+          if (!url.searchParams.has("teilen")) return;
+          url.searchParams.delete("teilen");
+          window.history.replaceState(null, "", url.pathname + url.search);
+        } catch {
+          // egal
+        }
+      }, 400);
+    };
+    window.addEventListener(KALENDER_TEILEN, oeffnen);
+    return () => window.removeEventListener(KALENDER_TEILEN, oeffnen);
+  }, []);
   useEffect(() => {
     setzeLokal(neuGesehenSchluessel("kalender-partner"), true);
   }, []);
@@ -896,7 +928,8 @@ export function MeinKalenderGlas() {
         const u = uhrzeit.get(z.shiftName);
         a = {
           id: `betrieb:s:${z.shiftName}`,
-          name: z.shiftName,
+          // Wie im Monat: „Früh“ statt „Frühschicht“.
+          name: schichtKurz(z.shiftName),
           kuerzel: z.shiftCode ?? z.shiftName.slice(0, 1),
           farbe: farbeFuer(schichtSchluessel(z.shiftCode, z.shiftName), farben) ?? SONSTIGE_SCHICHT_FARBE,
           art: "arbeit",
@@ -906,13 +939,21 @@ export function MeinKalenderGlas() {
           reihenfolge: 0,
         };
       }
-      if (a) {
-        arten.set(a.id, a);
-        wTage[iso] = { schicht: a.id, zusatz: null, dritte: null };
+      // Wie im Monat: ein Tag im Plan ohne Schicht ist „Frei“.
+      if (!a && !abw) {
+        a = { id: "betrieb:frei", name: "Frei", kuerzel: "Frei", farbe: farbeFuer("frei", farben) ?? "#9ca3af", art: "frei", beginn: "", ende: "", stunden: 0, reihenfolge: 0 };
       }
+      // Wie im Monat: der eigene Eintrag (nur für mich) dazu.
+      const e = andere.eigeneSchichten && eigene[iso] ? artNach.get(eigene[iso]!) : undefined;
+      const eigenArt: Schichtart | null = e
+        ? { id: `betrieb:eigen:${e.id}`, name: e.name, kuerzel: e.kuerzel, farbe: e.farbe, art: "arbeit", beginn: e.beginn, ende: e.ende, stunden: 0, reihenfolge: 1 }
+        : null;
+      if (a) arten.set(a.id, a);
+      if (eigenArt) arten.set(eigenArt.id, eigenArt);
+      if (a || eigenArt) wTage[iso] = { schicht: a?.id ?? eigenArt!.id, zusatz: a && eigenArt ? eigenArt.id : null, dritte: null };
     }
     return { arten, tage: wTage };
-  }, [woche, zellen, farben, uhrzeit, t]);
+  }, [woche, zellen, farben, uhrzeit, t, eigene, artNach, andere.eigeneSchichten]);
   const kw = woche
     ? (() => {
         const d = fromISO(addDays(woche, 3));
@@ -1160,6 +1201,8 @@ export function MeinKalenderGlas() {
             onVerschieben={(tm, datum, von, bis, ganz) => void terminVerschieben(tm, von, bis, datum, ganz)}
             onSchichtVerschieben={() => undefined}
             onWoche={(r) => setWoche(addDays(woche, 7 * r))}
+            andereAm={(iso) => andere.amTag(iso)}
+            anzeige={andere.anzeige}
           />
         </div>
       ) : null}
