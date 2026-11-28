@@ -221,6 +221,20 @@ export default async function geld() {
     const termineNach = await (await fetch(`${DB}/rest/v1/rpc/meine_termine`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })).json();
     pruefe(termineNach.find((t) => t.titel === "Ziehtest")?.datum === wTage[4], `Woche: Termin lässt sich verschieben (${termineNach.find((t) => t.titel === "Ziehtest")?.datum})`);
 
+    // Ein Termin oben auf einer Schicht verdeckt deren Schrift nicht: sie rückt unter den Termin.
+    await fetch(`${DB}/rest/v1/privat_tage`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify([{ tag: wTage[5], ebene: 3, schichtart_id: frueh.id }]) });
+    await fetch(`${DB}/rest/v1/rpc/termin_sichern`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ p_id: null, p_datum: wTage[5], p_bis_datum: null, p_titel: "Deckt", p_ganztaegig: false, p_beginn: "05:00", p_ende: "08:00", p_wiederholung: "nie", p_notiz: "", p_ort: "", p_erinnerung: null }),
+    });
+    await seite.reload({ waitUntil: "networkidle" });
+    await warte(1200);
+    pruefe(
+      (await seite.locator(`[data-schicht-id="${frueh.id}"][data-tag="${wTage[5]}"][data-text-ab]`).count()) === 1,
+      "Woche: Schrift der Schicht rückt unter den Termin (nicht verdeckt)",
+    );
+
     // Pinsel auch in der Woche.
     pruefe((await seite.locator("[data-pinsel-knopf], button[aria-label*='Pinsel']").count()) >= 1, "Woche: Pinsel-Knopf da");
     pruefe((await seite.locator("[data-woche-spalten] [data-woche-tag]").count()) === 7, "Woche: Zeitraster mit 7 Spalten");

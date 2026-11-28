@@ -123,6 +123,7 @@ http.createServer((req, res) => {
       if (f === "privat_feiertage") return send(200, feiertage(body.p_jahr));
       if (f === "lohnzettel_einwilligung") { db.konto.lohnzettel_einwilligung = body.p_an ? new Date().toISOString() : null; return send(204); }
       if (f === "meine_termine") return send(200, db.termine);
+      if (f === "termin_serie_ende") { const t = db.termine.find((x) => x.id === body.p_id) ?? (db.fremd ?? []).find((x) => x.id === body.p_id); if (t) { if (body.p_ende) { const d = new Date(`${body.p_ende}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + 1); t.serie_ab = d.toISOString().slice(0, 10); } else t.serie_ab = null; } return send(200, null); }
       if (f === "termin_ausnahme") { const t = db.termine.find((x) => x.id === body.p_id); if (!t) return send(400, { message: "weg" }); if (body.p_ab) { if (body.p_datum <= t.datum) { db.termine = db.termine.filter((x) => x.id !== t.id); return send(200, true); } t.serie_ab = body.p_datum; } else { (t.ausfaelle ??= []).push(body.p_datum); } return send(200, false); }
       if (f === "termin_loeschen") { db.termine = db.termine.filter((t) => t.id !== body.p_id); return send(204); }
       if (f === "verbindung_termin_loeschen") { db.fremd = (db.fremd ?? []).filter((t) => t.id !== body.p_id); return send(204); }
