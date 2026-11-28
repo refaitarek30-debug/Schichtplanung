@@ -24,7 +24,7 @@ import { useFremdeSchichten } from "@/components/kalender/fuer-andere";
 import { VerbundenHinweisStreifen } from "@/components/kalender/verbunden-hinweis";
 import { useVorlieben } from "@/components/kalender/vorschlaege";
 import { useAnzeige } from "@/lib/anzeige";
-import { fremdVorschau, terminLoeschenModus, terminSichernUeberall, type LoeschModus } from "@/lib/data/verbindungen";
+import { terminLoeschenModus, terminSichernUeberall, terminSpeichernFuerAlle, type LoeschModus } from "@/lib/data/verbindungen";
 import type { PartnerCode } from "@/lib/data/partner";
 import { fetchTodos, todoErledigt, todoLoeschen, todoSpeichern, todosAm, todosAusZeilen, type Todo } from "@/lib/data/todos";
 import { AnDiesemTag, AndereTags, WenSeheIch, useAndere, type Andere, type AndererEintrag } from "@/components/kalender/andere";
@@ -1350,12 +1350,11 @@ export function PrivatKalender() {
               setFehler(OHNE_NETZ);
               return;
             }
-            const speichern = terminSichernUeberall(t, alt);
+            // Für eine oder mehrere Personen; bei Verbundenen sofort zeigen, nur deren Termine nachladen.
+            const { speichern, vorab, eigen } = terminSpeichernFuerAlle(t, alt, konto.userId);
             speichern.catch((e: unknown) => setFehler(e instanceof Error ? e.message : "Der Termin konnte nicht gespeichert werden."));
-            // Bei einer verbundenen Person: sofort zeigen, nur deren Termine nachladen.
-            const vorab = fremdVorschau(t, alt, konto.userId);
-            if (vorab) void andere.fremdGespeichert(vorab, speichern).catch(() => {});
-            else void speichern.then(() => ladeTermine(), () => {});
+            if (vorab.length) void andere.fremdGespeichert(vorab, speichern).catch(() => {});
+            if (eigen) void speichern.then(() => ladeTermine(), () => {});
           }}
           serieLoeschen
           onLoeschen={(_id, modus, datum) => {

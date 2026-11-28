@@ -248,10 +248,10 @@ export function fremdVorschau(t: TerminEingabe, alt: Termin | null, ich: string)
   const inhaber = alt?.inhaber ?? (!alt ? t.ziel : null);
   if (!inhaber) return null;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { ziel, id, serieEnde, ...rest } = t;
+  const { ziel, id, serieEnde, weitere, ...rest } = t;
   return {
     ...rest,
-    id: alt?.id ?? `vorab:${Date.now()}`,
+    id: alt?.id ?? `vorab:${inhaber}:${Date.now()}`,
     vonPartner: true,
     personId: null,
     inhaber,
@@ -260,6 +260,19 @@ export function fremdVorschau(t: TerminEingabe, alt: Termin | null, ich: string)
     serieAb: serieEnde === undefined ? (alt?.serieAb ?? null) : serieEnde ? naechsterTag(serieEnde) : null,
     erinnerung: null,
   };
+}
+
+/**
+ * Speichern für eine oder mehrere Personen auf einmal: der Termin selbst wie
+ * bisher, dazu je eine Kopie bei jedem weiteren verbundenen Konto. `vorab` sind
+ * die Termine bei Verbundenen, wie sie gleich aussehen; `eigen`: auch im eigenen Kalender.
+ */
+export function terminSpeichernFuerAlle(t: TerminEingabe, alt: Termin | null, ich: string) {
+  const haupt: TerminEingabe = { ...t, weitere: undefined };
+  const kopien = alt ? [] : (t.weitere ?? []).map((z): TerminEingabe => ({ ...haupt, id: null, ziel: z, erinnerung: null }));
+  const speichern = Promise.all([terminSichernUeberall(haupt, alt), ...kopien.map((k) => verbindungTerminSpeichern(k.ziel!, k))]);
+  const vorab = [fremdVorschau(haupt, alt, ich), ...kopien.map((k) => fremdVorschau(k, null, ich))].filter((x): x is Termin => !!x);
+  return { speichern, vorab, eigen: !alt?.inhaber && !(!alt && t.ziel) };
 }
 
 export async function terminLoeschenUeberall(t: Termin) {
